@@ -1,44 +1,27 @@
 {
     "logs": [
         {
-            "outputFile": "com.nur.quran.app-mergeDebugResources-60:/values-mr/values-mr.xml",
+            "outputFile": "com.nur.quran.app-mergeDebugResources-61:/values-mr/values-mr.xml",
             "map": [
                 {
-                    "source": "/home/iredox/.gradle/caches/transforms-3/65d746a9f71ad7019ffa2383602eeeb9/transformed/media3-session-1.2.1/res/values-mr/values-mr.xml",
+                    "source": "/home/iredox/.gradle/caches/transforms-3/f44f27ef1b4d46e26eb77cc6e69216c4/transformed/ui-release/res/values-mr/values-mr.xml",
                     "from": {
-                        "startLines": "2,3,4,5,6,7,8,9",
-                        "startColumns": "4,4,4,4,4,4,4,4",
-                        "startOffsets": "55,129,208,277,347,421,498,583",
-                        "endColumns": "73,78,68,69,73,76,84,89",
-                        "endOffsets": "124,203,272,342,416,493,578,668"
+                        "startLines": "2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18",
+                        "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
+                        "startOffsets": "105,199,281,378,476,563,649,734,823,906,975,1045,1125,1210,1281,1357,1423",
+                        "endColumns": "93,81,96,97,86,85,84,88,82,68,69,79,84,70,75,65,117",
+                        "endOffsets": "194,276,373,471,558,644,729,818,901,970,1040,1120,1205,1276,1352,1418,1536"
                     },
                     "to": {
-                        "startLines": "2,49,65,66,67,68,69,70",
-                        "startColumns": "4,4,4,4,4,4,4,4",
-                        "startOffsets": "105,5262,6527,6596,6666,6740,6817,6902",
-                        "endColumns": "73,78,68,69,73,76,84,89",
-                        "endOffsets": "174,5336,6591,6661,6735,6812,6897,6987"
+                        "startLines": "14,15,48,50,52,63,64,71,72,73,74,75,76,78,82,83,84",
+                        "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
+                        "startOffsets": "1379,1473,5165,5341,5511,6356,6442,6992,7081,7164,7233,7303,7383,7549,7903,7979,8045",
+                        "endColumns": "93,81,96,97,86,85,84,88,82,68,69,79,84,70,75,65,117",
+                        "endOffsets": "1468,1550,5257,5434,5593,6437,6522,7076,7159,7228,7298,7378,7463,7615,7974,8040,8158"
                     }
                 },
                 {
-                    "source": "/home/iredox/.gradle/caches/transforms-3/728b1bf9a060c8d3278586ea7215a55c/transformed/media3-exoplayer-1.2.1/res/values-mr/values-mr.xml",
-                    "from": {
-                        "startLines": "2,3,4,5,6,7,8,9,10",
-                        "startColumns": "4,4,4,4,4,4,4,4,4",
-                        "startOffsets": "55,125,190,259,328,403,467,564,658",
-                        "endColumns": "69,64,68,68,74,63,96,93,72",
-                        "endOffsets": "120,185,254,323,398,462,559,653,726"
-                    },
-                    "to": {
-                        "startLines": "53,54,55,56,57,58,59,60,61",
-                        "startColumns": "4,4,4,4,4,4,4,4,4",
-                        "startOffsets": "5598,5668,5733,5802,5871,5946,6010,6107,6201",
-                        "endColumns": "69,64,68,68,74,63,96,93,72",
-                        "endOffsets": "5663,5728,5797,5866,5941,6005,6102,6196,6269"
-                    }
-                },
-                {
-                    "source": "/home/iredox/.gradle/caches/transforms-3/2d37540fc2d2f6b1a054c626782e4785/transformed/material3-1.1.2/res/values-mr/values-mr.xml",
+                    "source": "/home/iredox/.gradle/caches/transforms-3/04a6361937392d6bb5bbf5a9f2773772/transformed/material3-1.1.2/res/values-mr/values-mr.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56",
                         "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
@@ -55,7 +38,24 @@
                     }
                 },
                 {
-                    "source": "/home/iredox/.gradle/caches/transforms-3/b7fb479425706f4ada292c0c2b162d7a/transformed/core-1.12.0/res/values-mr/values-mr.xml",
+                    "source": "/home/iredox/.gradle/caches/transforms-3/8fa126116dd3c2cc4c75397880bbed72/transformed/media3-session-1.2.1/res/values-mr/values-mr.xml",
+                    "from": {
+                        "startLines": "2,3,4,5,6,7,8,9",
+                        "startColumns": "4,4,4,4,4,4,4,4",
+                        "startOffsets": "55,129,208,277,347,421,498,583",
+                        "endColumns": "73,78,68,69,73,76,84,89",
+                        "endOffsets": "124,203,272,342,416,493,578,668"
+                    },
+                    "to": {
+                        "startLines": "2,49,65,66,67,68,69,70",
+                        "startColumns": "4,4,4,4,4,4,4,4",
+                        "startOffsets": "105,5262,6527,6596,6666,6740,6817,6902",
+                        "endColumns": "73,78,68,69,73,76,84,89",
+                        "endOffsets": "174,5336,6591,6661,6735,6812,6897,6987"
+                    }
+                },
+                {
+                    "source": "/home/iredox/.gradle/caches/transforms-3/bca6c9987ba02360b62a1726b382f3a1/transformed/core-1.12.0/res/values-mr/values-mr.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,9",
                         "startColumns": "4,4,4,4,4,4,4,4",
@@ -72,20 +72,20 @@
                     }
                 },
                 {
-                    "source": "/home/iredox/.gradle/caches/transforms-3/e342b81d91465fcc70c9d56dd7369f62/transformed/ui-release/res/values-mr/values-mr.xml",
+                    "source": "/home/iredox/.gradle/caches/transforms-3/9ba56482d29b881cde8594f5368b7a04/transformed/media3-exoplayer-1.2.1/res/values-mr/values-mr.xml",
                     "from": {
-                        "startLines": "2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18",
-                        "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
-                        "startOffsets": "105,199,281,378,476,563,649,734,823,906,975,1045,1125,1210,1281,1357,1423",
-                        "endColumns": "93,81,96,97,86,85,84,88,82,68,69,79,84,70,75,65,117",
-                        "endOffsets": "194,276,373,471,558,644,729,818,901,970,1040,1120,1205,1276,1352,1418,1536"
+                        "startLines": "2,3,4,5,6,7,8,9,10",
+                        "startColumns": "4,4,4,4,4,4,4,4,4",
+                        "startOffsets": "55,125,190,259,328,403,467,564,658",
+                        "endColumns": "69,64,68,68,74,63,96,93,72",
+                        "endOffsets": "120,185,254,323,398,462,559,653,726"
                     },
                     "to": {
-                        "startLines": "14,15,48,50,52,63,64,71,72,73,74,75,76,78,82,83,84",
-                        "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
-                        "startOffsets": "1379,1473,5165,5341,5511,6356,6442,6992,7081,7164,7233,7303,7383,7549,7903,7979,8045",
-                        "endColumns": "93,81,96,97,86,85,84,88,82,68,69,79,84,70,75,65,117",
-                        "endOffsets": "1468,1550,5257,5434,5593,6437,6522,7076,7159,7228,7298,7378,7463,7615,7974,8040,8158"
+                        "startLines": "53,54,55,56,57,58,59,60,61",
+                        "startColumns": "4,4,4,4,4,4,4,4,4",
+                        "startOffsets": "5598,5668,5733,5802,5871,5946,6010,6107,6201",
+                        "endColumns": "69,64,68,68,74,63,96,93,72",
+                        "endOffsets": "5663,5728,5797,5866,5941,6005,6102,6196,6269"
                     }
                 }
             ]

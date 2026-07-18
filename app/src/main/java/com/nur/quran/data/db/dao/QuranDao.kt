@@ -31,6 +31,12 @@ interface QuranDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertVerses(verses: List<VerseEntity>)
 
+    @Transaction
+    suspend fun insertVersesAndWords(verses: List<VerseEntity>, words: List<WordEntity>) {
+        insertVerses(verses)
+        insertWords(words)
+    }
+
     // Words
     @Query("SELECT * FROM words WHERE verseId = :verseId ORDER BY position ASC")
     suspend fun getWordsForVerse(verseId: Int): List<WordEntity>
@@ -41,6 +47,9 @@ interface QuranDao {
     // Bookmarks
     @Query("SELECT * FROM bookmarks ORDER BY timestamp DESC")
     fun getAllBookmarks(): Flow<List<BookmarkEntity>>
+
+    @Query("SELECT verseKey FROM bookmarks")
+    fun getBookmarkedVerseKeys(): Flow<List<String>>
 
     @Query("SELECT * FROM bookmarks WHERE verseKey = :verseKey LIMIT 1")
     suspend fun getBookmarkByVerse(verseKey: String): BookmarkEntity?
@@ -65,6 +74,9 @@ interface QuranDao {
     @Query("SELECT * FROM collection_items WHERE collectionId = :collectionId ORDER BY addedAt DESC")
     fun getItemsForCollection(collectionId: Long): Flow<List<CollectionItemEntity>>
 
+    @Query("SELECT * FROM collection_items")
+    fun getAllCollectionItems(): Flow<List<CollectionItemEntity>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCollectionItem(item: CollectionItemEntity)
 
@@ -80,4 +92,30 @@ interface QuranDao {
 
     @Query("DELETE FROM api_responses WHERE `key` LIKE :prefix || '%'")
     suspend fun clearCacheByPrefix(prefix: String)
+
+    // Reading Sessions
+    @Query("SELECT * FROM reading_sessions ORDER BY timestamp ASC")
+    fun getAllReadingSessions(): Flow<List<ReadingSessionEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertReadingSession(session: ReadingSessionEntity)
+
+    // Keep only the newest 500 sessions (matches the web store's slice(-500))
+    @Query("DELETE FROM reading_sessions WHERE id NOT IN (SELECT id FROM reading_sessions ORDER BY timestamp DESC LIMIT 500)")
+    suspend fun pruneReadingSessions()
+
+    // Recently Read
+    @Query("SELECT * FROM recently_read ORDER BY timestamp DESC LIMIT :limit")
+    fun getRecentlyRead(limit: Int = 5): Flow<List<RecentlyReadEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertRecentlyRead(item: RecentlyReadEntity)
+
+    // Keep only the newest 5 entries (matches the web store's slice(0, 5))
+    @Query("DELETE FROM recently_read WHERE chapterId NOT IN (SELECT chapterId FROM recently_read ORDER BY timestamp DESC LIMIT 5)")
+    suspend fun pruneRecentlyRead()
+
+    // Latest bookmark (web app shows a single active bookmark card on Home)
+    @Query("SELECT * FROM bookmarks ORDER BY timestamp DESC LIMIT 1")
+    fun getLatestBookmark(): Flow<BookmarkEntity?>
 }

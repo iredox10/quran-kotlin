@@ -35,7 +35,9 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.nur.quran.ui.navigation.Screen
 import com.nur.quran.ui.screens.HomeScreen
+import com.nur.quran.ui.screens.SurahScreen
 import com.nur.quran.ui.viewmodels.HomeViewModel
+import com.nur.quran.ui.viewmodels.SurahViewModel
 import dagger.hilt.android.AndroidEntryPoint
 
 // ── Color Palette (web app variables) ────────────────────────────────
@@ -53,6 +55,7 @@ private val glassBg   = Color(0x99EFECE4) // rgba(239,236,228,0.6)
 class MainActivity : ComponentActivity() {
 
     private val homeViewModel: HomeViewModel by viewModels()
+    private val surahViewModel: SurahViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -68,7 +71,8 @@ class MainActivity : ComponentActivity() {
                     Screen.Memorize.route,
                     Screen.Planner.route,
                     Screen.Analytics.route,
-                    Screen.Profile.route
+                    Screen.Profile.route,
+                    Screen.SurahDetail.route
                 )
 
                 Box(modifier = Modifier.fillMaxSize()) {
@@ -151,7 +155,16 @@ class MainActivity : ComponentActivity() {
                         }
                         composable(Screen.SurahDetail.route) { backStackEntry ->
                             val chapterId = backStackEntry.arguments?.getString("chapterId")?.toIntOrNull() ?: 1
-                            Text(text = "Surah Detail Screen for Chapter $chapterId")
+                            SurahScreen(
+                                viewModel = surahViewModel,
+                                chapterId = chapterId,
+                                onBackClick = { navController.popBackStack() },
+                                onNavigateToSurah = { nextChapterId ->
+                                    navController.navigate(Screen.SurahDetail.createRoute(nextChapterId)) {
+                                        popUpTo(Screen.Quran.route) { inclusive = false }
+                                    }
+                                }
+                            )
                         }
                         composable(Screen.PageDetail.route) { backStackEntry ->
                             val pageNum = backStackEntry.arguments?.getString("pageNumber")?.toIntOrNull() ?: 1

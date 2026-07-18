@@ -7,6 +7,7 @@ import androidx.annotation.Nullable;
 import androidx.room.CoroutinesRoom;
 import androidx.room.EntityInsertionAdapter;
 import androidx.room.RoomDatabase;
+import androidx.room.RoomDatabaseKt;
 import androidx.room.RoomSQLiteQuery;
 import androidx.room.SharedSQLiteStatement;
 import androidx.room.util.CursorUtil;
@@ -17,10 +18,13 @@ import com.nur.quran.data.db.entities.BookmarkEntity;
 import com.nur.quran.data.db.entities.ChapterEntity;
 import com.nur.quran.data.db.entities.CollectionEntity;
 import com.nur.quran.data.db.entities.CollectionItemEntity;
+import com.nur.quran.data.db.entities.ReadingSessionEntity;
+import com.nur.quran.data.db.entities.RecentlyReadEntity;
 import com.nur.quran.data.db.entities.VerseEntity;
 import com.nur.quran.data.db.entities.WordEntity;
 import java.lang.Class;
 import java.lang.Exception;
+import java.lang.Integer;
 import java.lang.Object;
 import java.lang.Override;
 import java.lang.String;
@@ -53,6 +57,10 @@ public final class QuranDao_Impl implements QuranDao {
 
   private final EntityInsertionAdapter<ApiResponseCacheEntity> __insertionAdapterOfApiResponseCacheEntity;
 
+  private final EntityInsertionAdapter<ReadingSessionEntity> __insertionAdapterOfReadingSessionEntity;
+
+  private final EntityInsertionAdapter<RecentlyReadEntity> __insertionAdapterOfRecentlyReadEntity;
+
   private final SharedSQLiteStatement __preparedStmtOfDeleteBookmark;
 
   private final SharedSQLiteStatement __preparedStmtOfDeleteCollection;
@@ -61,13 +69,17 @@ public final class QuranDao_Impl implements QuranDao {
 
   private final SharedSQLiteStatement __preparedStmtOfClearCacheByPrefix;
 
+  private final SharedSQLiteStatement __preparedStmtOfPruneReadingSessions;
+
+  private final SharedSQLiteStatement __preparedStmtOfPruneRecentlyRead;
+
   public QuranDao_Impl(@NonNull final RoomDatabase __db) {
     this.__db = __db;
     this.__insertionAdapterOfChapterEntity = new EntityInsertionAdapter<ChapterEntity>(__db) {
       @Override
       @NonNull
       protected String createQuery() {
-        return "INSERT OR REPLACE INTO `chapters` (`id`,`nameSimple`,`nameArabic`,`nameComplex`,`revelationPlace`,`revelationOrder`,`versesCount`,`pagesStart`,`pagesEnd`) VALUES (?,?,?,?,?,?,?,?,?)";
+        return "INSERT OR REPLACE INTO `chapters` (`id`,`nameSimple`,`nameArabic`,`nameComplex`,`translatedName`,`revelationPlace`,`revelationOrder`,`versesCount`,`pagesStart`,`pagesEnd`) VALUES (?,?,?,?,?,?,?,?,?,?)";
       }
 
       @Override
@@ -77,18 +89,19 @@ public final class QuranDao_Impl implements QuranDao {
         statement.bindString(2, entity.getNameSimple());
         statement.bindString(3, entity.getNameArabic());
         statement.bindString(4, entity.getNameComplex());
-        statement.bindString(5, entity.getRevelationPlace());
-        statement.bindLong(6, entity.getRevelationOrder());
-        statement.bindLong(7, entity.getVersesCount());
-        statement.bindLong(8, entity.getPagesStart());
-        statement.bindLong(9, entity.getPagesEnd());
+        statement.bindString(5, entity.getTranslatedName());
+        statement.bindString(6, entity.getRevelationPlace());
+        statement.bindLong(7, entity.getRevelationOrder());
+        statement.bindLong(8, entity.getVersesCount());
+        statement.bindLong(9, entity.getPagesStart());
+        statement.bindLong(10, entity.getPagesEnd());
       }
     };
     this.__insertionAdapterOfVerseEntity = new EntityInsertionAdapter<VerseEntity>(__db) {
       @Override
       @NonNull
       protected String createQuery() {
-        return "INSERT OR REPLACE INTO `verses` (`id`,`chapterId`,`verseNumber`,`verseKey`,`textUthmani`,`textIndopak`,`textQpcHafs`,`pageNumber`,`juzNumber`) VALUES (?,?,?,?,?,?,?,?,?)";
+        return "INSERT OR REPLACE INTO `verses` (`id`,`chapterId`,`verseNumber`,`verseKey`,`textUthmani`,`textIndopak`,`textQpcHafs`,`pageNumber`,`juzNumber`,`translation`,`audioUrl`) VALUES (?,?,?,?,?,?,?,?,?,?,?)";
       }
 
       @Override
@@ -115,6 +128,16 @@ public final class QuranDao_Impl implements QuranDao {
         }
         statement.bindLong(8, entity.getPageNumber());
         statement.bindLong(9, entity.getJuzNumber());
+        if (entity.getTranslation() == null) {
+          statement.bindNull(10);
+        } else {
+          statement.bindString(10, entity.getTranslation());
+        }
+        if (entity.getAudioUrl() == null) {
+          statement.bindNull(11);
+        } else {
+          statement.bindString(11, entity.getAudioUrl());
+        }
       }
     };
     this.__insertionAdapterOfWordEntity = new EntityInsertionAdapter<WordEntity>(__db) {
@@ -227,6 +250,48 @@ public final class QuranDao_Impl implements QuranDao {
         statement.bindLong(3, entity.getUpdatedAt());
       }
     };
+    this.__insertionAdapterOfReadingSessionEntity = new EntityInsertionAdapter<ReadingSessionEntity>(__db) {
+      @Override
+      @NonNull
+      protected String createQuery() {
+        return "INSERT OR REPLACE INTO `reading_sessions` (`id`,`date`,`duration`,`type`,`chapterId`,`timestamp`) VALUES (nullif(?, 0),?,?,?,?,?)";
+      }
+
+      @Override
+      protected void bind(@NonNull final SupportSQLiteStatement statement,
+          @NonNull final ReadingSessionEntity entity) {
+        statement.bindLong(1, entity.getId());
+        statement.bindString(2, entity.getDate());
+        statement.bindLong(3, entity.getDuration());
+        statement.bindString(4, entity.getType());
+        if (entity.getChapterId() == null) {
+          statement.bindNull(5);
+        } else {
+          statement.bindLong(5, entity.getChapterId());
+        }
+        statement.bindLong(6, entity.getTimestamp());
+      }
+    };
+    this.__insertionAdapterOfRecentlyReadEntity = new EntityInsertionAdapter<RecentlyReadEntity>(__db) {
+      @Override
+      @NonNull
+      protected String createQuery() {
+        return "INSERT OR REPLACE INTO `recently_read` (`chapterId`,`chapterName`,`verseKey`,`timestamp`) VALUES (?,?,?,?)";
+      }
+
+      @Override
+      protected void bind(@NonNull final SupportSQLiteStatement statement,
+          @NonNull final RecentlyReadEntity entity) {
+        statement.bindLong(1, entity.getChapterId());
+        statement.bindString(2, entity.getChapterName());
+        if (entity.getVerseKey() == null) {
+          statement.bindNull(3);
+        } else {
+          statement.bindString(3, entity.getVerseKey());
+        }
+        statement.bindLong(4, entity.getTimestamp());
+      }
+    };
     this.__preparedStmtOfDeleteBookmark = new SharedSQLiteStatement(__db) {
       @Override
       @NonNull
@@ -256,6 +321,22 @@ public final class QuranDao_Impl implements QuranDao {
       @NonNull
       public String createQuery() {
         final String _query = "DELETE FROM api_responses WHERE `key` LIKE ? || '%'";
+        return _query;
+      }
+    };
+    this.__preparedStmtOfPruneReadingSessions = new SharedSQLiteStatement(__db) {
+      @Override
+      @NonNull
+      public String createQuery() {
+        final String _query = "DELETE FROM reading_sessions WHERE id NOT IN (SELECT id FROM reading_sessions ORDER BY timestamp DESC LIMIT 500)";
+        return _query;
+      }
+    };
+    this.__preparedStmtOfPruneRecentlyRead = new SharedSQLiteStatement(__db) {
+      @Override
+      @NonNull
+      public String createQuery() {
+        final String _query = "DELETE FROM recently_read WHERE chapterId NOT IN (SELECT chapterId FROM recently_read ORDER BY timestamp DESC LIMIT 5)";
         return _query;
       }
     };
@@ -395,6 +476,50 @@ public final class QuranDao_Impl implements QuranDao {
   }
 
   @Override
+  public Object insertReadingSession(final ReadingSessionEntity session,
+      final Continuation<? super Unit> $completion) {
+    return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
+      @Override
+      @NonNull
+      public Unit call() throws Exception {
+        __db.beginTransaction();
+        try {
+          __insertionAdapterOfReadingSessionEntity.insert(session);
+          __db.setTransactionSuccessful();
+          return Unit.INSTANCE;
+        } finally {
+          __db.endTransaction();
+        }
+      }
+    }, $completion);
+  }
+
+  @Override
+  public Object upsertRecentlyRead(final RecentlyReadEntity item,
+      final Continuation<? super Unit> $completion) {
+    return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
+      @Override
+      @NonNull
+      public Unit call() throws Exception {
+        __db.beginTransaction();
+        try {
+          __insertionAdapterOfRecentlyReadEntity.insert(item);
+          __db.setTransactionSuccessful();
+          return Unit.INSTANCE;
+        } finally {
+          __db.endTransaction();
+        }
+      }
+    }, $completion);
+  }
+
+  @Override
+  public Object insertVersesAndWords(final List<VerseEntity> verses, final List<WordEntity> words,
+      final Continuation<? super Unit> $completion) {
+    return RoomDatabaseKt.withTransaction(__db, (__cont) -> QuranDao.DefaultImpls.insertVersesAndWords(QuranDao_Impl.this, verses, words, __cont), $completion);
+  }
+
+  @Override
   public Object deleteBookmark(final String verseKey,
       final Continuation<? super Unit> $completion) {
     return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
@@ -501,6 +626,52 @@ public final class QuranDao_Impl implements QuranDao {
   }
 
   @Override
+  public Object pruneReadingSessions(final Continuation<? super Unit> $completion) {
+    return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
+      @Override
+      @NonNull
+      public Unit call() throws Exception {
+        final SupportSQLiteStatement _stmt = __preparedStmtOfPruneReadingSessions.acquire();
+        try {
+          __db.beginTransaction();
+          try {
+            _stmt.executeUpdateDelete();
+            __db.setTransactionSuccessful();
+            return Unit.INSTANCE;
+          } finally {
+            __db.endTransaction();
+          }
+        } finally {
+          __preparedStmtOfPruneReadingSessions.release(_stmt);
+        }
+      }
+    }, $completion);
+  }
+
+  @Override
+  public Object pruneRecentlyRead(final Continuation<? super Unit> $completion) {
+    return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
+      @Override
+      @NonNull
+      public Unit call() throws Exception {
+        final SupportSQLiteStatement _stmt = __preparedStmtOfPruneRecentlyRead.acquire();
+        try {
+          __db.beginTransaction();
+          try {
+            _stmt.executeUpdateDelete();
+            __db.setTransactionSuccessful();
+            return Unit.INSTANCE;
+          } finally {
+            __db.endTransaction();
+          }
+        } finally {
+          __preparedStmtOfPruneRecentlyRead.release(_stmt);
+        }
+      }
+    }, $completion);
+  }
+
+  @Override
   public Flow<List<ChapterEntity>> getAllChapters() {
     final String _sql = "SELECT * FROM chapters ORDER BY id ASC";
     final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 0);
@@ -514,6 +685,7 @@ public final class QuranDao_Impl implements QuranDao {
           final int _cursorIndexOfNameSimple = CursorUtil.getColumnIndexOrThrow(_cursor, "nameSimple");
           final int _cursorIndexOfNameArabic = CursorUtil.getColumnIndexOrThrow(_cursor, "nameArabic");
           final int _cursorIndexOfNameComplex = CursorUtil.getColumnIndexOrThrow(_cursor, "nameComplex");
+          final int _cursorIndexOfTranslatedName = CursorUtil.getColumnIndexOrThrow(_cursor, "translatedName");
           final int _cursorIndexOfRevelationPlace = CursorUtil.getColumnIndexOrThrow(_cursor, "revelationPlace");
           final int _cursorIndexOfRevelationOrder = CursorUtil.getColumnIndexOrThrow(_cursor, "revelationOrder");
           final int _cursorIndexOfVersesCount = CursorUtil.getColumnIndexOrThrow(_cursor, "versesCount");
@@ -530,6 +702,8 @@ public final class QuranDao_Impl implements QuranDao {
             _tmpNameArabic = _cursor.getString(_cursorIndexOfNameArabic);
             final String _tmpNameComplex;
             _tmpNameComplex = _cursor.getString(_cursorIndexOfNameComplex);
+            final String _tmpTranslatedName;
+            _tmpTranslatedName = _cursor.getString(_cursorIndexOfTranslatedName);
             final String _tmpRevelationPlace;
             _tmpRevelationPlace = _cursor.getString(_cursorIndexOfRevelationPlace);
             final int _tmpRevelationOrder;
@@ -540,7 +714,7 @@ public final class QuranDao_Impl implements QuranDao {
             _tmpPagesStart = _cursor.getInt(_cursorIndexOfPagesStart);
             final int _tmpPagesEnd;
             _tmpPagesEnd = _cursor.getInt(_cursorIndexOfPagesEnd);
-            _item = new ChapterEntity(_tmpId,_tmpNameSimple,_tmpNameArabic,_tmpNameComplex,_tmpRevelationPlace,_tmpRevelationOrder,_tmpVersesCount,_tmpPagesStart,_tmpPagesEnd);
+            _item = new ChapterEntity(_tmpId,_tmpNameSimple,_tmpNameArabic,_tmpNameComplex,_tmpTranslatedName,_tmpRevelationPlace,_tmpRevelationOrder,_tmpVersesCount,_tmpPagesStart,_tmpPagesEnd);
             _result.add(_item);
           }
           return _result;
@@ -574,6 +748,7 @@ public final class QuranDao_Impl implements QuranDao {
           final int _cursorIndexOfNameSimple = CursorUtil.getColumnIndexOrThrow(_cursor, "nameSimple");
           final int _cursorIndexOfNameArabic = CursorUtil.getColumnIndexOrThrow(_cursor, "nameArabic");
           final int _cursorIndexOfNameComplex = CursorUtil.getColumnIndexOrThrow(_cursor, "nameComplex");
+          final int _cursorIndexOfTranslatedName = CursorUtil.getColumnIndexOrThrow(_cursor, "translatedName");
           final int _cursorIndexOfRevelationPlace = CursorUtil.getColumnIndexOrThrow(_cursor, "revelationPlace");
           final int _cursorIndexOfRevelationOrder = CursorUtil.getColumnIndexOrThrow(_cursor, "revelationOrder");
           final int _cursorIndexOfVersesCount = CursorUtil.getColumnIndexOrThrow(_cursor, "versesCount");
@@ -589,6 +764,8 @@ public final class QuranDao_Impl implements QuranDao {
             _tmpNameArabic = _cursor.getString(_cursorIndexOfNameArabic);
             final String _tmpNameComplex;
             _tmpNameComplex = _cursor.getString(_cursorIndexOfNameComplex);
+            final String _tmpTranslatedName;
+            _tmpTranslatedName = _cursor.getString(_cursorIndexOfTranslatedName);
             final String _tmpRevelationPlace;
             _tmpRevelationPlace = _cursor.getString(_cursorIndexOfRevelationPlace);
             final int _tmpRevelationOrder;
@@ -599,7 +776,7 @@ public final class QuranDao_Impl implements QuranDao {
             _tmpPagesStart = _cursor.getInt(_cursorIndexOfPagesStart);
             final int _tmpPagesEnd;
             _tmpPagesEnd = _cursor.getInt(_cursorIndexOfPagesEnd);
-            _result = new ChapterEntity(_tmpId,_tmpNameSimple,_tmpNameArabic,_tmpNameComplex,_tmpRevelationPlace,_tmpRevelationOrder,_tmpVersesCount,_tmpPagesStart,_tmpPagesEnd);
+            _result = new ChapterEntity(_tmpId,_tmpNameSimple,_tmpNameArabic,_tmpNameComplex,_tmpTranslatedName,_tmpRevelationPlace,_tmpRevelationOrder,_tmpVersesCount,_tmpPagesStart,_tmpPagesEnd);
           } else {
             _result = null;
           }
@@ -633,6 +810,8 @@ public final class QuranDao_Impl implements QuranDao {
           final int _cursorIndexOfTextQpcHafs = CursorUtil.getColumnIndexOrThrow(_cursor, "textQpcHafs");
           final int _cursorIndexOfPageNumber = CursorUtil.getColumnIndexOrThrow(_cursor, "pageNumber");
           final int _cursorIndexOfJuzNumber = CursorUtil.getColumnIndexOrThrow(_cursor, "juzNumber");
+          final int _cursorIndexOfTranslation = CursorUtil.getColumnIndexOrThrow(_cursor, "translation");
+          final int _cursorIndexOfAudioUrl = CursorUtil.getColumnIndexOrThrow(_cursor, "audioUrl");
           final List<VerseEntity> _result = new ArrayList<VerseEntity>(_cursor.getCount());
           while (_cursor.moveToNext()) {
             final VerseEntity _item;
@@ -666,7 +845,19 @@ public final class QuranDao_Impl implements QuranDao {
             _tmpPageNumber = _cursor.getInt(_cursorIndexOfPageNumber);
             final int _tmpJuzNumber;
             _tmpJuzNumber = _cursor.getInt(_cursorIndexOfJuzNumber);
-            _item = new VerseEntity(_tmpId,_tmpChapterId,_tmpVerseNumber,_tmpVerseKey,_tmpTextUthmani,_tmpTextIndopak,_tmpTextQpcHafs,_tmpPageNumber,_tmpJuzNumber);
+            final String _tmpTranslation;
+            if (_cursor.isNull(_cursorIndexOfTranslation)) {
+              _tmpTranslation = null;
+            } else {
+              _tmpTranslation = _cursor.getString(_cursorIndexOfTranslation);
+            }
+            final String _tmpAudioUrl;
+            if (_cursor.isNull(_cursorIndexOfAudioUrl)) {
+              _tmpAudioUrl = null;
+            } else {
+              _tmpAudioUrl = _cursor.getString(_cursorIndexOfAudioUrl);
+            }
+            _item = new VerseEntity(_tmpId,_tmpChapterId,_tmpVerseNumber,_tmpVerseKey,_tmpTextUthmani,_tmpTextIndopak,_tmpTextQpcHafs,_tmpPageNumber,_tmpJuzNumber,_tmpTranslation,_tmpAudioUrl);
             _result.add(_item);
           }
           return _result;
@@ -703,6 +894,8 @@ public final class QuranDao_Impl implements QuranDao {
           final int _cursorIndexOfTextQpcHafs = CursorUtil.getColumnIndexOrThrow(_cursor, "textQpcHafs");
           final int _cursorIndexOfPageNumber = CursorUtil.getColumnIndexOrThrow(_cursor, "pageNumber");
           final int _cursorIndexOfJuzNumber = CursorUtil.getColumnIndexOrThrow(_cursor, "juzNumber");
+          final int _cursorIndexOfTranslation = CursorUtil.getColumnIndexOrThrow(_cursor, "translation");
+          final int _cursorIndexOfAudioUrl = CursorUtil.getColumnIndexOrThrow(_cursor, "audioUrl");
           final List<VerseEntity> _result = new ArrayList<VerseEntity>(_cursor.getCount());
           while (_cursor.moveToNext()) {
             final VerseEntity _item;
@@ -736,7 +929,19 @@ public final class QuranDao_Impl implements QuranDao {
             _tmpPageNumber = _cursor.getInt(_cursorIndexOfPageNumber);
             final int _tmpJuzNumber;
             _tmpJuzNumber = _cursor.getInt(_cursorIndexOfJuzNumber);
-            _item = new VerseEntity(_tmpId,_tmpChapterId,_tmpVerseNumber,_tmpVerseKey,_tmpTextUthmani,_tmpTextIndopak,_tmpTextQpcHafs,_tmpPageNumber,_tmpJuzNumber);
+            final String _tmpTranslation;
+            if (_cursor.isNull(_cursorIndexOfTranslation)) {
+              _tmpTranslation = null;
+            } else {
+              _tmpTranslation = _cursor.getString(_cursorIndexOfTranslation);
+            }
+            final String _tmpAudioUrl;
+            if (_cursor.isNull(_cursorIndexOfAudioUrl)) {
+              _tmpAudioUrl = null;
+            } else {
+              _tmpAudioUrl = _cursor.getString(_cursorIndexOfAudioUrl);
+            }
+            _item = new VerseEntity(_tmpId,_tmpChapterId,_tmpVerseNumber,_tmpVerseKey,_tmpTextUthmani,_tmpTextIndopak,_tmpTextQpcHafs,_tmpPageNumber,_tmpJuzNumber,_tmpTranslation,_tmpAudioUrl);
             _result.add(_item);
           }
           return _result;
@@ -864,6 +1069,35 @@ public final class QuranDao_Impl implements QuranDao {
             final long _tmpTimestamp;
             _tmpTimestamp = _cursor.getLong(_cursorIndexOfTimestamp);
             _item = new BookmarkEntity(_tmpId,_tmpVerseKey,_tmpChapterId,_tmpSurahName,_tmpTimestamp);
+            _result.add(_item);
+          }
+          return _result;
+        } finally {
+          _cursor.close();
+        }
+      }
+
+      @Override
+      protected void finalize() {
+        _statement.release();
+      }
+    });
+  }
+
+  @Override
+  public Flow<List<String>> getBookmarkedVerseKeys() {
+    final String _sql = "SELECT verseKey FROM bookmarks";
+    final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 0);
+    return CoroutinesRoom.createFlow(__db, false, new String[] {"bookmarks"}, new Callable<List<String>>() {
+      @Override
+      @NonNull
+      public List<String> call() throws Exception {
+        final Cursor _cursor = DBUtil.query(__db, _statement, false, null);
+        try {
+          final List<String> _result = new ArrayList<String>(_cursor.getCount());
+          while (_cursor.moveToNext()) {
+            final String _item;
+            _item = _cursor.getString(0);
             _result.add(_item);
           }
           return _result;
@@ -1008,6 +1242,50 @@ public final class QuranDao_Impl implements QuranDao {
   }
 
   @Override
+  public Flow<List<CollectionItemEntity>> getAllCollectionItems() {
+    final String _sql = "SELECT * FROM collection_items";
+    final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 0);
+    return CoroutinesRoom.createFlow(__db, false, new String[] {"collection_items"}, new Callable<List<CollectionItemEntity>>() {
+      @Override
+      @NonNull
+      public List<CollectionItemEntity> call() throws Exception {
+        final Cursor _cursor = DBUtil.query(__db, _statement, false, null);
+        try {
+          final int _cursorIndexOfCollectionId = CursorUtil.getColumnIndexOrThrow(_cursor, "collectionId");
+          final int _cursorIndexOfVerseKey = CursorUtil.getColumnIndexOrThrow(_cursor, "verseKey");
+          final int _cursorIndexOfChapterId = CursorUtil.getColumnIndexOrThrow(_cursor, "chapterId");
+          final int _cursorIndexOfSurahName = CursorUtil.getColumnIndexOrThrow(_cursor, "surahName");
+          final int _cursorIndexOfAddedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "addedAt");
+          final List<CollectionItemEntity> _result = new ArrayList<CollectionItemEntity>(_cursor.getCount());
+          while (_cursor.moveToNext()) {
+            final CollectionItemEntity _item;
+            final long _tmpCollectionId;
+            _tmpCollectionId = _cursor.getLong(_cursorIndexOfCollectionId);
+            final String _tmpVerseKey;
+            _tmpVerseKey = _cursor.getString(_cursorIndexOfVerseKey);
+            final int _tmpChapterId;
+            _tmpChapterId = _cursor.getInt(_cursorIndexOfChapterId);
+            final String _tmpSurahName;
+            _tmpSurahName = _cursor.getString(_cursorIndexOfSurahName);
+            final long _tmpAddedAt;
+            _tmpAddedAt = _cursor.getLong(_cursorIndexOfAddedAt);
+            _item = new CollectionItemEntity(_tmpCollectionId,_tmpVerseKey,_tmpChapterId,_tmpSurahName,_tmpAddedAt);
+            _result.add(_item);
+          }
+          return _result;
+        } finally {
+          _cursor.close();
+        }
+      }
+
+      @Override
+      protected void finalize() {
+        _statement.release();
+      }
+    });
+  }
+
+  @Override
   public Object getCacheEntry(final String key,
       final Continuation<? super ApiResponseCacheEntity> $completion) {
     final String _sql = "SELECT * FROM api_responses WHERE `key` = ? LIMIT 1";
@@ -1043,6 +1321,148 @@ public final class QuranDao_Impl implements QuranDao {
         }
       }
     }, $completion);
+  }
+
+  @Override
+  public Flow<List<ReadingSessionEntity>> getAllReadingSessions() {
+    final String _sql = "SELECT * FROM reading_sessions ORDER BY timestamp ASC";
+    final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 0);
+    return CoroutinesRoom.createFlow(__db, false, new String[] {"reading_sessions"}, new Callable<List<ReadingSessionEntity>>() {
+      @Override
+      @NonNull
+      public List<ReadingSessionEntity> call() throws Exception {
+        final Cursor _cursor = DBUtil.query(__db, _statement, false, null);
+        try {
+          final int _cursorIndexOfId = CursorUtil.getColumnIndexOrThrow(_cursor, "id");
+          final int _cursorIndexOfDate = CursorUtil.getColumnIndexOrThrow(_cursor, "date");
+          final int _cursorIndexOfDuration = CursorUtil.getColumnIndexOrThrow(_cursor, "duration");
+          final int _cursorIndexOfType = CursorUtil.getColumnIndexOrThrow(_cursor, "type");
+          final int _cursorIndexOfChapterId = CursorUtil.getColumnIndexOrThrow(_cursor, "chapterId");
+          final int _cursorIndexOfTimestamp = CursorUtil.getColumnIndexOrThrow(_cursor, "timestamp");
+          final List<ReadingSessionEntity> _result = new ArrayList<ReadingSessionEntity>(_cursor.getCount());
+          while (_cursor.moveToNext()) {
+            final ReadingSessionEntity _item;
+            final int _tmpId;
+            _tmpId = _cursor.getInt(_cursorIndexOfId);
+            final String _tmpDate;
+            _tmpDate = _cursor.getString(_cursorIndexOfDate);
+            final long _tmpDuration;
+            _tmpDuration = _cursor.getLong(_cursorIndexOfDuration);
+            final String _tmpType;
+            _tmpType = _cursor.getString(_cursorIndexOfType);
+            final Integer _tmpChapterId;
+            if (_cursor.isNull(_cursorIndexOfChapterId)) {
+              _tmpChapterId = null;
+            } else {
+              _tmpChapterId = _cursor.getInt(_cursorIndexOfChapterId);
+            }
+            final long _tmpTimestamp;
+            _tmpTimestamp = _cursor.getLong(_cursorIndexOfTimestamp);
+            _item = new ReadingSessionEntity(_tmpId,_tmpDate,_tmpDuration,_tmpType,_tmpChapterId,_tmpTimestamp);
+            _result.add(_item);
+          }
+          return _result;
+        } finally {
+          _cursor.close();
+        }
+      }
+
+      @Override
+      protected void finalize() {
+        _statement.release();
+      }
+    });
+  }
+
+  @Override
+  public Flow<List<RecentlyReadEntity>> getRecentlyRead(final int limit) {
+    final String _sql = "SELECT * FROM recently_read ORDER BY timestamp DESC LIMIT ?";
+    final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 1);
+    int _argIndex = 1;
+    _statement.bindLong(_argIndex, limit);
+    return CoroutinesRoom.createFlow(__db, false, new String[] {"recently_read"}, new Callable<List<RecentlyReadEntity>>() {
+      @Override
+      @NonNull
+      public List<RecentlyReadEntity> call() throws Exception {
+        final Cursor _cursor = DBUtil.query(__db, _statement, false, null);
+        try {
+          final int _cursorIndexOfChapterId = CursorUtil.getColumnIndexOrThrow(_cursor, "chapterId");
+          final int _cursorIndexOfChapterName = CursorUtil.getColumnIndexOrThrow(_cursor, "chapterName");
+          final int _cursorIndexOfVerseKey = CursorUtil.getColumnIndexOrThrow(_cursor, "verseKey");
+          final int _cursorIndexOfTimestamp = CursorUtil.getColumnIndexOrThrow(_cursor, "timestamp");
+          final List<RecentlyReadEntity> _result = new ArrayList<RecentlyReadEntity>(_cursor.getCount());
+          while (_cursor.moveToNext()) {
+            final RecentlyReadEntity _item;
+            final int _tmpChapterId;
+            _tmpChapterId = _cursor.getInt(_cursorIndexOfChapterId);
+            final String _tmpChapterName;
+            _tmpChapterName = _cursor.getString(_cursorIndexOfChapterName);
+            final String _tmpVerseKey;
+            if (_cursor.isNull(_cursorIndexOfVerseKey)) {
+              _tmpVerseKey = null;
+            } else {
+              _tmpVerseKey = _cursor.getString(_cursorIndexOfVerseKey);
+            }
+            final long _tmpTimestamp;
+            _tmpTimestamp = _cursor.getLong(_cursorIndexOfTimestamp);
+            _item = new RecentlyReadEntity(_tmpChapterId,_tmpChapterName,_tmpVerseKey,_tmpTimestamp);
+            _result.add(_item);
+          }
+          return _result;
+        } finally {
+          _cursor.close();
+        }
+      }
+
+      @Override
+      protected void finalize() {
+        _statement.release();
+      }
+    });
+  }
+
+  @Override
+  public Flow<BookmarkEntity> getLatestBookmark() {
+    final String _sql = "SELECT * FROM bookmarks ORDER BY timestamp DESC LIMIT 1";
+    final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 0);
+    return CoroutinesRoom.createFlow(__db, false, new String[] {"bookmarks"}, new Callable<BookmarkEntity>() {
+      @Override
+      @Nullable
+      public BookmarkEntity call() throws Exception {
+        final Cursor _cursor = DBUtil.query(__db, _statement, false, null);
+        try {
+          final int _cursorIndexOfId = CursorUtil.getColumnIndexOrThrow(_cursor, "id");
+          final int _cursorIndexOfVerseKey = CursorUtil.getColumnIndexOrThrow(_cursor, "verseKey");
+          final int _cursorIndexOfChapterId = CursorUtil.getColumnIndexOrThrow(_cursor, "chapterId");
+          final int _cursorIndexOfSurahName = CursorUtil.getColumnIndexOrThrow(_cursor, "surahName");
+          final int _cursorIndexOfTimestamp = CursorUtil.getColumnIndexOrThrow(_cursor, "timestamp");
+          final BookmarkEntity _result;
+          if (_cursor.moveToFirst()) {
+            final int _tmpId;
+            _tmpId = _cursor.getInt(_cursorIndexOfId);
+            final String _tmpVerseKey;
+            _tmpVerseKey = _cursor.getString(_cursorIndexOfVerseKey);
+            final int _tmpChapterId;
+            _tmpChapterId = _cursor.getInt(_cursorIndexOfChapterId);
+            final String _tmpSurahName;
+            _tmpSurahName = _cursor.getString(_cursorIndexOfSurahName);
+            final long _tmpTimestamp;
+            _tmpTimestamp = _cursor.getLong(_cursorIndexOfTimestamp);
+            _result = new BookmarkEntity(_tmpId,_tmpVerseKey,_tmpChapterId,_tmpSurahName,_tmpTimestamp);
+          } else {
+            _result = null;
+          }
+          return _result;
+        } finally {
+          _cursor.close();
+        }
+      }
+
+      @Override
+      protected void finalize() {
+        _statement.release();
+      }
+    });
   }
 
   @NonNull

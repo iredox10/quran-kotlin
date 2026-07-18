@@ -11,6 +11,7 @@ data class ChapterEntity(
     val nameSimple: String,
     val nameArabic: String,
     val nameComplex: String,
+    val translatedName: String = "",
     val revelationPlace: String,
     val revelationOrder: Int,
     val versesCount: Int,
@@ -39,7 +40,9 @@ data class VerseEntity(
     val textIndopak: String?,
     val textQpcHafs: String?,
     val pageNumber: Int,
-    val juzNumber: Int
+    val juzNumber: Int,
+    val translation: String? = null,
+    val audioUrl: String? = null
 )
 
 @Entity(
@@ -108,4 +111,30 @@ data class ApiResponseCacheEntity(
     @PrimaryKey val key: String,
     val dataJson: String,
     val updatedAt: Long = System.currentTimeMillis()
+)
+
+/**
+ * A single reading/memorizing/listening session, equivalent to the web app's
+ * `readingSessions` store entries: { date (YYYY-MM-DD), duration (seconds), type, chapterId, timestamp }.
+ */
+@Entity(tableName = "reading_sessions")
+data class ReadingSessionEntity(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val date: String,
+    val duration: Long,
+    val type: String = "reading",
+    val chapterId: Int? = null,
+    val timestamp: Long = System.currentTimeMillis()
+)
+
+/**
+ * Recently read chapters, equivalent to the web app's `recentlyRead` store
+ * entries: { chapterId, chapterName, verseKey, timestamp }. Kept most-recent-first.
+ */
+@Entity(tableName = "recently_read")
+data class RecentlyReadEntity(
+    @PrimaryKey val chapterId: Int,
+    val chapterName: String,
+    val verseKey: String? = null,
+    val timestamp: Long = System.currentTimeMillis()
 )

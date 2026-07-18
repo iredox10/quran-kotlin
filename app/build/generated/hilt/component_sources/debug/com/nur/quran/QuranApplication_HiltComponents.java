@@ -2,6 +2,7 @@ package com.nur.quran;
 
 import com.nur.quran.di.AppModule;
 import com.nur.quran.ui.viewmodels.HomeViewModel_HiltModules;
+import com.nur.quran.ui.viewmodels.SurahViewModel_HiltModules;
 import dagger.Binds;
 import dagger.Component;
 import dagger.Module;
@@ -157,7 +158,8 @@ public final class QuranApplication_HiltComponents {
           HiltWrapper_SavedStateHandleModule.class,
           HomeViewModel_HiltModules.KeyModule.class,
           ActivityCBuilderModule.class,
-          ViewModelCBuilderModule.class
+          ViewModelCBuilderModule.class,
+          SurahViewModel_HiltModules.KeyModule.class
       }
   )
   @ActivityRetainedScoped
@@ -194,7 +196,8 @@ public final class QuranApplication_HiltComponents {
   @Subcomponent(
       modules = {
           HiltWrapper_HiltViewModelFactory_ViewModelModule.class,
-          HomeViewModel_HiltModules.BindsModule.class
+          HomeViewModel_HiltModules.BindsModule.class,
+          SurahViewModel_HiltModules.BindsModule.class
       }
   )
   @ViewModelScoped

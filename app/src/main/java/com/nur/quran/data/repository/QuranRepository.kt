@@ -5,13 +5,21 @@ import com.google.gson.reflect.TypeToken
 import com.nur.quran.data.api.QuranApi
 import com.nur.quran.data.db.dao.QuranDao
 import com.nur.quran.data.db.entities.ApiResponseCacheEntity
+import com.nur.quran.data.db.entities.BookmarkEntity
 import com.nur.quran.data.db.entities.ChapterEntity
+import com.nur.quran.data.db.entities.CollectionEntity
+import com.nur.quran.data.db.entities.CollectionItemEntity
+import com.nur.quran.data.db.entities.ReadingSessionEntity
+import com.nur.quran.data.db.entities.RecentlyReadEntity
 import com.nur.quran.data.db.entities.VerseEntity
 import com.nur.quran.data.db.entities.WordEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -54,6 +62,7 @@ class QuranRepository @Inject constructor(
                 nameSimple = apiChapter.name_simple,
                 nameArabic = apiChapter.name_arabic,
                 nameComplex = apiChapter.name_complex,
+                translatedName = apiChapter.translated_name?.name ?: "",
                 revelationPlace = apiChapter.revelation_place,
                 revelationOrder = apiChapter.revelation_order,
                 versesCount = apiChapter.verses_count,
@@ -71,7 +80,9 @@ class QuranRepository @Inject constructor(
         val response = quranApi.getVersesByChapter(
             chapterId = chapterId,
             translations = translationId.toString(),
-            fields = "text_uthmani,text_indopak,text_qpc_hafs"
+            fields = "text_uthmani,text_indopak,text_qpc_hafs",
+            wordFields = "text_uthmani,text_indopak,text_qpc_hafs,text_uthmani_tajweed,translation,transliteration",
+            perPage = 300
         )
         
         val verseEntities = mutableListOf<VerseEntity>()
@@ -87,7 +98,9 @@ class QuranRepository @Inject constructor(
                 textIndopak = apiVerse.words?.joinToString(" ") { it.text_indopak ?: "" } ?: "",
                 textQpcHafs = apiVerse.words?.joinToString(" ") { it.text_qpc_hafs ?: "" } ?: "",
                 pageNumber = apiVerse.page_number,
-                juzNumber = apiVerse.juz_number
+                juzNumber = apiVerse.juz_number,
+                translation = apiVerse.translations?.firstOrNull()?.text,
+                audioUrl = apiVerse.audio?.url
             )
             verseEntities.add(verseEntity)
 
@@ -109,8 +122,7 @@ class QuranRepository @Inject constructor(
             }
         }
 
-        quranDao.insertVerses(verseEntities)
-        quranDao.insertWords(wordEntities)
+        quranDao.insertVersesAndWords(verseEntities, wordEntities)
     }
 
     // Words
@@ -129,5 +141,77 @@ class QuranRepository @Inject constructor(
     // Footnote
     suspend fun getFootnote(footnoteId: String) = fetchWithOfflineCache("footnote_$footnoteId") {
         quranApi.getFootnote(footnoteId)
+    }
+
+    // Bookmarks
+    fun getBookmarkedVerseKeysFlow(): Flow<List<String>> = quranDao.getBookmarkedVerseKeys()
+
+    suspend fun insertBookmark(bookmark: BookmarkEntity) {
+        quranDao.insertBookmark(bookmark)
+    }
+
+    suspend fun deleteBookmark(verseKey: String) {
+        quranDao.deleteBookmark(verseKey)
+    }
+
+    // Latest bookmark (for the Home bookmark card)
+    fun getLatestBookmarkFlow(): Flow<BookmarkEntity?> = quranDao.getLatestBookmark()
+
+    // Reading Sessions
+    fun getReadingSessionsFlow(): Flow<List<ReadingSessionEntity>> = quranDao.getAllReadingSessions()
+
+    suspend fun logReadingSession(durationSeconds: Long, type: String = "reading", chapterId: Int? = null) {
+        withContext(Dispatchers.IO) {
+            val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+            quranDao.insertReadingSession(
+                ReadingSessionEntity(
+                    date = today,
+                    duration = durationSeconds,
+                    type = type,
+                    chapterId = chapterId
+                )
+            )
+            quranDao.pruneReadingSessions()
+        }
+    }
+
+    // Recently Read
+    fun getRecentlyReadFlow(): Flow<List<RecentlyReadEntity>> = quranDao.getRecentlyRead()
+
+    suspend fun addRecentlyRead(chapterId: Int, chapterName: String, verseKey: String? = null) {
+        withContext(Dispatchers.IO) {
+            quranDao.upsertRecentlyRead(
+                RecentlyReadEntity(
+                    chapterId = chapterId,
+                    chapterName = chapterName,
+                    verseKey = verseKey
+                )
+            )
+            quranDao.pruneRecentlyRead()
+        }
+    }
+
+    // Collections
+    fun getCollectionsFlow(): Flow<List<CollectionEntity>> = quranDao.getAllCollections()
+
+    fun getAllCollectionItemsFlow(): Flow<List<CollectionItemEntity>> = quranDao.getAllCollectionItems()
+
+    suspend fun addCollection(name: String): Long = withContext(Dispatchers.IO) {
+        val id = System.currentTimeMillis()
+        quranDao.insertCollection(CollectionEntity(id = id, name = name))
+        id
+    }
+
+    suspend fun addToCollection(collectionId: Long, verseKey: String, chapterId: Int, surahName: String) {
+        withContext(Dispatchers.IO) {
+            quranDao.insertCollectionItem(
+                CollectionItemEntity(
+                    collectionId = collectionId,
+                    verseKey = verseKey,
+                    chapterId = chapterId,
+                    surahName = surahName
+                )
+            )
+        }
     }
 }

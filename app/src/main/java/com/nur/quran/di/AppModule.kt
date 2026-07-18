@@ -57,7 +57,7 @@ object AppModule {
             context,
             QuranDatabase::class.java,
             "quran_database"
-        ).build()
+        ).fallbackToDestructiveMigration().build()
     }
 
     @Provides

@@ -23,7 +23,9 @@ interface QuranApi {
         @Query("language") language: String = "en",
         @Query("words") words: Boolean = true,
         @Query("translations") translations: String? = null,
+        @Query("audio") audio: Int? = null,
         @Query("fields") fields: String? = null,
+        @Query("word_fields") wordFields: String? = null,
         @Query("page") page: Int = 1,
         @Query("per_page") perPage: Int = 10
     ): VersesResponse
@@ -35,6 +37,7 @@ interface QuranApi {
         @Query("words") words: Boolean = true,
         @Query("translations") translations: String? = null,
         @Query("fields") fields: String? = null,
+        @Query("word_fields") wordFields: String? = null,
         @Query("page") page: Int = 1,
         @Query("per_page") perPage: Int = 10
     ): VersesResponse
@@ -71,11 +74,14 @@ data class ApiChapter(
     val name_simple: String,
     val name_arabic: String,
     val name_complex: String,
+    val translated_name: ApiTranslatedName?,
     val revelation_place: String,
     val revelation_order: Int,
     val verses_count: Int,
     val pages: List<Int>
 )
+
+data class ApiTranslatedName(val language_name: String?, val name: String?)
 
 data class VersesResponse(
     val verses: List<ApiVerse>,
@@ -89,8 +95,11 @@ data class ApiVerse(
     val page_number: Int,
     val juz_number: Int,
     val words: List<ApiWord>?,
-    val translations: List<ApiTranslation>?
+    val translations: List<ApiTranslation>?,
+    val audio: ApiAudio?
 )
+
+data class ApiAudio(val url: String?)
 
 data class ApiWord(
     val id: Int,
@@ -112,8 +121,8 @@ data class ApiPagination(val current_page: Int, val next_page: Int?, val total_p
 data class TajweedResponse(val verses: List<ApiTajweedVerse>)
 data class ApiTajweedVerse(val id: Int, val verse_key: String, val text_uthmani_tajweed: String)
 
-data class TafsirResponse(val tafsirs: List<ApiTafsir>)
-data class ApiTafsir(val resource_id: Int, val text: String)
+data class TafsirResponse(val tafsirs: List<ApiTafsirVerse>)
+data class ApiTafsirVerse(val verse_key: String, val text: String, val resource_id: Int)
 
 data class FootnoteResponse(val foot_note: ApiFootnote)
 data class ApiFootnote(val id: Int, val text: String)

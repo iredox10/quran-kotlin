@@ -13,9 +13,11 @@ import com.nur.quran.data.db.entities.*
         BookmarkEntity::class,
         CollectionEntity::class,
         CollectionItemEntity::class,
-        ApiResponseCacheEntity::class
+        ApiResponseCacheEntity::class,
+        ReadingSessionEntity::class,
+        RecentlyReadEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class QuranDatabase : RoomDatabase() {

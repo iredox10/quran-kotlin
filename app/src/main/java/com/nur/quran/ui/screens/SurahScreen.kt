@@ -18,8 +18,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -63,21 +65,24 @@ import com.nur.quran.ui.viewmodels.TafsirUiState
 import com.nur.quran.utils.TajweedProcessor
 import kotlinx.coroutines.delay
 
-// Colors matching the web app CSS variables
-private val hCream     = Color(0xFFFAF7F0)
-private val hBone      = Color(0xFFEDE8DA)
-private val hBoneDark  = Color(0xFFDDD7C7)
-private val hInk       = Color(0xFF2B3F3C)
-private val hInkMid    = Color(0xFF4D5F5C)
-private val hInkMuted  = Color(0xFF8E9B97)
+// Colors matching the web app CSS variables with dynamic dark mode mapping
+private var isDarkThemeGlobal by mutableStateOf(false)
+
+private val hCream     get() = if (isDarkThemeGlobal) Color(0xFF1C1C1E) else Color(0xFFFAF7F0)
+private val hBone      get() = if (isDarkThemeGlobal) Color(0xFF2C2C2E) else Color(0xFFEDE8DA)
+private val hBoneDark  get() = if (isDarkThemeGlobal) Color(0xFF3A3A3C) else Color(0xFFDDD7C7)
+private val hInk       get() = if (isDarkThemeGlobal) Color(0xFFFAF7F0) else Color(0xFF2B3F3C)
+private val hInkMid    get() = if (isDarkThemeGlobal) Color(0xFFE5E5EA) else Color(0xFF4D5F5C)
+private val hInkMuted  get() = if (isDarkThemeGlobal) Color(0xFF8E8E93) else Color(0xFF8E9B97)
 private val hGold      = Color(0xFFB8924A)
 private val hGoldSoft  = Color(0x2EB8924A) // rgba(184,146,74,0.18)
 private val hGoldLight = Color(0x26C6A87C) // accent-light ~15% opacity
 private val hTeal      = Color(0xFF2E4F4A)
 private val hTealSoft  = Color(0x142E4F4A) // ~8% opacity
-private val hWhite     = Color(0xFFFAFAF5)
-private val hSurface   = Color(0xFFEFECE4)
-private val hBorderColor = Color(0xFFDDD7C7)
+private val hWhite     get() = if (isDarkThemeGlobal) Color(0xFF121212) else Color(0xFFFAFAF5)
+private val hSurface   get() = if (isDarkThemeGlobal) Color(0xFF1C1C1E) else Color(0xFFEFECE4)
+private val hBorderColor get() = if (isDarkThemeGlobal) Color(0xFF2C2C2E) else Color(0xFFDDD7C7)
+
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -116,8 +121,22 @@ fun SurahScreen(
     var showAudioSetupDialog by remember { mutableStateOf(false) }
     var startAyahIndex by remember { mutableStateOf(0) }
     var endAyahIndex by remember { mutableStateOf(0) }
+    var showNavigationDialog by remember { mutableStateOf(false) }
+    var isAutoScrollActive by remember { mutableStateOf(false) }
 
     val listState = rememberLazyListState()
+
+    LaunchedEffect(isAutoScrollActive) {
+        if (isAutoScrollActive) {
+            try {
+                while (true) {
+                    listState.scrollBy(2f)
+                    delay(40)
+                }
+            } catch (_: Exception) {
+            }
+        }
+    }
 
     LaunchedEffect(chapterId) {
         viewModel.loadChapterDetails(chapterId)
@@ -148,13 +167,28 @@ fun SurahScreen(
             TopAppBar(
                 title = {
                     val state = uiState
-                    Text(
-                        text = if (state is SurahUiState.Success) state.chapter.nameSimple else "Quran Nur",
-                        fontFamily = fontFamilyUi,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                        color = hInk
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { showNavigationDialog = true }
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = if (state is SurahUiState.Success) state.chapter.nameSimple else "Quran Nur",
+                            fontFamily = fontFamilyUi,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            color = hInk
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(
+                            imageVector = NurIcons.ChevronDown,
+                            contentDescription = "Select Surah",
+                            tint = hInkMuted,
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
@@ -167,27 +201,26 @@ fun SurahScreen(
                     }
                 },
                 actions = {
-                    // Web Layout IconBtns: reading mode, tajweed, translation
+                    TopBarIconBtn(
+                        icon = NurIcons.ChevronsDown,
+                        active = isAutoScrollActive,
+                        label = "Auto-scroll"
+                    ) { isAutoScrollActive = !isAutoScrollActive }
                     TopBarIconBtn(
                         icon = NurIcons.BookOpen,
                         active = isReadingMode,
                         label = "Reading mode"
                     ) { isReadingMode = !isReadingMode }
                     TopBarIconBtn(
-                        icon = NurIcons.Highlighter,
-                        active = isTajweedEnabled,
-                        label = "Tajweed"
-                    ) { viewModel.toggleTajweed() }
+                        icon = NurIcons.Volume2,
+                        active = isPlaying,
+                        label = "Audio options"
+                    ) { showAudioSetupDialog = true }
                     TopBarIconBtn(
-                        icon = NurIcons.Type,
-                        active = isTranslationEnabled,
-                        label = "Translation"
-                    ) { viewModel.toggleTranslation() }
-                    TopBarIconBtn(
-                        icon = NurIcons.Brain,
-                        active = isMemorizeModeEnabled,
-                        label = "Memorize mode"
-                    ) { viewModel.toggleMemorizeMode() }
+                        icon = if (isDarkThemeGlobal) NurIcons.Sun else NurIcons.Moon,
+                        active = isDarkThemeGlobal,
+                        label = "Toggle theme"
+                    ) { isDarkThemeGlobal = !isDarkThemeGlobal }
                     TopBarIconBtn(
                         icon = Icons.Default.Settings,
                         active = showFontSettingsDialog,
@@ -548,9 +581,49 @@ fun SurahScreen(
             if (showFontSettingsDialog) {
                 AlertDialog(
                     onDismissRequest = { showFontSettingsDialog = false },
-                    title = { Text("Text Settings", fontFamily = fontFamilyUi, fontWeight = FontWeight.Bold, color = hInk) },
+                    title = { Text("Reader Settings", fontFamily = fontFamilyUi, fontWeight = FontWeight.Bold, color = hInk) },
                     text = {
                         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            // Toggles
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Translation Mode", fontFamily = fontFamilyUi, fontSize = 14.sp, color = hInkMid)
+                                Switch(
+                                    checked = isTranslationEnabled,
+                                    onCheckedChange = { viewModel.toggleTranslation() },
+                                    colors = SwitchDefaults.colors(checkedThumbColor = hGold, checkedTrackColor = hGoldSoft)
+                                )
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Tajweed Color Rules", fontFamily = fontFamilyUi, fontSize = 14.sp, color = hInkMid)
+                                Switch(
+                                    checked = isTajweedEnabled,
+                                    onCheckedChange = { viewModel.toggleTajweed() },
+                                    colors = SwitchDefaults.colors(checkedThumbColor = hGold, checkedTrackColor = hGoldSoft)
+                                )
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Memorize Mode", fontFamily = fontFamilyUi, fontSize = 14.sp, color = hInkMid)
+                                Switch(
+                                    checked = isMemorizeModeEnabled,
+                                    onCheckedChange = { viewModel.toggleMemorizeMode() },
+                                    colors = SwitchDefaults.colors(checkedThumbColor = hGold, checkedTrackColor = hGoldSoft)
+                                )
+                            }
+
+                            Divider(color = hBorderColor, thickness = 1.dp)
+
                             // Arabic font size scale
                             Column {
                                 Text("Arabic Text Size (${(arabicFontScale * 100).toInt()}%)", fontFamily = fontFamilyUi, fontSize = 14.sp, color = hInkMid)
@@ -602,6 +675,51 @@ fun SurahScreen(
                     confirmButton = {
                         TextButton(onClick = { showFontSettingsDialog = false }) {
                             Text("Close", color = hGold, fontWeight = FontWeight.Bold)
+                        }
+                    },
+                    containerColor = hWhite
+                )
+            }
+
+            if (showNavigationDialog) {
+                AlertDialog(
+                    onDismissRequest = { showNavigationDialog = false },
+                    title = { Text("Select Surah", fontFamily = fontFamilyUi, fontWeight = FontWeight.Bold, color = hInk) },
+                    text = {
+                        LazyColumn(
+                            modifier = Modifier.heightIn(max = 320.dp)
+                        ) {
+                            items(allChapters) { chapter ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            showNavigationDialog = false
+                                            onNavigateToSurah(chapter.id)
+                                        }
+                                        .padding(vertical = 12.dp, horizontal = 8.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "${chapter.id}. ${chapter.nameSimple}",
+                                        fontFamily = fontFamilyUi,
+                                        fontSize = 15.sp,
+                                        color = hInk
+                                    )
+                                    Text(
+                                        text = chapter.nameArabic,
+                                        fontFamily = fontFamilyArabic,
+                                        fontSize = 18.sp,
+                                        color = hGold
+                                    )
+                                }
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { showNavigationDialog = false }) {
+                            Text("Cancel", color = hGold)
                         }
                     },
                     containerColor = hWhite

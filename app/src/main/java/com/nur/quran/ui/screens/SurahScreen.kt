@@ -10,9 +10,12 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -82,7 +85,9 @@ fun SurahScreen(
     viewModel: SurahViewModel,
     chapterId: Int,
     onBackClick: () -> Unit,
-    onNavigateToSurah: (Int) -> Unit
+    onNavigateToSurah: (Int) -> Unit,
+    saukaAssignmentId: String? = null,
+    backToSauka: String? = null
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val isTajweedEnabled by viewModel.isTajweedEnabled.collectAsState()
@@ -97,9 +102,20 @@ fun SurahScreen(
     val collections by viewModel.collections.collectAsState()
     val collectionItems by viewModel.collectionItems.collectAsState()
 
+    // New states for Memorize, Font Scales, and Sauka
+    val isMemorizeModeEnabled by viewModel.isMemorizeModeEnabled.collectAsState()
+    val memorizedAyahs by viewModel.memorizedAyahs.collectAsState()
+    val arabicFontScale by viewModel.arabicFontScale.collectAsState()
+    val translationFontScale by viewModel.translationFontScale.collectAsState()
+    val isSaukaCompleting by viewModel.isSaukaCompleting.collectAsState()
+
     var isReadingMode by remember { mutableStateOf(false) }
     var selectedWordForTooltip by remember { mutableStateOf<WordEntity?>(null) }
     var collectionVerse by remember { mutableStateOf<VerseEntity?>(null) }
+    var showFontSettingsDialog by remember { mutableStateOf(false) }
+    var showAudioSetupDialog by remember { mutableStateOf(false) }
+    var startAyahIndex by remember { mutableStateOf(0) }
+    var endAyahIndex by remember { mutableStateOf(0) }
 
     val listState = rememberLazyListState()
 
@@ -167,6 +183,16 @@ fun SurahScreen(
                         active = isTranslationEnabled,
                         label = "Translation"
                     ) { viewModel.toggleTranslation() }
+                    TopBarIconBtn(
+                        icon = NurIcons.Brain,
+                        active = isMemorizeModeEnabled,
+                        label = "Memorize mode"
+                    ) { viewModel.toggleMemorizeMode() }
+                    TopBarIconBtn(
+                        icon = Icons.Default.Settings,
+                        active = showFontSettingsDialog,
+                        label = "Text settings"
+                    ) { showFontSettingsDialog = true }
                     Spacer(modifier = Modifier.width(8.dp))
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = hWhite)
@@ -269,9 +295,103 @@ fun SurahScreen(
                                 isPlaying = isPlaying,
                                 isDownloaded = chapter.id in downloadedChapters,
                                 isDownloading = isDownloading,
-                                onPlayClick = { viewModel.playPauseChapter(verses, chapter.id) },
+                                onPlayClick = { showAudioSetupDialog = true },
                                 onDownloadClick = { viewModel.downloadChapterAudio(chapter.id, verses) }
                             )
+                        }
+
+                        // Sauka completion card (mirroring web app completion block)
+                        if (saukaAssignmentId != null && backToSauka != null) {
+                            item {
+                                var isCompleted by remember { mutableStateOf(false) }
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    colors = CardDefaults.cardColors(containerColor = hSurface),
+                                    shape = RoundedCornerShape(14.dp),
+                                    border = BorderStroke(1.dp, hBorderColor)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = "Sauka Group Reading Completed?",
+                                                fontFamily = fontFamilyUi,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 14.sp,
+                                                color = hInk
+                                            )
+                                            Text(
+                                                text = "Tap below to submit your progress to the group.",
+                                                fontFamily = fontFamilyBody,
+                                                fontSize = 12.sp,
+                                                color = hInkMid
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.width(16.dp))
+                                        Button(
+                                            onClick = {
+                                                viewModel.completeSaukaJuz(saukaAssignmentId, backToSauka) {
+                                                    isCompleted = true
+                                                }
+                                            },
+                                            colors = ButtonDefaults.buttonColors(containerColor = if (isCompleted) Color.Gray else hGold),
+                                            enabled = !isCompleted && !isSaukaCompleting
+                                        ) {
+                                            if (isSaukaCompleting) {
+                                                CircularProgressIndicator(color = Color.White, modifier = Modifier.size(16.dp))
+                                            } else {
+                                                Text(if (isCompleted) "Completed" else "Mark Done", color = Color.White)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Memorization progress card
+                        if (isMemorizeModeEnabled) {
+                            item {
+                                val memorizedInSurah = verses.filter { it.verseKey in memorizedAyahs }.size
+                                val totalInSurah = verses.size
+                                val progress = if (totalInSurah > 0) memorizedInSurah.toFloat() / totalInSurah else 0f
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                                    colors = CardDefaults.cardColors(containerColor = hGoldLight),
+                                    shape = RoundedCornerShape(14.dp),
+                                    border = BorderStroke(1.dp, hGold.copy(alpha = 0.3f))
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        Icon(NurIcons.Brain, contentDescription = null, tint = hGold, modifier = Modifier.size(24.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween
+                                            ) {
+                                                Text("Memorization progress", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = hInk)
+                                                Text("$memorizedInSurah/$totalInSurah ayahs", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = hInk)
+                                            }
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            LinearProgressIndicator(
+                                                progress = progress,
+                                                modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(100)),
+                                                color = hGold,
+                                                trackColor = hWhite
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                         }
 
                         if (chapter.id != 1 && chapter.id != 9) {
@@ -327,7 +447,12 @@ fun SurahScreen(
                                     onShareClick = { viewModel.shareVerse(verse.verseKey, chapter.nameSimple) },
                                     onAddToCollection = { collectionVerse = verse },
                                     onWordClick = { word -> selectedWordForTooltip = word },
-                                    onLoadFootnote = { id -> viewModel.getFootnoteText(id) }
+                                    onLoadFootnote = { id -> viewModel.getFootnoteText(id) },
+                                    isMemorizeModeEnabled = isMemorizeModeEnabled,
+                                    isMemorized = verse.verseKey in memorizedAyahs,
+                                    onToggleMemorized = { viewModel.toggleMemorizedAyah(verse.verseKey) },
+                                    arabicFontScale = arabicFontScale,
+                                    translationFontScale = translationFontScale
                                 )
                             }
                         } else {
@@ -336,7 +461,8 @@ fun SurahScreen(
                                     verses = verses,
                                     wordsMap = wordsMap,
                                     isTajweedEnabled = isTajweedEnabled,
-                                    onWordClick = { word -> selectedWordForTooltip = word }
+                                    onWordClick = { word -> selectedWordForTooltip = word },
+                                    arabicFontScale = arabicFontScale
                                 )
                             }
                         }
@@ -416,6 +542,139 @@ fun SurahScreen(
                         collectionVerse = null
                     },
                     onDismiss = { collectionVerse = null }
+                )
+            }
+
+            if (showFontSettingsDialog) {
+                AlertDialog(
+                    onDismissRequest = { showFontSettingsDialog = false },
+                    title = { Text("Text Settings", fontFamily = fontFamilyUi, fontWeight = FontWeight.Bold, color = hInk) },
+                    text = {
+                        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            // Arabic font size scale
+                            Column {
+                                Text("Arabic Text Size (${(arabicFontScale * 100).toInt()}%)", fontFamily = fontFamilyUi, fontSize = 14.sp, color = hInkMid)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    IconButton(
+                                        onClick = { viewModel.updateArabicFontScale(-0.1f) },
+                                        modifier = Modifier.background(hSurface, CircleShape).size(36.dp)
+                                    ) {
+                                        Icon(NurIcons.Minus, contentDescription = "Decrease", tint = hInk, modifier = Modifier.size(16.dp))
+                                    }
+                                    Text("${(arabicFontScale * 100).toInt()}%", modifier = Modifier.weight(1f), textAlign = TextAlign.Center, fontWeight = FontWeight.Bold)
+                                    IconButton(
+                                        onClick = { viewModel.updateArabicFontScale(0.1f) },
+                                        modifier = Modifier.background(hSurface, CircleShape).size(36.dp)
+                                    ) {
+                                        Icon(NurIcons.Plus, contentDescription = "Increase", tint = hInk, modifier = Modifier.size(16.dp))
+                                    }
+                                }
+                            }
+                            // Translation font size scale
+                            Column {
+                                Text("Translation Text Size (${(translationFontScale * 100).toInt()}%)", fontFamily = fontFamilyUi, fontSize = 14.sp, color = hInkMid)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    IconButton(
+                                        onClick = { viewModel.updateTranslationFontScale(-0.1f) },
+                                        modifier = Modifier.background(hSurface, CircleShape).size(36.dp)
+                                    ) {
+                                        Icon(NurIcons.Minus, contentDescription = "Decrease", tint = hInk, modifier = Modifier.size(16.dp))
+                                    }
+                                    Text("${(translationFontScale * 100).toInt()}%", modifier = Modifier.weight(1f), textAlign = TextAlign.Center, fontWeight = FontWeight.Bold)
+                                    IconButton(
+                                        onClick = { viewModel.updateTranslationFontScale(0.1f) },
+                                        modifier = Modifier.background(hSurface, CircleShape).size(36.dp)
+                                    ) {
+                                        Icon(NurIcons.Plus, contentDescription = "Increase", tint = hInk, modifier = Modifier.size(16.dp))
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { showFontSettingsDialog = false }) {
+                            Text("Close", color = hGold, fontWeight = FontWeight.Bold)
+                        }
+                    },
+                    containerColor = hWhite
+                )
+            }
+
+            if (showAudioSetupDialog && uiState is SurahUiState.Success) {
+                val verses = (uiState as SurahUiState.Success).verses
+                AlertDialog(
+                    onDismissRequest = { showAudioSetupDialog = false },
+                    title = { Text("Audio Settings", fontFamily = fontFamilyUi, fontWeight = FontWeight.Bold, color = hInk) },
+                    text = {
+                        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            Text("Select Ayah Range to Play", fontSize = 14.sp, color = hInkMid)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("Start", fontSize = 12.sp, color = hInkMuted)
+                                    Slider(
+                                        value = startAyahIndex.toFloat(),
+                                        onValueChange = { 
+                                            startAyahIndex = it.toInt().coerceIn(0, verses.size - 1)
+                                            if (endAyahIndex < startAyahIndex) {
+                                                endAyahIndex = startAyahIndex
+                                            }
+                                        },
+                                        valueRange = 0f..(verses.size - 1).toFloat(),
+                                        steps = (verses.size - 2).coerceAtLeast(0),
+                                        colors = SliderDefaults.colors(thumbColor = hGold, activeTrackColor = hGold)
+                                    )
+                                    Text("Ayah ${verses.getOrNull(startAyahIndex)?.verseNumber ?: (startAyahIndex + 1)}", fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.CenterHorizontally))
+                                }
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("End", fontSize = 12.sp, color = hInkMuted)
+                                    Slider(
+                                        value = endAyahIndex.toFloat(),
+                                        onValueChange = { 
+                                            endAyahIndex = it.toInt().coerceIn(startAyahIndex, verses.size - 1)
+                                        },
+                                        valueRange = startAyahIndex.toFloat()..(verses.size - 1).toFloat(),
+                                        steps = ((verses.size - 1 - startAyahIndex) - 1).coerceAtLeast(0),
+                                        colors = SliderDefaults.colors(thumbColor = hGold, activeTrackColor = hGold)
+                                    )
+                                    Text("Ayah ${verses.getOrNull(endAyahIndex)?.verseNumber ?: (endAyahIndex + 1)}", fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.CenterHorizontally))
+                                }
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                val rangeVerses = verses.subList(startAyahIndex, endAyahIndex + 1)
+                                viewModel.playPauseChapter(rangeVerses, chapterId)
+                                showAudioSetupDialog = false
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = hGold)
+                        ) {
+                            Text("Play Range", color = Color.White)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(
+                            onClick = {
+                                viewModel.playPauseChapter(verses, chapterId)
+                                showAudioSetupDialog = false
+                            }
+                        ) {
+                            Text("Play All", color = hInkMid)
+                        }
+                    },
+                    containerColor = hWhite
                 )
             }
         }
@@ -694,11 +953,18 @@ fun VerseItem(
     onShareClick: () -> Unit,
     onAddToCollection: () -> Unit,
     onWordClick: (WordEntity) -> Unit,
-    onLoadFootnote: suspend (String) -> String
+    onLoadFootnote: suspend (String) -> String,
+    isMemorizeModeEnabled: Boolean = false,
+    isMemorized: Boolean = false,
+    onToggleMemorized: () -> Unit = {},
+    arabicFontScale: Float = 1.0f,
+    translationFontScale: Float = 1.0f
 ) {
     var activeFootnoteId by remember { mutableStateOf<String?>(null) }
     var footnoteText by remember { mutableStateOf("") }
     var isFootnoteLoading by remember { mutableStateOf(false) }
+    var isRevealed by remember(isMemorizeModeEnabled) { mutableStateOf(false) }
+    val isHidden = isMemorizeModeEnabled && !isRevealed
 
     LaunchedEffect(activeFootnoteId) {
         val id = activeFootnoteId ?: return@LaunchedEffect
@@ -743,6 +1009,20 @@ fun VerseItem(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
+                if (isMemorizeModeEnabled) {
+                    VerseActionIcon(
+                        icon = NurIcons.CheckCircle2,
+                        tint = if (isMemorized) hGold else hInkMuted,
+                        label = "Toggle Memorized",
+                        onClick = onToggleMemorized
+                    )
+                    VerseActionIcon(
+                        icon = if (isRevealed) NurIcons.EyeOff else NurIcons.Eye,
+                        tint = if (isRevealed) hGold else hInkMuted,
+                        label = "Toggle Reveal",
+                        onClick = { isRevealed = !isRevealed }
+                    )
+                }
                 VerseActionIcon(icon = NurIcons.Plus, tint = hInkMuted, label = "Add to Collection", onClick = onAddToCollection)
                 VerseActionIcon(
                     icon = if (isBookmarked) NurIcons.BookmarkFilled else NurIcons.Bookmark,
@@ -778,61 +1058,94 @@ fun VerseItem(
         Spacer(modifier = Modifier.height(20.dp))
 
         // Arabic words (RTL)
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(enabled = isHidden) { isRevealed = true }
+                .graphicsLayer { alpha = if (isHidden) 0.05f else 1.0f }
         ) {
-            words.forEach { word ->
-                val isEndMarker = word.charTypeName == "end"
-                Box(
-                    modifier = Modifier
-                        .padding(horizontal = 2.dp, vertical = 4.dp)
-                        .clickable(enabled = !isEndMarker) { onWordClick(word) }
-                ) {
-                    if (isTajweedEnabled && word.textUthmaniTajweed != null) {
-                        val parsedSegments = remember(word.textUthmaniTajweed, word.textUthmani) {
-                            TajweedProcessor.getWordTajweedSegments(
-                                plainText = word.textUthmani ?: "",
-                                tajweedHtml = word.textUthmaniTajweed ?: "",
-                                defaultColor = "#2B3F3C"
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                words.forEach { word ->
+                    val isEndMarker = word.charTypeName == "end"
+                    Box(
+                        modifier = Modifier
+                            .padding(horizontal = 2.dp, vertical = 4.dp)
+                            .clickable(enabled = !isEndMarker && !isHidden) { onWordClick(word) }
+                    ) {
+                        if (isTajweedEnabled && word.textUthmaniTajweed != null) {
+                            val parsedSegments = remember(word.textUthmaniTajweed, word.textUthmani) {
+                                TajweedProcessor.getWordTajweedSegments(
+                                    plainText = word.textUthmani ?: "",
+                                    tajweedHtml = word.textUthmaniTajweed ?: "",
+                                    defaultColor = "#2B3F3C"
+                                )
+                            }
+                            ColoredArabicText(
+                                text = word.textUthmani ?: "",
+                                segments = parsedSegments,
+                                fontFamily = fontFamilyArabic,
+                                textStyle = TextStyle(
+                                    fontSize = (26 * arabicFontScale).sp,
+                                    color = hInk,
+                                    textAlign = TextAlign.Right,
+                                    lineHeight = (52 * arabicFontScale).sp
+                                ),
+                                onSegmentClick = { _, _ -> if (!isHidden) onWordClick(word) }
+                            )
+                        } else {
+                            Text(
+                                text = word.textUthmani ?: "",
+                                fontSize = (26 * arabicFontScale).sp,
+                                color = if (isEndMarker) hGold else hInk,
+                                fontFamily = fontFamilyArabic,
+                                textAlign = TextAlign.Right,
+                                fontWeight = if (isEndMarker) FontWeight.Bold else FontWeight.Normal,
+                                lineHeight = (52 * arabicFontScale).sp
                             )
                         }
-                        ColoredArabicText(
-                            text = word.textUthmani ?: "",
-                            segments = parsedSegments,
-                            fontFamily = fontFamilyArabic,
-                            textStyle = TextStyle(
-                                fontSize = 26.sp,
-                                color = hInk,
-                                textAlign = TextAlign.Right,
-                                lineHeight = 52.sp
-                            ),
-                            onSegmentClick = { _, _ -> onWordClick(word) }
-                        )
-                    } else {
-                        Text(
-                            text = word.textUthmani ?: "",
-                            fontSize = 26.sp,
-                            color = if (isEndMarker) hGold else hInk,
-                            fontFamily = fontFamilyArabic,
-                            textAlign = TextAlign.Right,
-                            fontWeight = if (isEndMarker) FontWeight.Bold else FontWeight.Normal,
-                            lineHeight = 52.sp
-                        )
                     }
                 }
+            }
+            if (isHidden) {
+                Text(
+                    text = "Tap to reveal text",
+                    fontSize = 12.sp,
+                    color = hInkMuted,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .background(hSurface.copy(alpha = 0.8f), RoundedCornerShape(4.dp))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                )
             }
         }
 
         // Translation with clickable footnotes
         if (isTranslationEnabled && !verse.translation.isNullOrEmpty()) {
             Spacer(modifier = Modifier.height(20.dp))
-            TranslationText(
-                html = verse.translation,
-                onFootnoteClick = { footnoteId ->
-                    activeFootnoteId = if (activeFootnoteId == footnoteId) null else footnoteId
+            if (isHidden) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .border(BorderStroke(1.dp, hBorderColor), RoundedCornerShape(10.dp))
+                        .background(hSurface)
+                        .clickable { isRevealed = true }
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                ) {
+                    Text("Tap to reveal translation & meaning", fontSize = 13.sp, color = hInkMuted)
                 }
-            )
+            } else {
+                TranslationText(
+                    html = verse.translation,
+                    onFootnoteClick = { footnoteId ->
+                        activeFootnoteId = if (activeFootnoteId == footnoteId) null else footnoteId
+                    },
+                    translationFontScale = translationFontScale
+                )
+            }
         }
 
         // Inline footnote card (web style: left gold border, bg-secondary)
@@ -948,16 +1261,17 @@ private val footnoteSupRegex = Regex("<sup[^>]*foot_note=[\"']?(\\d+)[\"']?[^>]*
 @Composable
 private fun TranslationText(
     html: String,
-    onFootnoteClick: (String) -> Unit
+    onFootnoteClick: (String) -> Unit,
+    translationFontScale: Float = 1.0f
 ) {
     val annotated = remember(html) { buildTranslationAnnotatedString(html) }
     ClickableText(
         text = annotated,
         style = TextStyle(
-            fontSize = 15.sp,
+            fontSize = (15 * translationFontScale).sp,
             color = hInkMid,
             fontFamily = fontFamilyBody,
-            lineHeight = 24.sp,
+            lineHeight = (24 * translationFontScale).sp,
             textAlign = TextAlign.Start
         ),
         onClick = { offset ->
@@ -1330,7 +1644,8 @@ fun ContinuousReadingView(
     verses: List<VerseEntity>,
     wordsMap: Map<Int, List<WordEntity>>,
     isTajweedEnabled: Boolean,
-    onWordClick: (WordEntity) -> Unit
+    onWordClick: (WordEntity) -> Unit,
+    arabicFontScale: Float = 1.0f
 ) {
     val versesByPage = verses.groupBy { it.pageNumber }.toSortedMap()
     Column(
@@ -1366,22 +1681,22 @@ fun ContinuousReadingView(
                                     segments = parsedSegments,
                                     fontFamily = fontFamilyArabic,
                                     textStyle = TextStyle(
-                                        fontSize = 26.sp,
+                                        fontSize = (26 * arabicFontScale).sp,
                                         color = hInk,
                                         textAlign = TextAlign.Right,
-                                        lineHeight = 52.sp
+                                        lineHeight = (52 * arabicFontScale).sp
                                     ),
                                     onSegmentClick = { _, _ -> onWordClick(word) }
                                 )
                             } else {
                                 Text(
                                     text = word.textUthmani ?: "",
-                                    fontSize = 26.sp,
+                                    fontSize = (26 * arabicFontScale).sp,
                                     color = if (isEndMarker) hGold else hInk,
                                     fontFamily = fontFamilyArabic,
                                     textAlign = TextAlign.Right,
                                     fontWeight = if (isEndMarker) FontWeight.Bold else FontWeight.Normal,
-                                    lineHeight = 52.sp
+                                    lineHeight = (52 * arabicFontScale).sp
                                 )
                             }
                         }

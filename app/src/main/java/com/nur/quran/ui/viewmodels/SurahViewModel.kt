@@ -63,6 +63,23 @@ class SurahViewModel @Inject constructor(
     private val _isTranslationEnabled = MutableStateFlow(true)
     val isTranslationEnabled: StateFlow<Boolean> = _isTranslationEnabled.asStateFlow()
 
+    private val hifdhPrefs = context.getSharedPreferences("hifdh_settings", Context.MODE_PRIVATE)
+
+    private val _isMemorizeModeEnabled = MutableStateFlow(false)
+    val isMemorizeModeEnabled: StateFlow<Boolean> = _isMemorizeModeEnabled.asStateFlow()
+
+    private val _memorizedAyahs = MutableStateFlow<Set<String>>(hifdhPrefs.getStringSet("memorized_ayahs", emptySet()) ?: emptySet())
+    val memorizedAyahs: StateFlow<Set<String>> = _memorizedAyahs.asStateFlow()
+
+    private val _arabicFontScale = MutableStateFlow(1.0f)
+    val arabicFontScale: StateFlow<Float> = _arabicFontScale.asStateFlow()
+
+    private val _translationFontScale = MutableStateFlow(1.0f)
+    val translationFontScale: StateFlow<Float> = _translationFontScale.asStateFlow()
+
+    private val _isSaukaCompleting = MutableStateFlow(false)
+    val isSaukaCompleting: StateFlow<Boolean> = _isSaukaCompleting.asStateFlow()
+
     private val _tafsirState = MutableStateFlow<TafsirUiState>(TafsirUiState.Hidden)
     val tafsirState: StateFlow<TafsirUiState> = _tafsirState.asStateFlow()
 
@@ -439,6 +456,38 @@ class SurahViewModel @Inject constructor(
                 repository.refreshVersesByChapter(currentChapterId, translationId)
             } catch (_: Exception) {
             }
+        }
+    }
+
+    fun toggleMemorizeMode() {
+        _isMemorizeModeEnabled.value = !_isMemorizeModeEnabled.value
+    }
+
+    fun toggleMemorizedAyah(verseKey: String) {
+        val current = _memorizedAyahs.value.toMutableSet()
+        if (current.contains(verseKey)) {
+            current.remove(verseKey)
+        } else {
+            current.add(verseKey)
+        }
+        hifdhPrefs.edit().putStringSet("memorized_ayahs", current).apply()
+        _memorizedAyahs.value = current
+    }
+
+    fun updateArabicFontScale(delta: Float) {
+        _arabicFontScale.value = (_arabicFontScale.value + delta).coerceIn(0.5f, 3.0f)
+    }
+
+    fun updateTranslationFontScale(delta: Float) {
+        _translationFontScale.value = (_translationFontScale.value + delta).coerceIn(0.5f, 3.0f)
+    }
+
+    fun completeSaukaJuz(assignmentId: String, backToSauka: String, onDone: () -> Unit) {
+        viewModelScope.launch {
+            _isSaukaCompleting.value = true
+            delay(1000)
+            _isSaukaCompleting.value = false
+            onDone()
         }
     }
 

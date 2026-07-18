@@ -204,6 +204,32 @@ object NurIcons {
         lucideIcon("Loader2",
         "M21 12a9 9 0 1 1-6.219-8.56")
     }
+
+    val Brain: ImageVector by lazy {
+        lucideIcon("Brain",
+        "M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z",
+        "M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z",
+        "M12 5v14")
+    }
+
+    val Eye: ImageVector by lazy {
+        lucideIcon("Eye",
+        "M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z",
+        "M 9 12 a 3 3 0 1 0 6 0 a 3 3 0 1 0 -6 0")
+    }
+
+    val EyeOff: ImageVector by lazy {
+        lucideIcon("EyeOff",
+        "M9.88 9.88a3 3 0 1 0 4.24 4.24",
+        "M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68",
+        "M6.61 6.61A13.52 13.52 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61",
+        "L2 2l20 20")
+    }
+
+    val Minus: ImageVector by lazy {
+        lucideIcon("Minus",
+        "M5 12h14")
+    }
 }
 
 private fun lucideIcon(name: String, vararg pathData: String): ImageVector {

@@ -83,6 +83,9 @@ class SurahViewModel @Inject constructor(
     private val _tafsirState = MutableStateFlow<TafsirUiState>(TafsirUiState.Hidden)
     val tafsirState: StateFlow<TafsirUiState> = _tafsirState.asStateFlow()
 
+    private val _selectedArabicFontName = MutableStateFlow(hifdhPrefs.getString("arabic_font", "Scheherazade New") ?: "Scheherazade New")
+    val selectedArabicFontName: StateFlow<String> = _selectedArabicFontName.asStateFlow()
+
     private val _bookmarkedVerses = MutableStateFlow<Set<String>>(emptySet())
     val bookmarkedVerses: StateFlow<Set<String>> = _bookmarkedVerses.asStateFlow()
 
@@ -273,6 +276,17 @@ class SurahViewModel @Inject constructor(
                     if (totalWordsCount > 0) {
                         val tajweed = (_uiState.value as? SurahUiState.Success)?.tajweedMap ?: emptyMap()
                         _uiState.value = SurahUiState.Success(chapter, cachedVerses, wordsMap, tajweed)
+                        
+                        val hasTajweed = wordsMap.values.flatten().any { it.textUthmaniTajweed != null }
+                        if (!hasTajweed) {
+                            viewModelScope.launch {
+                                try {
+                                    repository.refreshVersesByChapter(chapter.id, currentTranslationId)
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                }
+                            }
+                        }
                     } else {
                         try {
                             repository.refreshVersesByChapter(chapter.id, currentTranslationId)
@@ -480,6 +494,11 @@ class SurahViewModel @Inject constructor(
 
     fun updateTranslationFontScale(delta: Float) {
         _translationFontScale.value = (_translationFontScale.value + delta).coerceIn(0.5f, 3.0f)
+    }
+
+    fun setSelectedArabicFontName(name: String) {
+        _selectedArabicFontName.value = name
+        hifdhPrefs.edit().putString("arabic_font", name).apply()
     }
 
     fun completeSaukaJuz(assignmentId: String, backToSauka: String, onDone: () -> Unit) {

@@ -35,7 +35,6 @@ fun ColoredArabicText(
         } else {
             val sortedSegments = segments.sortedBy { it.start }
             var cursor = 0
-
             for (seg in sortedSegments) {
                 if (seg.start > cursor) {
                     append(text.substring(cursor, seg.start))
@@ -75,6 +74,7 @@ fun ColoredArabicText(
         text = annotatedString,
         modifier = modifier,
         style = textStyle.copy(fontFamily = fontFamily),
+        softWrap = false,
         onClick = { offset ->
             val annotation = annotatedString.getStringAnnotations(
                 tag = "TAJWEED_RULE",

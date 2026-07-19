@@ -22,6 +22,7 @@ import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.nur.quran.utils.TajweedProcessor
 
 @Singleton
 class QuranRepository @Inject constructor(
@@ -85,6 +86,13 @@ class QuranRepository @Inject constructor(
             perPage = 300
         )
         
+        val tajweedResponse = try {
+            quranApi.getUthmaniTajweed(chapterNumber = chapterId)
+        } catch (e: Exception) {
+            null
+        }
+        val tajweedMap = tajweedResponse?.verses?.associate { it.verse_key to it.text_uthmani_tajweed } ?: emptyMap()
+        
         val verseEntities = mutableListOf<VerseEntity>()
         val wordEntities = mutableListOf<WordEntity>()
 
@@ -104,7 +112,11 @@ class QuranRepository @Inject constructor(
             )
             verseEntities.add(verseEntity)
 
-            apiVerse.words?.forEach { apiWord ->
+            val verseTajweedHtml = tajweedMap[apiVerse.verse_key]
+            val wordTajweedList = verseTajweedHtml?.let { TajweedProcessor.splitTajweedHtmlIntoWords(it) } ?: emptyList()
+
+            apiVerse.words?.forEachIndexed { index, apiWord ->
+                val wordTajweed = if (index < wordTajweedList.size) wordTajweedList[index] else null
                 wordEntities.add(
                     WordEntity(
                         id = apiWord.id,
@@ -113,7 +125,7 @@ class QuranRepository @Inject constructor(
                         textUthmani = apiWord.text_uthmani,
                         textIndopak = apiWord.text_indopak,
                         textQpcHafs = apiWord.text_qpc_hafs,
-                        textUthmaniTajweed = apiWord.text_uthmani_tajweed,
+                        textUthmaniTajweed = wordTajweed ?: apiWord.text_uthmani_tajweed,
                         translation = apiWord.translation?.text,
                         transliteration = apiWord.transliteration?.text,
                         charTypeName = apiWord.char_type_name

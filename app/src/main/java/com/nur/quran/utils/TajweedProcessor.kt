@@ -51,7 +51,7 @@ object TajweedProcessor {
         val sanitized = sanitizeTajweedHtml(html)
         val rawSegments = mutableListOf<RawSegment>()
 
-        val pattern = Pattern.compile("<tajweed\\s+class=['\"]([^'\"]+)['\"]>(.*?)</tajweed>")
+        val pattern = Pattern.compile("<tajweed\\s+class=['\"]?([^'\"\\s>]+)['\"]?>(.*?)</tajweed>")
         val matcher = pattern.matcher(sanitized)
 
         var lastIndex = 0
@@ -162,6 +162,50 @@ object TajweedProcessor {
         }
 
         return result
+    }
+
+    fun splitTajweedHtmlIntoWords(tajweedHtml: String): List<String> {
+        val tokens = mutableListOf<String>()
+        val matcher = Pattern.compile("<[^>]+>|[^<\\s]+|\\s+").matcher(tajweedHtml)
+        while (matcher.find()) {
+            tokens.add(matcher.group())
+        }
+
+        val words = mutableListOf<StringBuilder>()
+        words.add(StringBuilder())
+        val activeTags = mutableListOf<String>()
+
+        for (token in tokens) {
+            if (token.startsWith("<") && token.endsWith(">")) {
+                if (token.startsWith("</")) {
+                    if (activeTags.isNotEmpty()) activeTags.removeAt(activeTags.lastIndex)
+                    words.last().append(token)
+                } else {
+                    activeTags.add(token)
+                    words.last().append(token)
+                }
+            } else if (token.trim().isEmpty()) {
+                for (tag in activeTags.asReversed()) {
+                    val tagName = tag.substring(1).split(" ", ">")[0]
+                    words.last().append("</$tagName>")
+                }
+                words.add(StringBuilder())
+                for (tag in activeTags) {
+                    words.last().append(tag)
+                }
+            } else {
+                words.last().append(token)
+            }
+        }
+
+        for (tag in activeTags.asReversed()) {
+            val tagName = tag.substring(1).split(" ", ">")[0]
+            if (!words.last().toString().endsWith("</$tagName>")) {
+                words.last().append("</$tagName>")
+            }
+        }
+
+        return words.map { it.toString().trim() }.filter { it.isNotEmpty() }
     }
 
     data class RawSegment(val text: String, val className: String?)

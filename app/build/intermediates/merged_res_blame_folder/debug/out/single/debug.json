@@ -1,0 +1,26 @@
+[
+    {
+        "merged": "com.nur.quran.app-merged_res-63:/font_amiri_regular.ttf.flat",
+        "source": "com.nur.quran.app-main-65:/font/amiri_regular.ttf"
+    },
+    {
+        "merged": "com.nur.quran.app-merged_res-63:/font_scheherazade_bold.ttf.flat",
+        "source": "com.nur.quran.app-main-65:/font/scheherazade_bold.ttf"
+    },
+    {
+        "merged": "com.nur.quran.app-merged_res-63:/font_scheherazade_regular.ttf.flat",
+        "source": "com.nur.quran.app-main-65:/font/scheherazade_regular.ttf"
+    },
+    {
+        "merged": "com.nur.quran.app-merged_res-63:/font_noto_bold.ttf.flat",
+        "source": "com.nur.quran.app-main-65:/font/noto_bold.ttf"
+    },
+    {
+        "merged": "com.nur.quran.app-merged_res-63:/font_amiri_bold.ttf.flat",
+        "source": "com.nur.quran.app-main-65:/font/amiri_bold.ttf"
+    },
+    {
+        "merged": "com.nur.quran.app-merged_res-63:/font_noto_regular.ttf.flat",
+        "source": "com.nur.quran.app-main-65:/font/noto_regular.ttf"
+    }
+]

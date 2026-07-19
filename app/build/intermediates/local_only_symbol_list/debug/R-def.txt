@@ -3,4 +3,10 @@ local
 array com_google_android_gms_fonts_certs
 array com_google_android_gms_fonts_certs_dev
 array com_google_android_gms_fonts_certs_prod
+font amiri_bold
+font amiri_regular
+font noto_bold
+font noto_regular
+font scheherazade_bold
+font scheherazade_regular
 style Theme.Quran

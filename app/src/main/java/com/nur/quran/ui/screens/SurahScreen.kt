@@ -1615,8 +1615,9 @@ fun VerseItem(
                                 val wordStart = length
                                 val plainText = word.textUthmani ?: ""
                                 val isEndMarker = word.charTypeName == "end"
+                                val displayText = if (isEndMarker) "\u06DD${plainText}" else plainText
 
-                                if (word.textUthmaniTajweed != null) {
+                                if (!isEndMarker && word.textUthmaniTajweed != null) {
                                     val segments = TajweedProcessor.getWordTajweedSegments(
                                         plainText = plainText,
                                         tajweedHtml = word.textUthmaniTajweed,
@@ -1645,13 +1646,13 @@ fun VerseItem(
                                             append(plainText.substring(cursor))
                                         }
                                     } else {
-                                        append(plainText)
+                                        append(displayText)
                                     }
                                 } else {
-                                    append(plainText)
+                                    append(displayText)
                                     if (isEndMarker) {
                                         addStyle(
-                                            SpanStyle(color = hGold, fontWeight = FontWeight.Bold),
+                                            SpanStyle(color = hGold),
                                             wordStart, length
                                         )
                                     }
@@ -1702,10 +1703,11 @@ fun VerseItem(
                                 if (wordIndex > 0) append(" ")
                                 val wordStart = length
                                 val isEndMarker = word.charTypeName == "end"
-                                append(word.textUthmani ?: "")
+                                val displayText = if (isEndMarker) "\u06DD${word.textUthmani ?: ""}" else (word.textUthmani ?: "")
+                                append(displayText)
                                 if (isEndMarker) {
                                     addStyle(
-                                        SpanStyle(color = hGold, fontWeight = FontWeight.Bold),
+                                        SpanStyle(color = hGold),
                                         wordStart, length
                                     )
                                 }
@@ -2300,8 +2302,9 @@ fun ContinuousReadingView(
                                 val wordStart = length
                                 val plainText = word.textUthmani ?: ""
                                 val isEndMarker = word.charTypeName == "end"
+                                val displayText = if (isEndMarker) "\u06DD${plainText}" else plainText
 
-                                if (word.textUthmaniTajweed != null) {
+                                if (!isEndMarker && word.textUthmaniTajweed != null) {
                                     val segments = TajweedProcessor.getWordTajweedSegments(
                                         plainText = plainText,
                                         tajweedHtml = word.textUthmaniTajweed,
@@ -2330,13 +2333,13 @@ fun ContinuousReadingView(
                                             append(plainText.substring(cursor))
                                         }
                                     } else {
-                                        append(plainText)
+                                        append(displayText)
                                     }
                                 } else {
-                                    append(plainText)
+                                    append(displayText)
                                     if (isEndMarker) {
                                         addStyle(
-                                            SpanStyle(color = hGold, fontWeight = FontWeight.Bold),
+                                            SpanStyle(color = hGold),
                                             wordStart, length
                                         )
                                     }
@@ -2382,10 +2385,11 @@ fun ContinuousReadingView(
                                 if (wordIndex > 0) append(" ")
                                 val wordStart = length
                                 val isEndMarker = word.charTypeName == "end"
-                                append(word.textUthmani ?: "")
+                                val displayText = if (isEndMarker) "\u06DD${word.textUthmani ?: ""}" else (word.textUthmani ?: "")
+                                append(displayText)
                                 if (isEndMarker) {
                                     addStyle(
-                                        SpanStyle(color = hGold, fontWeight = FontWeight.Bold),
+                                        SpanStyle(color = hGold),
                                         wordStart, length
                                     )
                                 }

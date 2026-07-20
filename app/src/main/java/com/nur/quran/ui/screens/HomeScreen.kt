@@ -85,22 +85,6 @@ val fontFamilyArabic = FontFamily(
     Font(googleFont = scheherazadeNewFont, fontProvider = provider, weight = FontWeight.Bold)
 )
 
-// ── Color Palette (matching web CSS variables) ──────────────────────────
-private val hCream     = Color(0xFFFAF7F0)
-private val hBone      = Color(0xFFEDE8DA)
-private val hBoneDark  = Color(0xFFDDD7C7)
-private val hInk       = Color(0xFF2B3F3C)
-private val hInkMid    = Color(0xFF4D5F5C)
-private val hInkMuted  = Color(0xFF8E9B97)
-private val hGold      = Color(0xFFB8924A)
-private val hGoldSoft  = Color(0x2EB8924A) // rgba(184,146,74,0.18)
-private val hTeal      = Color(0xFF2E4F4A)
-private val hTealMid   = Color(0xFF3D6560)
-private val hTealSoft  = Color(0x142E4F4A) // rgba(46,79,74,0.08)
-private val hWhite     = Color(0xFFFAFAF5)
-private val hGreen     = Color(0xFF10B981)
-private val hRed       = Color(0xFFEF4444)
-
 // ── Curated Verses of the Day (identical to the web app) ────────────────
 private val DAILY_VERSES = listOf(
     DailyVerse("بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ", "\"In the name of Allah, the Most Gracious, the Most Merciful.\"", "Al-Fatiha 1:1"),

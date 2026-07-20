@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
@@ -91,23 +92,42 @@ val fontScheherazade = FontFamily(
 
 val fontSystemDefault = FontFamily.Default
 
-// Colors matching the web app CSS variables with dynamic dark mode mapping
-private var isDarkThemeGlobal by mutableStateOf(false)
+// Colors matching the web app CSS variables (index.css) with dynamic dark mode mapping
+var isDarkThemeGlobal by mutableStateOf(false)
+    internal set
 
-private val hCream     get() = if (isDarkThemeGlobal) Color(0xFF1C1C1E) else Color(0xFFFAF7F0)
-private val hBone      get() = if (isDarkThemeGlobal) Color(0xFF2C2C2E) else Color(0xFFEDE8DA)
-private val hBoneDark  get() = if (isDarkThemeGlobal) Color(0xFF3A3A3C) else Color(0xFFDDD7C7)
-private val hInk       get() = if (isDarkThemeGlobal) Color(0xFFFAF7F0) else Color(0xFF2B3F3C)
-private val hInkMid    get() = if (isDarkThemeGlobal) Color(0xFFE5E5EA) else Color(0xFF4D5F5C)
-private val hInkMuted  get() = if (isDarkThemeGlobal) Color(0xFF8E8E93) else Color(0xFF8E9B97)
-private val hGold      = Color(0xFFB8924A)
-private val hGoldSoft  = Color(0x2EB8924A) // rgba(184,146,74,0.18)
-private val hGoldLight = Color(0x26C6A87C) // accent-light ~15% opacity
-private val hTeal      = Color(0xFF2E4F4A)
-private val hTealSoft  = Color(0x142E4F4A) // ~8% opacity
-private val hWhite     get() = if (isDarkThemeGlobal) Color(0xFF121212) else Color(0xFFFAFAF5)
-private val hSurface   get() = if (isDarkThemeGlobal) Color(0xFF1C1C1E) else Color(0xFFEFECE4)
-private val hBorderColor get() = if (isDarkThemeGlobal) Color(0xFF2C2C2E) else Color(0xFFDDD7C7)
+// Web: --h-cream      light: #FAF7F0  dark: #2D2D2A
+val hCream     get() = if (isDarkThemeGlobal) Color(0xFF2D2D2A) else Color(0xFFFAF7F0)
+// Web: --h-bone       light: #EDE8DA  dark: #3A3A36
+val hBone      get() = if (isDarkThemeGlobal) Color(0xFF3A3A36) else Color(0xFFEDE8DA)
+// Web: --h-bone-dark  light: #DDD7C7  dark: #4A4A45
+val hBoneDark  get() = if (isDarkThemeGlobal) Color(0xFF4A4A45) else Color(0xFFDDD7C7)
+// Web: --h-ink        light: #2B3F3C  dark: #EFECE4
+val hInk       get() = if (isDarkThemeGlobal) Color(0xFFEFECE4) else Color(0xFF2B3F3C)
+// Web: --h-ink-mid    light: #4D5F5C  dark: #B0ABA5
+val hInkMid    get() = if (isDarkThemeGlobal) Color(0xFFB0ABA5) else Color(0xFF4D5F5C)
+// Web: --h-ink-muted  light: #8E9B97  dark: #5C5855
+val hInkMuted  get() = if (isDarkThemeGlobal) Color(0xFF5C5855) else Color(0xFF8E9B97)
+// Web: --h-gold       light: #B8924A  dark: #C6A87C
+val hGold      get() = if (isDarkThemeGlobal) Color(0xFFC6A87C) else Color(0xFFB8924A)
+// Web: --h-gold-soft  light: rgba(184,146,74,0.18) dark: rgba(198,168,124,0.1)
+val hGoldSoft  get() = if (isDarkThemeGlobal) Color(0x1AC6A87C) else Color(0x2EB8924A)
+// Web: --accent-light light: rgba(198,168,124,0.15) dark: rgba(198,168,124,0.1)
+val hGoldLight get() = if (isDarkThemeGlobal) Color(0x1AC6A87C) else Color(0x26C6A87C)
+// Web: --h-teal       light: #2E4F4A  dark: #4A7A72
+val hTeal      get() = if (isDarkThemeGlobal) Color(0xFF4A7A72) else Color(0xFF2E4F4A)
+// Web: --h-teal-soft  light: rgba(46,79,74,0.08)  dark: rgba(46,79,74,0.15)
+val hTealSoft  get() = if (isDarkThemeGlobal) Color(0x262E4F4A) else Color(0x142E4F4A)
+// Web: --h-white      light: #FAFAF5  dark: #1A1A18
+val hWhite     get() = if (isDarkThemeGlobal) Color(0xFF1A1A18) else Color(0xFFFAFAF5)
+// Web: --bg-surface   light: #EFECE4  dark: #2D2D2A
+val hSurface   get() = if (isDarkThemeGlobal) Color(0xFF2D2D2A) else Color(0xFFEFECE4)
+// Web: --border-color  (transparent in both, but we use bone-dark for visible borders)
+val hBorderColor get() = if (isDarkThemeGlobal) Color(0xFF4A4A45) else Color(0xFFDDD7C7)
+val hGreen     get() = if (isDarkThemeGlobal) Color(0xFF10b981) else Color(0xFF10b981)
+val hRed       get() = if (isDarkThemeGlobal) Color(0xFFEF4444) else Color(0xFFEF4444)
+val hTealMid   get() = if (isDarkThemeGlobal) Color(0xFF3D6560) else Color(0xFF3D6560)
+val glassBg    get() = if (isDarkThemeGlobal) Color(0x802D2D2A) else Color(0x99EFECE4)
 
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -139,6 +159,7 @@ fun SurahScreen(
     val arabicFontScale by viewModel.arabicFontScale.collectAsState()
     val translationFontScale by viewModel.translationFontScale.collectAsState()
     val isSaukaCompleting by viewModel.isSaukaCompleting.collectAsState()
+    val activeTranslationId by viewModel.currentTranslationId.collectAsState()
     val selectedArabicFontName by viewModel.selectedArabicFontName.collectAsState(initial = "Scheherazade New")
     val fontFamilyArabic = remember(selectedArabicFontName) {
         when (selectedArabicFontName) {
@@ -170,6 +191,11 @@ fun SurahScreen(
     }
     var showSwipeTip by remember {
         mutableStateOf(!prefs.getBoolean("has_seen_swipe_tip", false))
+    }
+
+    // Persist dark mode preference (web: Zustand persist middleware)
+    LaunchedEffect(Unit) {
+        isDarkThemeGlobal = prefs.getBoolean("is_dark_theme", false)
     }
 
     val listState = rememberLazyListState()
@@ -268,7 +294,7 @@ fun SurahScreen(
                         icon = if (isDarkThemeGlobal) NurIcons.Sun else NurIcons.Moon,
                         active = isDarkThemeGlobal,
                         label = "Toggle theme"
-                    ) { isDarkThemeGlobal = !isDarkThemeGlobal }
+                    ) { isDarkThemeGlobal = !isDarkThemeGlobal; prefs.edit().putBoolean("is_dark_theme", isDarkThemeGlobal).apply() }
                     TopBarIconBtn(
                         icon = NurIcons.Info,
                         active = false,
@@ -846,7 +872,6 @@ fun SurahScreen(
                             if (settingsSubView == SettingsSubView.TRANSLATION) {
                                 val translationsList = listOf(
                                     85 to "English - M.A.S. Abdel Haleem",
-                                    131 to "English - Dr. Mustafa Khattab",
                                     20 to "English - Saheeh International",
                                     22 to "English - A. Yusuf Ali",
                                     84 to "English - Mufti Taqi Usmani",
@@ -855,6 +880,7 @@ fun SurahScreen(
                                 )
                                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                                     items(translationsList) { (id, name) ->
+                                        val isSelected = id == activeTranslationId
                                         Row(
                                             modifier = Modifier
                                                 .fillMaxWidth()
@@ -862,11 +888,29 @@ fun SurahScreen(
                                                     viewModel.setTranslationId(id)
                                                     settingsSubView = SettingsSubView.ROOT
                                                 }
+                                                .then(
+                                                    if (isSelected) Modifier.background(hGoldSoft)
+                                                    else Modifier
+                                                )
                                                 .padding(vertical = 14.dp, horizontal = 16.dp),
                                             horizontalArrangement = Arrangement.SpaceBetween,
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            Text(name, fontFamily = fontFamilyUi, fontSize = 14.sp, color = hInk)
+                                            Text(
+                                                name,
+                                                fontFamily = fontFamilyUi,
+                                                fontSize = 14.sp,
+                                                color = if (isSelected) hGold else hInk,
+                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                            )
+                                            if (isSelected) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Check,
+                                                    contentDescription = "Selected",
+                                                    tint = hGold,
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+                                            }
                                         }
                                         Divider(color = hBorderColor, thickness = 0.5.dp)
                                     }
@@ -950,7 +994,7 @@ fun SurahScreen(
                                                         .weight(1f)
                                                         .clip(RoundedCornerShape(8.dp))
                                                         .background(if (!isDarkThemeGlobal) hGoldSoft else Color.Transparent)
-                                                        .clickable { isDarkThemeGlobal = false }
+                                                        .clickable { isDarkThemeGlobal = false; prefs.edit().putBoolean("is_dark_theme", false).apply() }
                                                         .padding(vertical = 8.dp),
                                                     contentAlignment = Alignment.Center
                                                 ) {
@@ -961,7 +1005,7 @@ fun SurahScreen(
                                                         .weight(1f)
                                                         .clip(RoundedCornerShape(8.dp))
                                                         .background(if (isDarkThemeGlobal) hGoldSoft else Color.Transparent)
-                                                        .clickable { isDarkThemeGlobal = true }
+                                                        .clickable { isDarkThemeGlobal = true; prefs.edit().putBoolean("is_dark_theme", true).apply() }
                                                         .padding(vertical = 8.dp),
                                                     contentAlignment = Alignment.Center
                                                 ) {

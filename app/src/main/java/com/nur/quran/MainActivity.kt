@@ -40,16 +40,9 @@ import com.nur.quran.ui.viewmodels.HomeViewModel
 import com.nur.quran.ui.viewmodels.SurahViewModel
 import dagger.hilt.android.AndroidEntryPoint
 
-// ── Color Palette (web app variables) ────────────────────────────────
-private val hCream    = Color(0xFFFAF7F0)
-private val hBoneDark = Color(0xFFDDD7C7)
-private val hInk      = Color(0xFF2B3F3C)
-private val hInkMuted = Color(0xFF8E9B97)
-private val hGold     = Color(0xFFB8924A)
-private val hGoldSoft = Color(0x26B8924A) // ~15% opacity
-private val hTeal     = Color(0xFF2E4F4A)
-private val hWhite    = Color(0xFFFAFAF5)
-private val glassBg   = Color(0x99EFECE4) // rgba(239,236,228,0.6)
+import com.nur.quran.ui.screens.*
+
+// ── Color Palette (now using shared colors from SurahScreen.kt) ────────────────────────────────
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -59,6 +52,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Initialize global dark theme preference before composing
+        val prefs = getSharedPreferences("Settings", android.content.Context.MODE_PRIVATE)
+        isDarkThemeGlobal = prefs.getBoolean("is_dark_theme", false)
+        
         setContent {
             val navController = rememberNavController()
 

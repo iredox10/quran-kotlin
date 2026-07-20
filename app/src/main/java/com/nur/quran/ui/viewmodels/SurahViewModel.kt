@@ -57,13 +57,13 @@ class SurahViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<SurahUiState>(SurahUiState.Loading)
     val uiState: StateFlow<SurahUiState> = _uiState.asStateFlow()
 
-    private val _isTajweedEnabled = MutableStateFlow(true)
+    private val hifdhPrefs = context.getSharedPreferences("hifdh_settings", Context.MODE_PRIVATE)
+
+    private val _isTajweedEnabled = MutableStateFlow(hifdhPrefs.getBoolean("is_tajweed_enabled", true))
     val isTajweedEnabled: StateFlow<Boolean> = _isTajweedEnabled.asStateFlow()
 
-    private val _isTranslationEnabled = MutableStateFlow(true)
+    private val _isTranslationEnabled = MutableStateFlow(hifdhPrefs.getBoolean("is_translation_enabled", true))
     val isTranslationEnabled: StateFlow<Boolean> = _isTranslationEnabled.asStateFlow()
-
-    private val hifdhPrefs = context.getSharedPreferences("hifdh_settings", Context.MODE_PRIVATE)
 
     private val _isMemorizeModeEnabled = MutableStateFlow(false)
     val isMemorizeModeEnabled: StateFlow<Boolean> = _isMemorizeModeEnabled.asStateFlow()
@@ -110,7 +110,8 @@ class SurahViewModel @Inject constructor(
     private var currentChapterId: Int = 0
     private var currentChapterName: String = ""
     private var currentTafsirId: Int = 169
-    private var currentTranslationId: Int = 131
+    private val _currentTranslationId = MutableStateFlow(hifdhPrefs.getInt("translation_id", 85))
+    val currentTranslationId: StateFlow<Int> = _currentTranslationId.asStateFlow()
     private var cachedTafsirVerses: List<ApiTafsirVerse> = emptyList()
 
     // Reading-session tracking (mirrors the web Surah page's start/unmount timer)
@@ -278,10 +279,11 @@ class SurahViewModel @Inject constructor(
                         _uiState.value = SurahUiState.Success(chapter, cachedVerses, wordsMap, tajweed)
                         
                         val hasTajweed = wordsMap.values.flatten().any { it.textUthmaniTajweed != null }
-                        if (!hasTajweed) {
+                        val hasTranslations = cachedVerses.all { it.translation != null }
+                        if (!hasTajweed || !hasTranslations) {
                             viewModelScope.launch {
                                 try {
-                                    repository.refreshVersesByChapter(chapter.id, currentTranslationId)
+                                    repository.refreshVersesByChapter(chapter.id, _currentTranslationId.value)
                                 } catch (e: Exception) {
                                     e.printStackTrace()
                                 }
@@ -289,14 +291,14 @@ class SurahViewModel @Inject constructor(
                         }
                     } else {
                         try {
-                            repository.refreshVersesByChapter(chapter.id, currentTranslationId)
+                            repository.refreshVersesByChapter(chapter.id, _currentTranslationId.value)
                         } catch (e: Exception) {
                             _uiState.value = SurahUiState.Error(e.localizedMessage ?: "Network error. Please try again.")
                         }
                     }
                 } else {
                     try {
-                        repository.refreshVersesByChapter(chapter.id, currentTranslationId)
+                        repository.refreshVersesByChapter(chapter.id, _currentTranslationId.value)
                     } catch (e: Exception) {
                         _uiState.value = SurahUiState.Error(e.localizedMessage ?: "Network error. Please try again.")
                     }
@@ -358,10 +360,12 @@ class SurahViewModel @Inject constructor(
 
     fun toggleTajweed() {
         _isTajweedEnabled.value = !_isTajweedEnabled.value
+        hifdhPrefs.edit().putBoolean("is_tajweed_enabled", _isTajweedEnabled.value).apply()
     }
 
     fun toggleTranslation() {
         _isTranslationEnabled.value = !_isTranslationEnabled.value
+        hifdhPrefs.edit().putBoolean("is_translation_enabled", _isTranslationEnabled.value).apply()
     }
 
     fun toggleBookmark(verseKey: String, chapterId: Int, surahName: String) {
@@ -464,7 +468,8 @@ class SurahViewModel @Inject constructor(
     }
 
     fun setTranslationId(translationId: Int) {
-        currentTranslationId = translationId
+        _currentTranslationId.value = translationId
+        hifdhPrefs.edit().putInt("translation_id", translationId).apply()
         viewModelScope.launch {
             try {
                 repository.refreshVersesByChapter(currentChapterId, translationId)

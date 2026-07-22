@@ -1699,7 +1699,7 @@ fun VerseItem(
             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                 if (isTajweedEnabled && words.any { it.textUthmaniTajweed != null }) {
                     // Build full verse as single AnnotatedString with tajweed colors
-                    val verseAnnotated = remember(words, isTajweedEnabled, fontFamilyArabic, arabicFontScale) {
+                    val verseAnnotated = remember(words, isTajweedEnabled, fontFamilyArabic, arabicFontScale, isDarkThemeGlobal) {
                         buildAnnotatedString {
                             words.forEachIndexed { wordIndex, word ->
                                 if (wordIndex > 0) append(" ")
@@ -1710,10 +1710,11 @@ fun VerseItem(
                                 val displayText = plainText
 
                                 if (!isEndMarker && word.textUthmaniTajweed != null) {
+                                    val defaultTextColorHex = if (isDarkThemeGlobal) "#EFECE4" else "#2B3F3C"
                                     val segments = TajweedProcessor.getWordTajweedSegments(
                                         plainText = plainText,
                                         tajweedHtml = word.textUthmaniTajweed,
-                                        defaultColor = "#2B3F3C"
+                                        defaultColor = defaultTextColorHex
                                     )
                                     if (segments.isNotEmpty()) {
                                         val sorted = segments.sortedBy { it.start }
@@ -1789,7 +1790,7 @@ fun VerseItem(
                     )
                 } else {
                     // Non-tajweed: simple verse text as single AnnotatedString
-                    val verseAnnotated = remember(words, fontFamilyArabic, arabicFontScale) {
+                    val verseAnnotated = remember(words, fontFamilyArabic, arabicFontScale, isDarkThemeGlobal) {
                         buildAnnotatedString {
                             words.forEachIndexed { wordIndex, word ->
                                 if (wordIndex > 0) append(" ")

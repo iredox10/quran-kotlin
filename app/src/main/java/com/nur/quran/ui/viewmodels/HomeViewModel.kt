@@ -46,11 +46,48 @@ data class HomeStats(
     val weekMax: Int = 1
 )
 
+/** Active Sauka group claimed reading assignment. */
+data class SaukaGoal(
+    val id: String,
+    val groupTitle: String,
+    val divisionType: String, // "juz", "page", etc.
+    val partNumber: Int,
+    val pageNumber: Int = 1
+)
+
+/** Onboarding progress state for first-time mobile setup. */
+data class OnboardingState(
+    val completedSteps: Int = 1,
+    val totalSteps: Int = 3,
+    val isDismissed: Boolean = false
+)
+
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val repository: QuranRepository,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
+
+    private val _activeGoals = MutableStateFlow<List<SaukaGoal>>(
+        listOf(
+            SaukaGoal(id = "1", groupTitle = "Community Ramadan Khatmah", divisionType = "juz", partNumber = 5, pageNumber = 82)
+        )
+    )
+    val activeGoals: StateFlow<List<SaukaGoal>> = _activeGoals.asStateFlow()
+
+    private val _onboardingState = MutableStateFlow(OnboardingState())
+    val onboardingState: StateFlow<OnboardingState> = _onboardingState.asStateFlow()
+
+    fun dismissOnboarding() {
+        _onboardingState.value = _onboardingState.value.copy(isDismissed = true)
+    }
+
+    fun completeOnboardingStep() {
+        val current = _onboardingState.value
+        if (current.completedSteps < current.totalSteps) {
+            _onboardingState.value = current.copy(completedSteps = current.completedSteps + 1)
+        }
+    }
 
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()

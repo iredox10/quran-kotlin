@@ -38,8 +38,8 @@ import com.nur.quran.ui.screens.HomeScreen
 import com.nur.quran.ui.screens.SurahScreen
 import com.nur.quran.ui.viewmodels.HomeViewModel
 import com.nur.quran.ui.viewmodels.SurahViewModel
+import com.nur.quran.ui.components.NurIcons
 import dagger.hilt.android.AndroidEntryPoint
-
 import com.nur.quran.ui.screens.*
 
 // ── Color Palette (now using shared colors from SurahScreen.kt) ────────────────────────────────
@@ -88,6 +88,12 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onPageClick = { pageNum ->
                                     navController.navigate(Screen.PageDetail.createRoute(pageNum))
+                                },
+                                onNavigateToSauka = {
+                                    navController.navigate(Screen.Planner.route)
+                                },
+                                onNavigateToBookmarks = {
+                                    navController.navigate(Screen.Analytics.route)
                                 }
                             )
                         }
@@ -175,13 +181,14 @@ class MainActivity : ComponentActivity() {
                         FloatingBottomNav(
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
+                                .widthIn(max = 500.dp)
                                 .padding(horizontal = 16.dp, vertical = 12.dp),
                             items = listOf(
-                                NavItem(Screen.Quran, Icons.Outlined.Menu, "Quran"),
-                                NavItem(Screen.Memorize, Icons.Outlined.Star, "Memorize"),
-                                NavItem(Screen.Planner, Icons.Outlined.DateRange, "Planner"),
-                                NavItem(Screen.Analytics, Icons.Outlined.Favorite, "Analytics"),
-                                NavItem(Screen.Profile, Icons.Outlined.Person, "Profile")
+                                NavItem(Screen.Quran, NurIcons.BookOpen, "Quran"),
+                                NavItem(Screen.Memorize, NurIcons.Brain, "Memorize"),
+                                NavItem(Screen.Planner, NurIcons.CalendarDays, "Planner"),
+                                NavItem(Screen.Analytics, NurIcons.TrendingUp, "Analytics"),
+                                NavItem(Screen.Profile, NurIcons.User, "Profile")
                             ),
                             currentRoute = currentDestination?.route,
                             onItemClick = { screen ->
@@ -213,59 +220,93 @@ private fun FloatingBottomNav(
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .height(64.dp)
+            .height(60.dp)
             .shadow(
                 elevation = 16.dp,
                 shape = RoundedCornerShape(100),
-                ambientColor = Color(0x12000000),
-                spotColor = Color(0x12000000)
+                ambientColor = Color(0x1F000000),
+                spotColor = Color(0x1F000000)
             ),
         shape = RoundedCornerShape(100),
-        color = glassBg,
+        color = hWhite.copy(alpha = 0.92f),
         border = androidx.compose.foundation.BorderStroke(
-            1.dp,
-            Color.White.copy(alpha = 0.3f)
+            1.5.dp,
+            hBoneDark
         )
     ) {
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 8.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = 6.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
             items.forEach { item ->
                 val isSelected = currentRoute == item.screen.route
 
-                Box(
-                    modifier = Modifier
-                        .weight(if (isSelected) 1.5f else 1f)
-                        .fillMaxHeight()
-                        .clip(RoundedCornerShape(100))
-                        .then(
-                            if (isSelected) Modifier.background(hGoldSoft)
-                            else Modifier
-                        )
-                        .clickable { onItemClick(item.screen) },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
+                if (isSelected) {
+                    // Active Tab: horizontal pill layout (matching web app's BottomNav.jsx)
+                    Surface(
+                        onClick = { onItemClick(item.screen) },
+                        modifier = Modifier
+                            .weight(1.5f)
+                            .fillMaxHeight(),
+                        shape = RoundedCornerShape(100),
+                        color = hGoldSoft
                     ) {
-                        Icon(
-                            imageVector = item.icon,
-                            contentDescription = item.label,
-                            modifier = Modifier.size(20.dp),
-                            tint = if (isSelected) hGold else hInkMuted
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = item.label,
-                            fontSize = if (isSelected) 10.sp else 9.sp,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
-                            color = if (isSelected) hGold else hInkMuted,
-                            fontFamily = FontFamily.Monospace
-                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 12.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = item.icon,
+                                contentDescription = item.label,
+                                modifier = Modifier.size(20.dp),
+                                tint = hGold
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = item.label,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = hGold,
+                                fontFamily = fontFamilyMono,
+                                maxLines = 1
+                            )
+                        }
+                    }
+                } else {
+                    // Inactive Tab: vertical column layout (matching web app's BottomNav.jsx)
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clip(RoundedCornerShape(100))
+                            .clickable { onItemClick(item.screen) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = item.icon,
+                                contentDescription = item.label,
+                                modifier = Modifier.size(20.dp),
+                                tint = hInkMuted
+                            )
+                            Spacer(modifier = Modifier.height(3.dp))
+                            Text(
+                                text = item.label,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = hInkMuted,
+                                fontFamily = fontFamilyMono
+                            )
+                        }
                     }
                 }
             }

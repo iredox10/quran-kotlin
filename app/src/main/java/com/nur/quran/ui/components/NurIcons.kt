@@ -266,6 +266,32 @@ object NurIcons {
         "M19.07 4.93l-1.41 1.41",
         "M 12 12 a 4 4 0 1 0 8 0 a 4 4 0 1 0 -8 0")
     }
+
+    val CalendarDays: ImageVector by lazy {
+        lucideIcon("CalendarDays",
+        "M8 2v4",
+        "M16 2v4",
+        "M3 10h18",
+        "M8 14h.01",
+        "M12 14h.01",
+        "M16 14h.01",
+        "M8 18h.01",
+        "M12 18h.01",
+        "M16 18h.01",
+        "M 5 4 H 19 A 2 2 0 0 1 21 6 V 20 A 2 2 0 0 1 19 22 H 5 A 2 2 0 0 1 3 20 V 6 A 2 2 0 0 1 5 4 Z")
+    }
+
+    val User: ImageVector by lazy {
+        lucideIcon("User",
+        "M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2",
+        "M 8 7 a 4 4 0 1 0 8 0 a 4 4 0 1 0 -8 0")
+    }
+
+    val TrendingUp: ImageVector by lazy {
+        lucideIcon("TrendingUp",
+        "M22 7 13.5 15.5 8.5 10.5 2 17",
+        "M16 7h6v6")
+    }
 }
 
 private fun lucideIcon(name: String, vararg pathData: String): ImageVector {

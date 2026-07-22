@@ -43,9 +43,15 @@ import com.nur.quran.data.db.entities.BookmarkEntity
 import com.nur.quran.data.db.entities.ChapterEntity
 import com.nur.quran.data.db.entities.RecentlyReadEntity
 import com.nur.quran.ui.components.NurIcons
+import com.nur.quran.ui.components.ShareCardDialog
+import com.nur.quran.ui.components.ShareCardType
 import com.nur.quran.ui.viewmodels.HomeStats
 import com.nur.quran.ui.viewmodels.HomeUiState
 import com.nur.quran.ui.viewmodels.HomeViewModel
+import com.nur.quran.ui.viewmodels.OnboardingState
+import com.nur.quran.ui.viewmodels.SaukaGoal
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -124,7 +130,9 @@ private const val SHARE_DESCRIPTION =
 fun HomeScreen(
     viewModel: HomeViewModel,
     onChapterClick: (Int) -> Unit,
-    onPageClick: (Int) -> Unit
+    onPageClick: (Int) -> Unit,
+    onNavigateToSauka: (() -> Unit)? = null,
+    onNavigateToBookmarks: (() -> Unit)? = null
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
@@ -132,9 +140,12 @@ fun HomeScreen(
     val recentlyRead by viewModel.recentlyRead.collectAsState()
     val latestBookmark by viewModel.latestBookmark.collectAsState()
     val stats by viewModel.stats.collectAsState()
+    val activeGoals by viewModel.activeGoals.collectAsState()
+    val onboardingState by viewModel.onboardingState.collectAsState()
     val isOnline by viewModel.isOnline.collectAsState()
     val context = LocalContext.current
 
+    var shareDialogState by remember { mutableStateOf<ShareCardType?>(null) }
     val greeting = remember { getGreeting() }
     val dailyVerse = remember { getDailyVerse() }
     val todayDate = remember {
@@ -153,6 +164,13 @@ fun HomeScreen(
     // Entrance animation
     var visible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { visible = true }
+
+    shareDialogState?.let { shareType ->
+        ShareCardDialog(
+            type = shareType,
+            onDismiss = { shareDialogState = null }
+        )
+    }
 
     when (val state = uiState) {
         is HomeUiState.Loading -> {
@@ -282,6 +300,38 @@ fun HomeScreen(
                         }
                     }
 
+                    // ─── Active Sauka Goals Widget ───
+                    if (activeGoals.isNotEmpty()) {
+                        item {
+                            ActiveSaukaGoalsWidget(
+                                goals = activeGoals,
+                                onReadGoal = { goal -> onPageClick(goal.pageNumber) }
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
+                    }
+
+                    // ─── Quick Action Mobile Shortcuts ───
+                    item {
+                        QuickActionGrid(
+                            onNavigateToSauka = { onNavigateToSauka?.invoke() },
+                            onNavigateToBookmarks = { onNavigateToBookmarks?.invoke() }
+                        )
+                        Spacer(modifier = Modifier.height(20.dp))
+                    }
+
+                    // ─── Onboarding Progress Checklist ───
+                    if (!onboardingState.isDismissed) {
+                        item {
+                            OnboardingProgressCard(
+                                state = onboardingState,
+                                onDismiss = { viewModel.dismissOnboarding() },
+                                onStepClick = { viewModel.completeOnboardingStep() }
+                            )
+                            Spacer(modifier = Modifier.height(20.dp))
+                        }
+                    }
+
                     // ─── Stats Row + Share Progress ───
                     item {
                         Row(
@@ -321,11 +371,10 @@ fun HomeScreen(
                         ) {
                             Surface(
                                 onClick = {
-                                    shareText(
-                                        context,
-                                        "My Quran reading progress on Quran Nur: " +
-                                            "${stats.streak} day streak · ${stats.todayMinutes} min today · " +
-                                            "${stats.totalHours} hrs total. $APP_URL"
+                                    shareDialogState = ShareCardType.Progress(
+                                        streak = stats.streak,
+                                        todayMinutes = stats.todayMinutes,
+                                        totalHours = stats.totalHours
                                     )
                                 },
                                 shape = RoundedCornerShape(20.dp),
@@ -369,9 +418,10 @@ fun HomeScreen(
                                 copied = true
                             },
                             onShare = {
-                                shareText(
-                                    context,
-                                    "${dailyVerse.arabic}\n\n${dailyVerse.translation}\n— ${dailyVerse.reference}"
+                                shareDialogState = ShareCardType.Verse(
+                                    arabic = dailyVerse.arabic,
+                                    translation = dailyVerse.translation,
+                                    reference = dailyVerse.reference
                                 )
                             }
                         )
@@ -1345,3 +1395,276 @@ private fun shareText(context: Context, text: String) {
     }
     context.startActivity(Intent.createChooser(sendIntent, null))
 }
+
+// ── Active Sauka Goals Widget ───────────────────────────────────────────
+@Composable
+private fun ActiveSaukaGoalsWidget(
+    goals: List<SaukaGoal>,
+    onReadGoal: (SaukaGoal) -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(bottom = 10.dp)
+        ) {
+            Icon(
+                imageVector = NurIcons.Users,
+                contentDescription = null,
+                tint = hGold,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "My Sauka Readings",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = hInk,
+                fontFamily = fontFamilyUi
+            )
+        }
+        for (goal in goals) {
+            Surface(
+                onClick = { onReadGoal(goal) },
+                shape = RoundedCornerShape(20.dp),
+                color = hGoldSoft,
+                border = androidx.compose.foundation.BorderStroke(1.5.dp, hGold),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = goal.groupTitle.uppercase(Locale.ROOT),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = hGold,
+                            fontFamily = fontFamilyMono,
+                            letterSpacing = 1.sp
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "${goal.divisionType.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() }} ${goal.partNumber}",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = hInk,
+                            fontFamily = fontFamilyUi
+                        )
+                    }
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = hGold
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Read",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(
+                                imageVector = NurIcons.ArrowRight,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ── Quick Action Mobile Shortcuts (2-Column Grid) ───────────────────────
+@Composable
+private fun QuickActionGrid(
+    onNavigateToSauka: () -> Unit,
+    onNavigateToBookmarks: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        // Sauka Groups Card
+        Surface(
+            onClick = onNavigateToSauka,
+            modifier = Modifier.weight(1f),
+            shape = RoundedCornerShape(18.dp),
+            color = hWhite,
+            border = androidx.compose.foundation.BorderStroke(1.5.dp, hBoneDark)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(hTealSoft),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = NurIcons.Users,
+                        contentDescription = null,
+                        tint = hTeal,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Sauka Groups",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = hInk,
+                    fontFamily = fontFamilyUi
+                )
+            }
+        }
+
+        // Bookmarks Card
+        Surface(
+            onClick = onNavigateToBookmarks,
+            modifier = Modifier.weight(1f),
+            shape = RoundedCornerShape(18.dp),
+            color = hWhite,
+            border = androidx.compose.foundation.BorderStroke(1.5.dp, hBoneDark)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(hInk.copy(alpha = 0.05f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = NurIcons.Bookmark,
+                        contentDescription = null,
+                        tint = hInk,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Bookmarks",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = hInk,
+                    fontFamily = fontFamilyUi
+                )
+            }
+        }
+    }
+}
+
+// ── Onboarding Progress Checklist ───────────────────────────────────────
+@Composable
+private fun OnboardingProgressCard(
+    state: OnboardingState,
+    onDismiss: () -> Unit,
+    onStepClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        color = hCream,
+        border = androidx.compose.foundation.BorderStroke(1.5.dp, hBoneDark)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = NurIcons.Sparkles,
+                        contentDescription = null,
+                        tint = hTeal,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Getting Started (${state.completedSteps}/${state.totalSteps})",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = hInk,
+                        fontFamily = fontFamilyUi
+                    )
+                }
+                IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
+                    Icon(
+                        imageVector = NurIcons.X,
+                        contentDescription = "Dismiss",
+                        tint = hInkMuted,
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            LinearProgressIndicator(
+                progress = state.completedSteps.toFloat() / state.totalSteps,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(3.dp)),
+                color = hTeal,
+                trackColor = hBoneDark
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onStepClick() }
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(22.dp)
+                        .clip(CircleShape)
+                        .background(if (state.completedSteps > 1) hGreen else hTealSoft),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = NurIcons.Check,
+                        contentDescription = null,
+                        tint = if (state.completedSteps > 1) Color.White else hTeal,
+                        modifier = Modifier.size(12.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = if (state.completedSteps == 1) "Explore Quran Reading & Tajweed" else "Set up your daily reading goal",
+                    fontSize = 13.sp,
+                    color = hInk,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f)
+                )
+                Icon(
+                    imageVector = NurIcons.ArrowRight,
+                    contentDescription = null,
+                    tint = hInkMuted,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
+        }
+    }
+}
+

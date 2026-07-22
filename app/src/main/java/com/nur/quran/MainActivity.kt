@@ -69,8 +69,7 @@ class MainActivity : ComponentActivity() {
                     Screen.Memorize.route,
                     Screen.Planner.route,
                     Screen.Analytics.route,
-                    Screen.Profile.route,
-                    Screen.SurahDetail.route
+                    Screen.Profile.route
                 )
 
                 Box(modifier = Modifier.fillMaxSize()) {

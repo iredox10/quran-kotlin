@@ -86,6 +86,20 @@ class SurahViewModel @Inject constructor(
     private val _selectedArabicFontName = MutableStateFlow(hifdhPrefs.getString("arabic_font", "Scheherazade New") ?: "Scheherazade New")
     val selectedArabicFontName: StateFlow<String> = _selectedArabicFontName.asStateFlow()
 
+    private val _wordTapBehavior = MutableStateFlow(hifdhPrefs.getString("word_tap_behavior", "translation") ?: "translation")
+    val wordTapBehavior: StateFlow<String> = _wordTapBehavior.asStateFlow()
+
+    private val _mushafPreset = MutableStateFlow(hifdhPrefs.getString("mushaf_preset", "uthmani") ?: "uthmani")
+    val mushafPreset: StateFlow<String> = _mushafPreset.asStateFlow()
+
+    private val _currentReciterId = MutableStateFlow(hifdhPrefs.getInt("reciter_id", 7))
+    val currentReciterId: StateFlow<Int> = _currentReciterId.asStateFlow()
+
+    fun setReciterId(id: Int) {
+        _currentReciterId.value = id
+        hifdhPrefs.edit().putInt("reciter_id", id).apply()
+    }
+
     private val _bookmarkedVerses = MutableStateFlow<Set<String>>(emptySet())
     val bookmarkedVerses: StateFlow<Set<String>> = _bookmarkedVerses.asStateFlow()
 
@@ -504,6 +518,16 @@ class SurahViewModel @Inject constructor(
     fun setSelectedArabicFontName(name: String) {
         _selectedArabicFontName.value = name
         hifdhPrefs.edit().putString("arabic_font", name).apply()
+    }
+
+    fun setWordTapBehavior(behavior: String) {
+        _wordTapBehavior.value = behavior
+        hifdhPrefs.edit().putString("word_tap_behavior", behavior).apply()
+    }
+
+    fun setMushafPreset(preset: String) {
+        _mushafPreset.value = preset
+        hifdhPrefs.edit().putString("mushaf_preset", preset).apply()
     }
 
     fun completeSaukaJuz(assignmentId: String, backToSauka: String, onDone: () -> Unit) {

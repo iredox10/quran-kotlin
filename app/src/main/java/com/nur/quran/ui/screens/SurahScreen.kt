@@ -1,5 +1,6 @@
 package com.nur.quran.ui.screens
 
+import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
@@ -70,6 +71,8 @@ import com.nur.quran.data.getHizbByPage
 import com.nur.quran.data.getJuzByPage
 import com.nur.quran.ui.components.ColoredArabicText
 import com.nur.quran.ui.components.NurIcons
+import com.nur.quran.ui.components.ShareVerseDialog
+import com.nur.quran.ui.components.SettingsDrawer
 import com.nur.quran.ui.viewmodels.SurahUiState
 import com.nur.quran.ui.viewmodels.SurahViewModel
 import com.nur.quran.ui.viewmodels.TafsirUiState
@@ -81,10 +84,15 @@ val fontAmiri = FontFamily(
     Font(com.nur.quran.R.font.amiri_bold, weight = FontWeight.Bold)
 )
 
-val fontNoto = FontFamily(
-    Font(com.nur.quran.R.font.noto_regular, weight = FontWeight.Normal),
-    Font(com.nur.quran.R.font.noto_bold, weight = FontWeight.Bold)
+val fontKfgqpcHafs = FontFamily(
+    Font(com.nur.quran.R.font.kfgqpc_hafs, weight = FontWeight.Normal)
 )
+
+val fontUthmanTahaNaskh = FontFamily(
+    Font(com.nur.quran.R.font.uthman_taha_naskh, weight = FontWeight.Normal)
+)
+
+val fontNoto = FontFamily.Serif
 
 val fontScheherazade = FontFamily(
     Font(com.nur.quran.R.font.scheherazade_regular, weight = FontWeight.Normal),
@@ -161,20 +169,25 @@ fun SurahScreen(
     val translationFontScale by viewModel.translationFontScale.collectAsState()
     val isSaukaCompleting by viewModel.isSaukaCompleting.collectAsState()
     val activeTranslationId by viewModel.currentTranslationId.collectAsState()
+    val wordTapBehavior by viewModel.wordTapBehavior.collectAsState()
     val selectedArabicFontName by viewModel.selectedArabicFontName.collectAsState(initial = "Scheherazade New")
     val fontFamilyArabic = remember(selectedArabicFontName) {
         when (selectedArabicFontName) {
-            "Amiri Quran", "KFGQPC Hafs" -> fontAmiri
-            "Noto Naskh Arabic" -> fontNoto
-            "Uthman Taha Naskh", "Scheherazade New" -> fontScheherazade
+            "kfgqpc-hafs", "KFGQPC Hafs" -> fontKfgqpcHafs
+            "uthman-taha-naskh", "Uthman Taha Naskh" -> fontUthmanTahaNaskh
+            "amiri-quran", "Amiri Quran" -> fontAmiri
+            "noto-naskh-arabic", "Noto Naskh Arabic" -> fontNoto
+            "scheherazade-new", "Scheherazade New" -> fontScheherazade
             "System Default" -> fontSystemDefault
-            else -> fontScheherazade
+            else -> fontKfgqpcHafs
         }
     }
 
     var isReadingMode by remember { mutableStateOf(false) }
     var selectedWordForTooltip by remember { mutableStateOf<WordEntity?>(null) }
     var collectionVerse by remember { mutableStateOf<VerseEntity?>(null) }
+    var shareVerseDialogTarget by remember { mutableStateOf<VerseEntity?>(null) }
+    var showSettingsDrawer by remember { mutableStateOf(false) }
     var showFontSettingsDialog by remember { mutableStateOf(false) }
     var showAudioSetupDialog by remember { mutableStateOf(false) }
     var startAyahIndex by remember { mutableStateOf(0) }
@@ -302,9 +315,9 @@ fun SurahScreen(
 
                     TopBarIconBtn(
                         icon = Icons.Default.Settings,
-                        active = showFontSettingsDialog,
-                        label = "Text settings"
-                    ) { showFontSettingsDialog = true }
+                        active = showSettingsDrawer,
+                        label = "Settings"
+                    ) { showSettingsDrawer = true }
                     Spacer(modifier = Modifier.width(8.dp))
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -684,9 +697,13 @@ fun SurahScreen(
                                             viewModel.loadTafsir(verse.verseKey, chapter.id)
                                         }
                                     },
-                                    onShareClick = { viewModel.shareVerse(verse.verseKey, chapter.nameSimple) },
+                                    onShareClick = { shareVerseDialogTarget = verse },
                                     onAddToCollection = { collectionVerse = verse },
-                                    onWordClick = { word -> selectedWordForTooltip = word },
+                                    onWordClick = { word ->
+                                        if (wordTapBehavior != "none") {
+                                            selectedWordForTooltip = word
+                                        }
+                                    },
                                     onTajweedClick = { selectedTajweedRule = it },
                                     onLoadFootnote = { id -> viewModel.getFootnoteText(id) },
                                     isMemorizeModeEnabled = isMemorizeModeEnabled,
@@ -703,10 +720,29 @@ fun SurahScreen(
                                     verses = verses,
                                     wordsMap = wordsMap,
                                     isTajweedEnabled = isTajweedEnabled,
-                                    onWordClick = { word -> selectedWordForTooltip = word },
+                                    onWordClick = { word ->
+                                        if (wordTapBehavior != "none") {
+                                            selectedWordForTooltip = word
+                                        }
+                                    },
                                     onTajweedClick = { selectedTajweedRule = it },
                                     arabicFontScale = arabicFontScale,
                                     fontFamilyArabic = fontFamilyArabic
+                                )
+                            }
+                        }
+
+                        if (backToSauka != null && saukaAssignmentId != null) {
+                            item {
+                                SaukaCompletionBanner(
+                                    assignmentId = saukaAssignmentId,
+                                    backToSauka = backToSauka,
+                                    isCompleting = isSaukaCompleting,
+                                    onComplete = {
+                                        viewModel.completeSaukaJuz(saukaAssignmentId, backToSauka) {
+                                            onBackClick()
+                                        }
+                                    }
                                 )
                             }
                         }
@@ -729,6 +765,13 @@ fun SurahScreen(
                         }
                     }
                 }
+            }
+
+            if (showSettingsDrawer) {
+                SettingsDrawer(
+                    viewModel = viewModel,
+                    onDismiss = { showSettingsDrawer = false }
+                )
             }
 
             selectedWordForTooltip?.let { word ->
@@ -1656,14 +1699,15 @@ fun VerseItem(
             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                 if (isTajweedEnabled && words.any { it.textUthmaniTajweed != null }) {
                     // Build full verse as single AnnotatedString with tajweed colors
-                    val verseAnnotated = remember(words) {
+                    val verseAnnotated = remember(words, isTajweedEnabled, fontFamilyArabic, arabicFontScale) {
                         buildAnnotatedString {
                             words.forEachIndexed { wordIndex, word ->
                                 if (wordIndex > 0) append(" ")
                                 val wordStart = length
-                                val plainText = word.textUthmani ?: ""
+                                val rawText = word.textUthmani ?: ""
                                 val isEndMarker = word.charTypeName == "end"
-                                val displayText = if (isEndMarker) "\u06DD${plainText}" else plainText
+                                val plainText = rawText.replace("[\u06df\u06e0\u06ea\u06eb\u06ec\u25cc\u06dd]".toRegex(), "")
+                                val displayText = plainText
 
                                 if (!isEndMarker && word.textUthmaniTajweed != null) {
                                     val segments = TajweedProcessor.getWordTajweedSegments(
@@ -1745,13 +1789,14 @@ fun VerseItem(
                     )
                 } else {
                     // Non-tajweed: simple verse text as single AnnotatedString
-                    val verseAnnotated = remember(words) {
+                    val verseAnnotated = remember(words, fontFamilyArabic, arabicFontScale) {
                         buildAnnotatedString {
                             words.forEachIndexed { wordIndex, word ->
                                 if (wordIndex > 0) append(" ")
                                 val wordStart = length
                                 val isEndMarker = word.charTypeName == "end"
-                                val displayText = if (isEndMarker) "\u06DD${word.textUthmani ?: ""}" else (word.textUthmani ?: "")
+                                val plainText = (word.textUthmani ?: "").replace("[\u06df\u06e0\u06ea\u06eb\u06ec\u25cc\u06dd]".toRegex(), "")
+                                val displayText = plainText
                                 append(displayText)
                                 if (isEndMarker) {
                                     addStyle(
@@ -3050,3 +3095,92 @@ fun SurahTourDialog(
         shape = RoundedCornerShape(24.dp)
     )
 }
+
+// ── Sauka Group Completion Banner ───────────────────────────────────────
+@Composable
+private fun SaukaCompletionBanner(
+    assignmentId: String,
+    backToSauka: String,
+    isCompleting: Boolean,
+    onComplete: () -> Unit
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 24.dp),
+        shape = RoundedCornerShape(20.dp),
+        color = hTeal,
+        border = BorderStroke(1.5.dp, hTealSoft)
+    ) {
+        Box(
+            modifier = Modifier
+                .background(Brush.verticalGradient(listOf(hTeal, hTealMid)))
+                .padding(24.dp)
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    imageVector = NurIcons.CheckCircle2,
+                    contentDescription = null,
+                    tint = hGold,
+                    modifier = Modifier.size(44.dp)
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = "Alhamdulillah!",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    fontFamily = fontFamilyUi
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "You've reached the end of your assigned reading.",
+                    fontSize = 13.sp,
+                    color = Color.White.copy(alpha = 0.9f),
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(20.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Button(
+                        onClick = onComplete,
+                        enabled = !isCompleting,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.White)
+                    ) {
+                        if (isCompleting) {
+                            CircularProgressIndicator(modifier = Modifier.size(16.dp), color = hTeal, strokeWidth = 2.dp)
+                        } else {
+                            Icon(imageVector = NurIcons.Check, contentDescription = null, tint = hTeal, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(text = "Mark Complete", color = hTeal, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        }
+                    }
+                    OutlinedButton(
+                        onClick = {
+                            val shareMessage = "Alhamdulillah! I just completed my assigned Khatmah reading on Quran Nur: https://quran-nur.appwrite.network"
+                            val sendIntent = Intent().apply {
+                                action = Intent.ACTION_SEND
+                                putExtra(Intent.EXTRA_TEXT, shareMessage)
+                                setType("text/plain")
+                            }
+                            context.startActivity(Intent.createChooser(sendIntent, "Share Progress"))
+                        },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(14.dp),
+                        border = BorderStroke(1.5.dp, Color.White.copy(alpha = 0.6f))
+                    ) {
+                        Icon(imageVector = NurIcons.Share2, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(text = "Share", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    }
+                }
+            }
+        }
+    }
+}
+

@@ -38,11 +38,10 @@ object TajweedProcessor {
         if (html.isNullOrEmpty()) return ""
         var cleaned = html
             .replace("\u0672", "\u0670")
-            .replace("[\u06df\u06e0]".toRegex(), "")
+            .replace("[\u06df\u06e0\u06ea\u06eb\u06ec\u25cc\u06dd]".toRegex(), "")
             .replace("<rule ", "<tajweed ")
             .replace("</rule>", "</tajweed>")
             .replace("<(span|tajweed|rule)\\s+class=['\"]?end['\"]?>.*?</(span|tajweed|rule)>".toRegex(), "")
-            .replace("\u06DD", "")
         return cleaned
     }
 

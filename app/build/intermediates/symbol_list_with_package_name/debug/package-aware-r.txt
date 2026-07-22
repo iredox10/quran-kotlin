@@ -111,10 +111,12 @@ drawable notification_tile_bg
 drawable notify_panel_notification_icon_bg
 font amiri_bold
 font amiri_regular
+font kfgqpc_hafs
 font noto_bold
 font noto_regular
 font scheherazade_bold
 font scheherazade_regular
+font uthman_taha_naskh
 id accessibility_action_clickable_span
 id accessibility_custom_action_0
 id accessibility_custom_action_1

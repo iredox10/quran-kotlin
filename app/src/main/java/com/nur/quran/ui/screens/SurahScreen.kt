@@ -61,6 +61,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.core.text.HtmlCompat
 import com.nur.quran.data.db.entities.ChapterEntity
 import com.nur.quran.data.db.entities.VerseEntity
@@ -236,7 +237,10 @@ fun SurahScreen(
     var swipeTotal by remember { mutableStateOf(0f) }
     val swipeThreshold = with(androidx.compose.ui.platform.LocalDensity.current) { 60.dp.toPx() }
 
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(rememberTopAppBarState())
+
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             TopAppBar(
                 title = {
@@ -295,11 +299,7 @@ fun SurahScreen(
                         active = isDarkThemeGlobal,
                         label = "Toggle theme"
                     ) { isDarkThemeGlobal = !isDarkThemeGlobal; prefs.edit().putBoolean("is_dark_theme", isDarkThemeGlobal).apply() }
-                    TopBarIconBtn(
-                        icon = NurIcons.Info,
-                        active = false,
-                        label = "Show Guide"
-                    ) { showTour = true }
+
                     TopBarIconBtn(
                         icon = Icons.Default.Settings,
                         active = showFontSettingsDialog,
@@ -307,7 +307,11 @@ fun SurahScreen(
                     ) { showFontSettingsDialog = true }
                     Spacer(modifier = Modifier.width(8.dp))
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = hWhite)
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = glassBg,
+                    scrolledContainerColor = glassBg
+                ),
+                scrollBehavior = scrollBehavior
             )
         }
     ) { paddingValues ->

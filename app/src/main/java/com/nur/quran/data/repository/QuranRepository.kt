@@ -234,6 +234,10 @@ class QuranRepository @Inject constructor(
     // Recently Read
     fun getRecentlyReadFlow(): Flow<List<RecentlyReadEntity>> = quranDao.getRecentlyRead()
 
+    suspend fun getRecentlyReadForChapter(chapterId: Int): RecentlyReadEntity? = withContext(Dispatchers.IO) {
+        quranDao.getRecentlyReadForChapter(chapterId)
+    }
+
     suspend fun addRecentlyRead(chapterId: Int, chapterName: String, verseKey: String? = null) {
         withContext(Dispatchers.IO) {
             quranDao.upsertRecentlyRead(

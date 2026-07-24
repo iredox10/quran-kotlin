@@ -430,8 +430,23 @@ fun SurahScreen(
                     // Restore scroll position once verses are ready
                     LaunchedEffect(chapterId, verses.isNotEmpty()) {
                         if (verses.isNotEmpty()) {
-                            viewModel.scrollPositions[chapterId]?.let { (index, offset) ->
-                                listState.scrollToItem(index, offset)
+                            val inMemoryPos = viewModel.scrollPositions[chapterId]
+                            if (inMemoryPos != null) {
+                                listState.scrollToItem(inMemoryPos.first, inMemoryPos.second)
+                            } else {
+                                val recentEntry = viewModel.getRecentlyReadForChapter(chapterId)
+                                val savedVerseKey = recentEntry?.verseKey
+                                if (!savedVerseKey.isNullOrEmpty()) {
+                                    val verseIndex = verses.indexOfFirst { it.verseKey == savedVerseKey }
+                                    if (verseIndex >= 0) {
+                                        var headerOffset = 1
+                                        if (chapter.id != 1 && chapter.id != 9) {
+                                            headerOffset += 1
+                                        }
+                                        val targetListIndex = (headerOffset + verseIndex).coerceIn(0, (verses.size + headerOffset - 1).coerceAtLeast(0))
+                                        listState.scrollToItem(targetListIndex)
+                                    }
+                                }
                             }
                         }
                     }

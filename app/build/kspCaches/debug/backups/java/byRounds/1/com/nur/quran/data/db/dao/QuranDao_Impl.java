@@ -1422,6 +1422,51 @@ public final class QuranDao_Impl implements QuranDao {
   }
 
   @Override
+  public Object getRecentlyReadForChapter(final int chapterId,
+      final Continuation<? super RecentlyReadEntity> $completion) {
+    final String _sql = "SELECT * FROM recently_read WHERE chapterId = ? LIMIT 1";
+    final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 1);
+    int _argIndex = 1;
+    _statement.bindLong(_argIndex, chapterId);
+    final CancellationSignal _cancellationSignal = DBUtil.createCancellationSignal();
+    return CoroutinesRoom.execute(__db, false, _cancellationSignal, new Callable<RecentlyReadEntity>() {
+      @Override
+      @Nullable
+      public RecentlyReadEntity call() throws Exception {
+        final Cursor _cursor = DBUtil.query(__db, _statement, false, null);
+        try {
+          final int _cursorIndexOfChapterId = CursorUtil.getColumnIndexOrThrow(_cursor, "chapterId");
+          final int _cursorIndexOfChapterName = CursorUtil.getColumnIndexOrThrow(_cursor, "chapterName");
+          final int _cursorIndexOfVerseKey = CursorUtil.getColumnIndexOrThrow(_cursor, "verseKey");
+          final int _cursorIndexOfTimestamp = CursorUtil.getColumnIndexOrThrow(_cursor, "timestamp");
+          final RecentlyReadEntity _result;
+          if (_cursor.moveToFirst()) {
+            final int _tmpChapterId;
+            _tmpChapterId = _cursor.getInt(_cursorIndexOfChapterId);
+            final String _tmpChapterName;
+            _tmpChapterName = _cursor.getString(_cursorIndexOfChapterName);
+            final String _tmpVerseKey;
+            if (_cursor.isNull(_cursorIndexOfVerseKey)) {
+              _tmpVerseKey = null;
+            } else {
+              _tmpVerseKey = _cursor.getString(_cursorIndexOfVerseKey);
+            }
+            final long _tmpTimestamp;
+            _tmpTimestamp = _cursor.getLong(_cursorIndexOfTimestamp);
+            _result = new RecentlyReadEntity(_tmpChapterId,_tmpChapterName,_tmpVerseKey,_tmpTimestamp);
+          } else {
+            _result = null;
+          }
+          return _result;
+        } finally {
+          _cursor.close();
+          _statement.release();
+        }
+      }
+    }, $completion);
+  }
+
+  @Override
   public Flow<BookmarkEntity> getLatestBookmark() {
     final String _sql = "SELECT * FROM bookmarks ORDER BY timestamp DESC LIMIT 1";
     final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 0);

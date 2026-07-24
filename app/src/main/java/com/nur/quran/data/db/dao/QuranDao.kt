@@ -108,6 +108,9 @@ interface QuranDao {
     @Query("SELECT * FROM recently_read ORDER BY timestamp DESC LIMIT :limit")
     fun getRecentlyRead(limit: Int = 5): Flow<List<RecentlyReadEntity>>
 
+    @Query("SELECT * FROM recently_read WHERE chapterId = :chapterId LIMIT 1")
+    suspend fun getRecentlyReadForChapter(chapterId: Int): RecentlyReadEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertRecentlyRead(item: RecentlyReadEntity)
 

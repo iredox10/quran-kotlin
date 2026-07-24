@@ -13,6 +13,7 @@ import com.nur.quran.data.db.entities.BookmarkEntity
 import com.nur.quran.data.db.entities.ChapterEntity
 import com.nur.quran.data.db.entities.CollectionEntity
 import com.nur.quran.data.db.entities.CollectionItemEntity
+import com.nur.quran.data.db.entities.RecentlyReadEntity
 import com.nur.quran.data.db.entities.VerseEntity
 import com.nur.quran.data.db.entities.WordEntity
 import com.nur.quran.data.repository.QuranRepository
@@ -366,6 +367,10 @@ class SurahViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             repository.addRecentlyRead(currentChapterId, currentChapterName, verseKey)
         }
+    }
+
+    suspend fun getRecentlyReadForChapter(chapterId: Int): RecentlyReadEntity? {
+        return repository.getRecentlyReadForChapter(chapterId)
     }
 
     /**

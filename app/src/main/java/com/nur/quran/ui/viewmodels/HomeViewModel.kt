@@ -9,6 +9,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nur.quran.data.db.entities.BookmarkEntity
 import com.nur.quran.data.db.entities.ChapterEntity
+import com.nur.quran.data.db.entities.CollectionEntity
 import com.nur.quran.data.db.entities.ReadingSessionEntity
 import com.nur.quran.data.db.entities.RecentlyReadEntity
 import com.nur.quran.data.repository.QuranRepository
@@ -103,6 +104,15 @@ class HomeViewModel @Inject constructor(
 
     val latestBookmark: StateFlow<BookmarkEntity?> = repository.getLatestBookmarkFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    val readingSessions: StateFlow<List<ReadingSessionEntity>> = repository.getReadingSessionsFlow()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val bookmarks: StateFlow<List<BookmarkEntity>> = repository.getAllBookmarksFlow()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val collections: StateFlow<List<CollectionEntity>> = repository.getCollectionsFlow()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val stats: StateFlow<HomeStats> = repository.getReadingSessionsFlow()
         .map { sessions -> computeStats(sessions) }

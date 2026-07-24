@@ -136,19 +136,14 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         composable(Screen.Analytics.route) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(hWhite),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "Analytics",
-                                    fontSize = 20.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = hInk
-                                )
-                            }
+                            com.nur.quran.ui.screens.AnalyticsScreen(
+                                homeViewModel = homeViewModel,
+                                onOpenQuranClick = {
+                                    navController.navigate(Screen.Quran.route) {
+                                        popUpTo(Screen.Quran.route) { inclusive = true }
+                                    }
+                                }
+                            )
                         }
                         composable(Screen.Profile.route) {
                             Box(

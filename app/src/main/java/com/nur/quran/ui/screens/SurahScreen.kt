@@ -924,6 +924,17 @@ fun SurahScreen(
                 )
             }
 
+            // Share-verse modal
+            shareVerseDialogTarget?.let { verse ->
+                val state = uiState
+                val surahName = (state as? SurahUiState.Success)?.chapter?.nameSimple ?: ""
+                ShareVerseDialog(
+                    verse = verse,
+                    chapterName = surahName,
+                    onDismiss = { shareVerseDialogTarget = null }
+                )
+            }
+
             // Settings Side Drawer Overlay (matching web SettingsDrawer)
             if (showFontSettingsDialog) {
                 // Background dark scrim overlay
@@ -2309,6 +2320,8 @@ fun CollectionModal(
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = hInk,
+                            unfocusedTextColor = hInk,
                             focusedBorderColor = hGold,
                             unfocusedBorderColor = hBorderColor,
                             focusedContainerColor = hWhite,

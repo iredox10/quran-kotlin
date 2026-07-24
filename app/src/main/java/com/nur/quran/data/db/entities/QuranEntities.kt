@@ -72,7 +72,7 @@ data class WordEntity(
 
 @Entity(tableName = "bookmarks")
 data class BookmarkEntity(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    @PrimaryKey val id: Int = 1,
     val verseKey: String,
     val chapterId: Int,
     val surahName: String,

@@ -43,14 +43,14 @@ public final class QuranDatabase_Impl extends QuranDatabase {
         db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_verses_verseKey` ON `verses` (`verseKey`)");
         db.execSQL("CREATE TABLE IF NOT EXISTS `words` (`id` INTEGER NOT NULL, `verseId` INTEGER NOT NULL, `position` INTEGER NOT NULL, `textUthmani` TEXT, `textIndopak` TEXT, `textQpcHafs` TEXT, `textUthmaniTajweed` TEXT, `translation` TEXT, `transliteration` TEXT, `charTypeName` TEXT NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`verseId`) REFERENCES `verses`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )");
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_words_verseId` ON `words` (`verseId`)");
-        db.execSQL("CREATE TABLE IF NOT EXISTS `bookmarks` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `verseKey` TEXT NOT NULL, `chapterId` INTEGER NOT NULL, `surahName` TEXT NOT NULL, `timestamp` INTEGER NOT NULL)");
+        db.execSQL("CREATE TABLE IF NOT EXISTS `bookmarks` (`id` INTEGER NOT NULL, `verseKey` TEXT NOT NULL, `chapterId` INTEGER NOT NULL, `surahName` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, PRIMARY KEY(`id`))");
         db.execSQL("CREATE TABLE IF NOT EXISTS `collections` (`id` INTEGER NOT NULL, `name` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, PRIMARY KEY(`id`))");
         db.execSQL("CREATE TABLE IF NOT EXISTS `collection_items` (`collectionId` INTEGER NOT NULL, `verseKey` TEXT NOT NULL, `chapterId` INTEGER NOT NULL, `surahName` TEXT NOT NULL, `addedAt` INTEGER NOT NULL, PRIMARY KEY(`collectionId`, `verseKey`), FOREIGN KEY(`collectionId`) REFERENCES `collections`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )");
         db.execSQL("CREATE TABLE IF NOT EXISTS `api_responses` (`key` TEXT NOT NULL, `dataJson` TEXT NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`key`))");
         db.execSQL("CREATE TABLE IF NOT EXISTS `reading_sessions` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `date` TEXT NOT NULL, `duration` INTEGER NOT NULL, `type` TEXT NOT NULL, `chapterId` INTEGER, `timestamp` INTEGER NOT NULL)");
         db.execSQL("CREATE TABLE IF NOT EXISTS `recently_read` (`chapterId` INTEGER NOT NULL, `chapterName` TEXT NOT NULL, `verseKey` TEXT, `timestamp` INTEGER NOT NULL, PRIMARY KEY(`chapterId`))");
         db.execSQL("CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)");
-        db.execSQL("INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'e5bd21898858bb56d264c9808c6877a9')");
+        db.execSQL("INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'ff6ae616493265af1892530a615f9719')");
       }
 
       @Override
@@ -263,7 +263,7 @@ public final class QuranDatabase_Impl extends QuranDatabase {
         }
         return new RoomOpenHelper.ValidationResult(true, null);
       }
-    }, "e5bd21898858bb56d264c9808c6877a9", "61fc35fc34ec1e7933634f905f3efa51");
+    }, "ff6ae616493265af1892530a615f9719", "0a4ad235b43f66230b8f70e079dc4319");
     final SupportSQLiteOpenHelper.Configuration _sqliteConfig = SupportSQLiteOpenHelper.Configuration.builder(config.context).name(config.name).callback(_openCallback).build();
     final SupportSQLiteOpenHelper _helper = config.sqliteOpenHelperFactory.create(_sqliteConfig);
     return _helper;

@@ -102,8 +102,9 @@ class SurahViewModel @Inject constructor(
         hifdhPrefs.edit().putInt("reciter_id", id).apply()
     }
 
-    private val _bookmarkedVerses = MutableStateFlow<Set<String>>(emptySet())
-    val bookmarkedVerses: StateFlow<Set<String>> = _bookmarkedVerses.asStateFlow()
+    val bookmarkedVerses: StateFlow<Set<String>> = repository.getBookmarkedVerseKeysFlow()
+        .map { it.toSet() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
 
     /** All chapters, used for prev/next navigation names (web: allChapters). */
     val allChapters: StateFlow<List<ChapterEntity>> = repository.getChaptersFlow()
@@ -247,13 +248,6 @@ class SurahViewModel @Inject constructor(
     }
 
     // ── Chapter loading ─────────────────────────────────────────────────
-    init {
-        viewModelScope.launch {
-            repository.getBookmarkedVerseKeysFlow().collect { keys ->
-                _bookmarkedVerses.value = keys.toSet()
-            }
-        }
-    }
 
     private var loadChapterJob: Job? = null
 
@@ -414,15 +408,16 @@ class SurahViewModel @Inject constructor(
 
     fun toggleBookmark(verseKey: String, chapterId: Int, surahName: String) {
         viewModelScope.launch {
-            val current = _bookmarkedVerses.value
-            if (verseKey in current) {
-                repository.deleteBookmark(verseKey)
+            val isCurrentlyBookmarked = verseKey in bookmarkedVerses.value
+            if (isCurrentlyBookmarked) {
+                repository.clearBookmarks()
             } else {
-                repository.insertBookmark(
+                repository.setSingleBookmark(
                     BookmarkEntity(
                         verseKey = verseKey,
                         chapterId = chapterId,
-                        surahName = surahName
+                        surahName = surahName,
+                        timestamp = System.currentTimeMillis()
                     )
                 )
             }
@@ -430,7 +425,7 @@ class SurahViewModel @Inject constructor(
     }
 
     fun isBookmarked(verseKey: String): Boolean {
-        return verseKey in _bookmarkedVerses.value
+        return verseKey in bookmarkedVerses.value
     }
 
     fun loadTafsir(verseKey: String, chapterId: Int) {

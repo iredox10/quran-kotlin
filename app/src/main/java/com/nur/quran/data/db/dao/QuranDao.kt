@@ -60,6 +60,9 @@ interface QuranDao {
     @Query("DELETE FROM bookmarks WHERE verseKey = :verseKey")
     suspend fun deleteBookmark(verseKey: String)
 
+    @Query("DELETE FROM bookmarks")
+    suspend fun deleteAllBookmarks()
+
     // Collections
     @Query("SELECT * FROM collections ORDER BY createdAt DESC")
     fun getAllCollections(): Flow<List<CollectionEntity>>

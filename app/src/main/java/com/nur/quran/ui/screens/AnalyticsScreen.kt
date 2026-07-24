@@ -1,5 +1,6 @@
 package com.nur.quran.ui.screens
 
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -22,6 +23,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
@@ -32,6 +34,7 @@ import androidx.compose.ui.unit.sp
 import com.nur.quran.data.db.entities.ReadingSessionEntity
 import com.nur.quran.ui.components.NurIcons
 import com.nur.quran.ui.viewmodels.HomeViewModel
+import com.nur.quran.ui.viewmodels.SurahViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -45,11 +48,18 @@ data class BadgeItem(
 @Composable
 fun AnalyticsScreen(
     homeViewModel: HomeViewModel,
+    surahViewModel: SurahViewModel,
     onOpenQuranClick: () -> Unit
 ) {
+    val context = LocalContext.current
     val sessions by homeViewModel.readingSessions.collectAsState()
     val recentlyRead by homeViewModel.recentlyRead.collectAsState()
+    val bookmarks by homeViewModel.bookmarks.collectAsState()
+    val collections by homeViewModel.collections.collectAsState()
+    val chapters by surahViewModel.allChapters.collectAsState()
+
     var chartMode by remember { mutableStateOf("flow") } // "flow" or "heatmap"
+    var selectedDayTooltip by remember { mutableStateOf<String?>(null) }
 
     val todayStr = remember {
         SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
@@ -112,15 +122,17 @@ fun AnalyticsScreen(
         ((weeklyTotalMins.toFloat() / weeklyGoalMins.toFloat()) * 100f).coerceAtMost(100f).toInt()
     }
 
-    // Activity breakdown mix
+    // Activity breakdown mix (Reading, Memorizing, Focus, Listening)
     val activityMix = remember(sessions) {
         val readingMins = (sessions.filter { it.type == "reading" || it.type.isEmpty() }.sumOf { it.duration } / 60.0).toInt()
         val memorizingMins = (sessions.filter { it.type == "memorizing" }.sumOf { it.duration } / 60.0).toInt()
         val focusMins = (sessions.filter { it.type == "pomodoro" || it.type == "focus" }.sumOf { it.duration } / 60.0).toInt()
+        val listeningMins = (sessions.filter { it.type == "listening" }.sumOf { it.duration } / 60.0).toInt()
         listOf(
             Triple("Reading", readingMins, Color(0xFF10B981)),
             Triple("Memorizing", memorizingMins, Color(0xFF3B82F6)),
-            Triple("Focus", focusMins, Color(0xFF8B5CF6))
+            Triple("Focus", focusMins, Color(0xFF8B5CF6)),
+            Triple("Listening", listeningMins, Color(0xFFF59E0B))
         ).filter { it.second > 0 }
     }
 
@@ -581,7 +593,7 @@ fun AnalyticsScreen(
                         Spacer(modifier = Modifier.height(20.dp))
 
                         if (chartMode == "flow") {
-                            // 7-Day Bar Chart Canvas
+                            // 7-Day Line/Bar Chart with Curve Path & Heights
                             val maxMins = maxOf(last7DaysData.maxOfOrNull { it.second } ?: 1, 30)
                             Row(
                                 modifier = Modifier
@@ -633,6 +645,23 @@ fun AnalyticsScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
+                                selectedDayTooltip?.let { tooltip ->
+                                    Surface(
+                                        shape = RoundedCornerShape(12.dp),
+                                        color = hGoldSoft,
+                                        border = BorderStroke(1.dp, hGold.copy(alpha = 0.4f)),
+                                        modifier = Modifier.padding(bottom = 12.dp)
+                                    ) {
+                                        Text(
+                                            text = tooltip,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            fontFamily = fontFamilyMono,
+                                            color = hInk,
+                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                                        )
+                                    }
+                                }
                                 Row(
                                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                                     modifier = Modifier.padding(vertical = 12.dp)
@@ -640,7 +669,7 @@ fun AnalyticsScreen(
                                     val weeks = heatmap35Days.chunked(7)
                                     weeks.forEach { weekDays ->
                                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                            weekDays.forEach { (_, mins) ->
+                                            weekDays.forEach { (dStr, mins) ->
                                                 val tileBg = when {
                                                     mins <= 0 -> hBorderColor.copy(alpha = 0.5f)
                                                     mins < 10 -> hGoldSoft
@@ -652,6 +681,10 @@ fun AnalyticsScreen(
                                                         .size(24.dp)
                                                         .clip(RoundedCornerShape(6.dp))
                                                         .background(tileBg)
+                                                        .clickable {
+                                                            selectedDayTooltip = if (mins > 0) "$dStr • ${mins} mins read" else "$dStr • No activity"
+                                                            Toast.makeText(context, selectedDayTooltip, Toast.LENGTH_SHORT).show()
+                                                        }
                                                 )
                                             }
                                         }
@@ -833,7 +866,7 @@ fun AnalyticsScreen(
                 }
             }
 
-            // Recent Activity Section
+            // Recent Activity Section (Resolved with Chapter Names!)
             if (sessions.isNotEmpty()) {
                 item {
                     Text(
@@ -847,6 +880,18 @@ fun AnalyticsScreen(
                 }
 
                 items(sessions.take(5)) { session ->
+                    val surahName = remember(session.chapterId, chapters) {
+                        if (session.chapterId != null) {
+                            chapters.find { c -> c.id == session.chapterId }?.nameSimple ?: "Surah ${session.chapterId}"
+                        } else null
+                    }
+                    val sessionTitle = when (session.type) {
+                        "memorizing" -> if (surahName != null) "Memorization - $surahName" else "Memorization Session"
+                        "pomodoro", "focus" -> if (surahName != null) "Focus - $surahName" else "Focus Session"
+                        "listening" -> if (surahName != null) "Listening - $surahName" else "Listening Session"
+                        else -> if (surahName != null) "Reading - $surahName" else "Reading Session"
+                    }
+
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
@@ -872,6 +917,7 @@ fun AnalyticsScreen(
                                             when (session.type) {
                                                 "memorizing" -> Color(0x1A3B82F6)
                                                 "pomodoro", "focus" -> Color(0x1A8B5CF6)
+                                                "listening" -> Color(0x1AF59E0B)
                                                 else -> Color(0x1A10B981)
                                             }
                                         ),
@@ -881,12 +927,14 @@ fun AnalyticsScreen(
                                         imageVector = when (session.type) {
                                             "memorizing" -> NurIcons.Brain
                                             "pomodoro", "focus" -> NurIcons.Award
+                                            "listening" -> NurIcons.Volume2
                                             else -> NurIcons.BookOpen
                                         },
                                         contentDescription = null,
                                         tint = when (session.type) {
                                             "memorizing" -> Color(0xFF3B82F6)
                                             "pomodoro", "focus" -> Color(0xFF8B5CF6)
+                                            "listening" -> Color(0xFFF59E0B)
                                             else -> Color(0xFF10B981)
                                         },
                                         modifier = Modifier.size(18.dp)
@@ -894,11 +942,7 @@ fun AnalyticsScreen(
                                 }
                                 Column {
                                     Text(
-                                        text = when (session.type) {
-                                            "memorizing" -> "Memorization Session"
-                                            "pomodoro", "focus" -> "Focus Session"
-                                            else -> "Reading Session"
-                                        },
+                                        text = sessionTitle,
                                         fontSize = 14.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = hInk
@@ -916,6 +960,116 @@ fun AnalyticsScreen(
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = hInk
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Bottom Quick Stats Row Cards (3 Cards matching web Progress.jsx lines 538-557!)
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    // Bookmarks Card
+                    Card(
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = hSurface),
+                        border = BorderStroke(1.dp, hBoneDark)
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(hGoldLight),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(NurIcons.BookmarkFilled, contentDescription = null, tint = hGold, modifier = Modifier.size(14.dp))
+                            }
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Text(
+                                text = "${bookmarks.size}",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = hInk
+                            )
+                            Text(
+                                text = "BOOKMARKS",
+                                fontSize = 9.sp,
+                                fontFamily = fontFamilyMono,
+                                fontWeight = FontWeight.Bold,
+                                color = hInkMuted
+                            )
+                        }
+                    }
+
+                    // Collections Card
+                    Card(
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = hSurface),
+                        border = BorderStroke(1.dp, hBoneDark)
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(hGoldLight),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(NurIcons.BookOpen, contentDescription = null, tint = hGold, modifier = Modifier.size(14.dp))
+                            }
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Text(
+                                text = "${collections.size}",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = hInk
+                            )
+                            Text(
+                                text = "COLLECTIONS",
+                                fontSize = 9.sp,
+                                fontFamily = fontFamilyMono,
+                                fontWeight = FontWeight.Bold,
+                                color = hInkMuted
+                            )
+                        }
+                    }
+
+                    // Recent Surahs Card
+                    Card(
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = hSurface),
+                        border = BorderStroke(1.dp, hBoneDark)
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(hGoldLight),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(NurIcons.Brain, contentDescription = null, tint = hGold, modifier = Modifier.size(14.dp))
+                            }
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Text(
+                                text = "${recentlyRead.size}",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = hInk
+                            )
+                            Text(
+                                text = "RECENT SURAHS",
+                                fontSize = 9.sp,
+                                fontFamily = fontFamilyMono,
+                                fontWeight = FontWeight.Bold,
+                                color = hInkMuted
                             )
                         }
                     }

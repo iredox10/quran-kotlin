@@ -63,6 +63,8 @@ public final class QuranDao_Impl implements QuranDao {
 
   private final SharedSQLiteStatement __preparedStmtOfDeleteBookmark;
 
+  private final SharedSQLiteStatement __preparedStmtOfDeleteAllBookmarks;
+
   private final SharedSQLiteStatement __preparedStmtOfDeleteCollection;
 
   private final SharedSQLiteStatement __preparedStmtOfDeleteCollectionItem;
@@ -190,7 +192,7 @@ public final class QuranDao_Impl implements QuranDao {
       @Override
       @NonNull
       protected String createQuery() {
-        return "INSERT OR REPLACE INTO `bookmarks` (`id`,`verseKey`,`chapterId`,`surahName`,`timestamp`) VALUES (nullif(?, 0),?,?,?,?)";
+        return "INSERT OR REPLACE INTO `bookmarks` (`id`,`verseKey`,`chapterId`,`surahName`,`timestamp`) VALUES (?,?,?,?,?)";
       }
 
       @Override
@@ -297,6 +299,14 @@ public final class QuranDao_Impl implements QuranDao {
       @NonNull
       public String createQuery() {
         final String _query = "DELETE FROM bookmarks WHERE verseKey = ?";
+        return _query;
+      }
+    };
+    this.__preparedStmtOfDeleteAllBookmarks = new SharedSQLiteStatement(__db) {
+      @Override
+      @NonNull
+      public String createQuery() {
+        final String _query = "DELETE FROM bookmarks";
         return _query;
       }
     };
@@ -540,6 +550,29 @@ public final class QuranDao_Impl implements QuranDao {
           }
         } finally {
           __preparedStmtOfDeleteBookmark.release(_stmt);
+        }
+      }
+    }, $completion);
+  }
+
+  @Override
+  public Object deleteAllBookmarks(final Continuation<? super Unit> $completion) {
+    return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
+      @Override
+      @NonNull
+      public Unit call() throws Exception {
+        final SupportSQLiteStatement _stmt = __preparedStmtOfDeleteAllBookmarks.acquire();
+        try {
+          __db.beginTransaction();
+          try {
+            _stmt.executeUpdateDelete();
+            __db.setTransactionSuccessful();
+            return Unit.INSTANCE;
+          } finally {
+            __db.endTransaction();
+          }
+        } finally {
+          __preparedStmtOfDeleteAllBookmarks.release(_stmt);
         }
       }
     }, $completion);

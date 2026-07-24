@@ -203,7 +203,17 @@ class QuranRepository @Inject constructor(
     fun getBookmarkedVerseKeysFlow(): Flow<List<String>> = quranDao.getBookmarkedVerseKeys()
 
     suspend fun insertBookmark(bookmark: BookmarkEntity) {
+        quranDao.deleteAllBookmarks()
         quranDao.insertBookmark(bookmark)
+    }
+
+    suspend fun setSingleBookmark(bookmark: BookmarkEntity) {
+        quranDao.deleteAllBookmarks()
+        quranDao.insertBookmark(bookmark)
+    }
+
+    suspend fun clearBookmarks() {
+        quranDao.deleteAllBookmarks()
     }
 
     suspend fun deleteBookmark(verseKey: String) {

@@ -138,6 +138,7 @@ class MainActivity : ComponentActivity() {
                         composable(Screen.Analytics.route) {
                             com.nur.quran.ui.screens.AnalyticsScreen(
                                 homeViewModel = homeViewModel,
+                                surahViewModel = surahViewModel,
                                 onOpenQuranClick = {
                                     navController.navigate(Screen.Quran.route) {
                                         popUpTo(Screen.Quran.route) { inclusive = true }
@@ -146,19 +147,12 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         composable(Screen.Profile.route) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(hWhite),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "Profile",
-                                    fontSize = 20.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = hInk
-                                )
-                            }
+                            com.nur.quran.ui.screens.ProfileScreen(
+                                homeViewModel = homeViewModel,
+                                surahViewModel = surahViewModel,
+                                plannerViewModel = plannerViewModel,
+                                onNavigateToScreen = { route -> navController.navigate(route) }
+                            )
                         }
                         composable(Screen.SurahDetail.route) { backStackEntry ->
                             val chapterId = backStackEntry.arguments?.getString("chapterId")?.toIntOrNull() ?: 1

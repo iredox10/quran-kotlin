@@ -72,12 +72,14 @@ import com.nur.quran.data.getJuzByPage
 import com.nur.quran.ui.components.ColoredArabicText
 import com.nur.quran.ui.components.NurIcons
 import com.nur.quran.ui.components.ShareVerseDialog
+import com.nur.quran.ui.components.AutoScrollerBar
 import com.nur.quran.ui.components.SettingsDrawer
 import com.nur.quran.ui.viewmodels.SurahUiState
 import com.nur.quran.ui.viewmodels.SurahViewModel
 import com.nur.quran.ui.viewmodels.TafsirUiState
 import com.nur.quran.utils.TajweedProcessor
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 import androidx.compose.ui.text.font.FontLoadingStrategy
 
@@ -226,15 +228,38 @@ fun SurahScreen(
     }
 
     val listState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
 
-    LaunchedEffect(isAutoScrollActive) {
-        if (isAutoScrollActive) {
-            try {
-                while (true) {
-                    listState.scrollBy(2f)
-                    delay(40)
+    var isAutoScrollPaused by remember { mutableStateOf(false) }
+    var autoScrollSpeed by remember { mutableIntStateOf(3) }
+    val speedMap = remember { mapOf(1 to 12f, 2 to 24f, 3 to 45f, 4 to 90f, 5 to 150f, 6 to 270f, 7 to 450f) }
+
+    LaunchedEffect(isAutoScrollActive, isAutoScrollPaused, autoScrollSpeed) {
+        if (isAutoScrollActive && !isAutoScrollPaused) {
+            val pxPerSec = speedMap[autoScrollSpeed] ?: 45f
+            var lastFrameTimeNanos = 0L
+            var remainder = 0f
+
+            while (isAutoScrollActive && !isAutoScrollPaused) {
+                withFrameNanos { frameTimeNanos ->
+                    if (lastFrameTimeNanos != 0L) {
+                        val deltaSec = (frameTimeNanos - lastFrameTimeNanos) / 1_000_000_000f
+                        val nextDistance = remainder + pxPerSec * deltaSec
+                        val wholePixels = nextDistance.toInt()
+                        remainder = nextDistance - wholePixels
+                        if (wholePixels > 0) {
+                            if (listState.canScrollForward) {
+                                coroutineScope.launch {
+                                    listState.scrollBy(wholePixels.toFloat())
+                                }
+                            } else {
+                                isAutoScrollActive = false
+                                isAutoScrollPaused = false
+                            }
+                        }
+                    }
+                    lastFrameTimeNanos = frameTimeNanos
                 }
-            } catch (_: Exception) {
             }
         }
     }
@@ -828,6 +853,28 @@ fun SurahScreen(
                     }
                 )
             }
+
+            AutoScrollerBar(
+                isAutoScrollActive = isAutoScrollActive,
+                isAutoScrollPaused = isAutoScrollPaused,
+                autoScrollSpeed = autoScrollSpeed,
+                onPauseToggle = { isAutoScrollPaused = !isAutoScrollPaused },
+                onSpeedChange = { autoScrollSpeed = it },
+                onJumpUp = {
+                    coroutineScope.launch {
+                        listState.scrollBy(-300f)
+                    }
+                },
+                onJumpDown = {
+                    coroutineScope.launch {
+                        listState.scrollBy(300f)
+                    }
+                },
+                onClose = {
+                    isAutoScrollActive = false
+                    isAutoScrollPaused = false
+                }
+            )
 
             // Save-to-Collection modal
             collectionVerse?.let { verse ->

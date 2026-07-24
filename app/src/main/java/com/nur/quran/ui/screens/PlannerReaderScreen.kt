@@ -28,12 +28,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nur.quran.data.db.entities.VerseEntity
 import com.nur.quran.data.planner.PlannerEngine
+import com.nur.quran.ui.components.AutoScrollerBar
+import androidx.compose.foundation.gestures.scrollBy
 import com.nur.quran.ui.components.NurIcons
 import com.nur.quran.ui.viewmodels.PlannerViewModel
 import com.nur.quran.ui.viewmodels.SurahUiState
 import com.nur.quran.ui.viewmodels.SurahViewModel
 import com.nur.quran.ui.viewmodels.TafsirUiState
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.math.abs
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.geometry.Offset
@@ -93,7 +96,43 @@ fun PlannerReaderScreen(
 
     // ── Focus mode: auto-hide header during scroll ───────────────────
     val lazyListState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
     var headerVisible by remember { mutableStateOf(true) }
+    var isAutoScrollActive by remember { mutableStateOf(false) }
+    var isAutoScrollPaused by remember { mutableStateOf(false) }
+    var autoScrollSpeed by remember { mutableIntStateOf(3) }
+    val speedMap = remember { mapOf(1 to 12f, 2 to 24f, 3 to 45f, 4 to 90f, 5 to 150f, 6 to 270f, 7 to 450f) }
+
+    LaunchedEffect(isAutoScrollActive, isAutoScrollPaused, autoScrollSpeed) {
+        if (isAutoScrollActive && !isAutoScrollPaused) {
+            val pxPerSec = speedMap[autoScrollSpeed] ?: 45f
+            var lastFrameTimeNanos = 0L
+            var remainder = 0f
+
+            while (isAutoScrollActive && !isAutoScrollPaused) {
+                withFrameNanos { frameTimeNanos ->
+                    if (lastFrameTimeNanos != 0L) {
+                        val deltaSec = (frameTimeNanos - lastFrameTimeNanos) / 1_000_000_000f
+                        val nextDistance = remainder + pxPerSec * deltaSec
+                        val wholePixels = nextDistance.toInt()
+                        remainder = nextDistance - wholePixels
+                        if (wholePixels > 0) {
+                            if (lazyListState.canScrollForward) {
+                                coroutineScope.launch {
+                                    lazyListState.scrollBy(wholePixels.toFloat())
+                                }
+                            } else {
+                                isAutoScrollActive = false
+                                isAutoScrollPaused = false
+                            }
+                        }
+                    }
+                    lastFrameTimeNanos = frameTimeNanos
+                }
+            }
+        }
+    }
+
     LaunchedEffect(lazyListState.isScrollInProgress) {
         if (lazyListState.isScrollInProgress) {
             headerVisible = false
@@ -190,6 +229,21 @@ fun PlannerReaderScreen(
                         }
 
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            // Auto-scroll toggle button
+                            IconButton(
+                                onClick = {
+                                    isAutoScrollActive = !isAutoScrollActive
+                                    if (!isAutoScrollActive) isAutoScrollPaused = false
+                                },
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(
+                                    imageVector = NurIcons.Rows3,
+                                    contentDescription = "Auto-scroll",
+                                    tint = if (isAutoScrollActive) hGold else hInk
+                                )
+                            }
+
                             // Audio Play/Pause Button
                             IconButton(
                                 onClick = {
@@ -639,6 +693,28 @@ fun PlannerReaderScreen(
                 ) {
                     Text("Save & Return", color = Color.White, fontWeight = FontWeight.Bold)
                 }
+            }
+        )
+
+        AutoScrollerBar(
+            isAutoScrollActive = isAutoScrollActive,
+            isAutoScrollPaused = isAutoScrollPaused,
+            autoScrollSpeed = autoScrollSpeed,
+            onPauseToggle = { isAutoScrollPaused = !isAutoScrollPaused },
+            onSpeedChange = { autoScrollSpeed = it },
+            onJumpUp = {
+                coroutineScope.launch {
+                    lazyListState.scrollBy(-300f)
+                }
+            },
+            onJumpDown = {
+                coroutineScope.launch {
+                    lazyListState.scrollBy(300f)
+                }
+            },
+            onClose = {
+                isAutoScrollActive = false
+                isAutoScrollPaused = false
             }
         )
     }

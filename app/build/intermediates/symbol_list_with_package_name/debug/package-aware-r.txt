@@ -87,6 +87,7 @@ drawable ic_call_answer_video
 drawable ic_call_answer_video_low
 drawable ic_call_decline
 drawable ic_call_decline_low
+drawable ic_logo
 drawable media3_icon_circular_play
 drawable media3_notification_pause
 drawable media3_notification_play

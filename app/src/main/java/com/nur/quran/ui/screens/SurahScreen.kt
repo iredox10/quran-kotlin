@@ -92,7 +92,10 @@ val fontUthmanTahaNaskh = FontFamily(
     Font(com.nur.quran.R.font.uthman_taha_naskh, weight = FontWeight.Normal)
 )
 
-val fontNoto = FontFamily.Serif
+val fontNoto = FontFamily(
+    Font(com.nur.quran.R.font.noto_regular, weight = FontWeight.Normal),
+    Font(com.nur.quran.R.font.noto_bold, weight = FontWeight.Bold)
+)
 
 val fontScheherazade = FontFamily(
     Font(com.nur.quran.R.font.scheherazade_regular, weight = FontWeight.Normal),
@@ -100,6 +103,22 @@ val fontScheherazade = FontFamily(
 )
 
 val fontSystemDefault = FontFamily.Default
+
+fun getArabicFontFamily(name: String): FontFamily {
+    return try {
+        when (name.trim().lowercase()) {
+            "kfgqpc-hafs", "kfgqpc hafs" -> fontKfgqpcHafs
+            "uthman-taha-naskh", "uthman taha naskh" -> fontUthmanTahaNaskh
+            "amiri-quran", "amiri quran" -> fontAmiri
+            "noto-naskh-arabic", "noto naskh arabic" -> fontNoto
+            "scheherazade-new", "scheherazade new" -> fontScheherazade
+            "system default" -> fontSystemDefault
+            else -> fontKfgqpcHafs
+        }
+    } catch (e: Throwable) {
+        FontFamily.Default
+    }
+}
 
 // Colors matching the web app CSS variables (index.css) with dynamic dark mode mapping
 var isDarkThemeGlobal by mutableStateOf(false)
@@ -172,15 +191,7 @@ fun SurahScreen(
     val wordTapBehavior by viewModel.wordTapBehavior.collectAsState()
     val selectedArabicFontName by viewModel.selectedArabicFontName.collectAsState(initial = "Scheherazade New")
     val fontFamilyArabic = remember(selectedArabicFontName) {
-        when (selectedArabicFontName) {
-            "kfgqpc-hafs", "KFGQPC Hafs" -> fontKfgqpcHafs
-            "uthman-taha-naskh", "Uthman Taha Naskh" -> fontUthmanTahaNaskh
-            "amiri-quran", "Amiri Quran" -> fontAmiri
-            "noto-naskh-arabic", "Noto Naskh Arabic" -> fontNoto
-            "scheherazade-new", "Scheherazade New" -> fontScheherazade
-            "System Default" -> fontSystemDefault
-            else -> fontKfgqpcHafs
-        }
+        getArabicFontFamily(selectedArabicFontName)
     }
 
     var isReadingMode by remember { mutableStateOf(false) }
@@ -1790,22 +1801,28 @@ fun VerseItem(
                     )
                 } else {
                     // Non-tajweed: simple verse text as single AnnotatedString
-                    val verseAnnotated = remember(words, fontFamilyArabic, arabicFontScale, isDarkThemeGlobal) {
+                    val verseAnnotated = remember(verse, words, fontFamilyArabic, arabicFontScale, isDarkThemeGlobal) {
                         buildAnnotatedString {
-                            words.forEachIndexed { wordIndex, word ->
-                                if (wordIndex > 0) append(" ")
-                                val wordStart = length
-                                val isEndMarker = word.charTypeName == "end"
-                                val plainText = (word.textUthmani ?: "").replace("[\u06df\u06e0\u06ea\u06eb\u06ec\u25cc\u06dd]".toRegex(), "")
-                                val displayText = plainText
-                                append(displayText)
-                                if (isEndMarker) {
-                                    addStyle(
-                                        SpanStyle(color = hGold),
-                                        wordStart, length
-                                    )
+                            if (words.isNotEmpty()) {
+                                words.forEachIndexed { wordIndex, word ->
+                                    if (wordIndex > 0) append(" ")
+                                    val wordStart = length
+                                    val isEndMarker = word.charTypeName == "end"
+                                    val plainText = (word.textUthmani ?: "").replace("[\u06df\u06e0\u06ea\u06eb\u06ec\u25cc\u06dd]".toRegex(), "")
+                                    val displayText = plainText
+                                    append(displayText)
+                                    if (isEndMarker) {
+                                        addStyle(
+                                            SpanStyle(color = hGold),
+                                            wordStart, length
+                                        )
+                                    }
+                                    addStringAnnotation("WORD_INDEX", wordIndex.toString(), wordStart, length)
                                 }
-                                addStringAnnotation("WORD_INDEX", wordIndex.toString(), wordStart, length)
+                            } else {
+                                val rawText = verse.textUthmani ?: verse.textQpcHafs ?: verse.textIndopak ?: ""
+                                val plainText = rawText.replace("[\u06df\u06e0\u06ea\u06eb\u06ec\u25cc\u06dd]".toRegex(), "")
+                                append(plainText)
                             }
                         }
                     }
@@ -2389,20 +2406,22 @@ fun ContinuousReadingView(
                 }
 
                 if (isTajweedEnabled && allPageWords.any { it.textUthmaniTajweed != null }) {
-                    val pageAnnotated = remember(allPageWords) {
+                    val pageAnnotated = remember(allPageWords, isTajweedEnabled, fontFamilyArabic, arabicFontScale, isDarkThemeGlobal) {
                         buildAnnotatedString {
                             allPageWords.forEachIndexed { wordIndex, word ->
                                 if (wordIndex > 0) append(" ")
                                 val wordStart = length
-                                val plainText = word.textUthmani ?: ""
+                                val rawText = word.textUthmani ?: ""
                                 val isEndMarker = word.charTypeName == "end"
-                                val displayText = if (isEndMarker) "\u06DD${plainText}" else plainText
+                                val plainText = rawText.replace("[\u06df\u06e0\u06ea\u06eb\u06ec\u25cc\u06dd]".toRegex(), "")
+                                val displayText = plainText
 
                                 if (!isEndMarker && word.textUthmaniTajweed != null) {
+                                    val defaultTextColorHex = if (isDarkThemeGlobal) "#EFECE4" else "#2B3F3C"
                                     val segments = TajweedProcessor.getWordTajweedSegments(
                                         plainText = plainText,
                                         tajweedHtml = word.textUthmaniTajweed,
-                                        defaultColor = "#2B3F3C"
+                                        defaultColor = defaultTextColorHex
                                     )
                                     if (segments.isNotEmpty()) {
                                         val sorted = segments.sortedBy { it.start }
@@ -2473,13 +2492,14 @@ fun ContinuousReadingView(
                         }
                     )
                 } else {
-                    val pageAnnotated = remember(allPageWords) {
+                    val pageAnnotated = remember(allPageWords, fontFamilyArabic, arabicFontScale, isDarkThemeGlobal) {
                         buildAnnotatedString {
                             allPageWords.forEachIndexed { wordIndex, word ->
                                 if (wordIndex > 0) append(" ")
                                 val wordStart = length
                                 val isEndMarker = word.charTypeName == "end"
-                                val displayText = if (isEndMarker) "\u06DD${word.textUthmani ?: ""}" else (word.textUthmani ?: "")
+                                val plainText = (word.textUthmani ?: "").replace("[\u06df\u06e0\u06ea\u06eb\u06ec\u25cc\u06dd]".toRegex(), "")
+                                val displayText = plainText
                                 append(displayText)
                                 if (isEndMarker) {
                                     addStyle(

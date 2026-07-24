@@ -1,0 +1,718 @@
+package com.nur.quran.ui.screens
+
+import android.content.Context
+import androidx.compose.animation.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.nur.quran.data.db.entities.VerseEntity
+import com.nur.quran.data.planner.PlannerEngine
+import com.nur.quran.ui.components.NurIcons
+import com.nur.quran.ui.viewmodels.PlannerViewModel
+import com.nur.quran.ui.viewmodels.SurahUiState
+import com.nur.quran.ui.viewmodels.SurahViewModel
+import com.nur.quran.ui.viewmodels.TafsirUiState
+import kotlinx.coroutines.delay
+import kotlin.math.abs
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.drawscope.withTransform
+import kotlin.random.Random
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+
+@Composable
+fun PlannerReaderScreen(
+    dayNumber: Int,
+    plannerViewModel: PlannerViewModel,
+    surahViewModel: SurahViewModel,
+    onBack: () -> Unit
+) {
+    val activePlan by plannerViewModel.activePlan.collectAsState()
+    val assignment = remember(activePlan, dayNumber) {
+        activePlan?.assignments?.find { it.dayNumber == dayNumber }
+    }
+
+    if (assignment == null) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("Assignment not found", color = hInkMuted)
+        }
+        return
+    }
+
+    val pageStart = assignment.pageStart
+    val pageEnd = assignment.pageEnd
+
+    // ── Auto-resume: start at first unread page ──────────────────────
+    val resumePage = remember(activePlan, assignment) {
+        activePlan?.let { PlannerEngine.getAssignmentResumePageNumber(it, assignment) } ?: pageStart
+    }
+    var currentPage by remember { mutableStateOf(resumePage) }
+
+    val existingReflection = activePlan?.assignmentReflections?.get(dayNumber) ?: ""
+    var reflectionNote by remember(existingReflection) { mutableStateOf(existingReflection) }
+    var showCelebrationDialog by remember { mutableStateOf(false) }
+
+    val selectedArabicFontName by surahViewModel.selectedArabicFontName.collectAsState(initial = "Scheherazade New")
+    val fontFamilyArabic = remember(selectedArabicFontName) {
+        getArabicFontFamily(selectedArabicFontName)
+    }
+
+    val uiState by surahViewModel.uiState.collectAsState()
+    val tafsirState by surahViewModel.tafsirState.collectAsState()
+    val chapters by plannerViewModel.chapters.collectAsState()
+    val playingVerseKey by surahViewModel.playingVerseKey.collectAsState()
+    val isPlaying by surahViewModel.isPlaying.collectAsState()
+    var verseToShare by remember { mutableStateOf<VerseEntity?>(null) }
+
+    // ── Focus mode: auto-hide header during scroll ───────────────────
+    val lazyListState = rememberLazyListState()
+    var headerVisible by remember { mutableStateOf(true) }
+    LaunchedEffect(lazyListState.isScrollInProgress) {
+        if (lazyListState.isScrollInProgress) {
+            headerVisible = false
+        } else {
+            delay(800)
+            headerVisible = true
+        }
+    }
+
+    // ── Session timer ────────────────────────────────────────────────
+    var timerSeconds by remember { mutableIntStateOf(0) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(1000)
+            timerSeconds++
+        }
+    }
+
+    // Fetch verses for page
+    LaunchedEffect(currentPage) {
+        surahViewModel.loadPageVerses(currentPage)
+    }
+
+    // Save scroll position & mark page read
+    DisposableEffect(currentPage) {
+        plannerViewModel.markPageRead(dayNumber, currentPage)
+        onDispose {}
+    }
+
+    val isDayCompleted = activePlan?.completedDays?.contains(dayNumber) == true
+
+    // ── Completion progress tracking ────────────────────────────────
+    val totalPages = (pageEnd - pageStart + 1)
+    val readPages = activePlan?.assignmentReadPages?.get(dayNumber)?.size ?: 0
+    val progressPct = if (totalPages > 0) (readPages * 100 / totalPages) else 0
+
+    // ── Takeaway verse for celebration ──────────────────────────────
+    var takeawayVerse by remember { mutableStateOf<VerseEntity?>(null) }
+
+    // ── Swipe gesture handler ────────────────────────────────────────
+    var accumulatedDrag by remember { mutableFloatStateOf(0f) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(hCream)
+            .pointerInput(currentPage, pageStart, pageEnd) {
+                detectHorizontalDragGestures(
+                    onDragEnd = {
+                        if (accumulatedDrag > 100f && currentPage > pageStart) {
+                            currentPage--
+                        } else if (accumulatedDrag < -100f && currentPage < pageEnd) {
+                            currentPage++
+                        }
+                        accumulatedDrag = 0f
+                    },
+                    onDragCancel = { accumulatedDrag = 0f },
+                    onHorizontalDrag = { _, dragAmount ->
+                        accumulatedDrag += dragAmount
+                    }
+                )
+            }
+    ) {
+        // ── Header Bar (auto-hides on scroll) ────────────────────────
+        AnimatedVisibility(
+            visible = headerVisible,
+            enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut()
+        ) {
+            Surface(
+                color = hCream,
+                tonalElevation = 2.dp,
+                border = androidx.compose.foundation.BorderStroke(1.dp, hBoneDark)
+            ) {
+                Column {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = onBack, modifier = Modifier.size(36.dp)) {
+                                Icon(imageVector = NurIcons.ArrowLeft, contentDescription = "Back", tint = hInk)
+                            }
+
+                            Spacer(modifier = Modifier.width(8.dp))
+
+                            Column {
+                                Text("DAY $dayNumber ASSIGNMENT", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = hGold, fontFamily = fontFamilyMono, letterSpacing = 1.sp)
+                                Text(assignment.title, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = hInk, fontFamily = fontFamilyUi)
+                            }
+                        }
+
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            // Audio Play/Pause Button
+                            IconButton(
+                                onClick = {
+                                    val state = uiState
+                                    val verses = (state as? SurahUiState.Success)?.verses ?: emptyList()
+                                    if (verses.isNotEmpty()) {
+                                        surahViewModel.playPauseChapter(verses, verses.first().chapterId)
+                                    }
+                                },
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (isPlaying) NurIcons.PauseFilled else NurIcons.PlayFilled,
+                                    contentDescription = if (isPlaying) "Pause Audio" else "Play Audio",
+                                    tint = hTeal
+                                )
+                            }
+
+                            Column(horizontalAlignment = Alignment.End) {
+                                Surface(
+                                    shape = RoundedCornerShape(100),
+                                    color = if (isDayCompleted) hGreen.copy(alpha = 0.15f) else hGoldSoft
+                                ) {
+                                    Text(
+                                        text = "Page $currentPage of $pageEnd",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isDayCompleted) hGreen else hGold,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                        fontFamily = fontFamilyMono
+                                    )
+                                }
+                                // Session timer
+                                Text(
+                                    text = formatSessionTime(timerSeconds),
+                                    fontSize = 9.sp,
+                                    color = hInkMuted,
+                                    fontFamily = fontFamilyMono,
+                                    modifier = Modifier.padding(top = 2.dp, end = 4.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    // Progress bar under header
+                    LinearProgressIndicator(
+                        progress = progressPct / 100f,
+                        modifier = Modifier.fillMaxWidth().height(2.dp),
+                        color = hGold,
+                        trackColor = hBone
+                    )
+                }
+            }
+        }
+
+        // Verses View Canvas
+        Box(modifier = Modifier.weight(1f)) {
+            when (val state = uiState) {
+                is SurahUiState.Loading -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = hGold)
+                    }
+                }
+                is SurahUiState.Error -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(state.message, color = hInkMuted)
+                    }
+                }
+                is SurahUiState.Success -> {
+                    val verses = state.verses
+
+                    // Store a verse for takeaway
+                    LaunchedEffect(verses) {
+                        if (verses.isNotEmpty() && takeawayVerse == null) {
+                            takeawayVerse = verses.random()
+                        }
+                    }
+
+                    LazyColumn(
+                        state = lazyListState,
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 24.dp),
+                        verticalArrangement = Arrangement.spacedBy(28.dp)
+                    ) {
+                        item {
+                            // Renewal of Intention Banner
+                            Surface(
+                                shape = RoundedCornerShape(16.dp),
+                                color = hGoldSoft,
+                                border = androidx.compose.foundation.BorderStroke(1.dp, hGold.copy(alpha = 0.3f)),
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(14.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(imageVector = NurIcons.Sparkles, contentDescription = null, tint = hGold, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Text("Pause to renew your intention for Allah's sake before reading.", fontSize = 12.sp, color = hInk, fontFamily = fontFamilyUi)
+                                }
+                            }
+                        }
+
+                        // Swipe hint (shown on first page)
+                        if (currentPage == pageStart) {
+                            item {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(imageVector = NurIcons.ArrowLeft, contentDescription = null, tint = hInkMuted.copy(alpha = 0.5f), modifier = Modifier.size(12.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Swipe to turn pages", fontSize = 10.sp, color = hInkMuted.copy(alpha = 0.5f), fontFamily = fontFamilyMono)
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Icon(imageVector = NurIcons.ArrowRight, contentDescription = null, tint = hInkMuted.copy(alpha = 0.5f), modifier = Modifier.size(12.dp))
+                                }
+                            }
+                        }
+
+                        itemsIndexed(verses, key = { _, verse -> verse.id }) { index, verse ->
+                            val prevVerse = if (index > 0) verses[index - 1] else null
+                            val showPageDivider = verse.pageNumber != 0 && (prevVerse == null || prevVerse.pageNumber != verse.pageNumber)
+
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                if (showPageDivider) {
+                                    WebPageDivider(pageNumber = verse.pageNumber)
+                                }
+
+                                if (verse.verseNumber == 1) {
+                                    val chapter = chapters.find { it.id == verse.chapterId }
+                                    if (chapter != null) {
+                                        SurahHeader(
+                                            chapter = chapter,
+                                            versesStartPage = verse.pageNumber,
+                                            isPlaying = isPlaying,
+                                            isDownloaded = true,
+                                            isDownloading = false,
+                                            onPlayClick = { surahViewModel.playPauseChapter(verses, chapter.id) },
+                                            onDownloadClick = {}
+                                        )
+                                    }
+                                    if (verse.chapterId != 1 && verse.chapterId != 9) {
+                                        Box(
+                                            modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp, horizontal = 16.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = "بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ",
+                                                fontSize = 28.sp,
+                                                fontFamily = fontFamilyArabic,
+                                                color = hGold,
+                                                textAlign = TextAlign.Center
+                                            )
+                                        }
+                                    }
+                                }
+
+                                WebVerseDivider()
+
+                                VerseItem(
+                                    verse = verse,
+                                    words = emptyList(),
+                                    isTranslationEnabled = true,
+                                    isTajweedEnabled = false,
+                                    isCurrentlyPlaying = playingVerseKey == verse.verseKey && isPlaying,
+                                    isBookmarked = false,
+                                    isTafsirOpen = (tafsirState as? TafsirUiState.Visible)?.verseKey == verse.verseKey,
+                                    onPlayClick = { surahViewModel.playVerse(verses, verse.chapterId, verse) },
+                                    onBookmarkClick = {},
+                                    onTafsirClick = {
+                                        if ((tafsirState as? TafsirUiState.Visible)?.verseKey == verse.verseKey) {
+                                            surahViewModel.dismissTafsir()
+                                        } else {
+                                            surahViewModel.loadTafsir(verse.verseKey, verse.chapterId)
+                                        }
+                                    },
+                                    onShareClick = { verseToShare = verse },
+                                    onAddToCollection = {},
+                                    onWordClick = {},
+                                    onLoadFootnote = { id -> surahViewModel.getFootnoteText(id) },
+                                    arabicFontScale = 1.0f,
+                                    translationFontScale = 1.0f,
+                                    fontFamilyArabic = fontFamilyArabic
+                                )
+                            }
+                        }
+
+                        // Day Reflection Note Section
+                        item {
+                            Card(
+                                shape = RoundedCornerShape(18.dp),
+                                colors = CardDefaults.cardColors(containerColor = hCream),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, hBoneDark),
+                                modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 20.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    Text("DAY $dayNumber REFLECTION & NOTES", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = hGold, fontFamily = fontFamilyMono, letterSpacing = 1.sp)
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    OutlinedTextField(
+                                        value = reflectionNote,
+                                        onValueChange = {
+                                            reflectionNote = it
+                                            plannerViewModel.saveReflection(dayNumber, it)
+                                        },
+                                        placeholder = { Text("Write your thoughts or reflections for today's reading...", fontSize = 13.sp, color = hInkMuted) },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        minLines = 2
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Tafsir Bottom Sheet
+            when (val tState = tafsirState) {
+                is TafsirUiState.Loading -> TafsirLoadingOverlay()
+                is TafsirUiState.Visible -> TafsirBottomSheet(
+                    verseNumber = tState.verseKey,
+                    text = tState.text,
+                    onDismiss = { surahViewModel.dismissTafsir() }
+                )
+                is TafsirUiState.Error -> TafsirErrorOverlay(
+                    message = tState.message,
+                    onDismiss = { surahViewModel.dismissTafsir() }
+                )
+                TafsirUiState.Hidden -> {}
+            }
+        }
+
+        // Bottom Dock Bar: Navigation between pages
+        Surface(
+            color = hWhite,
+            tonalElevation = 6.dp,
+            border = androidx.compose.foundation.BorderStroke(1.5.dp, hBoneDark),
+            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Prev Page Button
+                Button(
+                    onClick = { if (currentPage > pageStart) currentPage-- },
+                    enabled = currentPage > pageStart,
+                    colors = ButtonDefaults.buttonColors(containerColor = hCream),
+                    shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
+                ) {
+                    Icon(imageVector = NurIcons.ArrowLeft, contentDescription = "Prev", tint = if (currentPage > pageStart) hInk else hInkMuted, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Prev", fontSize = 12.sp, color = if (currentPage > pageStart) hInk else hInkMuted, fontWeight = FontWeight.Bold)
+                }
+
+                // Complete Assignment / Next Page Button
+                if (currentPage < pageEnd) {
+                    Button(
+                        onClick = { currentPage++ },
+                        colors = ButtonDefaults.buttonColors(containerColor = hGold),
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp)
+                    ) {
+                        Text("Next Page", fontSize = 13.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Icon(imageVector = NurIcons.ArrowRight, contentDescription = "Next", tint = Color.White, modifier = Modifier.size(16.dp))
+                    }
+                } else {
+                    Button(
+                        onClick = {
+                            plannerViewModel.toggleAssignmentCompleted(dayNumber)
+                            showCelebrationDialog = true
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = hGreen),
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp)
+                    ) {
+                        Icon(imageVector = NurIcons.CheckCircle2, contentDescription = "Done", tint = Color.White, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Finish Day Assignment", fontSize = 13.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+
+    // Share Verse Dialog
+    if (verseToShare != null) {
+        val shareChapter = chapters.find { it.id == verseToShare!!.chapterId }
+        com.nur.quran.ui.components.ShareVerseDialog(
+            verse = verseToShare!!,
+            chapterName = shareChapter?.nameSimple ?: "Surah ${verseToShare!!.chapterId}",
+            onDismiss = { verseToShare = null }
+        )
+    }
+
+    // ── Celebration Dialog with Takeaway Verse ────────────────────────
+    if (showCelebrationDialog) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            ConfettiOverlay()
+        }
+        AlertDialog(
+            onDismissRequest = {
+                showCelebrationDialog = false
+                onBack()
+            },
+            containerColor = hCream,
+            shape = RoundedCornerShape(24.dp),
+            title = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("🎉", fontSize = 42.sp)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "Alhamdulillah!",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = hGreen,
+                        fontFamily = fontFamilyUi,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            },
+            text = {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        "You have completed Day $dayNumber! May Allah bless your journey with the Quran.",
+                        fontSize = 14.sp,
+                        color = hInk,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    // Session time summary
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = hBone,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("⏱ ", fontSize = 14.sp)
+                            Text(
+                                "Session: ${formatSessionTime(timerSeconds)}",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = hInkMid,
+                                fontFamily = fontFamilyMono
+                            )
+                        }
+                    }
+
+                    // Takeaway of the Day verse card
+                    takeawayVerse?.let { verse ->
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = hGoldSoft,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, hGold.copy(alpha = 0.3f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    "TAKEAWAY OF THE DAY",
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = hGold,
+                                    fontFamily = fontFamilyMono,
+                                    letterSpacing = 1.sp
+                                )
+                                Spacer(modifier = Modifier.height(10.dp))
+
+                                val arabicText = verse.textUthmani ?: verse.textQpcHafs ?: ""
+                                if (arabicText.isNotBlank()) {
+                                    Text(
+                                        text = arabicText.replace(Regex("[\u06df\u06e0\u06ea\u06eb\u06ec\u25cc\u06dd]"), ""),
+                                        fontSize = 20.sp,
+                                        fontFamily = fontFamilyArabic,
+                                        color = hInk,
+                                        textAlign = TextAlign.Center,
+                                        lineHeight = 36.sp,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+
+                                if (!verse.translation.isNullOrBlank()) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = verse.translation,
+                                        fontSize = 13.sp,
+                                        color = hInkMid,
+                                        fontFamily = fontFamilyBody,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "— ${verse.verseKey}",
+                                    fontSize = 11.sp,
+                                    color = hInkMuted,
+                                    fontFamily = fontFamilyMono
+                                )
+                            }
+                        }
+                    }
+
+                    // Reflection quick-save
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedTextField(
+                        value = reflectionNote,
+                        onValueChange = {
+                            reflectionNote = it
+                            plannerViewModel.saveReflection(dayNumber, it)
+                        },
+                        placeholder = { Text("Daily reflection...", fontSize = 13.sp, color = hInkMuted) },
+                        label = { Text("Reflection", fontSize = 11.sp, color = hGold) },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 2,
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showCelebrationDialog = false
+                        onBack()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = hGreen),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Save & Return", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            }
+        )
+    }
+}
+
+// ── Helper: Format session time ──────────────────────────────────────────
+private fun formatSessionTime(seconds: Int): String {
+    val mins = seconds / 60
+    val secs = seconds % 60
+    return if (mins > 0) "${mins}m ${secs}s" else "${secs}s"
+}
+
+@Composable
+fun ConfettiOverlay() {
+    val colors = listOf(
+        Color(0xFFC8A951), // hGold
+        Color(0xFF2D958E), // hTeal
+        Color(0xFF22C55E), // hGreen
+        Color.White,
+        Color(0xFFEF4444)  // Red
+    )
+
+    class Particle {
+        var x = -1f
+        var y = -1f
+        var size = Random.nextFloat() * 20f + 10f
+        var color = colors.random()
+        var speed = Random.nextFloat() * 10f + 5f
+        var drift = Random.nextFloat() * 4f - 2f
+        var rotation = Random.nextFloat() * 360f
+        var rotationSpeed = Random.nextFloat() * 10f - 5f
+        var initialized = false
+    }
+
+    val particles = remember { List(50) { Particle() } }
+    
+    val infiniteTransition = rememberInfiniteTransition(label = "confetti")
+    val time by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "tick"
+    )
+
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        val tick = time // force recompose
+        particles.forEach { p ->
+            if (!p.initialized) {
+                p.x = Random.nextFloat() * size.width
+                p.y = -Random.nextFloat() * size.height * 0.5f - 50f
+                p.initialized = true
+            }
+            p.y += p.speed
+            p.x += p.drift
+            p.rotation += p.rotationSpeed
+            
+            if (p.y > size.height + 50f) {
+                p.y = -50f
+                p.x = Random.nextFloat() * size.width
+            }
+            
+            withTransform({
+                translate(left = p.x, top = p.y)
+                rotate(degrees = p.rotation)
+            }) {
+                drawRect(
+                    color = p.color,
+                    topLeft = Offset(-p.size / 2, -p.size / 2),
+                    size = Size(p.size, p.size)
+                )
+            }
+        }
+    }
+}

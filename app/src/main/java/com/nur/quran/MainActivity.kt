@@ -38,6 +38,7 @@ import com.nur.quran.ui.screens.HomeScreen
 import com.nur.quran.ui.screens.SurahScreen
 import com.nur.quran.ui.viewmodels.HomeViewModel
 import com.nur.quran.ui.viewmodels.SurahViewModel
+import com.nur.quran.ui.viewmodels.PlannerViewModel
 import com.nur.quran.ui.components.NurIcons
 import dagger.hilt.android.AndroidEntryPoint
 import com.nur.quran.ui.screens.*
@@ -49,6 +50,7 @@ class MainActivity : ComponentActivity() {
 
     private val homeViewModel: HomeViewModel by viewModels()
     private val surahViewModel: SurahViewModel by viewModels()
+    private val plannerViewModel: PlannerViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -82,6 +84,7 @@ class MainActivity : ComponentActivity() {
                         composable(Screen.Quran.route) {
                             HomeScreen(
                                 viewModel = homeViewModel,
+                                surahViewModel = surahViewModel,
                                 onChapterClick = { chapterId ->
                                     navController.navigate(Screen.SurahDetail.createRoute(chapterId))
                                 },
@@ -97,34 +100,40 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         composable(Screen.Memorize.route) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(hWhite),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "Memorize",
-                                    fontSize = 20.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = hInk
-                                )
-                            }
+                            MemorizeScreen(
+                                homeViewModel = homeViewModel,
+                                surahViewModel = surahViewModel,
+                                onSurahClick = { chapterId ->
+                                    navController.navigate(Screen.MemorizeDetail.createRoute(chapterId))
+                                }
+                            )
+                        }
+                        composable(Screen.MemorizeDetail.route) { backStackEntry ->
+                            val chapterId = backStackEntry.arguments?.getString("chapterId")?.toIntOrNull() ?: 1
+                            HifdhReaderScreen(
+                                surahViewModel = surahViewModel,
+                                chapterId = chapterId,
+                                onBackClick = { navController.popBackStack() }
+                            )
                         }
                         composable(Screen.Planner.route) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(hWhite),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "Planner",
-                                    fontSize = 20.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = hInk
-                                )
-                            }
+                            PlannerScreen(
+                                homeViewModel = homeViewModel,
+                                surahViewModel = surahViewModel,
+                                plannerViewModel = plannerViewModel,
+                                onReadAssignment = { dayNumber ->
+                                    navController.navigate(Screen.PlannerReaderDetail.createRoute(dayNumber))
+                                }
+                            )
+                        }
+                        composable(Screen.PlannerReaderDetail.route) { backStackEntry ->
+                            val dayNumber = backStackEntry.arguments?.getString("dayNumber")?.toIntOrNull() ?: 1
+                            PlannerReaderScreen(
+                                dayNumber = dayNumber,
+                                plannerViewModel = plannerViewModel,
+                                surahViewModel = surahViewModel,
+                                onBack = { navController.popBackStack() }
+                            )
                         }
                         composable(Screen.Analytics.route) {
                             Box(

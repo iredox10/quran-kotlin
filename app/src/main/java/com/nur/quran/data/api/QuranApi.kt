@@ -94,6 +94,9 @@ data class ApiVerse(
     val verse_key: String,
     val page_number: Int,
     val juz_number: Int,
+    val text_uthmani: String? = null,
+    val text_indopak: String? = null,
+    val text_qpc_hafs: String? = null,
     val words: List<ApiWord>?,
     val translations: List<ApiTranslation>?,
     val audio: ApiAudio?

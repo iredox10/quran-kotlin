@@ -292,6 +292,25 @@ object NurIcons {
         "M22 7 13.5 15.5 8.5 10.5 2 17",
         "M16 7h6v6")
     }
+
+    val Award: ImageVector by lazy {
+        lucideIcon("Award",
+        "M 12 15 a 6 6 0 1 0 0 -12 a 6 6 0 1 0 0 12",
+        "M8.21 13.89 7 23l5-3 5 3-1.21-9.12")
+    }
+
+    val Settings: ImageVector by lazy {
+        lucideIcon("Settings",
+        "M 12.22 2 h -0.44 a 2 2 0 0 0 -2 1.4 L 9.4 4.8 a 2 2 0 0 1 -1.4 1.2 L 6.2 6.4 a 2 2 0 0 0 -1.9 1.1 L 3.86 9.3 a 2 2 0 0 0 .4 2.3 l 1.1 1.1 a 2 2 0 0 1 0 2.8 l -1.1 1.1 a 2 2 0 0 0 -.4 2.3 l .44 1.8 a 2 2 0 0 0 1.9 1.1 l 1.8 .4 a 2 2 0 0 1 1.4 1.2 l .38 1.4 a 2 2 0 0 0 2 1.4 h .44 a 2 2 0 0 0 2 -1.4 l .38 -1.4 a 2 2 0 0 1 1.4 -1.2 l 1.8 -.4 a 2 2 0 0 0 1.9 -1.1 l .44 -1.8 a 2 2 0 0 0 -.4 -2.3 l -1.1 -1.1 a 2 2 0 0 1 0 -2.8 l 1.1 -1.1 a 2 2 0 0 0 .4 -2.3 l -.44 -1.8 a 2 2 0 0 0 -1.9 -1.1 l -1.8 -.4 a 2 2 0 0 1 -1.4 -1.2 l -.38 -1.4 a 2 2 0 0 0 -2 -1.4 Z",
+        "M 9 12 a 3 3 0 1 0 6 0 a 3 3 0 1 0 -6 0")
+    }
+
+    val AlertTriangle: ImageVector by lazy {
+        lucideIcon("AlertTriangle",
+        "M 10.29 3.86 L 1.82 18 a 2 2 0 0 0 1.71 3 h 16.94 a 2 2 0 0 0 1.71 -3 L 13.71 3.86 a 2 2 0 0 0 -3.42 0 z",
+        "M 12 9 v 4",
+        "M 12 17 h .01")
+    }
 }
 
 private fun lucideIcon(name: String, vararg pathData: String): ImageVector {

@@ -77,6 +77,48 @@ class QuranRepository @Inject constructor(
     // Verses by Chapter
     fun getVersesByChapterFlow(chapterId: Int): Flow<List<VerseEntity>> = quranDao.getVersesByChapter(chapterId)
 
+    fun getVersesByPageFlow(pageNumber: Int): Flow<List<VerseEntity>> = quranDao.getVersesByPage(pageNumber)
+
+    suspend fun getVersesByPage(pageNumber: Int): List<VerseEntity> = withContext(Dispatchers.IO) {
+        var list = quranDao.getVersesByPage(pageNumber).firstOrNull()
+        if (list.isNullOrEmpty() || list.any { it.textUthmani.isNullOrBlank() }) {
+            val response = quranApi.getVersesByPage(
+                pageNumber = pageNumber,
+                translations = "131",
+                fields = "text_uthmani,text_indopak,text_qpc_hafs",
+                wordFields = "text_uthmani,text_indopak,text_qpc_hafs,text_uthmani_tajweed,translation,transliteration",
+                perPage = 50
+            )
+            val entities = response.verses.map { apiVerse ->
+                val wordsUthmani = apiVerse.words?.joinToString(" ") { it.text_uthmani ?: "" }?.trim() ?: ""
+                val wordsIndopak = apiVerse.words?.joinToString(" ") { it.text_indopak ?: "" }?.trim() ?: ""
+                val wordsQpcHafs = apiVerse.words?.joinToString(" ") { it.text_qpc_hafs ?: "" }?.trim() ?: ""
+
+                val uthmani = if (wordsUthmani.isNotBlank()) wordsUthmani else (apiVerse.text_uthmani ?: "")
+                val indopak = if (wordsIndopak.isNotBlank()) wordsIndopak else (apiVerse.text_indopak ?: "")
+                val qpcHafs = if (wordsQpcHafs.isNotBlank()) wordsQpcHafs else (apiVerse.text_qpc_hafs ?: "")
+
+                VerseEntity(
+                    id = apiVerse.id,
+                    chapterId = apiVerse.verse_key.split(":")[0].toIntOrNull() ?: 1,
+                    verseNumber = apiVerse.verse_number,
+                    verseKey = apiVerse.verse_key,
+                    textUthmani = if (uthmani.isNotBlank()) uthmani else (apiVerse.words?.joinToString(" ") { it.text_uthmani_tajweed ?: "" } ?: ""),
+                    textIndopak = indopak,
+                    textQpcHafs = qpcHafs,
+                    pageNumber = apiVerse.page_number ?: pageNumber,
+                    juzNumber = apiVerse.juz_number ?: 1,
+                    translation = apiVerse.translations?.firstOrNull()?.text
+                )
+            }
+            if (entities.isNotEmpty()) {
+                quranDao.insertVerses(entities)
+                list = entities
+            }
+        }
+        list ?: emptyList()
+    }
+
     suspend fun refreshVersesByChapter(chapterId: Int, translationId: Int) = withContext(Dispatchers.IO) {
         val response = quranApi.getVersesByChapter(
             chapterId = chapterId,
@@ -224,6 +266,76 @@ class QuranRepository @Inject constructor(
                     surahName = surahName
                 )
             )
+        }
+    }
+
+    // ── Planner ────────────────────────────────────────────────────────
+    suspend fun getActivePlan(): com.nur.quran.data.planner.ReadingPlan? = withContext(Dispatchers.IO) {
+        val entry = quranDao.getCacheEntry("planner_active_plan")
+        if (entry != null && entry.dataJson.isNotBlank()) {
+            try {
+                gson.fromJson(entry.dataJson, com.nur.quran.data.planner.ReadingPlan::class.java)
+            } catch (e: Exception) {
+                null
+            }
+        } else null
+    }
+
+    suspend fun saveActivePlan(plan: com.nur.quran.data.planner.ReadingPlan?) = withContext(Dispatchers.IO) {
+        if (plan != null) {
+            val json = gson.toJson(plan)
+            quranDao.insertCacheEntry(ApiResponseCacheEntity("planner_active_plan", json))
+        } else {
+            quranDao.insertCacheEntry(ApiResponseCacheEntity("planner_active_plan", ""))
+        }
+    }
+
+    suspend fun getArchivedPlans(): List<com.nur.quran.data.planner.ReadingPlan> = withContext(Dispatchers.IO) {
+        val entry = quranDao.getCacheEntry("planner_archived_plans")
+        if (entry != null && entry.dataJson.isNotBlank()) {
+            try {
+                val type = object : TypeToken<List<com.nur.quran.data.planner.ReadingPlan>>() {}.type
+                gson.fromJson<List<com.nur.quran.data.planner.ReadingPlan>>(entry.dataJson, type) ?: emptyList()
+            } catch (e: Exception) {
+                emptyList()
+            }
+        } else emptyList()
+    }
+
+    suspend fun saveArchivedPlans(plans: List<com.nur.quran.data.planner.ReadingPlan>) = withContext(Dispatchers.IO) {
+        val json = gson.toJson(plans)
+        quranDao.insertCacheEntry(ApiResponseCacheEntity("planner_archived_plans", json))
+    }
+
+    suspend fun getAllPlans(): List<com.nur.quran.data.planner.ReadingPlan> = withContext(Dispatchers.IO) {
+        val entry = quranDao.getCacheEntry("planner_all_plans")
+        if (entry != null && entry.dataJson.isNotBlank()) {
+            try {
+                val type = object : TypeToken<List<com.nur.quran.data.planner.ReadingPlan>>() {}.type
+                gson.fromJson<List<com.nur.quran.data.planner.ReadingPlan>>(entry.dataJson, type) ?: emptyList()
+            } catch (e: Exception) {
+                emptyList()
+            }
+        } else emptyList()
+    }
+
+    suspend fun saveAllPlans(plans: List<com.nur.quran.data.planner.ReadingPlan>) = withContext(Dispatchers.IO) {
+        val json = gson.toJson(plans)
+        quranDao.insertCacheEntry(ApiResponseCacheEntity("planner_all_plans", json))
+    }
+
+    suspend fun getActivePlannerId(): String? = withContext(Dispatchers.IO) {
+        val entry = quranDao.getCacheEntry("planner_active_id")
+        if (entry != null && entry.dataJson.isNotBlank()) {
+            entry.dataJson
+        } else null
+    }
+
+    suspend fun saveActivePlannerId(id: String?) = withContext(Dispatchers.IO) {
+        if (id != null) {
+            quranDao.insertCacheEntry(ApiResponseCacheEntity("planner_active_id", id))
+        } else {
+            quranDao.insertCacheEntry(ApiResponseCacheEntity("planner_active_id", ""))
         }
     }
 }

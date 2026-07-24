@@ -1,9 +1,5 @@
 [
     {
-        "merged": "com.nur.quran.app-merged_res-63:/font_uthman_taha_naskh.ttf.flat",
-        "source": "com.nur.quran.app-main-65:/font/uthman_taha_naskh.ttf"
-    },
-    {
         "merged": "/home/iredox/.gradle/daemon/8.5/com.nur.quran.app-merged_res-63:/font_amiri_regular.ttf.flat",
         "source": "/home/iredox/.gradle/daemon/8.5/com.nur.quran.app-main-65:/font/amiri_regular.ttf"
     },
@@ -16,8 +12,16 @@
         "source": "/home/iredox/.gradle/daemon/8.5/com.nur.quran.app-main-65:/font/scheherazade_bold.ttf"
     },
     {
-        "merged": "com.nur.quran.app-merged_res-63:/font_kfgqpc_hafs.ttf.flat",
-        "source": "com.nur.quran.app-main-65:/font/kfgqpc_hafs.ttf"
+        "merged": "com.nur.quran.app-merged_res-63:/drawable_ic_logo.png.flat",
+        "source": "com.nur.quran.app-main-65:/drawable/ic_logo.png"
+    },
+    {
+        "merged": "/home/iredox/.gradle/daemon/8.5/com.nur.quran.app-merged_res-63:/font_uthman_taha_naskh.ttf.flat",
+        "source": "/home/iredox/.gradle/daemon/8.5/com.nur.quran.app-main-65:/font/uthman_taha_naskh.ttf"
+    },
+    {
+        "merged": "/home/iredox/.gradle/daemon/8.5/com.nur.quran.app-merged_res-63:/font_kfgqpc_hafs.ttf.flat",
+        "source": "/home/iredox/.gradle/daemon/8.5/com.nur.quran.app-main-65:/font/kfgqpc_hafs.ttf"
     },
     {
         "merged": "/home/iredox/.gradle/daemon/8.5/com.nur.quran.app-merged_res-63:/font_scheherazade_regular.ttf.flat",

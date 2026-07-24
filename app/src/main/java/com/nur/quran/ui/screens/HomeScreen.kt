@@ -48,6 +48,7 @@ import com.nur.quran.ui.components.ShareCardType
 import com.nur.quran.ui.viewmodels.HomeStats
 import com.nur.quran.ui.viewmodels.HomeUiState
 import com.nur.quran.ui.viewmodels.HomeViewModel
+import com.nur.quran.ui.viewmodels.SurahViewModel
 import com.nur.quran.ui.viewmodels.OnboardingState
 import com.nur.quran.ui.viewmodels.SaukaGoal
 import androidx.compose.runtime.getValue
@@ -57,39 +58,11 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-// ── Google Fonts Setup ──────────────────────────────────────────────────
-private val provider = GoogleFont.Provider(
-    providerAuthority = "com.google.android.gms.fonts",
-    providerPackage = "com.google.android.gms",
-    certificates = R.array.com_google_android_gms_fonts_certs
-)
-
-private val cormorantGaramondFont = GoogleFont("Cormorant Garamond")
-private val piazzollaFont = GoogleFont("Piazzolla")
-private val geistMonoFont = GoogleFont("Geist Mono")
-private val scheherazadeNewFont = GoogleFont("Scheherazade New")
-
-val fontFamilyUi = FontFamily(
-    Font(googleFont = cormorantGaramondFont, fontProvider = provider, weight = FontWeight.Normal),
-    Font(googleFont = cormorantGaramondFont, fontProvider = provider, weight = FontWeight.Bold),
-    Font(googleFont = cormorantGaramondFont, fontProvider = provider, weight = FontWeight.SemiBold)
-)
-
-val fontFamilyBody = FontFamily(
-    Font(googleFont = piazzollaFont, fontProvider = provider, weight = FontWeight.Normal),
-    Font(googleFont = piazzollaFont, fontProvider = provider, weight = FontWeight.Bold)
-)
-
-val fontFamilyMono = FontFamily(
-    Font(googleFont = geistMonoFont, fontProvider = provider, weight = FontWeight.Normal),
-    Font(googleFont = geistMonoFont, fontProvider = provider, weight = FontWeight.Bold),
-    Font(googleFont = geistMonoFont, fontProvider = provider, weight = FontWeight.Medium)
-)
-
-val fontFamilyArabic = FontFamily(
-    Font(googleFont = scheherazadeNewFont, fontProvider = provider, weight = FontWeight.Normal),
-    Font(googleFont = scheherazadeNewFont, fontProvider = provider, weight = FontWeight.Bold)
-)
+// ── Local & System Fonts Setup ──────────────────────────────────────────────
+val fontFamilyUi = FontFamily.Serif
+val fontFamilyBody = FontFamily.Default
+val fontFamilyMono = FontFamily.Monospace
+val fontFamilyArabic = fontScheherazade
 
 // ── Curated Verses of the Day (identical to the web app) ────────────────
 private val DAILY_VERSES = listOf(
@@ -129,6 +102,7 @@ private const val SHARE_DESCRIPTION =
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
+    surahViewModel: SurahViewModel? = null,
     onChapterClick: (Int) -> Unit,
     onPageClick: (Int) -> Unit,
     onNavigateToSauka: (() -> Unit)? = null,
@@ -146,6 +120,7 @@ fun HomeScreen(
     val context = LocalContext.current
 
     var shareDialogState by remember { mutableStateOf<ShareCardType?>(null) }
+    var showSettingsDrawer by remember { mutableStateOf(false) }
     val greeting = remember { getGreeting() }
     val dailyVerse = remember { getDailyVerse() }
     val todayDate = remember {
@@ -172,53 +147,66 @@ fun HomeScreen(
         )
     }
 
-    when (val state = uiState) {
-        is HomeUiState.Loading -> {
-            // Web replaces the whole page with a centered spinner while loading
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(hWhite)
-                    .padding(top = 80.dp),
-                contentAlignment = Alignment.TopCenter
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    CircularProgressIndicator(
-                        color = hTeal,
-                        trackColor = hBoneDark,
-                        strokeWidth = 3.dp,
-                        modifier = Modifier.size(36.dp)
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(text = "Loading...", color = hInkMuted, fontSize = 14.sp)
-                }
-            }
-        }
-        is HomeUiState.Error -> {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(hWhite)
-                    .padding(32.dp),
-                contentAlignment = Alignment.TopCenter
-            ) {
-                Text(
-                    text = "Error fetching data. Please try again later.",
-                    color = hInkMuted,
-                    fontSize = 14.sp,
-                    fontStyle = FontStyle.Italic,
-                    textAlign = TextAlign.Center
-                )
-            }
-        }
-        is HomeUiState.Success -> {
-            val chapters = state.chapters
-            val lastRead = recentlyRead.firstOrNull()
-            val browseItems = remember(browseMode, chapters, searchQuery) {
-                filterBrowseItems(buildBrowseItems(browseMode, chapters), searchQuery)
-            }
+    Column(modifier = Modifier.fillMaxSize().background(hWhite)) {
+        // Top Header matching Web App Layout.jsx header
+        WebTopNavbar(
+            title = "Quran Nur",
+            onThemeToggle = {
+                isDarkThemeGlobal = !isDarkThemeGlobal
+                context.getSharedPreferences("Settings", Context.MODE_PRIVATE)
+                    .edit().putBoolean("is_dark_theme", isDarkThemeGlobal).apply()
+            },
+            onSettingsClick = { showSettingsDrawer = true }
+        )
 
-            AnimatedVisibility(
+        Box(modifier = Modifier.weight(1f)) {
+            when (val state = uiState) {
+                is HomeUiState.Loading -> {
+                    // Web replaces the whole page with a centered spinner while loading
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(hWhite)
+                            .padding(top = 80.dp),
+                        contentAlignment = Alignment.TopCenter
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator(
+                                color = hTeal,
+                                trackColor = hBoneDark,
+                                strokeWidth = 3.dp,
+                                modifier = Modifier.size(36.dp)
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(text = "Loading...", color = hInkMuted, fontSize = 14.sp)
+                        }
+                    }
+                }
+                is HomeUiState.Error -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(hWhite)
+                            .padding(32.dp),
+                        contentAlignment = Alignment.TopCenter
+                    ) {
+                        Text(
+                            text = "Error fetching data. Please try again later.",
+                            color = hInkMuted,
+                            fontSize = 14.sp,
+                            fontStyle = FontStyle.Italic,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+                is HomeUiState.Success -> {
+                    val chapters = state.chapters
+                    val lastRead = recentlyRead.firstOrNull()
+                    val browseItems = remember(browseMode, chapters, searchQuery) {
+                        filterBrowseItems(buildBrowseItems(browseMode, chapters), searchQuery)
+                    }
+
+            androidx.compose.animation.AnimatedVisibility(
                 visible = visible,
                 enter = fadeIn() + slideInVertically(initialOffsetY = { 20 })
             ) {
@@ -622,6 +610,112 @@ fun HomeScreen(
                     item { Spacer(modifier = Modifier.height(96.dp)) }
                 }
             }
+        }
+    }
+    }
+}
+
+    if (showSettingsDrawer && surahViewModel != null) {
+        com.nur.quran.ui.components.SettingsDrawer(
+            viewModel = surahViewModel,
+            onDismiss = { showSettingsDrawer = false }
+        )
+    }
+}
+
+// ── Web Top Navbar (matching Web App Layout.jsx header) ──────────────────
+@Composable
+fun WebTopNavbar(
+    title: String = "Quran Nur",
+    subTitle: String? = null,
+    onThemeToggle: () -> Unit,
+    onSettingsClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(52.dp),
+        color = hCream.copy(alpha = 0.95f),
+        shadowElevation = 0.dp
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Left Brand Logo & Title
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    androidx.compose.foundation.Image(
+                        painter = androidx.compose.ui.res.painterResource(id = com.nur.quran.R.drawable.ic_logo),
+                        contentDescription = "Quran Nur Logo",
+                        modifier = Modifier.size(28.dp).clip(RoundedCornerShape(8.dp))
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = title,
+                        fontFamily = fontFamilyUi,
+                        fontSize = 19.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = hInk
+                    )
+                    if (!subTitle.isNullOrEmpty()) {
+                        Text(
+                            text = " / ",
+                            fontSize = 12.sp,
+                            color = hInkMuted
+                        )
+                        Text(
+                            text = subTitle,
+                            fontFamily = fontFamilyMono,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = hInkMid
+                        )
+                    }
+                }
+
+                // Right Action Buttons (Theme Toggle + Settings Gear)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    // Theme Toggle Button (Sun/Moon)
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable { onThemeToggle() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (isDarkThemeGlobal) NurIcons.Sun else NurIcons.Moon,
+                            contentDescription = "Toggle Theme",
+                            tint = hInkMuted,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+
+                    // Settings Button (Gear)
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable { onSettingsClick() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = NurIcons.Settings,
+                            contentDescription = "Settings",
+                            tint = hInkMuted,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+            Divider(color = hBoneDark.copy(alpha = 0.5f), thickness = 1.dp)
         }
     }
 }

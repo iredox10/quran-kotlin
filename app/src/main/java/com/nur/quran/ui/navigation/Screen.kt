@@ -17,4 +17,7 @@ sealed class Screen(val route: String, val label: String) {
     object PageDetail : Screen("page/{pageNumber}", "Page") {
         fun createRoute(pageNumber: Int) = "page/$pageNumber"
     }
+    object PlannerReaderDetail : Screen("planner_reader/{dayNumber}", "Planner Reader") {
+        fun createRoute(dayNumber: Int) = "planner_reader/$dayNumber"
+    }
 }

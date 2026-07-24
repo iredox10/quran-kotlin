@@ -3,6 +3,7 @@ local
 array com_google_android_gms_fonts_certs
 array com_google_android_gms_fonts_certs_dev
 array com_google_android_gms_fonts_certs_prod
+drawable ic_logo
 font amiri_bold
 font amiri_regular
 font kfgqpc_hafs

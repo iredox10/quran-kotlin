@@ -110,3 +110,8 @@ fun getJuzByPage(page: Int): DivisionStart =
 
 fun getHizbByPage(page: Int): DivisionStart =
     HIZB_STARTS.lastOrNull { page >= it.pageNumber } ?: HIZB_STARTS.first()
+
+data class PageGroup(val id: Int, val pageNumber: Int)
+
+val PAGE_GROUPS = (1..604).map { PageGroup(it, it) }
+

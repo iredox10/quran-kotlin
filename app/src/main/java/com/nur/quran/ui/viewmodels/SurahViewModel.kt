@@ -30,7 +30,7 @@ sealed interface SurahUiState {
     data class Success(
         val chapter: ChapterEntity,
         val verses: List<VerseEntity>,
-        val wordsMap: Map<Int, List<WordEntity>>,
+        val wordsMap: Map<Int, List<WordEntity>> = emptyMap(),
         val tajweedMap: Map<String, String> = emptyMap()
     ) : SurahUiState
     data class Error(val message: String) : SurahUiState
@@ -277,6 +277,21 @@ class SurahViewModel @Inject constructor(
         }
     }
 
+    fun loadPageVerses(pageNumber: Int) {
+        viewModelScope.launch {
+            _uiState.value = SurahUiState.Loading
+            try {
+                val verses = repository.getVersesByPage(pageNumber)
+                val chapterId = verses.firstOrNull()?.chapterId ?: 1
+                val chapter = repository.getChaptersFlow().firstOrNull()?.find { it.id == chapterId }
+                    ?: ChapterEntity(chapterId, "Surah $chapterId", "سورة", "Surah $chapterId", "Chapter", "makkah", 1, 10, pageNumber, pageNumber)
+                _uiState.value = SurahUiState.Success(chapter, verses)
+            } catch (e: Exception) {
+                _uiState.value = SurahUiState.Error(e.localizedMessage ?: "Failed to load page verses")
+            }
+        }
+    }
+
     private fun loadVerses(chapter: ChapterEntity) {
         viewModelScope.launch {
             repository.getVersesByChapterFlow(chapter.id).collect { cachedVerses ->
@@ -350,9 +365,12 @@ class SurahViewModel @Inject constructor(
      * Called when the Surah screen becomes visible. Mirrors the web app's
      * `useEffect(() => { const startTime = Date.now(); ... }, [id])`.
      */
-    fun startReadingSession(chapterId: Int) {
-        endReadingSession()
+    private var currentSessionType: String = "reading"
+
+    fun startReadingSession(chapterId: Int, sessionType: String = "reading") {
+        endReadingSession(currentSessionType)
         readingSessionChapterId = chapterId
+        currentSessionType = sessionType
         readingSessionStart = System.currentTimeMillis()
     }
 
@@ -360,14 +378,14 @@ class SurahViewModel @Inject constructor(
      * Called when the Surah screen is disposed. Logs a session if the user
      * stayed at least 10 seconds (same threshold as the web app).
      */
-    fun endReadingSession() {
+    fun endReadingSession(sessionType: String = currentSessionType) {
         if (readingSessionStart == 0L) return
         val duration = (System.currentTimeMillis() - readingSessionStart) / 1000
         readingSessionStart = 0L
         if (duration >= 10) {
             val chapterId = if (readingSessionChapterId > 0) readingSessionChapterId else null
             viewModelScope.launch {
-                repository.logReadingSession(duration, "reading", chapterId)
+                repository.logReadingSession(duration, sessionType, chapterId)
             }
         }
     }

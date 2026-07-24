@@ -2,6 +2,7 @@ package com.nur.quran.ui.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nur.quran.data.db.entities.BookmarkEntity
 import com.nur.quran.data.db.entities.ChapterEntity
 import com.nur.quran.data.planner.*
 import com.nur.quran.data.repository.QuranRepository
@@ -36,6 +37,9 @@ class PlannerViewModel @Inject constructor(
     private val _chapters = MutableStateFlow<List<ChapterEntity>>(emptyList())
     val chapters: StateFlow<List<ChapterEntity>> = _chapters.asStateFlow()
 
+    private val _bookmarks = MutableStateFlow<List<BookmarkEntity>>(emptyList())
+    val bookmarks: StateFlow<List<BookmarkEntity>> = _bookmarks.asStateFlow()
+
     init {
         loadData()
         fetchPrayerTimings()
@@ -68,6 +72,10 @@ class PlannerViewModel @Inject constructor(
             _activePlannerId.value = actId
             _activePlan.value = all.find { it.id == actId }
             _archivedPlans.value = repository.getArchivedPlans()
+
+            repository.getAllBookmarksFlow().collect { bmList ->
+                _bookmarks.value = bmList
+            }
         }
     }
 

@@ -59,7 +59,7 @@ class SurahViewModel @Inject constructor(
 
     private val hifdhPrefs = context.getSharedPreferences("hifdh_settings", Context.MODE_PRIVATE)
 
-    private val _isTajweedEnabled = MutableStateFlow(hifdhPrefs.getBoolean("is_tajweed_enabled", true))
+    private val _isTajweedEnabled = MutableStateFlow(hifdhPrefs.getBoolean("is_tajweed_enabled", false))
     val isTajweedEnabled: StateFlow<Boolean> = _isTajweedEnabled.asStateFlow()
 
     private val _isTranslationEnabled = MutableStateFlow(hifdhPrefs.getBoolean("is_translation_enabled", true))

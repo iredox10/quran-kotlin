@@ -79,27 +79,29 @@ import com.nur.quran.ui.viewmodels.TafsirUiState
 import com.nur.quran.utils.TajweedProcessor
 import kotlinx.coroutines.delay
 
+import androidx.compose.ui.text.font.FontLoadingStrategy
+
 val fontAmiri = FontFamily(
-    Font(com.nur.quran.R.font.amiri_regular, weight = FontWeight.Normal),
-    Font(com.nur.quran.R.font.amiri_bold, weight = FontWeight.Bold)
+    Font(com.nur.quran.R.font.amiri_regular, weight = FontWeight.Normal, loadingStrategy = FontLoadingStrategy.OptionalLocal),
+    Font(com.nur.quran.R.font.amiri_bold, weight = FontWeight.Bold, loadingStrategy = FontLoadingStrategy.OptionalLocal)
 )
 
 val fontKfgqpcHafs = FontFamily(
-    Font(com.nur.quran.R.font.kfgqpc_hafs, weight = FontWeight.Normal)
+    Font(com.nur.quran.R.font.kfgqpc_hafs, loadingStrategy = FontLoadingStrategy.OptionalLocal)
 )
 
 val fontUthmanTahaNaskh = FontFamily(
-    Font(com.nur.quran.R.font.uthman_taha_naskh, weight = FontWeight.Normal)
+    Font(com.nur.quran.R.font.uthman_taha_naskh, loadingStrategy = FontLoadingStrategy.OptionalLocal)
 )
 
 val fontNoto = FontFamily(
-    Font(com.nur.quran.R.font.noto_regular, weight = FontWeight.Normal),
-    Font(com.nur.quran.R.font.noto_bold, weight = FontWeight.Bold)
+    Font(com.nur.quran.R.font.noto_regular, weight = FontWeight.Normal, loadingStrategy = FontLoadingStrategy.OptionalLocal),
+    Font(com.nur.quran.R.font.noto_bold, weight = FontWeight.Bold, loadingStrategy = FontLoadingStrategy.OptionalLocal)
 )
 
 val fontScheherazade = FontFamily(
-    Font(com.nur.quran.R.font.scheherazade_regular, weight = FontWeight.Normal),
-    Font(com.nur.quran.R.font.scheherazade_bold, weight = FontWeight.Bold)
+    Font(com.nur.quran.R.font.scheherazade_regular, weight = FontWeight.Normal, loadingStrategy = FontLoadingStrategy.OptionalLocal),
+    Font(com.nur.quran.R.font.scheherazade_bold, weight = FontWeight.Bold, loadingStrategy = FontLoadingStrategy.OptionalLocal)
 )
 
 val fontSystemDefault = FontFamily.Default
@@ -113,7 +115,7 @@ fun getArabicFontFamily(name: String): FontFamily {
             "noto-naskh-arabic", "noto naskh arabic" -> fontNoto
             "scheherazade-new", "scheherazade new" -> fontScheherazade
             "system default" -> fontSystemDefault
-            else -> fontKfgqpcHafs
+            else -> fontScheherazade
         }
     } catch (e: Throwable) {
         FontFamily.Default
@@ -1715,9 +1717,9 @@ fun VerseItem(
                             words.forEachIndexed { wordIndex, word ->
                                 if (wordIndex > 0) append(" ")
                                 val wordStart = length
-                                val rawText = word.textUthmani ?: ""
+                                val rawText = if (!word.textQpcHafs.isNullOrBlank()) word.textQpcHafs else (word.textUthmani ?: "")
                                 val isEndMarker = word.charTypeName == "end"
-                                val plainText = rawText.replace("[\u06df\u06e0\u06ea\u06eb\u06ec\u25cc\u06dd]".toRegex(), "")
+                                val plainText = rawText.replace("[\u06d6-\u06dc\u06df-\u06e8\u06ea-\u06ec\u25cc\u06dd]".toRegex(), "")
                                 val displayText = plainText
 
                                 if (!isEndMarker && word.textUthmaniTajweed != null) {
@@ -1808,7 +1810,8 @@ fun VerseItem(
                                     if (wordIndex > 0) append(" ")
                                     val wordStart = length
                                     val isEndMarker = word.charTypeName == "end"
-                                    val plainText = (word.textUthmani ?: "").replace("[\u06df\u06e0\u06ea\u06eb\u06ec\u25cc\u06dd]".toRegex(), "")
+                                    val rawText = if (!word.textQpcHafs.isNullOrBlank()) word.textQpcHafs else (word.textUthmani ?: "")
+                                    val plainText = rawText.replace("[\u06d6-\u06dc\u06df-\u06e8\u06ea-\u06ec\u25cc\u06dd]".toRegex(), "")
                                     val displayText = plainText
                                     append(displayText)
                                     if (isEndMarker) {
@@ -1821,7 +1824,7 @@ fun VerseItem(
                                 }
                             } else {
                                 val rawText = verse.textUthmani ?: verse.textQpcHafs ?: verse.textIndopak ?: ""
-                                val plainText = rawText.replace("[\u06df\u06e0\u06ea\u06eb\u06ec\u25cc\u06dd]".toRegex(), "")
+                                val plainText = rawText.replace("[\u06d6-\u06dc\u06df-\u06e8\u06ea-\u06ec\u25cc\u06dd]".toRegex(), "")
                                 append(plainText)
                             }
                         }
@@ -2411,9 +2414,9 @@ fun ContinuousReadingView(
                             allPageWords.forEachIndexed { wordIndex, word ->
                                 if (wordIndex > 0) append(" ")
                                 val wordStart = length
-                                val rawText = word.textUthmani ?: ""
+                                val rawText = if (!word.textQpcHafs.isNullOrBlank()) word.textQpcHafs else (word.textUthmani ?: "")
                                 val isEndMarker = word.charTypeName == "end"
-                                val plainText = rawText.replace("[\u06df\u06e0\u06ea\u06eb\u06ec\u25cc\u06dd]".toRegex(), "")
+                                val plainText = rawText.replace("[\u06d6-\u06dc\u06df-\u06e8\u06ea-\u06ec\u25cc\u06dd]".toRegex(), "")
                                 val displayText = plainText
 
                                 if (!isEndMarker && word.textUthmaniTajweed != null) {
@@ -2498,7 +2501,8 @@ fun ContinuousReadingView(
                                 if (wordIndex > 0) append(" ")
                                 val wordStart = length
                                 val isEndMarker = word.charTypeName == "end"
-                                val plainText = (word.textUthmani ?: "").replace("[\u06df\u06e0\u06ea\u06eb\u06ec\u25cc\u06dd]".toRegex(), "")
+                                val rawText = if (!word.textQpcHafs.isNullOrBlank()) word.textQpcHafs else (word.textUthmani ?: "")
+                                val plainText = rawText.replace("[\u06d6-\u06dc\u06df-\u06e8\u06ea-\u06ec\u25cc\u06dd]".toRegex(), "")
                                 val displayText = plainText
                                 append(displayText)
                                 if (isEndMarker) {

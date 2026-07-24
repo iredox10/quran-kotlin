@@ -38,7 +38,9 @@ object TajweedProcessor {
         if (html.isNullOrEmpty()) return ""
         var cleaned = html
             .replace("\u0672", "\u0670")
-            .replace("[\u06df\u06e0\u06ea\u06eb\u06ec\u25cc\u06dd]".toRegex(), "")
+            .replace("[\u06d6-\u06dc\u06df-\u06e8\u06ea-\u06ec\u25cc\u06dd]".toRegex(), "")
+            .replace("<[^>]+>\\s*[مۘۙۚۛۜ]\\s*</[^>]+>".toRegex(), "")
+            .replace("<(span|tajweed|rule)\\s+class=['\"]?[^'\">]*['\"]?>\\s*[مۘۙۚۛۜ]\\s*</(span|tajweed|rule)>".toRegex(), "")
             .replace("<rule ", "<tajweed ")
             .replace("</rule>", "</tajweed>")
             .replace("<(span|tajweed|rule)\\s+class=['\"]?end['\"]?>.*?</(span|tajweed|rule)>".toRegex(), "")
@@ -68,7 +70,10 @@ object TajweedProcessor {
                     rawSegments.add(RawSegment(cleanText, null))
                 }
             }
-            rawSegments.add(RawSegment(tag.text, tag.className))
+            val tagText = tag.text.trim()
+            if (tagText != "م" && tagText != "ۘ" && tagText != "ۙ" && tagText != "ۚ" && tagText != "ۛ" && tagText != "ۜ") {
+                rawSegments.add(RawSegment(tag.text, tag.className))
+            }
             lastIndex = tag.end
         }
 

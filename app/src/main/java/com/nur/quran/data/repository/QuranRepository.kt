@@ -167,7 +167,7 @@ class QuranRepository @Inject constructor(
                         textUthmani = apiWord.text_uthmani,
                         textIndopak = apiWord.text_indopak,
                         textQpcHafs = apiWord.text_qpc_hafs,
-                        textUthmaniTajweed = wordTajweed ?: apiWord.text_uthmani_tajweed,
+                        textUthmaniTajweed = apiWord.text_uthmani_tajweed ?: wordTajweed,
                         translation = apiWord.translation?.text,
                         transliteration = apiWord.transliteration?.text,
                         charTypeName = apiWord.char_type_name
@@ -198,6 +198,8 @@ class QuranRepository @Inject constructor(
     }
 
     // Bookmarks
+    fun getAllBookmarksFlow(): Flow<List<BookmarkEntity>> = quranDao.getAllBookmarks()
+
     fun getBookmarkedVerseKeysFlow(): Flow<List<String>> = quranDao.getBookmarkedVerseKeys()
 
     suspend fun insertBookmark(bookmark: BookmarkEntity) {

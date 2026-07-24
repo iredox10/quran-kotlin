@@ -50,6 +50,7 @@ fun PlannerScreen(
     val archivedPlans by plannerViewModel.archivedPlans.collectAsState()
     val prayerTimings by plannerViewModel.prayerTimings.collectAsState()
     val chapters by plannerViewModel.chapters.collectAsState()
+    val bookmarks by plannerViewModel.bookmarks.collectAsState()
     val context = LocalContext.current
 
     var showSettingsDrawer by remember { mutableStateOf(false) }
@@ -58,6 +59,7 @@ fun PlannerScreen(
     var showRebalanceDialog by remember { mutableStateOf(false) }
     var showArchivesDialog by remember { mutableStateOf(false) }
     var showPlannerSettings by remember { mutableStateOf(false) }
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     val todayStr = remember { PlannerEngine.formatPlannerDate() }
     val allPlans by plannerViewModel.allPlans.collectAsState()
     val activePlannerId by plannerViewModel.activePlannerId.collectAsState()
@@ -65,6 +67,20 @@ fun PlannerScreen(
     LaunchedEffect(activePlan) {
         if (activePlan != null && viewMode == "intention") {
             viewMode = "dashboard"
+        }
+    }
+
+    var hasCheckedRebalance by remember { mutableStateOf(false) }
+    LaunchedEffect(activePlan, hasCheckedRebalance) {
+        if (activePlan != null && !hasCheckedRebalance) {
+            val overview = PlannerEngine.getPlannerOverview(activePlan)
+            if (overview != null) {
+                val firstIncompleteDate = overview.firstIncomplete.date
+                if (firstIncompleteDate < todayStr) {
+                    showRebalanceDialog = true
+                }
+            }
+            hasCheckedRebalance = true
         }
     }
 
@@ -303,7 +319,41 @@ fun PlannerScreen(
                 when (currentTab) {
                     "Today" -> {
                         item {
-                            if (todayAssignment != null) {
+                            val isPlanComplete = overview?.isFinishedWindow == true && plan.assignments.all { PlannerEngine.getAssignmentStatus(plan, it) == "completed" }
+
+                            if (isPlanComplete) {
+                                // Plan Complete Celebration
+                                Card(
+                                    shape = RoundedCornerShape(24.dp),
+                                    colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(Brush.verticalGradient(listOf(hTeal, hTealMid)))
+                                            .padding(32.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text("🎉", fontSize = 48.sp)
+                                            Spacer(modifier = Modifier.height(12.dp))
+                                            Text("Plan Complete!", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White, fontFamily = fontFamilyUi)
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Text("You've completed all ${plan.durationDays} days. Well done!", fontSize = 14.sp, color = Color.White.copy(alpha = 0.85f), textAlign = TextAlign.Center)
+                                            Spacer(modifier = Modifier.height(20.dp))
+                                            Button(
+                                                onClick = { plannerViewModel.buildRevisionPlan() },
+                                                colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                                                shape = RoundedCornerShape(14.dp),
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Text("Start Revision Plan", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = hTeal)
+                                            }
+                                        }
+                                    }
+                                }
+                            } else if (todayAssignment != null) {
                                 val status = PlannerEngine.getAssignmentStatus(plan, todayAssignment)
                                 val readPages = plan.assignmentReadPages[todayAssignment.dayNumber]?.size ?: 0
                                 val totalPages = todayAssignment.pageEnd - todayAssignment.pageStart + 1
@@ -665,7 +715,10 @@ fun PlannerScreen(
                         }
                     }
                     "Journal" -> {
+                        // Reflections Section
                         item {
+                            Text("DAILY REFLECTIONS", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = hGold, fontFamily = fontFamilyMono, letterSpacing = 1.sp)
+                            Spacer(modifier = Modifier.height(12.dp))
                             if (plan.assignmentReflections.isEmpty()) {
                                 Text("No reflections yet. Write your thoughts after completing an assignment.", color = hInkMuted, fontSize = 14.sp, modifier = Modifier.padding(vertical = 20.dp))
                             } else {
@@ -697,12 +750,110 @@ fun PlannerScreen(
                                 }
                             }
                         }
+                        // Plan Highlights (Bookmarks) Section
+                        item {
+                            Spacer(modifier = Modifier.height(28.dp))
+                            Text("PLAN HIGHLIGHTS", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = hGold, fontFamily = fontFamilyMono, letterSpacing = 1.sp)
+                            Spacer(modifier = Modifier.height(12.dp))
+                            if (bookmarks.isEmpty()) {
+                                Card(
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = CardDefaults.cardColors(containerColor = hBone),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, hBoneDark),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(24.dp).fillMaxWidth(),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Icon(NurIcons.Bookmark, contentDescription = null, tint = hInkMuted.copy(alpha = 0.5f), modifier = Modifier.size(32.dp))
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text("No highlighted verses yet. Use the bookmark icon while reading!", fontSize = 12.sp, color = hInkMuted, textAlign = TextAlign.Center)
+                                    }
+                                }
+                            } else {
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    bookmarks.sortedByDescending { it.timestamp }.forEach { bm ->
+                                        Card(
+                                            shape = RoundedCornerShape(12.dp),
+                                            colors = CardDefaults.cardColors(containerColor = hCream),
+                                            border = androidx.compose.foundation.BorderStroke(1.dp, hBoneDark),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(14.dp).fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    Text(bm.surahName, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = hInk, fontFamily = fontFamilyUi)
+                                                    Text(bm.verseKey, fontSize = 11.sp, color = hGold, fontFamily = fontFamilyMono)
+                                                }
+                                                Icon(NurIcons.Bookmark, contentDescription = null, tint = hGold, modifier = Modifier.size(16.dp))
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 
-                item { Spacer(modifier = Modifier.height(80.dp)) }
+                // Footer Delete Button
+                item {
+                    Surface(
+                        onClick = { showDeleteConfirmDialog = true },
+                        shape = RoundedCornerShape(20.dp),
+                        color = Color.Transparent,
+                        border = androidx.compose.foundation.BorderStroke(1.5.dp, Color(0xFFE5D5D5)),
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(NurIcons.X, contentDescription = null, tint = Color(0xFFC0392B), modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Delete plan", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFFC0392B))
+                        }
+                    }
+                }
+
+                item { Spacer(modifier = Modifier.height(32.dp)) }
             }
         }
+    }
+
+    // Delete Confirmation Dialog
+    if (showDeleteConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmDialog = false },
+            shape = RoundedCornerShape(20.dp),
+            containerColor = hCream,
+            title = { Text("Delete this plan?", fontSize = 18.sp, fontWeight = FontWeight.Bold, fontFamily = fontFamilyUi) },
+            text = {
+                Text("All progress will be permanently lost. This cannot be undone.", fontSize = 14.sp, color = hInkMid)
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        plannerViewModel.deleteActivePlan()
+                        showDeleteConfirmDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC0392B)),
+                    shape = RoundedCornerShape(30.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+                ) {
+                    Text("Delete", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmDialog = false }) {
+                    Text("Cancel", color = hInkMuted)
+                }
+            }
+        )
     }
 
     if (showRebalanceDialog) {

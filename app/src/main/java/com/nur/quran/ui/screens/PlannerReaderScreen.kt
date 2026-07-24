@@ -578,7 +578,7 @@ fun PlannerReaderScreen(
                                 val arabicText = verse.textUthmani ?: verse.textQpcHafs ?: ""
                                 if (arabicText.isNotBlank()) {
                                     Text(
-                                        text = arabicText.replace(Regex("[\u06df\u06e0\u06ea\u06eb\u06ec\u25cc\u06dd]"), ""),
+                                        text = arabicText.replace(Regex("[\\u06d6-\\u06dc\\u06df-\\u06e8\\u06ea-\\u06ec\\u25cc\\u06dd]"), ""),
                                         fontSize = 20.sp,
                                         fontFamily = fontFamilyArabic,
                                         color = hInk,

@@ -86,8 +86,8 @@ class MainActivity : ComponentActivity() {
                             HomeScreen(
                                 viewModel = homeViewModel,
                                 surahViewModel = surahViewModel,
-                                onChapterClick = { chapterId ->
-                                    navController.navigate(Screen.SurahDetail.createRoute(chapterId))
+                                onChapterClick = { chapterId, verseKey ->
+                                    navController.navigate(Screen.SurahDetail.createRoute(chapterId, verseKey))
                                 },
                                 onPageClick = { pageNum ->
                                     navController.navigate(Screen.PageDetail.createRoute(pageNum))
@@ -155,11 +155,19 @@ class MainActivity : ComponentActivity() {
                                 onNavigateToScreen = { route -> navController.navigate(route) }
                             )
                         }
-                        composable(Screen.SurahDetail.route) { backStackEntry ->
-                            val chapterId = backStackEntry.arguments?.getString("chapterId")?.toIntOrNull() ?: 1
+                        composable(
+                            route = Screen.SurahDetail.route,
+                            arguments = listOf(
+                                androidx.navigation.navArgument("chapterId") { type = androidx.navigation.NavType.IntType },
+                                androidx.navigation.navArgument("verseKey") { type = androidx.navigation.NavType.StringType; nullable = true; defaultValue = null }
+                            )
+                        ) { backStackEntry ->
+                            val chapterId = backStackEntry.arguments?.getInt("chapterId") ?: 1
+                            val targetVerseKey = backStackEntry.arguments?.getString("verseKey")
                             SurahScreen(
                                 viewModel = surahViewModel,
                                 chapterId = chapterId,
+                                targetVerseKey = targetVerseKey,
                                 onBackClick = { navController.popBackStack() },
                                 onNavigateToSurah = { nextChapterId ->
                                     navController.navigate(Screen.SurahDetail.createRoute(nextChapterId)) {

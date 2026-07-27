@@ -103,7 +103,7 @@ private const val SHARE_DESCRIPTION =
 fun HomeScreen(
     viewModel: HomeViewModel,
     surahViewModel: SurahViewModel? = null,
-    onChapterClick: (Int) -> Unit,
+    onChapterClick: (Int, String?) -> Unit,
     onPageClick: (Int) -> Unit,
     onNavigateToSauka: (() -> Unit)? = null,
     onNavigateToBookmarks: (() -> Unit)? = null
@@ -289,7 +289,7 @@ fun HomeScreen(
                                 Spacer(modifier = Modifier.height(20.dp))
                                 ContinueReadingCard(
                                     item = lastRead,
-                                    onClick = { onChapterClick(lastRead.chapterId) }
+                                    onClick = { onChapterClick(lastRead.chapterId, lastRead.verseKey) }
                                 )
                             }
                         }
@@ -442,7 +442,7 @@ fun HomeScreen(
                         item {
                             BookmarkCard(
                                 bookmark = bookmark,
-                                onClick = { onChapterClick(bookmark.chapterId) }
+                                onClick = { onChapterClick(bookmark.chapterId, bookmark.verseKey) }
                             )
                             Spacer(modifier = Modifier.height(28.dp))
                         }
@@ -469,7 +469,7 @@ fun HomeScreen(
                                 recentlyRead.take(6).forEach { item ->
                                     RecentlyReadCard(
                                         item = item,
-                                        onClick = { onChapterClick(item.chapterId) }
+                                        onClick = { onChapterClick(item.chapterId, item.verseKey) }
                                     )
                                 }
                             }
@@ -589,7 +589,7 @@ fun HomeScreen(
                             item = item,
                             onClick = {
                                 when {
-                                    item.chapterId != null -> onChapterClick(item.chapterId)
+                                    item.chapterId != null -> onChapterClick(item.chapterId, null)
                                     item.pageNumber != null -> onPageClick(item.pageNumber)
                                 }
                             }

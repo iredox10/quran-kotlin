@@ -167,6 +167,7 @@ val glassBg    get() = if (isDarkThemeGlobal) Color(0x802D2D2A) else Color(0x99E
 fun SurahScreen(
     viewModel: SurahViewModel,
     chapterId: Int,
+    targetVerseKey: String? = null,
     onBackClick: () -> Unit,
     onNavigateToSurah: (Int) -> Unit,
     saukaAssignmentId: String? = null,
@@ -266,6 +267,22 @@ fun SurahScreen(
 
     LaunchedEffect(chapterId) {
         viewModel.loadChapterDetails(chapterId)
+    }
+
+    LaunchedEffect(chapterId, targetVerseKey, uiState) {
+        val state = uiState
+        if (state is SurahUiState.Success) {
+            if (!targetVerseKey.isNullOrBlank()) {
+                val index = state.verses.indexOfFirst { it.verseKey == targetVerseKey }
+                if (index >= 0) {
+                    listState.scrollToItem(index)
+                } else {
+                    listState.scrollToItem(0)
+                }
+            } else {
+                listState.scrollToItem(0)
+            }
+        }
     }
 
     // Reading-session timer: starts when the screen opens, logs on exit

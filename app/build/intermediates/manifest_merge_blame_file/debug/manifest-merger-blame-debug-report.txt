@@ -42,12 +42,12 @@
 25-->[androidx.core:core:1.12.0] /home/iredox/.gradle/caches/transforms-3/bca6c9987ba02360b62a1726b382f3a1/transformed/core-1.12.0/AndroidManifest.xml:28:18-86
 26        android:debuggable="true"
 27        android:extractNativeLibs="false"
-28        android:icon="@android:drawable/sym_def_app_icon"
-28-->/home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:12:9-58
+28        android:icon="@drawable/ic_logo"
+28-->/home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:12:9-41
 29        android:label="Quran Nur"
 29-->/home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:13:9-34
-30        android:roundIcon="@android:drawable/sym_def_app_icon"
-30-->/home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:14:9-63
+30        android:roundIcon="@drawable/ic_logo"
+30-->/home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:14:9-46
 31        android:supportsRtl="true"
 31-->/home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:15:9-35
 32        android:theme="@style/Theme.Quran"

@@ -129,14 +129,24 @@ fun ShareVerseDialog(
                             fontFamily = fontFamilyMono
                         )
                         Spacer(modifier = Modifier.height(14.dp))
-                        Text(
-                            text = "Quran Nur 🌙",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = hTeal,
-                            fontFamily = fontFamilyMono,
-                            letterSpacing = 1.sp
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            androidx.compose.foundation.Image(
+                                painter = androidx.compose.ui.res.painterResource(id = com.nur.quran.R.drawable.ic_logo),
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Text(
+                                text = "Quran Nur 🌙",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = hTeal,
+                                fontFamily = fontFamilyMono,
+                                letterSpacing = 1.sp
+                            )
+                        }
                     }
                 }
 

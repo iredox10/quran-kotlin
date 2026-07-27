@@ -108,9 +108,10 @@ fun ProfileScreen(
                             .border(2.dp, hGold.copy(alpha = 0.4f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = "📖",
-                            fontSize = 40.sp
+                        androidx.compose.foundation.Image(
+                            painter = androidx.compose.ui.res.painterResource(id = com.nur.quran.R.drawable.ic_logo),
+                            contentDescription = "Quran Nur Logo",
+                            modifier = Modifier.size(58.dp)
                         )
                     }
                     Spacer(modifier = Modifier.height(12.dp))

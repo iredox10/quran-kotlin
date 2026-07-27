@@ -221,6 +221,13 @@ fun AnalyticsScreen(
                         .padding(bottom = 8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    androidx.compose.foundation.Image(
+                        painter = androidx.compose.ui.res.painterResource(id = com.nur.quran.R.drawable.ic_logo),
+                        contentDescription = "Quran Nur Logo",
+                        modifier = Modifier
+                            .size(56.dp)
+                            .padding(bottom = 6.dp)
+                    )
                     Text(
                         text = "ANALYTICS DASHBOARD",
                         fontSize = 11.sp,

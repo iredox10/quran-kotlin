@@ -29,7 +29,7 @@ data class ChapterEntity(
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index(value = ["chapterId"]), Index(value = ["verseKey"], unique = true)]
+    indices = [Index(value = ["chapterId"]), Index(value = ["verseKey"], unique = true), Index(value = ["pageNumber"])]
 )
 data class VerseEntity(
     @PrimaryKey val id: Int,

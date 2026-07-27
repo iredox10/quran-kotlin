@@ -9,9 +9,9 @@
     <application
         android:name=".QuranApplication"
         android:allowBackup="true"
-        android:icon="@android:drawable/sym_def_app_icon"
+        android:icon="@drawable/ic_logo"
         android:label="Quran Nur"
-        android:roundIcon="@android:drawable/sym_def_app_icon"
+        android:roundIcon="@drawable/ic_logo"
         android:supportsRtl="true"
         android:theme="@style/Theme.Quran"
         android:usesCleartextTraffic="true">

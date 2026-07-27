@@ -284,10 +284,18 @@ class SurahViewModel @Inject constructor(
             _uiState.value = SurahUiState.Loading
             try {
                 val verses = repository.getVersesByPage(pageNumber)
+                if (verses.isEmpty()) {
+                    _uiState.value = SurahUiState.Error("No verses found for page $pageNumber")
+                    return@launch
+                }
                 val chapterId = verses.firstOrNull()?.chapterId ?: 1
                 val chapter = repository.getChaptersFlow().firstOrNull()?.find { it.id == chapterId }
                     ?: ChapterEntity(chapterId, "Surah $chapterId", "سورة", "Surah $chapterId", "Chapter", "makkah", 1, 10, pageNumber, pageNumber)
-                _uiState.value = SurahUiState.Success(chapter, verses)
+                val wordsMap = mutableMapOf<Int, List<WordEntity>>()
+                verses.forEach { verse ->
+                    wordsMap[verse.id] = repository.getWordsForVerse(verse.id)
+                }
+                _uiState.value = SurahUiState.Success(chapter, verses, wordsMap)
             } catch (e: Exception) {
                 _uiState.value = SurahUiState.Error(e.localizedMessage ?: "Failed to load page verses")
             }
@@ -306,7 +314,7 @@ class SurahViewModel @Inject constructor(
                 val tajweed = (_uiState.value as? SurahUiState.Success)?.tajweedMap ?: emptyMap()
                 _uiState.value = SurahUiState.Success(chapter, cachedVerses, wordsMap, tajweed)
 
-                val hasTranslations = cachedVerses.all { it.translation != null }
+                val hasTranslations = cachedVerses.any { !it.translation.isNullOrBlank() }
                 if (!hasTranslations) {
                     viewModelScope.launch {
                         try {
@@ -332,7 +340,7 @@ class SurahViewModel @Inject constructor(
                     }
                     _uiState.value = SurahUiState.Success(chapter, downloadedVerses, downloadedWords, emptyMap())
                 } catch (e: Exception) {
-                    _uiState.value = SurahUiState.Error("Initial Surah download requires network connection. Please check connection: ${e.localizedMessage}")
+                    _uiState.value = SurahUiState.Error("Failed to load Surah ${chapter.nameSimple}. Please check your internet connection to download it for offline reading.")
                 }
             }
         }
@@ -351,6 +359,7 @@ class SurahViewModel @Inject constructor(
                     _uiState.value = current.copy(tajweedMap = map)
                 }
             } catch (_: Exception) {
+                // Tajweed data not available — UI will show plain text
             }
         }
     }

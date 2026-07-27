@@ -15,8 +15,7 @@ import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -73,6 +72,8 @@ class MainActivity : ComponentActivity() {
                     Screen.Analytics.route,
                     Screen.Profile.route
                 )
+
+                var showSplashScreen by remember { mutableStateOf(true) }
 
                 Box(modifier = Modifier.fillMaxSize()) {
                     // ── Main Content ─────────────────────────────
@@ -197,6 +198,12 @@ class MainActivity : ComponentActivity() {
                                     restoreState = true
                                 }
                             }
+                        )
+                    }
+
+                    if (showSplashScreen) {
+                        com.nur.quran.ui.components.SplashScreen(
+                            onFinish = { showSplashScreen = false }
                         )
                     }
                 }

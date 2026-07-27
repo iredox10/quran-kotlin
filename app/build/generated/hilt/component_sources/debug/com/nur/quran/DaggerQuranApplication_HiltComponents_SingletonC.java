@@ -615,7 +615,7 @@ public final class DaggerQuranApplication_HiltComponents_SingletonC {
       public T get() {
         switch (id) {
           case 0: // com.nur.quran.data.repository.QuranRepository 
-          return (T) new QuranRepository(singletonCImpl.provideQuranDaoProvider.get(), singletonCImpl.provideQuranApiProvider.get(), singletonCImpl.provideGsonProvider.get());
+          return (T) new QuranRepository(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule), singletonCImpl.provideQuranDaoProvider.get(), singletonCImpl.provideQuranApiProvider.get(), singletonCImpl.provideGsonProvider.get());
 
           case 1: // com.nur.quran.data.db.dao.QuranDao 
           return (T) AppModule_ProvideQuranDaoFactory.provideQuranDao(singletonCImpl.provideQuranDatabaseProvider.get());

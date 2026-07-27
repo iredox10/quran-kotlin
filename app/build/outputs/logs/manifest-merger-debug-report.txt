@@ -137,9 +137,9 @@ MERGED from [androidx.startup:startup-runtime:1.1.1] /home/iredox/.gradle/caches
 	android:label
 		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:13:9-34
 	android:roundIcon
-		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:14:9-63
+		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:14:9-46
 	android:icon
-		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:12:9-58
+		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:12:9-41
 	android:allowBackup
 		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:11:9-35
 	android:theme

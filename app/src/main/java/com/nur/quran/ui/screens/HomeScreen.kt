@@ -255,6 +255,13 @@ fun HomeScreen(
                                 .padding(top = 24.dp, bottom = 24.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
+                            androidx.compose.foundation.Image(
+                                painter = androidx.compose.ui.res.painterResource(id = com.nur.quran.R.drawable.ic_logo),
+                                contentDescription = "Quran Nur Logo",
+                                modifier = Modifier
+                                    .size(64.dp)
+                                    .padding(bottom = 8.dp)
+                            )
                             Text(
                                 text = greeting.first,
                                 fontSize = 28.sp,

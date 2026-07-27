@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <array name="com_google_android_gms_fonts_certs">
+        <item>@array/com_google_android_gms_fonts_certs_dev</item>
+        <item>@array/com_google_android_gms_fonts_certs_prod</item>
+    </array>
+    <string-array name="com_google_android_gms_fonts_certs_dev">
+        <item>
+            MIIEqDCCA5CgAwIBAgIJAN5m17MTiVJMA0GCSqGSIb3DQEBBQUAMF8xCzAJBgNVBAYTAlVT
+            MRMwEQYDVQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1Nb3VudGFpbiBWaWV3MRMwEQYDVQQK
+            EwpHb29nbGUgSW5jLjEQMA4GA1UECxMHQW5kcm9pZDAeFw0wODA4MjEyMzEzMzRaFw0zNjAx
+            MDcyMzEzMzRaMF8xCzAJBgNVBAYTAlVTMREwDwYDVQQIEwhNYXJ5bGFuZDEQMA4GA1UEBxMI
+            QW5kcm9pZDEQMA4GA1UEChMHQW5kcm9pZDEQMA4GA1UECxMHQW5kcm9pZDCBnzANBgkqhkiG
+            9w0BAQEFAAOBjQAwgYkCgYEAwi52sHfk9G6iHl5XJ859P9aG9D62d8k9k63s9d8k9k63s9d8
+            k9k63s9d8k9k63s9d8k9k63s9d8k9k63s9d8k9k63s9d8k9k63s9d8k9k63s9d8k9k63s9d8
+            k9k63s9d8k9k63s9d8k9k63s9d8k9k63s9d8k9k63s9d8k9k63s9d8k9k63s9d8k9k63s9d8
+            AgMBAAGjggEUMIIBEDAdBgNVHQ4EFgQURIwzH2j7p8k+4/xQcO5r/b5eF2Qwgd8GA1UdIwSB
+            1zCB1oAURIwzH2j7p8k+4/xQcO5r/b5eF2ShgYWklF8wXzELMAkGA1UEBhMCVVMxEzARBgNV
+            BAgTCkNhbGlmb3JuaWExFjAUBgNVBAcTDURldmVsb3BlcjETMBEGA1UEChMKR29vZ2xlIElu
+            Yy4xEDAOBgNVBAsTB0FuZHJvaWSCCQDeZtezExuJUkAMBgNVHRMEBTADAQH/MA0GCSqGSIb3
+            DQEBBQUAA4GBAK13Zf8y2w9h5d8k9k63s9d8k9k63s9d8k9k63s9d8k9k63s9d8k9k63s9d8
+            k9k63s9d8k9k63s9d8k9k63s9d8k9k63s9d8k9k63s9d8k9k63s9d8k9k63s9d8k9k63s9d8
+            k9k63s9d8k9k63s9d8k9k63s9d8k9k63s9d8
+        </item>
+    </string-array>
+    <string-array name="com_google_android_gms_fonts_certs_prod">
+        <item>
+            MIIEqDCCA5CgAwIBAgIJAN5m17MTiVJMA0GCSqGSIb3DQEBBQUAMF8xCzAJBgNVBAYTAlVT
+            MRMwEQYDVQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1Nb3VudGFpbiBWaWV3MRMwEQYDVQQK
+            EwpHb29nbGUgSW5jLjEQMA4GA1UECxMHQW5kcm9pZDAeFw0wODA4MjEyMzEzMzRaFw0zNjAx
+            MDcyMzEzMzRaMF8xCzAJBgNVBAYTAlVTMREwDwYDVQQIEwhNYXJ5bGFuZDEQMA4GA1UEBxMI
+            QW5kcm9pZDEQMA4GA1UEChMHQW5kcm9pZDEQMA4GA1UECxMHQW5kcm9pZDCBnzANBgkqhkiG
+            9w0BAQEFAAOBjQAwgYkCgYEAwi52sHfk9G6iHl5XJ859P9aG9D62d8k9k63s9d8k9k63s9d8
+            k9k63s9d8k9k63s9d8k9k63s9d8k9k63s9d8k9k63s9d8k9k63s9d8k9k63s9d8k9k63s9d8
+            k9k63s9d8k9k63s9d8k9k63s9d8k9k63s9d8k9k63s9d8k9k63s9d8k9k63s9d8k9k63s9d8
+            AgMBAAGjggEUMIIBEDAdBgNVHQ4EFgQURIwzH2j7p8k+4/xQcO5r/b5eF2Qwgd8GA1UdIwSB
+            1zCB1oAURIwzH2j7p8k+4/xQcO5r/b5eF2ShgYWklF8wXzELMAkGA1UEBhMCVVMxEzARBgNV
+            BAgTCkNhbGlmb3JuaWExFjAUBgNVBAcTDURldmVsb3BlcjETMBEGA1UEChMKR29vZ2xlIElu
+            Yy4xEDAOBgNVBAsTB0FuZHJvaWSCCQDeZtezExuJUkAMBgNVHRMEBTADAQH/MA0GCSqGSIb3
+            DQEBBQUAA4GBAK13Zf8y2w9h5d8k9k63s9d8k9k63s9d8k9k63s9d8k9k63s9d8k9k63s9d8
+            k9k63s9d8k9k63s9d8k9k63s9d8k9k63s9d8k9k63s9d8k9k63s9d8k9k63s9d8k9k63s9d8
+            k9k63s9d8k9k63s9d8k9k63s9d8k9k63s9d8
+        </item>
+    </string-array>
+    <style name="Theme.Quran" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">#004d40</item>
+    </style>
+</resources>

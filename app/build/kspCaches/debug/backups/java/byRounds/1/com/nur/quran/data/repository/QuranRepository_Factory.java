@@ -1,5 +1,6 @@
 package com.nur.quran.data.repository;
 
+import android.content.Context;
 import com.google.gson.Gson;
 import com.nur.quran.data.api.QuranApi;
 import com.nur.quran.data.db.dao.QuranDao;
@@ -11,7 +12,7 @@ import javax.annotation.processing.Generated;
 import javax.inject.Provider;
 
 @ScopeMetadata("javax.inject.Singleton")
-@QualifierMetadata
+@QualifierMetadata("dagger.hilt.android.qualifiers.ApplicationContext")
 @DaggerGenerated
 @Generated(
     value = "dagger.internal.codegen.ComponentProcessor",
@@ -24,14 +25,18 @@ import javax.inject.Provider;
     "KotlinInternalInJava"
 })
 public final class QuranRepository_Factory implements Factory<QuranRepository> {
+  private final Provider<Context> contextProvider;
+
   private final Provider<QuranDao> quranDaoProvider;
 
   private final Provider<QuranApi> quranApiProvider;
 
   private final Provider<Gson> gsonProvider;
 
-  public QuranRepository_Factory(Provider<QuranDao> quranDaoProvider,
-      Provider<QuranApi> quranApiProvider, Provider<Gson> gsonProvider) {
+  public QuranRepository_Factory(Provider<Context> contextProvider,
+      Provider<QuranDao> quranDaoProvider, Provider<QuranApi> quranApiProvider,
+      Provider<Gson> gsonProvider) {
+    this.contextProvider = contextProvider;
     this.quranDaoProvider = quranDaoProvider;
     this.quranApiProvider = quranApiProvider;
     this.gsonProvider = gsonProvider;
@@ -39,15 +44,17 @@ public final class QuranRepository_Factory implements Factory<QuranRepository> {
 
   @Override
   public QuranRepository get() {
-    return newInstance(quranDaoProvider.get(), quranApiProvider.get(), gsonProvider.get());
+    return newInstance(contextProvider.get(), quranDaoProvider.get(), quranApiProvider.get(), gsonProvider.get());
   }
 
-  public static QuranRepository_Factory create(Provider<QuranDao> quranDaoProvider,
-      Provider<QuranApi> quranApiProvider, Provider<Gson> gsonProvider) {
-    return new QuranRepository_Factory(quranDaoProvider, quranApiProvider, gsonProvider);
+  public static QuranRepository_Factory create(Provider<Context> contextProvider,
+      Provider<QuranDao> quranDaoProvider, Provider<QuranApi> quranApiProvider,
+      Provider<Gson> gsonProvider) {
+    return new QuranRepository_Factory(contextProvider, quranDaoProvider, quranApiProvider, gsonProvider);
   }
 
-  public static QuranRepository newInstance(QuranDao quranDao, QuranApi quranApi, Gson gson) {
-    return new QuranRepository(quranDao, quranApi, gson);
+  public static QuranRepository newInstance(Context context, QuranDao quranDao, QuranApi quranApi,
+      Gson gson) {
+    return new QuranRepository(context, quranDao, quranApi, gson);
   }
 }

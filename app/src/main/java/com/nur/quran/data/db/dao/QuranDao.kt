@@ -25,6 +25,9 @@ interface QuranDao {
     @Query("SELECT * FROM verses WHERE chapterId = :chapterId ORDER BY verseNumber ASC")
     fun getVersesByChapter(chapterId: Int): Flow<List<VerseEntity>>
 
+    @Query("SELECT * FROM verses WHERE chapterId = :chapterId ORDER BY verseNumber ASC")
+    suspend fun getVersesByChapterDirect(chapterId: Int): List<VerseEntity>
+
     @Query("SELECT * FROM verses WHERE pageNumber = :pageNumber ORDER BY chapterId ASC, verseNumber ASC")
     fun getVersesByPage(pageNumber: Int): Flow<List<VerseEntity>>
 

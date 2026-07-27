@@ -2796,6 +2796,8 @@ fun TafsirBottomSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .heightIn(max = 600.dp)
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp, vertical = 8.dp)
         ) {
             Row(

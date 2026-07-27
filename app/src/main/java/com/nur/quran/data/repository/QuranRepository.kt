@@ -109,6 +109,10 @@ class QuranRepository @Inject constructor(
     // Verses by Chapter
     fun getVersesByChapterFlow(chapterId: Int): Flow<List<VerseEntity>> = quranDao.getVersesByChapter(chapterId)
 
+    suspend fun getVersesByChapterDirect(chapterId: Int): List<VerseEntity> = withContext(Dispatchers.IO) {
+        quranDao.getVersesByChapterDirect(chapterId)
+    }
+
     fun getVersesByPageFlow(pageNumber: Int): Flow<List<VerseEntity>> = quranDao.getVersesByPage(pageNumber)
 
     suspend fun getVersesByPage(pageNumber: Int): List<VerseEntity> = withContext(Dispatchers.IO) {
@@ -340,16 +344,32 @@ class QuranRepository @Inject constructor(
         }
     }
 
+    /** Cached parsed tafsir data to avoid re-reading the large JSON on every call */
+    @Volatile
+    private var cachedOfflineTafsirs: List<OfflineTafsirItem>? = null
+
+    private fun getAllOfflineTafsirs(): List<OfflineTafsirItem> {
+        cachedOfflineTafsirs?.let { return it }
+        return try {
+            val jsonString = context.assets.open("data/tafsir_ibn_kathir.json").bufferedReader().use { it.readText() }
+            val type = object : TypeToken<List<OfflineTafsirItem>>() {}.type
+            val parsed: List<OfflineTafsirItem> = gson.fromJson(jsonString, type)
+            cachedOfflineTafsirs = parsed
+            parsed
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
     /**
      * Load tafsir from the bundled offline asset.
      */
     private fun loadOfflineTafsirFromAssets(chapterId: Int): TafsirResponse {
         return try {
-            val jsonString = context.assets.open("data/tafsir_ibn_kathir.json").bufferedReader().use { it.readText() }
-            val type = object : TypeToken<List<OfflineTafsirItem>>() {}.type
-            val allTafsirs: List<OfflineTafsirItem> = gson.fromJson(jsonString, type)
-            val prefix = "$chapterId:"
-            val filtered = allTafsirs.filter { it.verse_key.startsWith(prefix) }.map { item ->
+            val allTafsirs = getAllOfflineTafsirs()
+            val filtered = allTafsirs.filter {
+                it.verse_key.split(":").firstOrNull()?.toIntOrNull() == chapterId
+            }.map { item ->
                 ApiTafsirVerse(verse_key = item.verse_key, text = item.text, resource_id = item.resource_id)
             }
             TafsirResponse(tafsirs = filtered)
@@ -364,9 +384,8 @@ class QuranRepository @Inject constructor(
     private fun loadOfflineTajweedFromAssets(chapterId: Int): TajweedResponse {
         return try {
             val allVerses = getAllOfflineVerses()
-            val prefix = "$chapterId:"
             val tajweedVerses = allVerses
-                .filter { it.verse_key.startsWith(prefix) && !it.text_uthmani_tajweed.isNullOrBlank() }
+                .filter { it.verse_key.split(":").firstOrNull()?.toIntOrNull() == chapterId && !it.text_uthmani_tajweed.isNullOrBlank() }
                 .map { ApiTajweedVerse(id = it.id, verse_key = it.verse_key, text_uthmani_tajweed = it.text_uthmani_tajweed!!) }
             TajweedResponse(verses = tajweedVerses)
         } catch (e: Exception) {

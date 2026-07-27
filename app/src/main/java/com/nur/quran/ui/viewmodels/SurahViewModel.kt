@@ -254,6 +254,7 @@ class SurahViewModel @Inject constructor(
     fun loadChapterDetails(chapterId: Int) {
         currentChapterId = chapterId
         _tafsirState.value = TafsirUiState.Hidden
+        cachedTafsirVerses = emptyList()
         loadChapterJob?.cancel()
 
         loadChapterJob = viewModelScope.launch {
@@ -304,7 +305,7 @@ class SurahViewModel @Inject constructor(
 
     private fun loadVerses(chapter: ChapterEntity) {
         viewModelScope.launch {
-            val cachedVerses = repository.getVersesByChapterFlow(chapter.id).firstOrNull() ?: emptyList()
+            val cachedVerses = repository.getVersesByChapterDirect(chapter.id)
             if (cachedVerses.isNotEmpty()) {
                 val wordsMap = mutableMapOf<Int, List<WordEntity>>()
                 cachedVerses.forEach { verse ->
@@ -319,7 +320,7 @@ class SurahViewModel @Inject constructor(
                     viewModelScope.launch {
                         try {
                             repository.refreshVersesByChapter(chapter.id, _currentTranslationId.value)
-                            val updatedVerses = repository.getVersesByChapterFlow(chapter.id).firstOrNull() ?: cachedVerses
+                            val updatedVerses = repository.getVersesByChapterDirect(chapter.id)
                             val updatedWords = mutableMapOf<Int, List<WordEntity>>()
                             updatedVerses.forEach { verse ->
                                 updatedWords[verse.id] = repository.getWordsForVerse(verse.id)
@@ -333,14 +334,18 @@ class SurahViewModel @Inject constructor(
             } else {
                 try {
                     repository.refreshVersesByChapter(chapter.id, _currentTranslationId.value)
-                    val downloadedVerses = repository.getVersesByChapterFlow(chapter.id).firstOrNull() ?: emptyList()
+                    val downloadedVerses = repository.getVersesByChapterDirect(chapter.id)
+                    if (downloadedVerses.isEmpty()) {
+                        _uiState.value = SurahUiState.Error("Failed to load Surah ${chapter.nameSimple}.")
+                        return@launch
+                    }
                     val downloadedWords = mutableMapOf<Int, List<WordEntity>>()
                     downloadedVerses.forEach { verse ->
                         downloadedWords[verse.id] = repository.getWordsForVerse(verse.id)
                     }
                     _uiState.value = SurahUiState.Success(chapter, downloadedVerses, downloadedWords, emptyMap())
                 } catch (e: Exception) {
-                    _uiState.value = SurahUiState.Error("Failed to load Surah ${chapter.nameSimple}. Please check your internet connection to download it for offline reading.")
+                    _uiState.value = SurahUiState.Error("Failed to load Surah ${chapter.nameSimple}.")
                 }
             }
         }

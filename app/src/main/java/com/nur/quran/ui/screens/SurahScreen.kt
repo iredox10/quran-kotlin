@@ -200,6 +200,7 @@ fun SurahScreen(
     }
 
     var isReadingMode by remember { mutableStateOf(false) }
+    var pendingScrollTarget by remember { mutableStateOf<Int?>(null) }
     var selectedWordForTooltip by remember { mutableStateOf<WordEntity?>(null) }
     var collectionVerse by remember { mutableStateOf<VerseEntity?>(null) }
     var shareVerseDialogTarget by remember { mutableStateOf<VerseEntity?>(null) }
@@ -230,6 +231,13 @@ fun SurahScreen(
 
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
+    
+    LaunchedEffect(pendingScrollTarget) {
+        pendingScrollTarget?.let { target ->
+            listState.scrollToItem(target)
+            pendingScrollTarget = null
+        }
+    }
 
     var isAutoScrollPaused by remember { mutableStateOf(false) }
     var autoScrollSpeed by remember { mutableIntStateOf(3) }
@@ -325,7 +333,10 @@ fun SurahScreen(
                             fontFamily = fontFamilyUi,
                             fontWeight = FontWeight.Bold,
                             fontSize = 18.sp,
-                            color = hInk
+                            color = hInk,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Icon(
@@ -356,7 +367,41 @@ fun SurahScreen(
                         icon = NurIcons.BookOpen,
                         active = isReadingMode,
                         label = "Reading mode"
-                    ) { isReadingMode = !isReadingMode }
+                    ) {
+                        val state = uiState
+                        val verses = if (state is SurahUiState.Success) state.verses else emptyList()
+                        val chapter = if (state is SurahUiState.Success) state.chapter else null
+                        var hOffset = 1
+                        if (chapter != null && chapter.id != 1 && chapter.id != 9) hOffset += 1
+                        val visibleItem = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.offset >= -it.size / 2 }
+                        
+                        if (!isReadingMode) {
+                            val verseIndex = (visibleItem?.index ?: hOffset) - hOffset
+                            isReadingMode = true
+                            if (verseIndex >= 0 && verseIndex < verses.size) {
+                                val pageToScroll = verses[verseIndex].pageNumber
+                                val pagesList = verses.groupBy { it.pageNumber }.keys.toList().sorted()
+                                val pageIndex = pagesList.indexOf(pageToScroll)
+                                if (pageIndex >= 0) {
+                                    pendingScrollTarget = pageIndex + hOffset
+                                }
+                            }
+                        } else {
+                            val pageIndex = (visibleItem?.index ?: hOffset) - hOffset
+                            isReadingMode = false
+                            val pagesList = verses.groupBy { it.pageNumber }.keys.toList().sorted()
+                            if (pageIndex >= 0 && pageIndex < pagesList.size) {
+                                val pageNumber = pagesList[pageIndex]
+                                val firstVerseOnPage = verses.firstOrNull { it.pageNumber == pageNumber }
+                                if (firstVerseOnPage != null) {
+                                    val verseIndex = verses.indexOf(firstVerseOnPage)
+                                    if (verseIndex >= 0) {
+                                        pendingScrollTarget = verseIndex + hOffset
+                                    }
+                                }
+                            }
+                        }
+                    }
                     TopBarIconBtn(
                         icon = NurIcons.Volume2,
                         active = isPlaying,
@@ -787,9 +832,11 @@ fun SurahScreen(
                                 )
                             }
                         } else {
-                            item {
-                                ContinuousReadingView(
-                                    verses = verses,
+                            val versesByPage = verses.groupBy { it.pageNumber }.toSortedMap()
+                            items(versesByPage.entries.toList(), key = { (page, _) -> "page_$page" }) { (page, pageVerses) ->
+                                ContinuousReadingPageItem(
+                                    page = page,
+                                    pageVerses = pageVerses,
                                     wordsMap = wordsMap,
                                     tajweedMap = tajweedMap,
                                     isTajweedEnabled = isTajweedEnabled,
@@ -1480,7 +1527,9 @@ fun SurahHeader(
                 fontWeight = FontWeight.ExtraBold,
                 color = hInk,
                 fontFamily = fontFamilyUi,
-                letterSpacing = (-0.5).sp
+                letterSpacing = (-0.5).sp,
+                textAlign = TextAlign.End,
+                modifier = Modifier.weight(1f, fill = false)
             )
             Spacer(modifier = Modifier.width(12.dp))
             Text(
@@ -2478,8 +2527,9 @@ fun WebSurahNavButtons(
 // ── Continuous Reading View (per-page flow, web reading mode) ───────────
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun ContinuousReadingView(
-    verses: List<VerseEntity>,
+fun ContinuousReadingPageItem(
+    page: Int,
+    pageVerses: List<VerseEntity>,
     wordsMap: Map<Int, List<WordEntity>>,
     tajweedMap: Map<String, String>?,
     isTajweedEnabled: Boolean,
@@ -2488,15 +2538,13 @@ fun ContinuousReadingView(
     arabicFontScale: Float = 1.0f,
     fontFamilyArabic: FontFamily = fontScheherazade
 ) {
-    val versesByPage = verses.groupBy { it.pageNumber }.toSortedMap()
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        versesByPage.forEach { (page, pageVerses) ->
-            WebPageDivider(pageNumber = page)
-            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+        WebPageDivider(pageNumber = page)
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                 // Build all page words as a single AnnotatedString
                 val allPageWords = pageVerses.flatMap { verse ->
                     wordsMap[verse.id] ?: emptyList()
@@ -2634,7 +2682,6 @@ fun ContinuousReadingView(
                         }
                     )
                 }
-            }
         }
     }
 }

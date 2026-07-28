@@ -443,6 +443,7 @@ fun SurahScreen(
                     val chapter = state.chapter
                     val verses = state.verses
                     val wordsMap = state.wordsMap
+                    val tajweedMap = state.tajweedMap
 
                     // Restore scroll position once verses are ready
                     LaunchedEffect(chapterId, verses.isNotEmpty()) {
@@ -751,6 +752,7 @@ fun SurahScreen(
                                 VerseItem(
                                     verse = verse,
                                     words = words,
+                                    tajweedMap = tajweedMap,
                                     isTranslationEnabled = isTranslationEnabled,
                                     isTajweedEnabled = isTajweedEnabled,
                                     isCurrentlyPlaying = playingVerseKey == verse.verseKey && isPlaying,
@@ -789,6 +791,7 @@ fun SurahScreen(
                                 ContinuousReadingView(
                                     verses = verses,
                                     wordsMap = wordsMap,
+                                    tajweedMap = tajweedMap,
                                     isTajweedEnabled = isTajweedEnabled,
                                     onWordClick = { word ->
                                         if (wordTapBehavior != "none") {
@@ -1675,6 +1678,7 @@ fun WebPageDivider(pageNumber: Int) {
 fun VerseItem(
     verse: VerseEntity,
     words: List<WordEntity>,
+    tajweedMap: Map<String, String>?,
     isTranslationEnabled: Boolean,
     isTajweedEnabled: Boolean,
     isCurrentlyPlaying: Boolean,
@@ -1800,61 +1804,58 @@ fun VerseItem(
                 .graphicsLayer { alpha = if (isHidden) 0.05f else 1.0f }
         ) {
             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                if (isTajweedEnabled && words.any { it.textUthmaniTajweed != null }) {
-                    // Build full verse as single AnnotatedString with tajweed colors
-                    val verseAnnotated = remember(words, isTajweedEnabled, fontFamilyArabic, arabicFontScale, isDarkThemeGlobal) {
-                        buildAnnotatedString {
-                            words.forEachIndexed { wordIndex, word ->
-                                if (wordIndex > 0) append(" ")
-                                val wordStart = length
-                                val rawText = if (!word.textQpcHafs.isNullOrBlank()) word.textQpcHafs else (word.textUthmani ?: "")
-                                val isEndMarker = word.charTypeName == "end"
-                                val plainText = rawText.replace("[\u06d6-\u06dc\u06df-\u06e8\u06ea-\u06ec\u25cc\u06dd]".toRegex(), "")
-                                val displayText = plainText
+                val fullVerseHtml = tajweedMap?.get(verse.verseKey)
+                val isVerseTajweedAvailable = !fullVerseHtml.isNullOrBlank()
 
-                                if (!isEndMarker && word.textUthmaniTajweed != null) {
-                                    val defaultTextColorHex = if (isDarkThemeGlobal) "#EFECE4" else "#2B3F3C"
-                                    val segments = TajweedProcessor.getWordTajweedSegments(
-                                        plainText = plainText,
-                                        tajweedHtml = word.textUthmaniTajweed,
-                                        defaultColor = defaultTextColorHex
-                                    )
-                                    if (segments.isNotEmpty()) {
-                                        val sorted = segments.sortedBy { it.start }
-                                        var cursor = 0
-                                        for (seg in sorted) {
-                                            if (seg.start > cursor) {
-                                                append(plainText.substring(cursor, seg.start))
-                                            }
-                                            val sStart = length
-                                            append(plainText.substring(seg.start, seg.end))
-                                            val sEnd = length
-                                            addStyle(
-                                                SpanStyle(color = Color(android.graphics.Color.parseColor(seg.colorHex))),
-                                                sStart, sEnd
-                                            )
-                                            seg.ruleClass?.let { rule ->
-                                                addStringAnnotation("TAJWEED_RULE", rule, sStart, sEnd)
-                                            }
-                                            cursor = seg.end
-                                        }
-                                        if (cursor < plainText.length) {
-                                            append(plainText.substring(cursor))
-                                        }
-                                    } else {
-                                        append(displayText)
-                                    }
-                                } else {
-                                    append(displayText)
-                                    if (isEndMarker) {
-                                        addStyle(
-                                            SpanStyle(color = hGold),
-                                            wordStart, length
-                                        )
-                                    }
+                if (isTajweedEnabled && (isVerseTajweedAvailable || words.any { it.textUthmaniTajweed != null })) {
+                    // Fallback to word-level tajweed HTML if verse-level is missing
+                    val finalTajweedHtml = fullVerseHtml ?: words.mapNotNull { it.textUthmaniTajweed }.joinToString(" ")
+                    
+                    val tajweedPlainText = buildString {
+                        words.forEachIndexed { index, word ->
+                            if (word.charTypeName != "end") {
+                                if (index > 0) append(" ")
+                                val rawText = if (word.textUthmani != null) word.textUthmani else (word.textQpcHafs ?: "")
+                                append(rawText.replace("[\u06d6-\u06dc\u06df-\u06e8\u06ea-\u06ec\u25cc\u06dd]".toRegex(), ""))
+                            }
+                        }
+                    }
+
+                    val defaultTextColorHex = if (isDarkThemeGlobal) "#EFECE4" else "#2B3F3C"
+                    val verseSegments = TajweedProcessor.getWordTajweedSegments(tajweedPlainText, finalTajweedHtml, defaultTextColorHex)
+
+                    val verseAnnotated = remember(words, verseSegments, isTajweedEnabled, fontFamilyArabic, arabicFontScale, isDarkThemeGlobal) {
+                        buildAnnotatedString {
+                            append(tajweedPlainText)
+                            
+                            // Apply Tajweed colors
+                            if (verseSegments.isNotEmpty()) {
+                                for (seg in verseSegments) {
+                                    addStyle(SpanStyle(color = Color(android.graphics.Color.parseColor(seg.colorHex))), seg.start, seg.end)
+                                    seg.ruleClass?.let { addStringAnnotation("TAJWEED_RULE", it, seg.start, seg.end) }
                                 }
-                                val wordEnd = length
-                                addStringAnnotation("WORD_INDEX", wordIndex.toString(), wordStart, wordEnd)
+                            }
+                            
+                            // Add end markers and WORD_INDEX annotations
+                            var cursor = 0
+                            words.forEachIndexed { wordIndex, word ->
+                                if (word.charTypeName != "end") {
+                                    if (wordIndex > 0) cursor++ // Space
+                                    val rawText = if (word.textUthmani != null) word.textUthmani else (word.textQpcHafs ?: "")
+                                    val plainText = rawText.replace("[\u06d6-\u06dc\u06df-\u06e8\u06ea-\u06ec\u25cc\u06dd]".toRegex(), "")
+                                    val wordStart = cursor
+                                    val wordEnd = cursor + plainText.length
+                                    addStringAnnotation("WORD_INDEX", wordIndex.toString(), wordStart, wordEnd)
+                                    cursor += plainText.length
+                                } else {
+                                    if (wordIndex > 0) append(" ")
+                                    val wordStart = length
+                                    val rawText = if (word.textUthmani != null) word.textUthmani else (word.textQpcHafs ?: "")
+                                    val plainText = rawText.replace("[\u06d6-\u06dc\u06df-\u06e8\u06ea-\u06ec\u25cc\u06dd]".toRegex(), "")
+                                    append(plainText)
+                                    addStyle(SpanStyle(color = hGold), wordStart, length)
+                                    addStringAnnotation("WORD_INDEX", wordIndex.toString(), wordStart, length)
+                                }
                             }
                         }
                     }
@@ -2121,7 +2122,7 @@ private fun buildTranslationAnnotatedString(html: String): AnnotatedString {
     // Replace each footnote sup with sentinel-wrapped digits, in order
     val withSentinels = footnoteSupRegex.replace(html) { match ->
         footnoteIds.add(match.groupValues[1])
-        "${match.groupValues[2]}"
+        " ${match.groupValues[2]} "
     }
     // Strip all remaining HTML
     val plain = HtmlCompat.fromHtml(withSentinels, HtmlCompat.FROM_HTML_MODE_LEGACY).toString()
@@ -2131,9 +2132,9 @@ private fun buildTranslationAnnotatedString(html: String): AnnotatedString {
         var footnoteIndex = 0
         var plainStart = 0
         while (i < plain.length) {
-            if (plain[i] == '') {
+            if (plain[i] == ' ') {
                 if (plainStart < i) append(plain.substring(plainStart, i))
-                val end = plain.indexOf('', i + 1)
+                val end = plain.indexOf(' ', i + 1)
                 if (end == -1) break
                 val digits = plain.substring(i + 1, end)
                 val id = footnoteIds.getOrNull(footnoteIndex) ?: continue
@@ -2480,6 +2481,7 @@ fun WebSurahNavButtons(
 fun ContinuousReadingView(
     verses: List<VerseEntity>,
     wordsMap: Map<Int, List<WordEntity>>,
+    tajweedMap: Map<String, String>?,
     isTajweedEnabled: Boolean,
     onWordClick: (WordEntity) -> Unit,
     onTajweedClick: (TajweedRule) -> Unit = {},
@@ -2500,60 +2502,63 @@ fun ContinuousReadingView(
                     wordsMap[verse.id] ?: emptyList()
                 }
 
-                if (isTajweedEnabled && allPageWords.any { it.textUthmaniTajweed != null }) {
-                    val pageAnnotated = remember(allPageWords, isTajweedEnabled, fontFamilyArabic, arabicFontScale, isDarkThemeGlobal) {
-                        buildAnnotatedString {
-                            allPageWords.forEachIndexed { wordIndex, word ->
-                                if (wordIndex > 0) append(" ")
-                                val wordStart = length
-                                val rawText = if (!word.textQpcHafs.isNullOrBlank()) word.textQpcHafs else (word.textUthmani ?: "")
-                                val isEndMarker = word.charTypeName == "end"
-                                val plainText = rawText.replace("[\u06d6-\u06dc\u06df-\u06e8\u06ea-\u06ec\u25cc\u06dd]".toRegex(), "")
-                                val displayText = plainText
+                val fullPageHtml = buildString {
+                    pageVerses.forEachIndexed { index, verse ->
+                        if (index > 0) append(" ")
+                        val vHtml = tajweedMap?.get(verse.verseKey)
+                        if (vHtml != null) append(vHtml) else {
+                            val words = wordsMap[verse.id] ?: emptyList()
+                            append(words.mapNotNull { it.textUthmaniTajweed }.joinToString(" "))
+                        }
+                    }
+                }
+                
+                if (isTajweedEnabled && fullPageHtml.isNotBlank()) {
+                    val pagePlainText = buildString {
+                        allPageWords.forEachIndexed { index, word ->
+                            if (word.charTypeName != "end") {
+                                if (index > 0) append(" ")
+                                val rawText = if (word.textUthmani != null) word.textUthmani else (word.textQpcHafs ?: "")
+                                append(rawText.replace("[\u06d6-\u06dc\u06df-\u06e8\u06ea-\u06ec\u25cc\u06dd]".toRegex(), ""))
+                            }
+                        }
+                    }
 
-                                if (!isEndMarker && word.textUthmaniTajweed != null) {
-                                    val defaultTextColorHex = if (isDarkThemeGlobal) "#EFECE4" else "#2B3F3C"
-                                    val segments = TajweedProcessor.getWordTajweedSegments(
-                                        plainText = plainText,
-                                        tajweedHtml = word.textUthmaniTajweed,
-                                        defaultColor = defaultTextColorHex
-                                    )
-                                    if (segments.isNotEmpty()) {
-                                        val sorted = segments.sortedBy { it.start }
-                                        var cursor = 0
-                                        for (seg in sorted) {
-                                            if (seg.start > cursor) {
-                                                append(plainText.substring(cursor, seg.start))
-                                            }
-                                            val sStart = length
-                                            append(plainText.substring(seg.start, seg.end))
-                                            val sEnd = length
-                                            addStyle(
-                                                SpanStyle(color = Color(android.graphics.Color.parseColor(seg.colorHex))),
-                                                sStart, sEnd
-                                            )
-                                            seg.ruleClass?.let { rule ->
-                                                addStringAnnotation("TAJWEED_RULE", rule, sStart, sEnd)
-                                            }
-                                            cursor = seg.end
-                                        }
-                                        if (cursor < plainText.length) {
-                                            append(plainText.substring(cursor))
-                                        }
-                                    } else {
-                                        append(displayText)
-                                    }
-                                } else {
-                                    append(displayText)
-                                    if (isEndMarker) {
-                                        addStyle(
-                                            SpanStyle(color = hGold),
-                                            wordStart, length
-                                        )
-                                    }
+                    val defaultTextColorHex = if (isDarkThemeGlobal) "#EFECE4" else "#2B3F3C"
+                    val pageSegments = TajweedProcessor.getWordTajweedSegments(pagePlainText, fullPageHtml, defaultTextColorHex)
+
+                    val pageAnnotated = remember(allPageWords, pageSegments, isTajweedEnabled, fontFamilyArabic, arabicFontScale, isDarkThemeGlobal) {
+                        buildAnnotatedString {
+                            append(pagePlainText)
+                            
+                            // Apply Tajweed colors
+                            if (pageSegments.isNotEmpty()) {
+                                for (seg in pageSegments) {
+                                    addStyle(SpanStyle(color = Color(android.graphics.Color.parseColor(seg.colorHex))), seg.start, seg.end)
+                                    seg.ruleClass?.let { addStringAnnotation("TAJWEED_RULE", it, seg.start, seg.end) }
                                 }
-                                val wordEnd = length
-                                addStringAnnotation("WORD_INDEX", wordIndex.toString(), wordStart, wordEnd)
+                            }
+                            
+                            // Add end markers and WORD_INDEX annotations
+                            var cursor = 0
+                            allPageWords.forEachIndexed { wordIndex, word ->
+                                if (word.charTypeName != "end") {
+                                    if (wordIndex > 0) cursor++ // Space
+                                    val rawText = if (word.textUthmani != null) word.textUthmani else (word.textQpcHafs ?: "")
+                                    val plainText = rawText.replace("[\u06d6-\u06dc\u06df-\u06e8\u06ea-\u06ec\u25cc\u06dd]".toRegex(), "")
+                                    val wordStart = cursor
+                                    val wordEnd = cursor + plainText.length
+                                    addStringAnnotation("WORD_INDEX", wordIndex.toString(), wordStart, wordEnd)
+                                    cursor += plainText.length
+                                } else {
+                                    if (wordIndex > 0) append(" ")
+                                    val wordStart = length
+                                    val rawText = if (word.textUthmani != null) word.textUthmani else (word.textQpcHafs ?: "")
+                                    val plainText = rawText.replace("[\u06d6-\u06dc\u06df-\u06e8\u06ea-\u06ec\u25cc\u06dd]".toRegex(), "")
+                                    append(plainText)
+                                    addStyle(SpanStyle(color = hGold), wordStart, length)
+                                    addStringAnnotation("WORD_INDEX", wordIndex.toString(), wordStart, length)
+                                }
                             }
                         }
                     }

@@ -254,14 +254,15 @@ fun HifdhReaderScreen(
             }
         }
 
+
         when (val state = uiState) {
             is SurahUiState.Loading -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = hGold)
                 }
             }
             is SurahUiState.Error -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                     Text(text = state.message, color = hInkMuted)
                 }
             }
@@ -272,6 +273,7 @@ fun HifdhReaderScreen(
                     if (versesList.isEmpty()) emptyList()
                     else versesList.subList(currentVerseIndex, (currentVerseIndex + ayahsPerChunk).coerceAtMost(versesList.size))
                 }
+
 
                 Box(modifier = Modifier.weight(1f)) {
                     // ── 3. Distraction-Free Verses Canvas (Matching Web Memorization.jsx) ──
@@ -758,37 +760,38 @@ fun HifdhReaderScreen(
                             }
                         }
                     }
+
+                    // Overlay: AutoScrollerBar (inside Box to avoid stealing Column space)
+                    AutoScrollerBar(
+                        isAutoScrollActive = isAutoScrollActive,
+                        isAutoScrollPaused = isAutoScrollPaused,
+                        autoScrollSpeed = autoScrollSpeed,
+                        onPauseToggle = { isAutoScrollPaused = !isAutoScrollPaused },
+                        onSpeedChange = { autoScrollSpeed = it },
+                        onJumpUp = {
+                            coroutineScope.launch {
+                                lazyListState.scrollBy(-300f)
+                            }
+                        },
+                        onJumpDown = {
+                            coroutineScope.launch {
+                                lazyListState.scrollBy(300f)
+                            }
+                        },
+                        onClose = {
+                            isAutoScrollActive = false
+                            isAutoScrollPaused = false
+                        }
+                    )
+
+                    if (showSettingsDrawer) {
+                        SettingsDrawer(
+                            viewModel = surahViewModel,
+                            onDismiss = { showSettingsDrawer = false }
+                        )
+                    }
                 }
             }
-        }
-
-        AutoScrollerBar(
-            isAutoScrollActive = isAutoScrollActive,
-            isAutoScrollPaused = isAutoScrollPaused,
-            autoScrollSpeed = autoScrollSpeed,
-            onPauseToggle = { isAutoScrollPaused = !isAutoScrollPaused },
-            onSpeedChange = { autoScrollSpeed = it },
-            onJumpUp = {
-                coroutineScope.launch {
-                    lazyListState.scrollBy(-300f)
-                }
-            },
-            onJumpDown = {
-                coroutineScope.launch {
-                    lazyListState.scrollBy(300f)
-                }
-            },
-            onClose = {
-                isAutoScrollActive = false
-                isAutoScrollPaused = false
-            }
-        )
-
-        if (showSettingsDrawer) {
-            SettingsDrawer(
-                viewModel = surahViewModel,
-                onDismiss = { showSettingsDrawer = false }
-            )
         }
     }
 }

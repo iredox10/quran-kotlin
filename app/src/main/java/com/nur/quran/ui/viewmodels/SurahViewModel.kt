@@ -257,15 +257,18 @@ class SurahViewModel @Inject constructor(
         cachedTafsirVerses = emptyList()
         loadChapterJob?.cancel()
 
-        loadChapterJob = viewModelScope.launch {
+        loadChapterJob = viewModelScope.launch(Dispatchers.IO) {
             _uiState.value = SurahUiState.Loading
             try {
-                var chapters = repository.getChaptersFlow().firstOrNull() ?: emptyList()
+                var chapters = repository.getAllChaptersDirect()
                 if (chapters.isEmpty()) {
                     repository.refreshChapters()
-                    chapters = repository.getChaptersFlow().firstOrNull() ?: emptyList()
+                    chapters = repository.getAllChaptersDirect()
                 }
-                val chapter = chapters.find { it.id == chapterId }
+                var chapter = chapters.find { it.id == chapterId }
+                if (chapter == null) {
+                    chapter = repository.getChapterById(chapterId)
+                }
                 if (chapter != null) {
                     currentChapterName = chapter.nameSimple
                     repository.addRecentlyRead(chapter.id, chapter.nameSimple)
@@ -281,7 +284,7 @@ class SurahViewModel @Inject constructor(
     }
 
     fun loadPageVerses(pageNumber: Int) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             _uiState.value = SurahUiState.Loading
             try {
                 val verses = repository.getVersesByPage(pageNumber)
@@ -290,12 +293,9 @@ class SurahViewModel @Inject constructor(
                     return@launch
                 }
                 val chapterId = verses.firstOrNull()?.chapterId ?: 1
-                val chapter = repository.getChaptersFlow().firstOrNull()?.find { it.id == chapterId }
+                val chapter = repository.getChapterById(chapterId)
                     ?: ChapterEntity(chapterId, "Surah $chapterId", "سورة", "Surah $chapterId", "Chapter", "makkah", 1, 10, pageNumber, pageNumber)
-                val wordsMap = mutableMapOf<Int, List<WordEntity>>()
-                verses.forEach { verse ->
-                    wordsMap[verse.id] = repository.getWordsForVerse(verse.id)
-                }
+                val wordsMap = repository.getWordsForVerses(verses.map { it.id })
                 _uiState.value = SurahUiState.Success(chapter, verses, wordsMap)
             } catch (e: Exception) {
                 _uiState.value = SurahUiState.Error(e.localizedMessage ?: "Failed to load page verses")
@@ -303,69 +303,53 @@ class SurahViewModel @Inject constructor(
         }
     }
 
-    private fun loadVerses(chapter: ChapterEntity) {
-        viewModelScope.launch {
-            val cachedVerses = repository.getVersesByChapterDirect(chapter.id)
-            if (cachedVerses.isNotEmpty()) {
-                val wordsMap = mutableMapOf<Int, List<WordEntity>>()
-                cachedVerses.forEach { verse ->
-                    val words = repository.getWordsForVerse(verse.id)
-                    wordsMap[verse.id] = words
-                }
-                val tajweed = (_uiState.value as? SurahUiState.Success)?.tajweedMap ?: emptyMap()
-                _uiState.value = SurahUiState.Success(chapter, cachedVerses, wordsMap, tajweed)
+    private suspend fun loadVerses(chapter: ChapterEntity) {
+        val cachedVerses = repository.getVersesByChapterDirect(chapter.id)
+        if (cachedVerses.isNotEmpty()) {
+            val wordsMap = repository.getWordsForVerses(cachedVerses.map { it.id })
+            val tajweed = (_uiState.value as? SurahUiState.Success)?.tajweedMap ?: emptyMap()
+            _uiState.value = SurahUiState.Success(chapter, cachedVerses, wordsMap, tajweed)
 
-                val hasTranslations = cachedVerses.any { !it.translation.isNullOrBlank() }
-                if (!hasTranslations) {
-                    viewModelScope.launch {
-                        try {
-                            repository.refreshVersesByChapter(chapter.id, _currentTranslationId.value)
-                            val updatedVerses = repository.getVersesByChapterDirect(chapter.id)
-                            val updatedWords = mutableMapOf<Int, List<WordEntity>>()
-                            updatedVerses.forEach { verse ->
-                                updatedWords[verse.id] = repository.getWordsForVerse(verse.id)
-                            }
-                            _uiState.value = SurahUiState.Success(chapter, updatedVerses, updatedWords, tajweed)
-                        } catch (_: Exception) {
-                            // Silent fallback
-                        }
-                    }
-                }
-            } else {
+            val hasTranslations = cachedVerses.any { !it.translation.isNullOrBlank() }
+            if (!hasTranslations) {
                 try {
                     repository.refreshVersesByChapter(chapter.id, _currentTranslationId.value)
-                    val downloadedVerses = repository.getVersesByChapterDirect(chapter.id)
-                    if (downloadedVerses.isEmpty()) {
-                        _uiState.value = SurahUiState.Error("Failed to load Surah ${chapter.nameSimple}.")
-                        return@launch
-                    }
-                    val downloadedWords = mutableMapOf<Int, List<WordEntity>>()
-                    downloadedVerses.forEach { verse ->
-                        downloadedWords[verse.id] = repository.getWordsForVerse(verse.id)
-                    }
-                    _uiState.value = SurahUiState.Success(chapter, downloadedVerses, downloadedWords, emptyMap())
-                } catch (e: Exception) {
-                    _uiState.value = SurahUiState.Error("Failed to load Surah ${chapter.nameSimple}.")
+                    val updatedVerses = repository.getVersesByChapterDirect(chapter.id)
+                    val updatedWords = repository.getWordsForVerses(updatedVerses.map { it.id })
+                    _uiState.value = SurahUiState.Success(chapter, updatedVerses, updatedWords, tajweed)
+                } catch (_: Exception) {
+                    // Silent fallback — already showing cached verses
                 }
+            }
+        } else {
+            try {
+                repository.refreshVersesByChapter(chapter.id, _currentTranslationId.value)
+                val downloadedVerses = repository.getVersesByChapterDirect(chapter.id)
+                if (downloadedVerses.isEmpty()) {
+                    _uiState.value = SurahUiState.Error("Failed to load Surah ${chapter.nameSimple}.")
+                    return
+                }
+                val downloadedWords = repository.getWordsForVerses(downloadedVerses.map { it.id })
+                _uiState.value = SurahUiState.Success(chapter, downloadedVerses, downloadedWords, emptyMap())
+            } catch (e: Exception) {
+                _uiState.value = SurahUiState.Error("Failed to load Surah ${chapter.nameSimple}.")
             }
         }
     }
 
-    private fun loadTajweed(chapterId: Int) {
-        viewModelScope.launch {
-            try {
-                val tajweedResponse = repository.getTajweedHtmlForChapter(chapterId)
-                val map = mutableMapOf<String, String>()
-                tajweedResponse.verses.forEach { v ->
-                    map[v.verse_key] = TajweedProcessor.sanitizeTajweedHtml(v.text_uthmani_tajweed)
-                }
-                val current = _uiState.value
-                if (current is SurahUiState.Success) {
-                    _uiState.value = current.copy(tajweedMap = map)
-                }
-            } catch (_: Exception) {
-                // Tajweed data not available — UI will show plain text
+    private suspend fun loadTajweed(chapterId: Int) {
+        try {
+            val tajweedResponse = repository.getTajweedHtmlForChapter(chapterId)
+            val map = mutableMapOf<String, String>()
+            tajweedResponse.verses.forEach { v ->
+                map[v.verse_key] = TajweedProcessor.sanitizeTajweedHtml(v.text_uthmani_tajweed)
             }
+            val current = _uiState.value
+            if (current is SurahUiState.Success) {
+                _uiState.value = current.copy(tajweedMap = map)
+            }
+        } catch (_: Exception) {
+            // Tajweed data not available — UI will show plain text
         }
     }
 

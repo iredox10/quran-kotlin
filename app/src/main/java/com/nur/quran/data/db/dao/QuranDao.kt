@@ -15,6 +15,9 @@ interface QuranDao {
     @Query("SELECT * FROM chapters ORDER BY id ASC")
     fun getAllChapters(): Flow<List<ChapterEntity>>
 
+    @Query("SELECT * FROM chapters ORDER BY id ASC")
+    suspend fun getAllChaptersDirect(): List<ChapterEntity>
+
     @Query("SELECT * FROM chapters WHERE id = :chapterId LIMIT 1")
     suspend fun getChapterById(chapterId: Int): ChapterEntity?
 
@@ -43,6 +46,9 @@ interface QuranDao {
     // Words
     @Query("SELECT * FROM words WHERE verseId = :verseId ORDER BY position ASC")
     suspend fun getWordsForVerse(verseId: Int): List<WordEntity>
+
+    @Query("SELECT * FROM words WHERE verseId IN (:verseIds) ORDER BY verseId ASC, position ASC")
+    suspend fun getWordsForVerses(verseIds: List<Int>): List<WordEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertWords(words: List<WordEntity>)

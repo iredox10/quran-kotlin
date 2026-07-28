@@ -469,6 +469,16 @@ class QuranRepository @Inject constructor(
     // Words
     suspend fun getWordsForVerse(verseId: Int): List<WordEntity> = quranDao.getWordsForVerse(verseId)
 
+    suspend fun getWordsForVerses(verseIds: List<Int>): Map<Int, List<WordEntity>> {
+        if (verseIds.isEmpty()) return emptyMap()
+        val allWords = quranDao.getWordsForVerses(verseIds)
+        return allWords.groupBy { it.verseId }
+    }
+
+    // Direct chapter queries (non-Flow, for use from IO dispatchers)
+    suspend fun getAllChaptersDirect(): List<ChapterEntity> = quranDao.getAllChaptersDirect()
+    suspend fun getChapterById(chapterId: Int): ChapterEntity? = quranDao.getChapterById(chapterId)
+
     // Tajweed HTML — with offline asset fallback
     suspend fun getTajweedHtmlForChapter(chapterId: Int): TajweedResponse = withContext(Dispatchers.IO) {
         try {

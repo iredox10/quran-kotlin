@@ -1935,7 +1935,18 @@ fun VerseItem(
                         fontSizeSp = 26f * arabicFontScale,
                         fontFileName = getArabicFontFileName(selectedArabicFontName),
                         textColorHex = textColorHex,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        onTajweedClick = { ruleClass ->
+                            val rule = TajweedRules.RULES[ruleClass]
+                            if (rule != null) {
+                                onTajweedClick(rule)
+                            }
+                        },
+                        onWordClick = { idx ->
+                            if (idx >= 0 && idx < words.size) {
+                                onWordClick(words[idx])
+                            }
+                        }
                     )
                 } else {
                     // Non-tajweed: simple verse text as single AnnotatedString
@@ -2568,7 +2579,18 @@ fun ContinuousReadingPageItem(
                         fontSizeSp = 26f * arabicFontScale,
                         fontFileName = getArabicFontFileName(selectedArabicFontName),
                         textColorHex = textColorHex,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        onTajweedClick = { ruleClass ->
+                            val rule = TajweedRules.RULES[ruleClass]
+                            if (rule != null) {
+                                onTajweedClick(rule)
+                            }
+                        },
+                        onWordClick = { idx ->
+                            if (idx >= 0 && idx < allPageWords.size) {
+                                onWordClick(allPageWords[idx])
+                            }
+                        }
                     )
                 } else {
                     val pageAnnotated = remember(allPageWords, fontFamilyArabic, arabicFontScale, isDarkThemeGlobal) {

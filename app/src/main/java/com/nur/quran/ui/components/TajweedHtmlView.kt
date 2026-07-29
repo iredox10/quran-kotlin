@@ -1,6 +1,8 @@
 package com.nur.quran.ui.components
 
+import android.annotation.SuppressLint
 import android.graphics.Color as AndroidColor
+import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.runtime.Composable
@@ -19,6 +21,28 @@ fun getArabicFontFileName(name: String): String {
     }
 }
 
+class TajweedJsBridge(
+    private val onTajweedClick: ((String) -> Unit)?,
+    private val onWordClick: ((Int) -> Unit)?,
+    private val onVerseClick: (() -> Unit)?
+) {
+    @JavascriptInterface
+    fun onTajweedClick(ruleClass: String) {
+        onTajweedClick?.invoke(ruleClass)
+    }
+
+    @JavascriptInterface
+    fun onWordClick(index: Int) {
+        onWordClick?.invoke(index)
+    }
+
+    @JavascriptInterface
+    fun onVerseClick() {
+        onVerseClick?.invoke()
+    }
+}
+
+@SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun TajweedHtmlView(
     tajweedHtml: String,
@@ -27,7 +51,10 @@ fun TajweedHtmlView(
     fontFileName: String = "scheherazade_regular.ttf",
     textColorHex: String = "#2B3F3C",
     backgroundColorHex: String = "transparent",
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onTajweedClick: ((String) -> Unit)? = null,
+    onWordClick: ((Int) -> Unit)? = null,
+    onVerseClick: (() -> Unit)? = null
 ) {
     val cleanHtml = remember(tajweedHtml) {
         tajweedHtml.replace("[\u06df\u06e0\u06e2\u06ea-\u06ec\u25cc]".toRegex(), "")
@@ -86,7 +113,31 @@ fun TajweedHtmlView(
         .end { color: #CBA135; font-weight: normal; margin: 0 4px; }
         </style>
         </head>
-        <body>$cleanHtml</body>
+        <body>$cleanHtml
+        <script>
+        document.addEventListener('click', function(e) {
+            var tajweedEl = e.target.closest('tajweed, rule, span[class]');
+            if (tajweedEl) {
+                var ruleClass = tajweedEl.getAttribute('class');
+                if (ruleClass && ruleClass !== 'end' && window.AndroidBridge) {
+                    window.AndroidBridge.onTajweedClick(ruleClass);
+                    return;
+                }
+            }
+            var wordEl = e.target.closest('[data-word-index]');
+            if (wordEl && window.AndroidBridge) {
+                var wordIdx = wordEl.getAttribute('data-word-index');
+                if (wordIdx !== null) {
+                    window.AndroidBridge.onWordClick(parseInt(wordIdx));
+                    return;
+                }
+            }
+            if (window.AndroidBridge) {
+                window.AndroidBridge.onVerseClick();
+            }
+        });
+        </script>
+        </body>
         </html>
         """.trimIndent()
     }
@@ -99,10 +150,14 @@ fun TajweedHtmlView(
                 isVerticalScrollBarEnabled = false
                 isHorizontalScrollBarEnabled = false
                 settings.apply {
-                    javaScriptEnabled = false
+                    javaScriptEnabled = true
                     allowFileAccess = true
                     allowContentAccess = true
                 }
+                addJavascriptInterface(
+                    TajweedJsBridge(onTajweedClick, onWordClick, onVerseClick),
+                    "AndroidBridge"
+                )
                 webViewClient = WebViewClient()
             }
         },

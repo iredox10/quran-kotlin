@@ -2167,27 +2167,33 @@ private fun TranslationText(
 }
 
 private fun buildTranslationAnnotatedString(html: String): AnnotatedString {
-    val footnoteIds = mutableListOf<String>()
-    // Replace each footnote sup with sentinel-wrapped digits, in order
-    val withSentinels = footnoteSupRegex.replace(html) { match ->
-        footnoteIds.add(match.groupValues[1])
-        " ${match.groupValues[2]} "
+    if (!html.contains("<sup")) {
+        val plain = HtmlCompat.fromHtml(html, HtmlCompat.FROM_HTML_MODE_LEGACY).toString()
+        return AnnotatedString(plain)
     }
-    // Strip all remaining HTML
-    val plain = HtmlCompat.fromHtml(withSentinels, HtmlCompat.FROM_HTML_MODE_LEGACY).toString()
+
+    val matches = mutableListOf<Pair<String, String>>()
+    val tokenizedHtml = footnoteSupRegex.replace(html) { match ->
+        val id = match.groupValues[1]
+        val digits = match.groupValues[2]
+        matches.add(id to digits)
+        "⟦FN:${matches.size - 1}⟧"
+    }
+
+    val plain = HtmlCompat.fromHtml(tokenizedHtml, HtmlCompat.FROM_HTML_MODE_LEGACY).toString()
+    val tokenRegex = Regex("⟦FN:(\\d+)⟧")
 
     return buildAnnotatedString {
-        var i = 0
-        var footnoteIndex = 0
-        var plainStart = 0
-        while (i < plain.length) {
-            if (plain[i] == ' ') {
-                if (plainStart < i) append(plain.substring(plainStart, i))
-                val end = plain.indexOf(' ', i + 1)
-                if (end == -1) break
-                val digits = plain.substring(i + 1, end)
-                val id = footnoteIds.getOrNull(footnoteIndex) ?: continue
-                footnoteIndex++
+        var lastIndex = 0
+        tokenRegex.findAll(plain).forEach { match ->
+            val start = match.range.first
+            val end = match.range.last + 1
+            if (start > lastIndex) {
+                append(plain.substring(lastIndex, start))
+            }
+            val fnIndex = match.groupValues[1].toIntOrNull()
+            if (fnIndex != null && fnIndex in matches.indices) {
+                val (id, digits) = matches[fnIndex]
                 pushStringAnnotation(tag = "footnote", annotation = id)
                 withStyle(
                     SpanStyle(
@@ -2199,13 +2205,12 @@ private fun buildTranslationAnnotatedString(html: String): AnnotatedString {
                     append(digits)
                 }
                 pop()
-                i = end + 1
-                plainStart = i
-            } else {
-                i++
             }
+            lastIndex = end
         }
-        if (plainStart < plain.length) append(plain.substring(plainStart))
+        if (lastIndex < plain.length) {
+            append(plain.substring(lastIndex))
+        }
     }
 }
 

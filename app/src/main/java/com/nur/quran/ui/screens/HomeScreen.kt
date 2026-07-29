@@ -29,8 +29,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.googlefonts.Font
-import androidx.compose.ui.text.googlefonts.GoogleFont
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -59,8 +58,15 @@ import java.util.Date
 import java.util.Locale
 
 // ── Local & System Fonts Setup ──────────────────────────────────────────────
-val fontFamilyUi = FontFamily.Serif
-val fontFamilyBody = FontFamily.Default
+
+val fontFamilyUi = FontFamily(
+    Font(R.font.cormorant_garamond_regular, FontWeight.Normal),
+    Font(R.font.cormorant_garamond_bold, FontWeight.Bold)
+)
+val fontFamilyBody = FontFamily(
+    Font(R.font.piazzolla_regular, FontWeight.Normal),
+    Font(R.font.piazzolla_bold, FontWeight.Bold)
+)
 val fontFamilyMono = FontFamily.Monospace
 val fontFamilyArabic = fontScheherazade
 
@@ -295,16 +301,6 @@ fun HomeScreen(
                         }
                     }
 
-                    // ─── Active Sauka Goals Widget ───
-                    if (activeGoals.isNotEmpty()) {
-                        item {
-                            ActiveSaukaGoalsWidget(
-                                goals = activeGoals,
-                                onReadGoal = { goal -> onPageClick(goal.pageNumber) }
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                        }
-                    }
 
                     // ─── Quick Action Mobile Shortcuts ───
                     item {
@@ -1497,92 +1493,6 @@ private fun shareText(context: Context, text: String) {
     context.startActivity(Intent.createChooser(sendIntent, null))
 }
 
-// ── Active Sauka Goals Widget ───────────────────────────────────────────
-@Composable
-private fun ActiveSaukaGoalsWidget(
-    goals: List<SaukaGoal>,
-    onReadGoal: (SaukaGoal) -> Unit
-) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(bottom = 10.dp)
-        ) {
-            Icon(
-                imageVector = NurIcons.Users,
-                contentDescription = null,
-                tint = hGold,
-                modifier = Modifier.size(18.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "My Sauka Readings",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = hInk,
-                fontFamily = fontFamilyUi
-            )
-        }
-        for (goal in goals) {
-            Surface(
-                onClick = { onReadGoal(goal) },
-                shape = RoundedCornerShape(20.dp),
-                color = hGoldSoft,
-                border = androidx.compose.foundation.BorderStroke(1.5.dp, hGold),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = goal.groupTitle.uppercase(Locale.ROOT),
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = hGold,
-                            fontFamily = fontFamilyMono,
-                            letterSpacing = 1.sp
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = "${goal.divisionType.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() }} ${goal.partNumber}",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = hInk,
-                            fontFamily = fontFamilyUi
-                        )
-                    }
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = hGold
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Read",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Icon(
-                                imageVector = NurIcons.ArrowRight,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(14.dp)
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
 
 // ── Quick Action Mobile Shortcuts (2-Column Grid) ───────────────────────
 @Composable

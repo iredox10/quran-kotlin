@@ -273,22 +273,42 @@ fun SurahScreen(
         }
     }
 
-    LaunchedEffect(chapterId) {
+    remember(chapterId) {
         viewModel.loadChapterDetails(chapterId)
+        true
+    }
+
+    LaunchedEffect(chapterId, listState) {
+        snapshotFlow { Pair(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) }
+            .collect { (index, offset) ->
+                if (index >= 0) {
+                    viewModel.saveSurahScrollPosition(chapterId, index, offset)
+                }
+            }
     }
 
     LaunchedEffect(chapterId, targetVerseKey, uiState) {
         val state = uiState
-        if (state is SurahUiState.Success) {
+        if (state is SurahUiState.Success && state.chapter.id == chapterId) {
             if (!targetVerseKey.isNullOrBlank()) {
                 val index = state.verses.indexOfFirst { it.verseKey == targetVerseKey }
                 if (index >= 0) {
                     listState.scrollToItem(index)
                 } else {
-                    listState.scrollToItem(0)
+                    val saved = viewModel.getSurahScrollPosition(chapterId)
+                    if (saved != null) {
+                        listState.scrollToItem(saved.first, saved.second)
+                    } else {
+                        listState.scrollToItem(0)
+                    }
                 }
             } else {
-                listState.scrollToItem(0)
+                val saved = viewModel.getSurahScrollPosition(chapterId)
+                if (saved != null) {
+                    listState.scrollToItem(saved.first, saved.second)
+                } else {
+                    listState.scrollToItem(0)
+                }
             }
         }
     }

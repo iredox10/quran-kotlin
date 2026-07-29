@@ -394,7 +394,14 @@ class QuranRepository @Inject constructor(
     }
 
     suspend fun refreshVersesByChapter(chapterId: Int, translationId: Int) = withContext(Dispatchers.IO) {
-        val existing = quranDao.getVersesByChapter(chapterId).firstOrNull()
+        var existing = quranDao.getVersesByChapter(chapterId).firstOrNull()
+        if (existing.isNullOrEmpty()) {
+            val (offlineVerses, offlineWords) = loadOfflineVersesFromAssets(chapterId)
+            if (offlineVerses.isNotEmpty()) {
+                quranDao.insertVersesAndWords(offlineVerses, offlineWords)
+                existing = offlineVerses
+            }
+        }
         if (!existing.isNullOrEmpty() && existing.none { it.textUthmani.isNullOrBlank() }
             && existing.any { !it.translation.isNullOrBlank() }) {
             return@withContext

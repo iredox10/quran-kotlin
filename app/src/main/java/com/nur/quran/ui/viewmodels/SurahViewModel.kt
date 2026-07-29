@@ -247,38 +247,59 @@ class SurahViewModel @Inject constructor(
         }
     }
 
+    private val chapterMemoryCache = java.util.concurrent.ConcurrentHashMap<Int, SurahUiState.Success>()
+    private val surahScrollPositions = java.util.concurrent.ConcurrentHashMap<Int, Pair<Int, Int>>()
+
+    fun saveSurahScrollPosition(chapterId: Int, index: Int, offset: Int) {
+        if (chapterId > 0) {
+            surahScrollPositions[chapterId] = Pair(index, offset)
+        }
+    }
+
+    fun getSurahScrollPosition(chapterId: Int): Pair<Int, Int>? {
+        return surahScrollPositions[chapterId]
+    }
+
     // ── Chapter loading ─────────────────────────────────────────────────
 
     private var loadChapterJob: Job? = null
 
     fun loadChapterDetails(chapterId: Int) {
+        if (currentChapterId == chapterId && _uiState.value is SurahUiState.Success) {
+            return
+        }
         currentChapterId = chapterId
         _tafsirState.value = TafsirUiState.Hidden
         cachedTafsirVerses = emptyList()
-        loadChapterJob?.cancel()
 
+        val memoryCached = chapterMemoryCache[chapterId]
+        if (memoryCached != null) {
+            _uiState.value = memoryCached
+            currentChapterName = memoryCached.chapter.nameSimple
+        }
+
+        loadChapterJob?.cancel()
         loadChapterJob = viewModelScope.launch(Dispatchers.IO) {
-            _uiState.value = SurahUiState.Loading
-            try {
-                var chapters = repository.getAllChaptersDirect()
-                if (chapters.isEmpty()) {
-                    repository.refreshChapters()
-                    chapters = repository.getAllChaptersDirect()
-                }
-                var chapter = chapters.find { it.id == chapterId }
-                if (chapter == null) {
-                    chapter = repository.getChapterById(chapterId)
-                }
-                if (chapter != null) {
-                    currentChapterName = chapter.nameSimple
-                    repository.addRecentlyRead(chapter.id, chapter.nameSimple)
-                    loadVerses(chapter)
-                    loadTajweed(chapter.id)
-                } else {
-                    _uiState.value = SurahUiState.Error("Chapter $chapterId not found")
-                }
-            } catch (e: Exception) {
-                _uiState.value = SurahUiState.Error(e.localizedMessage ?: "Failed to load chapter metadata")
+            var localChapter = repository.getChapterById(chapterId)
+            var cachedVerses = if (localChapter != null) repository.getVersesByChapterDirect(localChapter.id) else emptyList()
+
+            if (cachedVerses.isEmpty()) {
+                repository.refreshVersesByChapter(chapterId, _currentTranslationId.value)
+                if (localChapter == null) localChapter = repository.getChapterById(chapterId)
+                if (localChapter != null) cachedVerses = repository.getVersesByChapterDirect(localChapter.id)
+            }
+
+            if (localChapter != null && cachedVerses.isNotEmpty()) {
+                currentChapterName = localChapter.nameSimple
+                repository.addRecentlyRead(localChapter.id, localChapter.nameSimple)
+                val wordsMap = repository.getWordsForVerses(cachedVerses.map { it.id })
+                val existingTajweed = (_uiState.value as? SurahUiState.Success)?.tajweedMap ?: emptyMap()
+                val successState = SurahUiState.Success(localChapter, cachedVerses, wordsMap, existingTajweed)
+                chapterMemoryCache[chapterId] = successState
+                _uiState.value = successState
+                loadTajweed(localChapter.id)
+            } else {
+                _uiState.value = SurahUiState.Error("Chapter $chapterId not found")
             }
         }
     }

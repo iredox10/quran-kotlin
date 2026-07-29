@@ -288,7 +288,7 @@ fun HifdhReaderScreen(
                             val isMemorized = memorizedAyahs.contains(verseKey)
                             val isBookmarked = bookmarkedVerses.contains(verseKey)
                             val rawText = verse.textUthmani ?: verse.textQpcHafs ?: verse.textIndopak ?: ""
-                            val cleanedText = rawText.replace(Regex("[\u06d6-\u06dc\u06df-\u06e8\u06ea-\u06ec\u25cc\u06dd]"), "")
+                            val cleanedText = rawText.replace("\u25cc", "")
 
                             Column(
                                 modifier = Modifier.fillMaxWidth(),

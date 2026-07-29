@@ -34,11 +34,27 @@ object TajweedProcessor {
         "silent" to "#AAAAAA"
     )
 
+    fun extractTajweedRuleAndColor(wordTajweedHtml: String?): Pair<String?, String?> {
+        if (wordTajweedHtml.isNullOrBlank()) return Pair(null, null)
+        val pattern = Pattern.compile("<tajweed\\s+class=['\"]?([^'\"\\s>]+)['\"]?>")
+        val matcher = pattern.matcher(wordTajweedHtml)
+        while (matcher.find()) {
+            val ruleClass = matcher.group(1)
+            if (!ruleClass.isNullOrBlank() && ruleClass != "end") {
+                val colorHex = TAJWEED_COLORS[ruleClass]
+                if (colorHex != null) {
+                    return Pair(ruleClass, colorHex)
+                }
+            }
+        }
+        return Pair(null, null)
+    }
+
     fun sanitizeTajweedHtml(html: String?): String {
         if (html.isNullOrEmpty()) return ""
         var cleaned = html
             .replace("\u0672", "\u0670")
-            .replace("[\u06d6-\u06dc\u06df-\u06e8\u06ea-\u06ec\u25cc\u06dd]".toRegex(), "")
+            .replace("\u25cc", "")
             .replace("<[^>]+>\\s*[مۘۙۚۛۜ]\\s*</[^>]+>".toRegex(), "")
             .replace("<(span|tajweed|rule)\\s+class=['\"]?[^'\">]*['\"]?>\\s*[مۘۙۚۛۜ]\\s*</(span|tajweed|rule)>".toRegex(), "")
             .replace("<rule ", "<tajweed ")

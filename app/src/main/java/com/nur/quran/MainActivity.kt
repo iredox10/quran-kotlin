@@ -97,6 +97,14 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onNavigateToBookmarks = {
                                     navController.navigate(Screen.Analytics.route)
+                                },
+                                onNavigateToRoute = { route ->
+                                    when (route) {
+                                        "planner" -> navController.navigate(Screen.Planner.route)
+                                        "memorize" -> navController.navigate(Screen.Memorize.route)
+                                        "surah" -> navController.navigate(Screen.SurahDetail.createRoute(1))
+                                        "library" -> navController.navigate(Screen.Analytics.route)
+                                    }
                                 }
                             )
                         }

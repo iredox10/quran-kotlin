@@ -13,7 +13,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,10 +24,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -41,17 +48,22 @@ import com.nur.quran.data.MUSHAF_PAGE_COUNT
 import com.nur.quran.data.db.entities.BookmarkEntity
 import com.nur.quran.data.db.entities.ChapterEntity
 import com.nur.quran.data.db.entities.RecentlyReadEntity
+import com.nur.quran.ui.components.Coachmark
 import com.nur.quran.ui.components.NurIcons
+import com.nur.quran.ui.components.PageTourModal
 import com.nur.quran.ui.components.ShareCardDialog
 import com.nur.quran.ui.components.ShareCardType
+import com.nur.quran.ui.components.TourStep
 import com.nur.quran.ui.viewmodels.HomeStats
 import com.nur.quran.ui.viewmodels.HomeUiState
 import com.nur.quran.ui.viewmodels.HomeViewModel
-import com.nur.quran.ui.viewmodels.SurahViewModel
 import com.nur.quran.ui.viewmodels.OnboardingState
+import com.nur.quran.ui.viewmodels.OnboardingTours
 import com.nur.quran.ui.viewmodels.SaukaGoal
+import com.nur.quran.ui.viewmodels.SurahViewModel
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -104,6 +116,65 @@ private const val APP_URL = "https://quran-nur.appwrite.network"
 private const val SHARE_DESCRIPTION =
     "Elevate your spiritual journey with Quran Nur. Enjoy beautiful recitations, offline access, personalized reading planners, and a seamless ad-free experience. Start your daily habit today!"
 
+// ── Guided tours (identical steps to the web app's Home.jsx) ────────────
+private val HOME_TOUR_STEPS = listOf(
+    TourStep(
+        title = "Welcome to Quran Nur",
+        description = "This is your personal companion for reading, memorizing, and studying the Quran.",
+        icon = NurIcons.Sparkles
+    ),
+    TourStep(
+        title = "Daily Progress",
+        description = "Track your reading streak, daily minutes, and total hours right from the dashboard.",
+        icon = NurIcons.Flame,
+        target = "stats"
+    ),
+    TourStep(
+        title = "Verse of the Day",
+        description = "Start your day with a selected Ayah. You can copy or share it easily.",
+        icon = NurIcons.BookOpen,
+        target = "verse"
+    ),
+    TourStep(
+        title = "Resume Reading",
+        description = "Pick up exactly where you left off last time.",
+        icon = NurIcons.ArrowRight,
+        target = "resume"
+    ),
+    TourStep(
+        title = "Browse the Quran",
+        description = "Navigate quickly to any Surah, Juz, or Page.",
+        icon = NurIcons.Search,
+        target = "browse"
+    ),
+    TourStep(
+        title = "Set a Reading Goal 📅",
+        description = "Head to the Planner tab to create a personalized Khatm plan with daily assignments.",
+        icon = NurIcons.CalendarDays,
+        link = "planner"
+    ),
+    TourStep(
+        title = "Start Memorizing 🧠",
+        description = "Use the Memorize tab to practice Hifdh with spaced repetition and word-by-word reveal.",
+        icon = NurIcons.Brain,
+        link = "memorize"
+    )
+)
+
+private val HOME_ADVANCED_TOUR_STEPS = listOf(
+    TourStep(
+        title = "Swipe Between Surahs",
+        description = "While reading, try swiping left or right to quickly jump between Surahs.",
+        icon = NurIcons.ArrowRight
+    ),
+    TourStep(
+        title = "Create a Habit",
+        description = "Consistency is key. Use the Planner to build a daily reading habit.",
+        icon = NurIcons.CalendarDays,
+        link = "planner"
+    )
+)
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun HomeScreen(
@@ -112,7 +183,8 @@ fun HomeScreen(
     onChapterClick: (Int, String?) -> Unit,
     onPageClick: (Int) -> Unit,
     onNavigateToSauka: (() -> Unit)? = null,
-    onNavigateToBookmarks: (() -> Unit)? = null
+    onNavigateToBookmarks: (() -> Unit)? = null,
+    onNavigateToRoute: (String) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
@@ -123,7 +195,28 @@ fun HomeScreen(
     val activeGoals by viewModel.activeGoals.collectAsState()
     val onboardingState by viewModel.onboardingState.collectAsState()
     val isOnline by viewModel.isOnline.collectAsState()
+    val completedTours by viewModel.completedTours.collectAsState()
+    val homeVisits by viewModel.homeVisits.collectAsState()
+    val dismissedCoachmarks by viewModel.dismissedCoachmarks.collectAsState()
     val context = LocalContext.current
+
+    // Page-visit analytics (feeds the tour visit thresholds, like the web app)
+    LaunchedEffect(Unit) { viewModel.recordHomeVisit() }
+
+    // Tour target tracking: each targeted section records its window rect here.
+    val targetRects = remember { mutableStateMapOf<String, Rect>() }
+    val lazyListState: LazyListState = rememberLazyListState()
+
+    // Item indices of the tour-targeted sections (mirrors the LazyColumn order below).
+    val sectionIndices = remember(onboardingState.isDismissed, isOnline, activeGoals, latestBookmark, recentlyRead) {
+        buildSectionIndexMap(
+            isOnline = isOnline,
+            onboardingDismissed = onboardingState.isDismissed,
+            hasActiveGoals = activeGoals.isNotEmpty(),
+            hasBookmark = latestBookmark != null,
+            hasRecentlyRead = recentlyRead.isNotEmpty()
+        )
+    }
 
     var shareDialogState by remember { mutableStateOf<ShareCardType?>(null) }
     var showSettingsDrawer by remember { mutableStateOf(false) }
@@ -217,6 +310,7 @@ fun HomeScreen(
                 enter = fadeIn() + slideInVertically(initialOffsetY = { 20 })
             ) {
                 LazyColumn(
+                    state = lazyListState,
                     modifier = Modifier
                         .fillMaxSize()
                         .background(hWhite),
@@ -301,6 +395,17 @@ fun HomeScreen(
                         }
                     }
 
+                    // ─── My Sauka Readings (Active Goals) ───
+                    if (activeGoals.isNotEmpty()) {
+                        item {
+                            MySaukaReadingsSection(
+                                goals = activeGoals,
+                                onGoalClick = { onNavigateToSauka?.invoke() }
+                            )
+                            Spacer(modifier = Modifier.height(20.dp))
+                        }
+                    }
+
 
                     // ─── Quick Action Mobile Shortcuts ───
                     item {
@@ -317,7 +422,18 @@ fun HomeScreen(
                             OnboardingProgressCard(
                                 state = onboardingState,
                                 onDismiss = { viewModel.dismissOnboarding() },
-                                onStepClick = { viewModel.completeOnboardingStep() }
+                                onRowClick = { tourId ->
+                                    viewModel.completeTour(tourId)
+                                    val route = when (tourId) {
+                                        OnboardingTours.HOME -> "home"
+                                        OnboardingTours.SURAH -> "surah"
+                                        OnboardingTours.MEMORIZATION -> "memorize"
+                                        OnboardingTours.PLANNER -> "planner"
+                                        OnboardingTours.LIBRARY -> "library"
+                                        else -> null
+                                    }
+                                    if (route != null) onNavigateToRoute(route)
+                                }
                             )
                             Spacer(modifier = Modifier.height(20.dp))
                         }
@@ -326,7 +442,9 @@ fun HomeScreen(
                     // ─── Stats Row + Share Progress ───
                     item {
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .onGloballyPositioned { targetRects["stats"] = it.boundsInWindow() },
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             StatCard(
@@ -398,6 +516,8 @@ fun HomeScreen(
                         VerseOfDayCard(
                             verse = dailyVerse,
                             copied = copied,
+                            coachmarkDismissed = "home-copy-verse" in dismissedCoachmarks,
+                            onCoachmarkDismiss = { viewModel.dismissCoachmark("home-copy-verse") },
                             onCopy = {
                                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                 clipboard.setPrimaryClip(
@@ -407,6 +527,7 @@ fun HomeScreen(
                                     )
                                 )
                                 copied = true
+                                viewModel.dismissCoachmark("home-copy-verse")
                             },
                             onShare = {
                                 shareDialogState = ShareCardType.Verse(
@@ -414,7 +535,8 @@ fun HomeScreen(
                                     translation = dailyVerse.translation,
                                     reference = dailyVerse.reference
                                 )
-                            }
+                            },
+                            modifier = Modifier.onGloballyPositioned { targetRects["verse"] = it.boundsInWindow() }
                         )
                         Spacer(modifier = Modifier.height(28.dp))
                     }
@@ -447,26 +569,34 @@ fun HomeScreen(
                     // ─── Recently Read ───
                     if (recentlyRead.isNotEmpty()) {
                         item {
-                            Text(
-                                text = "Recently Read",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = hInk,
-                                fontFamily = fontFamilyUi
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Row(
+                            Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .horizontalScroll(rememberScrollState())
-                                    .padding(bottom = 8.dp),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    .onGloballyPositioned { targetRects["resume"] = it.boundsInWindow() }
                             ) {
-                                recentlyRead.take(6).forEach { item ->
-                                    RecentlyReadCard(
-                                        item = item,
-                                        onClick = { onChapterClick(item.chapterId, item.verseKey) }
+                                Column(modifier = Modifier.fillMaxWidth()) {
+                                    Text(
+                                        text = "Recently Read",
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = hInk,
+                                        fontFamily = fontFamilyUi
                                     )
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .horizontalScroll(rememberScrollState())
+                                            .padding(bottom = 8.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        recentlyRead.take(6).forEach { item ->
+                                            RecentlyReadCard(
+                                                item = item,
+                                                onClick = { onChapterClick(item.chapterId, item.verseKey) }
+                                            )
+                                        }
+                                    }
                                 }
                             }
                             Spacer(modifier = Modifier.height(32.dp))
@@ -475,74 +605,82 @@ fun HomeScreen(
 
                     // ─── Browse the Quran ───
                     item {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = NurIcons.BookOpen,
-                                contentDescription = null,
-                                tint = hInk,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Browse the Quran",
-                                fontSize = 21.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = hInk,
-                                fontFamily = fontFamilyUi
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = "Select a Surah, Page, Juz, or Hizb to begin.",
-                            fontSize = 13.sp,
-                            color = hInkMuted
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        // Mode pills
-                        val modes = listOf(
-                            Triple("surah", "Surah", NurIcons.BookOpen),
-                            Triple("page", "Page", NurIcons.Rows3),
-                            Triple("juz", "Juz", NurIcons.LibraryBig),
-                            Triple("hizb", "Hizb", NurIcons.Layers3)
-                        )
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .onGloballyPositioned { targetRects["browse"] = it.boundsInWindow() }
                         ) {
-                            modes.forEach { (mode, label, icon) ->
-                                val isSelected = browseMode == mode
-                                Surface(
-                                    onClick = { viewModel.setBrowseMode(mode) },
-                                    shape = RoundedCornerShape(20.dp),
-                                    color = if (isSelected) hTealSoft else Color.Transparent,
-                                    border = androidx.compose.foundation.BorderStroke(
-                                        1.5.dp,
-                                        if (isSelected) hTeal else hBoneDark
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = NurIcons.BookOpen,
+                                        contentDescription = null,
+                                        tint = hInk,
+                                        modifier = Modifier.size(20.dp)
                                     )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Browse the Quran",
+                                        fontSize = 21.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = hInk,
+                                        fontFamily = fontFamilyUi
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "Select a Surah, Page, Juz, or Hizb to begin.",
+                                    fontSize = 13.sp,
+                                    color = hInkMuted
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                // Mode pills
+                                val modes = listOf(
+                                    Triple("surah", "Surah", NurIcons.BookOpen),
+                                    Triple("page", "Page", NurIcons.Rows3),
+                                    Triple("juz", "Juz", NurIcons.LibraryBig),
+                                    Triple("hizb", "Hizb", NurIcons.Layers3)
+                                )
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(
-                                            imageVector = icon,
-                                            contentDescription = null,
-                                            tint = if (isSelected) hTeal else hInkMuted,
-                                            modifier = Modifier.size(14.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(
-                                            text = label,
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = if (isSelected) hTeal else hInkMuted
-                                        )
+                                    modes.forEach { (mode, label, icon) ->
+                                        val isSelected = browseMode == mode
+                                        Surface(
+                                            onClick = { viewModel.setBrowseMode(mode) },
+                                            shape = RoundedCornerShape(20.dp),
+                                            color = if (isSelected) hTealSoft else Color.Transparent,
+                                            border = androidx.compose.foundation.BorderStroke(
+                                                1.5.dp,
+                                                if (isSelected) hTeal else hBoneDark
+                                            )
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(
+                                                    imageVector = icon,
+                                                    contentDescription = null,
+                                                    tint = if (isSelected) hTeal else hInkMuted,
+                                                    modifier = Modifier.size(14.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(6.dp))
+                                                Text(
+                                                    text = label,
+                                                    fontSize = 12.sp,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    color = if (isSelected) hTeal else hInkMuted
+                                                )
+                                            }
+                                        }
                                     }
                                 }
+                                Spacer(modifier = Modifier.height(16.dp))
                             }
                         }
-                        Spacer(modifier = Modifier.height(16.dp))
                     }
 
                     // Search
@@ -624,6 +762,39 @@ fun HomeScreen(
             onDismiss = { showSettingsDrawer = false }
         )
     }
+
+    // ─── Guided Tours (first-visit + advanced, mirroring web Home.jsx) ───
+    val toursEnabled = uiState is HomeUiState.Success
+    PageTourModal(
+        tourId = "home-tour",
+        pageId = "home",
+        visitThreshold = 1,
+        enabled = toursEnabled,
+        steps = HOME_TOUR_STEPS,
+        completedTours = completedTours,
+        pageVisits = homeVisits,
+        isDark = isDarkThemeGlobal,
+        sectionIndices = sectionIndices,
+        lazyListState = lazyListState,
+        targetRects = targetRects,
+        onCompleteTour = viewModel::completeTour,
+        onNavigateToRoute = onNavigateToRoute
+    )
+    PageTourModal(
+        tourId = "home-tour-advanced",
+        pageId = "home",
+        visitThreshold = 3,
+        enabled = toursEnabled,
+        steps = HOME_ADVANCED_TOUR_STEPS,
+        completedTours = completedTours,
+        pageVisits = homeVisits,
+        isDark = isDarkThemeGlobal,
+        sectionIndices = sectionIndices,
+        lazyListState = lazyListState,
+        targetRects = targetRects,
+        onCompleteTour = viewModel::completeTour,
+        onNavigateToRoute = onNavigateToRoute
+    )
 }
 
 // ── Web Top Navbar (matching Web App Layout.jsx header) ──────────────────
@@ -849,11 +1020,14 @@ private fun StatCard(
 private fun VerseOfDayCard(
     verse: DailyVerse,
     copied: Boolean,
+    coachmarkDismissed: Boolean,
+    onCoachmarkDismiss: () -> Unit,
     onCopy: () -> Unit,
-    onShare: () -> Unit
+    onShare: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
         color = hCream,
         border = androidx.compose.foundation.BorderStroke(1.5.dp, hBoneDark)
@@ -935,33 +1109,40 @@ private fun VerseOfDayCard(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Copy button
-                    Surface(
-                        onClick = onCopy,
-                        shape = RoundedCornerShape(20.dp),
-                        color = if (copied) hGreen.copy(alpha = 0.1f) else Color.Transparent,
-                        border = androidx.compose.foundation.BorderStroke(
-                            1.5.dp,
-                            if (copied) hGreen else hBoneDark
-                        )
+                    // Copy button (wrapped in a Coachmark hint, like the web app)
+                    Coachmark(
+                        id = "home-copy-verse",
+                        label = "Share the Ayah",
+                        isDismissed = coachmarkDismissed,
+                        onDismiss = onCoachmarkDismiss
                     ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                        Surface(
+                            onClick = onCopy,
+                            shape = RoundedCornerShape(20.dp),
+                            color = if (copied) hGreen.copy(alpha = 0.1f) else Color.Transparent,
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.5.dp,
+                                if (copied) hGreen else hBoneDark
+                            )
                         ) {
-                            Icon(
-                                imageVector = if (copied) NurIcons.Check else NurIcons.Copy,
-                                contentDescription = null,
-                                tint = if (copied) hGreen else hInkMid,
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = if (copied) "Copied" else "Copy",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = if (copied) hGreen else hInkMid
-                            )
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = if (copied) NurIcons.Check else NurIcons.Copy,
+                                    contentDescription = null,
+                                    tint = if (copied) hGreen else hInkMid,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (copied) "Copied" else "Copy",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (copied) hGreen else hInkMid
+                                )
+                            }
                         }
                     }
 
@@ -1584,42 +1765,54 @@ private fun QuickActionGrid(
     }
 }
 
-// ── Onboarding Progress Checklist ───────────────────────────────────────
+// ── Onboarding Progress Checklist (5 tours, matching web OnboardingProgress.jsx) ─
 @Composable
 private fun OnboardingProgressCard(
     state: OnboardingState,
     onDismiss: () -> Unit,
-    onStepClick: () -> Unit
+    onRowClick: (String) -> Unit
 ) {
+    var autoDismissed by remember { mutableStateOf(false) }
+    val isFullyCompleted = state.completedSteps >= state.totalSteps
+
+    // Web auto-dismisses the card 5s after the checklist is fully completed.
+    LaunchedEffect(isFullyCompleted) {
+        if (isFullyCompleted) {
+            delay(5000)
+            autoDismissed = true
+        }
+    }
+
+    if (autoDismissed || (isFullyCompleted && state.completedTours.isNotEmpty())) return
+
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(24.dp),
         color = hCream,
         border = androidx.compose.foundation.BorderStroke(1.5.dp, hBoneDark)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = NurIcons.Sparkles,
-                        contentDescription = null,
-                        tint = hTeal,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "Getting Started (${state.completedSteps}/${state.totalSteps})",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = hInk,
-                        fontFamily = fontFamilyUi
-                    )
-                }
-                IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
+        Box(modifier = Modifier.fillMaxWidth()) {
+            // Elegant background watermark logo
+            androidx.compose.foundation.Image(
+                painter = painterResource(id = R.drawable.ic_logo),
+                contentDescription = null,
+                alpha = 0.03f,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .size(160.dp)
+                    .offset(x = 24.dp, y = (-24).dp)
+            )
+
+            Column(modifier = Modifier.padding(24.dp)) {
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .align(Alignment.End)
+                        .size(28.dp)
+                        .clip(CircleShape)
+                        .background(hWhite)
+                        .border(1.dp, hBone, CircleShape)
+                ) {
                     Icon(
                         imageVector = NurIcons.X,
                         contentDescription = "Dismiss",
@@ -1627,55 +1820,218 @@ private fun OnboardingProgressCard(
                         modifier = Modifier.size(14.dp)
                     )
                 }
-            }
-            Spacer(modifier = Modifier.height(10.dp))
-            LinearProgressIndicator(
-                progress = state.completedSteps.toFloat() / state.totalSteps,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(6.dp)
-                    .clip(RoundedCornerShape(3.dp)),
-                color = hTeal,
-                trackColor = hBoneDark
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onStepClick() }
-                    .padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Welcome to Quran Nur",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = hInk,
+                    fontFamily = fontFamilyUi
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "${state.completedSteps} of ${state.totalSteps} steps completed",
+                    fontSize = 13.sp,
+                    color = hInkMid,
+                    fontFamily = fontFamilyBody
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Progress bar (teal → gold gradient, animated width like the web)
+                val progressFraction = state.completedSteps.toFloat() / state.totalSteps
                 Box(
                     modifier = Modifier
-                        .size(22.dp)
-                        .clip(CircleShape)
-                        .background(if (state.completedSteps > 1) hGreen else hTealSoft),
-                    contentAlignment = Alignment.Center
+                        .fillMaxWidth()
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(100.dp))
+                        .background(hBoneDark)
                 ) {
-                    Icon(
-                        imageVector = NurIcons.Check,
-                        contentDescription = null,
-                        tint = if (state.completedSteps > 1) Color.White else hTeal,
-                        modifier = Modifier.size(12.dp)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(progressFraction)
+                            .fillMaxHeight()
+                            .clip(RoundedCornerShape(100.dp))
+                            .background(Brush.horizontalGradient(listOf(hTeal, Color(0xFFB8924A))))
                     )
                 }
-                Spacer(modifier = Modifier.width(10.dp))
-                Text(
-                    text = if (state.completedSteps == 1) "Explore Quran Reading & Tajweed" else "Set up your daily reading goal",
-                    fontSize = 13.sp,
-                    color = hInk,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f)
-                )
-                Icon(
-                    imageVector = NurIcons.ArrowRight,
-                    contentDescription = null,
-                    tint = hInkMuted,
-                    modifier = Modifier.size(14.dp)
-                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Tour rows (deep-link into the app, check off when done)
+                OnboardingTours.ROWS.forEach { row ->
+                    val isCompleted = row.id in state.completedTours
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .clickable { onRowClick(row.id) }
+                            .padding(vertical = 10.dp, horizontal = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(hWhite)
+                                .shadow(2.dp, RoundedCornerShape(12.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(text = row.emoji, fontSize = 16.sp)
+                        }
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text(
+                            text = row.label,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (isCompleted) hInkMuted.copy(alpha = 0.6f) else hInk,
+                            modifier = Modifier.weight(1f)
+                        )
+                        if (isCompleted) {
+                            Icon(
+                                imageVector = NurIcons.CheckCircle2,
+                                contentDescription = null,
+                                tint = Color(0xFFB8924A).copy(alpha = 0.8f),
+                                modifier = Modifier.size(18.dp)
+                            )
+                        } else {
+                            Icon(
+                                imageVector = NurIcons.ChevronRight,
+                                contentDescription = null,
+                                tint = hInkMuted.copy(alpha = 0.4f),
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
             }
         }
     }
+}
+
+// ── My Sauka Readings (Active Goals) Widget ─────────────────────────────
+@Composable
+private fun MySaukaReadingsSection(
+    goals: List<SaukaGoal>,
+    onGoalClick: () -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.padding(start = 4.dp, end = 4.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = NurIcons.Users,
+                contentDescription = null,
+                tint = hGold,
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "My Sauka Readings",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = hInk,
+                fontFamily = fontFamilyUi
+            )
+        }
+        goals.forEach { goal ->
+            Surface(
+                onClick = onGoalClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 6.dp),
+                shape = RoundedCornerShape(20.dp),
+                color = hGold.copy(alpha = 0.05f),
+                border = androidx.compose.foundation.BorderStroke(1.5.dp, hGold)
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = goal.groupTitle.uppercase(),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = hGold,
+                            fontFamily = fontFamilyMono,
+                            letterSpacing = 0.8.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "${goal.divisionType} ${goal.partNumber}".replaceFirstChar { it.uppercase() },
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = hInk,
+                            fontFamily = fontFamilyUi,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = hGold
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .height(40.dp)
+                                .padding(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Read",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                            Icon(
+                                imageVector = NurIcons.ArrowRight,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ── Tour target indices (mirrors the LazyColumn item order) ─────────────
+private fun buildSectionIndexMap(
+    isOnline: Boolean,
+    onboardingDismissed: Boolean,
+    hasActiveGoals: Boolean,
+    hasBookmark: Boolean,
+    hasRecentlyRead: Boolean
+): Map<String, Int> {
+    var idx = 0
+    if (!isOnline) idx++ // offline banner
+    idx++ // greeting hero
+    if (hasActiveGoals) idx++ // my sauks
+    idx++ // quick actions
+    if (!onboardingDismissed) idx++ // onboarding card
+    val stats = idx; idx++
+    val verse = idx; idx++
+    idx++ // weekly heatmap
+    idx++ // invite friends
+    if (hasBookmark) idx++ // bookmark card
+    var resume = -1
+    if (hasRecentlyRead) {
+        resume = idx
+        idx++
+    }
+    val browse = idx
+    return mapOf(
+        "stats" to stats,
+        "verse" to verse,
+        "resume" to resume,
+        "browse" to browse
+    )
 }
 

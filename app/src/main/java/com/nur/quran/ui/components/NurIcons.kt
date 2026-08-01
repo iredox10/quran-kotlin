@@ -85,6 +85,16 @@ object NurIcons {
         "M19 12H5")
     }
 
+    val ChevronRight: ImageVector by lazy {
+        lucideIcon("ChevronRight",
+        "m9 18 6-6-6-6")
+    }
+
+    val ChevronLeft: ImageVector by lazy {
+        lucideIcon("ChevronLeft",
+        "m15 18-6-6 6-6")
+    }
+
     val Users: ImageVector by lazy {
         lucideIcon("Users",
         "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2",

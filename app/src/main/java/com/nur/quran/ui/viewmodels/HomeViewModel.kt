@@ -13,6 +13,7 @@ import com.nur.quran.data.db.entities.CollectionEntity
 import com.nur.quran.data.db.entities.ReadingSessionEntity
 import com.nur.quran.data.db.entities.RecentlyReadEntity
 import com.nur.quran.data.repository.QuranRepository
+import com.nur.quran.utils.TourPrefs
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,6 +21,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -56,18 +58,41 @@ data class SaukaGoal(
     val pageNumber: Int = 1
 )
 
+/** One row of the onboarding checklist, mirroring the web app's ALL_TOURS. */
+data class OnboardingTourRow(val id: String, val emoji: String, val label: String)
+
+object OnboardingTours {
+    const val HOME = "home-tour"
+    const val SURAH = "surah-tour"
+    const val MEMORIZATION = "memorization-tour"
+    const val PLANNER = "planner-tour"
+    const val LIBRARY = "library-tour"
+
+    val ROWS = listOf(
+        OnboardingTourRow(HOME, "🏠", "Home Page"),
+        OnboardingTourRow(SURAH, "📖", "Reading & Audio"),
+        OnboardingTourRow(MEMORIZATION, "🧠", "Hifdh Mode"),
+        OnboardingTourRow(PLANNER, "📅", "Study Planner"),
+        OnboardingTourRow(LIBRARY, "📚", "Library")
+    )
+}
+
 /** Onboarding progress state for first-time mobile setup. */
 data class OnboardingState(
-    val completedSteps: Int = 1,
-    val totalSteps: Int = 3,
+    val completedTours: Set<String> = emptySet(),
+    val totalSteps: Int = OnboardingTours.ROWS.size,
     val isDismissed: Boolean = false
-)
+) {
+    val completedSteps: Int get() = completedTours.size
+}
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val repository: QuranRepository,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
+
+    private val tourPrefs = TourPrefs(context)
 
     private val _activeGoals = MutableStateFlow<List<SaukaGoal>>(
         listOf(
@@ -76,18 +101,49 @@ class HomeViewModel @Inject constructor(
     )
     val activeGoals: StateFlow<List<SaukaGoal>> = _activeGoals.asStateFlow()
 
-    private val _onboardingState = MutableStateFlow(OnboardingState())
-    val onboardingState: StateFlow<OnboardingState> = _onboardingState.asStateFlow()
+    // ─── Tour / coachmark / page-visit state (persisted, mirrors web store) ──
 
-    fun dismissOnboarding() {
-        _onboardingState.value = _onboardingState.value.copy(isDismissed = true)
+    private val _completedTours = MutableStateFlow(
+        OnboardingTours.ROWS.map { it.id }.filter(tourPrefs::isTourCompleted).toSet()
+    )
+    val completedTours: StateFlow<Set<String>> = _completedTours.asStateFlow()
+
+    private val _dismissedCoachmarks = MutableStateFlow<Set<String>>(emptySet())
+    val dismissedCoachmarks: StateFlow<Set<String>> = _dismissedCoachmarks.asStateFlow()
+
+    private val _homeVisits = MutableStateFlow(tourPrefs.pageVisits("home"))
+    val homeVisits: StateFlow<Int> = _homeVisits.asStateFlow()
+
+    private val _onboardingDismissed = MutableStateFlow(tourPrefs.isOnboardingDismissed())
+    val onboardingState: StateFlow<OnboardingState> = combine(
+        _completedTours,
+        _onboardingDismissed
+    ) { tours, dismissed ->
+        OnboardingState(completedTours = tours, isDismissed = dismissed)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), OnboardingState())
+
+    fun recordHomeVisit() {
+        tourPrefs.incrementPageVisit("home")
+        _homeVisits.value = tourPrefs.pageVisits("home")
     }
 
-    fun completeOnboardingStep() {
-        val current = _onboardingState.value
-        if (current.completedSteps < current.totalSteps) {
-            _onboardingState.value = current.copy(completedSteps = current.completedSteps + 1)
+    fun completeTour(id: String) {
+        if (id !in _completedTours.value) {
+            tourPrefs.completeTour(id)
+            _completedTours.value = _completedTours.value + id
         }
+    }
+
+    fun dismissCoachmark(id: String) {
+        if (id !in _dismissedCoachmarks.value) {
+            tourPrefs.dismissCoachmark(id)
+            _dismissedCoachmarks.value = _dismissedCoachmarks.value + id
+        }
+    }
+
+    fun dismissOnboarding() {
+        _onboardingDismissed.value = true
+        tourPrefs.dismissOnboarding()
     }
 
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)

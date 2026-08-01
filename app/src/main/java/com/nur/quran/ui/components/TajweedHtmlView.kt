@@ -82,12 +82,16 @@ fun TajweedHtmlView(
           color: $textColorHex;
           font-family: '$fontFamilyName', serif;
           font-size: ${fontSizeSp.toInt()}px;
-          line-height: 1.8;
+          line-height: 2.2;
           text-align: right;
           direction: rtl;
-          word-spacing: 2px;
+          word-spacing: 4px;
           -webkit-user-select: none;
           user-select: none;
+        }
+        tajweed, rule, span {
+          font-family: inherit;
+          display: inline;
         }
         tajweed.ham_wasl, rule.ham_wasl, span.ham_wasl { color: #AAAAAA; }
         tajweed.laam_shamsiyah, rule.laam_shamsiyah, span.laam_shamsiyah { color: #AAAAAA; }
@@ -110,7 +114,7 @@ fun TajweedHtmlView(
         tajweed.iqlab, rule.iqlab, span.iqlab { color: #26BFFD; }
         tajweed.ghunnah, rule.ghunnah, span.ghunnah { color: #FF7E1E; }
         tajweed.slnt, rule.slnt, span.slnt, tajweed.silent, rule.silent, span.silent { color: #AAAAAA; }
-        .end { color: #CBA135; font-weight: normal; margin: 0 4px; }
+        .end { color: #CBA135; font-weight: normal; display: inline; margin: 0 4px; }
         </style>
         </head>
         <body>$cleanHtml

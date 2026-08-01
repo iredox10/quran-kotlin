@@ -18,11 +18,15 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
@@ -35,6 +39,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -132,41 +137,45 @@ fun formatArabicDigits(number: Int): String {
 }
 
 fun formatArabicVerseEndMarker(verseNumber: Int): String {
-    return " <span class='end'>${formatArabicDigits(verseNumber)}</span>"
+    return " <span class='end'>\u06dd${formatArabicDigits(verseNumber)}</span>"
 }
 
 fun formatCleanEndMarker(endWord: WordEntity?, verseNumber: Int): String {
     val digits = if (endWord != null) {
         val raw = endWord.textUthmani ?: endWord.textQpcHafs ?: ""
         val cleaned = raw.replace("﴿", "").replace("﴾", "").replace("{", "").replace("}", "").replace("\u06dd", "").trim()
-        if (cleaned.isNotBlank()) {
-            cleaned.toIntOrNull()?.let { formatArabicDigits(it) } ?: cleaned
+        val parsedInt = cleaned.toIntOrNull()
+        if (parsedInt != null) {
+            formatArabicDigits(parsedInt)
         } else {
             formatArabicDigits(verseNumber)
         }
     } else {
         formatArabicDigits(verseNumber)
     }
-    return " <span class='end'>$digits</span>"
+    return " <span class='end'>\u06dd$digits</span>"
 }
 
 fun buildCleanVerseTajweedHtml(fullVerseHtml: String?, words: List<WordEntity>, verseNumber: Int): String {
     val endWord = words.firstOrNull { it.charTypeName == "end" }
     val cleanEndMarker = formatCleanEndMarker(endWord, verseNumber)
 
-    val baseHtml = if (!fullVerseHtml.isNullOrBlank()) {
+    val cleanInput = if (!fullVerseHtml.isNullOrBlank()) {
         fullVerseHtml
-            .replace("\u06dd", "")
-            .replace("[\u06df\u06e0\u06e2\u06ea-\u06ec\u25cc]".toRegex(), "")
-            .replace("<(span|tajweed|rule)\\s+class=['\"]?end['\"]?>.*?</(span|tajweed|rule)>".toRegex(), "")
-            .replace("﴿.*?﴾".toRegex(), "")
     } else {
         words.filter { it.charTypeName != "end" }.joinToString(" ") { word ->
             word.textUthmaniTajweed ?: (word.textUthmani ?: "")
         }
-            .replace("\u06dd", "")
-            .replace("[\u06df\u06e0\u06e2\u06ea-\u06ec\u25cc]".toRegex(), "")
     }
+
+    val baseHtml = cleanInput
+        .replace("<(span|tajweed|rule)\\s+class=['\"]?end[^'\">]*['\"]?>.*?</(span|tajweed|rule)>".toRegex(RegexOption.IGNORE_CASE), "")
+        .replace("<(span|tajweed|rule)\\s+class=['\"]?end[^'\">]*['\"]?>".toRegex(RegexOption.IGNORE_CASE), "")
+        .replace("[\u06dd\u06de\u06df\u06e0\u06e2\u06ea-\u06ec\u25cc]".toRegex(), "")
+        .replace("&#1757;|&#x0*6dd;|&#x0*6DD;".toRegex(RegexOption.IGNORE_CASE), "")
+        .replace("﴿.*?﴾".toRegex(), "")
+        .replace("\\{.*?\\}".toRegex(), "")
+        .replace("[﴿﴾{}]".toRegex(), "")
 
     return baseHtml.trim() + cleanEndMarker
 }
@@ -216,7 +225,7 @@ fun SurahScreen(
     chapterId: Int,
     targetVerseKey: String? = null,
     onBackClick: () -> Unit,
-    onNavigateToSurah: (Int) -> Unit,
+    onNavigateToSurah: (Int, String?) -> Unit = { _, _ -> },
     saukaAssignmentId: String? = null,
     backToSauka: String? = null
 ) {
@@ -340,7 +349,13 @@ fun SurahScreen(
             if (!targetVerseKey.isNullOrBlank()) {
                 val index = state.verses.indexOfFirst { it.verseKey == targetVerseKey }
                 if (index >= 0) {
-                    listState.scrollToItem(index)
+                    var hOffset = 1
+                    if (isMemorizeModeEnabled) hOffset += 1
+                    if (showSwipeTip) hOffset += 1
+                    if (saukaAssignmentId != null && backToSauka != null) hOffset += 1
+                    if (isMemorizeModeEnabled) hOffset += 1
+                    if (chapterId != 1 && chapterId != 9) hOffset += 1
+                    listState.scrollToItem(index + hOffset)
                 } else {
                     val saved = viewModel.getSurahScrollPosition(chapterId)
                     if (saved != null) {
@@ -506,9 +521,9 @@ fun SurahScreen(
                         onDragEnd = {
                             when {
                                 swipeTotal > swipeThreshold && chapterId < 114 ->
-                                    onNavigateToSurah(chapterId + 1)
+                                    onNavigateToSurah(chapterId + 1, null)
                                 swipeTotal < -swipeThreshold && chapterId > 1 ->
-                                    onNavigateToSurah(chapterId - 1)
+                                    onNavigateToSurah(chapterId - 1, null)
                             }
                             swipeTotal = 0f
                         },
@@ -1416,47 +1431,69 @@ fun SurahScreen(
             }
 
             if (showNavigationDialog) {
-                AlertDialog(
-                    onDismissRequest = { showNavigationDialog = false },
-                    title = { Text("Select Surah", fontFamily = fontFamilyUi, fontWeight = FontWeight.Bold, color = hInk) },
-                    text = {
-                        LazyColumn(
-                            modifier = Modifier.heightIn(max = 320.dp)
-                        ) {
-                            items(allChapters) { chapter ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            showNavigationDialog = false
-                                            onNavigateToSurah(chapter.id)
-                                        }
-                                        .padding(vertical = 12.dp, horizontal = 8.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = "${chapter.id}. ${chapter.nameSimple}",
-                                        fontFamily = fontFamilyUi,
-                                        fontSize = 15.sp,
-                                        color = hInk
-                                    )
-                                    Text(
-                                        text = chapter.nameArabic,
-                                        fontFamily = fontFamilyArabic,
-                                        fontSize = 18.sp,
-                                        color = hGold
-                                    )
+                SurahNavigationModal(
+                    isOpen = showNavigationDialog,
+                    onDismiss = { showNavigationDialog = false },
+                    allChapters = allChapters,
+                    currentChapterId = chapterId,
+                    onNavigateToSurah = { surahId ->
+                        showNavigationDialog = false
+                        onNavigateToSurah(surahId, null)
+                    },
+                    onJumpToAyah = { targetSurahId, ayahNum ->
+                        showNavigationDialog = false
+                        val targetKey = "$targetSurahId:$ayahNum"
+                        if (targetSurahId != chapterId) {
+                            onNavigateToSurah(targetSurahId, targetKey)
+                        } else {
+                            val state = uiState
+                            if (state is SurahUiState.Success) {
+                                val verses = state.verses
+                                val verseIndex = verses.indexOfFirst { it.verseNumber == ayahNum }
+                                if (verseIndex >= 0) {
+                                    var hOffset = 1
+                                    if (isMemorizeModeEnabled) hOffset += 1
+                                    if (showSwipeTip) hOffset += 1
+                                    if (saukaAssignmentId != null && backToSauka != null) hOffset += 1
+                                    if (isMemorizeModeEnabled) hOffset += 1
+                                    if (chapterId != 1 && chapterId != 9) hOffset += 1
+                                    coroutineScope.launch {
+                                        listState.animateScrollToItem(verseIndex + hOffset)
+                                    }
                                 }
                             }
                         }
                     },
-                    confirmButton = {
-                        TextButton(onClick = { showNavigationDialog = false }) {
-                            Text("Cancel", color = hGold)
+                    onJumpToPage = { pageNum ->
+                        showNavigationDialog = false
+                        val targetChapter = allChapters.firstOrNull { pageNum in it.pagesStart..it.pagesEnd }
+                        if (targetChapter != null && targetChapter.id != chapterId) {
+                            val state = uiState
+                            val firstVerseKeyOnPage = if (state is SurahUiState.Success) {
+                                state.verses.firstOrNull { it.pageNumber == pageNum }?.verseKey
+                            } else null
+                            onNavigateToSurah(targetChapter.id, firstVerseKeyOnPage)
+                        } else {
+                            val state = uiState
+                            if (state is SurahUiState.Success) {
+                                val verses = state.verses
+                                val verseIndex = verses.indexOfFirst { it.pageNumber == pageNum }
+                                if (verseIndex >= 0) {
+                                    var hOffset = 1
+                                    if (isMemorizeModeEnabled) hOffset += 1
+                                    if (showSwipeTip) hOffset += 1
+                                    if (saukaAssignmentId != null && backToSauka != null) hOffset += 1
+                                    if (isMemorizeModeEnabled) hOffset += 1
+                                    if (chapterId != 1 && chapterId != 9) hOffset += 1
+                                    coroutineScope.launch {
+                                        listState.animateScrollToItem(verseIndex + hOffset)
+                                    }
+                                }
+                            }
                         }
                     },
-                    containerColor = hWhite
+                    fontFamilyUi = fontFamilyUi,
+                    fontFamilyArabic = fontFamilyArabic
                 )
             }
 
@@ -2438,7 +2475,7 @@ fun CollectionModal(
 fun WebSurahNavButtons(
     chapter: ChapterEntity,
     allChapters: List<ChapterEntity>,
-    onNavigateToSurah: (Int) -> Unit
+    onNavigateToSurah: (Int, String?) -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -2454,7 +2491,7 @@ fun WebSurahNavButtons(
                     .weight(1f)
                     .clip(RoundedCornerShape(20.dp))
                     .border(1.dp, hBorderColor, RoundedCornerShape(20.dp))
-                    .clickable { onNavigateToSurah(chapter.id + 1) }
+                    .clickable { onNavigateToSurah(chapter.id + 1, null) }
                     .padding(12.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -2496,7 +2533,7 @@ fun WebSurahNavButtons(
                     .weight(1f)
                     .clip(RoundedCornerShape(20.dp))
                     .border(1.dp, hBorderColor, RoundedCornerShape(20.dp))
-                    .clickable { onNavigateToSurah(chapter.id - 1) }
+                    .clickable { onNavigateToSurah(chapter.id - 1, null) }
                     .padding(12.dp)
             ) {
                 Row(
@@ -3301,6 +3338,412 @@ private fun SaukaCompletionBanner(
                         Icon(imageVector = NurIcons.Share2, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(text = "Share", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SurahNavigationModal(
+    isOpen: Boolean,
+    onDismiss: () -> Unit,
+    allChapters: List<ChapterEntity>,
+    currentChapterId: Int,
+    onNavigateToSurah: (Int) -> Unit,
+    onJumpToAyah: (Int, Int) -> Unit,
+    onJumpToPage: (Int) -> Unit,
+    fontFamilyUi: FontFamily,
+    fontFamilyArabic: FontFamily
+) {
+    if (!isOpen) return
+
+    var activeTab by remember { mutableIntStateOf(0) }
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedSurahId by remember(currentChapterId) { mutableIntStateOf(currentChapterId) }
+    var ayahInput by remember { mutableStateOf("") }
+    var pageInput by remember { mutableStateOf("") }
+
+    val selectedChapter = remember(selectedSurahId, allChapters) {
+        allChapters.firstOrNull { it.id == selectedSurahId } ?: allChapters.firstOrNull()
+    }
+    val maxAyahs = selectedChapter?.versesCount ?: 286
+
+    val filteredChapters = remember(searchQuery, allChapters) {
+        if (searchQuery.isBlank()) {
+            allChapters
+        } else {
+            val q = searchQuery.trim().lowercase()
+            allChapters.filter { c ->
+                c.nameSimple.lowercase().contains(q) ||
+                c.nameArabic.contains(q) ||
+                c.id.toString() == q
+            }
+        }
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = hWhite,
+            tonalElevation = 8.dp,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 16.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Navigation",
+                        fontFamily = fontFamilyUi,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp,
+                        color = hInk
+                    )
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close",
+                            tint = hInkMuted
+                        )
+                    }
+                }
+
+                // Tabs: Surah, Ayah, Page
+                TabRow(
+                    selectedTabIndex = activeTab,
+                    containerColor = Color.Transparent,
+                    contentColor = hGold,
+                    indicator = { tabPositions ->
+                        TabRowDefaults.Indicator(
+                            Modifier.tabIndicatorOffset(tabPositions[activeTab]),
+                            color = hGold
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Tab(
+                        selected = activeTab == 0,
+                        onClick = { activeTab = 0 },
+                        text = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(NurIcons.BookOpen, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Surah", fontFamily = fontFamilyUi, fontWeight = FontWeight.SemiBold)
+                            }
+                        },
+                        selectedContentColor = hGold,
+                        unselectedContentColor = hInkMuted
+                    )
+                    Tab(
+                        selected = activeTab == 1,
+                        onClick = { activeTab = 1 },
+                        text = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(NurIcons.Hash, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Ayah", fontFamily = fontFamilyUi, fontWeight = FontWeight.SemiBold)
+                            }
+                        },
+                        selectedContentColor = hGold,
+                        unselectedContentColor = hInkMuted
+                    )
+                    Tab(
+                        selected = activeTab == 2,
+                        onClick = { activeTab = 2 },
+                        text = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(NurIcons.Layers3, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Page", fontFamily = fontFamilyUi, fontWeight = FontWeight.SemiBold)
+                            }
+                        },
+                        selectedContentColor = hGold,
+                        unselectedContentColor = hInkMuted
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                when (activeTab) {
+                    0 -> { // Surah Tab
+                        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                            OutlinedTextField(
+                                value = searchQuery,
+                                onValueChange = { searchQuery = it },
+                                placeholder = {
+                                    Text(
+                                        text = "Search Surah by name or number...",
+                                        fontFamily = fontFamilyUi,
+                                        fontSize = 13.sp,
+                                        maxLines = 1,
+                                        softWrap = false,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                    )
+                                },
+                                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = hInkMuted) },
+                                trailingIcon = {
+                                    if (searchQuery.isNotEmpty()) {
+                                        IconButton(onClick = { searchQuery = "" }) {
+                                            Icon(Icons.Default.Close, contentDescription = "Clear", tint = hInkMuted)
+                                        }
+                                    }
+                                },
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = hGold,
+                                    unfocusedBorderColor = hBoneDark,
+                                    focusedContainerColor = hBone,
+                                    unfocusedContainerColor = hBone
+                                ),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            LazyColumn(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 320.dp)
+                            ) {
+                                items(filteredChapters) { chapter ->
+                                    val isCurrent = chapter.id == currentChapterId
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(if (isCurrent) hGold.copy(alpha = 0.12f) else Color.Transparent)
+                                            .clickable {
+                                                onDismiss()
+                                                onNavigateToSurah(chapter.id)
+                                            }
+                                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Box(
+                                                contentAlignment = Alignment.Center,
+                                                modifier = Modifier
+                                                    .size(32.dp)
+                                                    .clip(CircleShape)
+                                                    .background(if (isCurrent) hGold else hBoneDark)
+                                            ) {
+                                                Text(
+                                                    text = chapter.id.toString(),
+                                                    fontFamily = fontFamilyUi,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 12.sp,
+                                                    color = if (isCurrent) Color.White else hInk
+                                                )
+                                            }
+                                            Spacer(modifier = Modifier.width(12.dp))
+                                            Column {
+                                                Text(
+                                                    text = chapter.nameSimple,
+                                                    fontFamily = fontFamilyUi,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    fontSize = 15.sp,
+                                                    color = if (isCurrent) hGold else hInk
+                                                )
+                                                Text(
+                                                    text = "${chapter.versesCount} verses",
+                                                    fontFamily = fontFamilyUi,
+                                                    fontSize = 12.sp,
+                                                    color = hInkMuted
+                                                )
+                                            }
+                                        }
+                                        Text(
+                                            text = chapter.nameArabic,
+                                            fontFamily = fontFamilyArabic,
+                                            fontSize = 20.sp,
+                                            color = hGold
+                                        )
+                                    }
+                                }
+
+                                if (filteredChapters.isEmpty()) {
+                                    item {
+                                        Box(
+                                            contentAlignment = Alignment.Center,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(32.dp)
+                                        ) {
+                                            Text(
+                                                text = "No Surah found.",
+                                                fontFamily = fontFamilyUi,
+                                                color = hInkMuted,
+                                                fontSize = 14.sp
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    1 -> { // Ayah Tab
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp, vertical = 8.dp)
+                        ) {
+                            Text("Select Surah", fontFamily = fontFamilyUi, fontSize = 13.sp, color = hInkMuted)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            
+                            var expandedDropdown by remember { mutableStateOf(false) }
+                            ExposedDropdownMenuBox(
+                                expanded = expandedDropdown,
+                                onExpandedChange = { expandedDropdown = !expandedDropdown }
+                            ) {
+                                OutlinedTextField(
+                                    value = "${selectedChapter?.id}. ${selectedChapter?.nameSimple ?: ""}",
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedDropdown) },
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = hGold,
+                                        unfocusedBorderColor = hBoneDark
+                                    ),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .menuAnchor()
+                                )
+                                ExposedDropdownMenu(
+                                    expanded = expandedDropdown,
+                                    onDismissRequest = { expandedDropdown = false },
+                                    modifier = Modifier.heightIn(max = 240.dp)
+                                ) {
+                                    allChapters.forEach { chap ->
+                                        DropdownMenuItem(
+                                            text = {
+                                                Row(
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                    modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                    Text("${chap.id}. ${chap.nameSimple}", fontFamily = fontFamilyUi)
+                                                    Text(chap.nameArabic, fontFamily = fontFamilyArabic, color = hGold)
+                                                }
+                                            },
+                                            onClick = {
+                                                selectedSurahId = chap.id
+                                                expandedDropdown = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Text("Ayah Number", fontFamily = fontFamilyUi, fontSize = 13.sp, color = hInkMuted)
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            OutlinedTextField(
+                                value = ayahInput,
+                                onValueChange = { ayahInput = it.filter { c -> c.isDigit() } },
+                                placeholder = { Text("e.g. 255", fontFamily = fontFamilyUi) },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = hGold,
+                                    unfocusedBorderColor = hBoneDark
+                                ),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Verses 1 - $maxAyahs",
+                                fontFamily = fontFamilyUi,
+                                fontSize = 12.sp,
+                                color = hInkMuted
+                            )
+
+                            Spacer(modifier = Modifier.height(20.dp))
+
+                            Button(
+                                onClick = {
+                                    val ayahNum = ayahInput.toIntOrNull()?.coerceIn(1, maxAyahs) ?: 1
+                                    onDismiss()
+                                    onJumpToAyah(selectedSurahId, ayahNum)
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = hGold),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(48.dp)
+                            ) {
+                                Text("Go to Ayah", fontFamily = fontFamilyUi, fontWeight = FontWeight.Bold, color = Color.White)
+                            }
+                        }
+                    }
+                    2 -> { // Page Tab
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp, vertical = 8.dp)
+                        ) {
+                            Text("Page Number", fontFamily = fontFamilyUi, fontSize = 13.sp, color = hInkMuted)
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            OutlinedTextField(
+                                value = pageInput,
+                                onValueChange = { pageInput = it.filter { c -> c.isDigit() } },
+                                placeholder = { Text("e.g. 293", fontFamily = fontFamilyUi) },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = hGold,
+                                    unfocusedBorderColor = hBoneDark
+                                ),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Pages 1 - 604",
+                                fontFamily = fontFamilyUi,
+                                fontSize = 12.sp,
+                                color = hInkMuted
+                            )
+
+                            Spacer(modifier = Modifier.height(20.dp))
+
+                            Button(
+                                onClick = {
+                                    val pageNum = pageInput.toIntOrNull()?.coerceIn(1, 604) ?: 1
+                                    onDismiss()
+                                    onJumpToPage(pageNum)
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = hGold),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(48.dp)
+                            ) {
+                                Text("Go to Page", fontFamily = fontFamilyUi, fontWeight = FontWeight.Bold, color = Color.White)
+                            }
+                        }
                     }
                 }
             }

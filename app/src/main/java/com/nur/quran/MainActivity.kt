@@ -169,8 +169,8 @@ class MainActivity : ComponentActivity() {
                                 chapterId = chapterId,
                                 targetVerseKey = targetVerseKey,
                                 onBackClick = { navController.popBackStack() },
-                                onNavigateToSurah = { nextChapterId ->
-                                    navController.navigate(Screen.SurahDetail.createRoute(nextChapterId)) {
+                                onNavigateToSurah = { nextChapterId, verseKey ->
+                                    navController.navigate(Screen.SurahDetail.createRoute(nextChapterId, verseKey)) {
                                         popUpTo(Screen.Quran.route) { inclusive = false }
                                     }
                                 }

@@ -36,24 +36,20 @@ class QuranRepository @Inject constructor(
     private val gson: Gson
 ) {
 
-    // Helper to cache API responses in key-value table
+    // Helper to cache API responses in key-value table (offline-first: cache wins)
     private suspend inline fun <reified T> fetchWithOfflineCache(
         cacheKey: String,
         crossinline apiCall: suspend () -> T
     ): T = withContext(Dispatchers.IO) {
-        try {
+        val cachedEntry = quranDao.getCacheEntry(cacheKey)
+        if (cachedEntry != null) {
+            val type = object : TypeToken<T>() {}.type
+            gson.fromJson<T>(cachedEntry.dataJson, type)
+        } else {
             val networkResult = apiCall()
             val jsonString = gson.toJson(networkResult)
             quranDao.insertCacheEntry(ApiResponseCacheEntity(cacheKey, jsonString))
             networkResult
-        } catch (e: Exception) {
-            val cachedEntry = quranDao.getCacheEntry(cacheKey)
-            if (cachedEntry != null) {
-                val type = object : TypeToken<T>() {}.type
-                gson.fromJson<T>(cachedEntry.dataJson, type)
-            } else {
-                throw e
-            }
         }
     }
 

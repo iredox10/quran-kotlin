@@ -168,7 +168,11 @@ class MainActivity : ComponentActivity() {
                             arguments = listOf(
                                 androidx.navigation.navArgument("chapterId") { type = androidx.navigation.NavType.IntType },
                                 androidx.navigation.navArgument("verseKey") { type = androidx.navigation.NavType.StringType; nullable = true; defaultValue = null }
-                            )
+                            ),
+                            enterTransition = { androidx.compose.animation.EnterTransition.None },
+                            exitTransition = { androidx.compose.animation.ExitTransition.None },
+                            popEnterTransition = { androidx.compose.animation.EnterTransition.None },
+                            popExitTransition = { androidx.compose.animation.ExitTransition.None }
                         ) { backStackEntry ->
                             val chapterId = backStackEntry.arguments?.getInt("chapterId") ?: 1
                             val targetVerseKey = backStackEntry.arguments?.getString("verseKey")

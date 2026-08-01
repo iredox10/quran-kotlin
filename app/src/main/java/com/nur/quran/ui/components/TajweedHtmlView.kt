@@ -165,6 +165,11 @@ fun TajweedHtmlView(
                 webViewClient = WebViewClient()
             }
         },
+        onRelease = { webView ->
+            webView.stopLoading()
+            webView.loadUrl("about:blank")
+            webView.destroy()
+        },
         update = { webView ->
             webView.loadDataWithBaseURL(
                 "file:///android_asset/",

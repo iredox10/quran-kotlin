@@ -203,6 +203,18 @@ class QuranRepository @Inject constructor(
         val resource_id: Int
     )
 
+    /** The ayah-end digits embedded in the tajweed html, e.g. <span class=end>١</span>. */
+    private fun extractEndMarkerDigits(tajweedHtml: String): String {
+        return Regex(
+            """<(span|tajweed|rule)\s+class=['"]?end['"]?>([^<]*)</(span|tajweed|rule)>""",
+            RegexOption.IGNORE_CASE
+        ).find(tajweedHtml)?.groupValues?.getOrNull(2)?.trim() ?: ""
+    }
+
+    private fun isArabicDigitText(text: String): Boolean {
+        return text.isNotBlank() && text.all { it in '٠'..'٩' || it.isDigit() }
+    }
+
     /** Cached parsed offline data to avoid re-parsing the large JSON on every call */
     @Volatile
     private var cachedOfflineVerses: List<OfflineVerseItem>? = null
@@ -254,10 +266,12 @@ class QuranRepository @Inject constructor(
                 val tajweedWords = if (tajweedHtml.isNotBlank())
                     TajweedProcessor.splitTajweedHtmlIntoWords(tajweedHtml)
                 else emptyList()
+                val endMarkerDigits = extractEndMarkerDigits(tajweedHtml)
 
                 plainWords.forEachIndexed { wordIdx, wordText ->
                     val wordTajweed = tajweedWords.getOrNull(wordIdx)
-                    val isEndMarker = wordText.length <= 3 && wordText.any { it in '\u06D6'..'\u06ED' || it in '٠'..'٩' || it.isDigit() }
+                    // Only the ayah digit is a true end marker; pause marks (ۚ ۖ etc.) are word text.
+                    val isEndMarker = isArabicDigitText(wordText)
                     wordEntities.add(
                         WordEntity(
                             id = item.id * 100 + wordIdx + 1,
@@ -270,6 +284,24 @@ class QuranRepository @Inject constructor(
                             translation = null,
                             transliteration = null,
                             charTypeName = if (isEndMarker) "end" else "word"
+                        )
+                    )
+                }
+
+                // The ayah-end digit lives in the tajweed html end span, not in the plain text.
+                if (endMarkerDigits.isNotBlank() && plainWords.none { isArabicDigitText(it) }) {
+                    wordEntities.add(
+                        WordEntity(
+                            id = item.id * 100 + plainWords.size + 1,
+                            verseId = item.id,
+                            position = plainWords.size + 1,
+                            textUthmani = endMarkerDigits,
+                            textIndopak = endMarkerDigits,
+                            textQpcHafs = endMarkerDigits,
+                            textUthmaniTajweed = endMarkerDigits,
+                            translation = null,
+                            transliteration = null,
+                            charTypeName = "end"
                         )
                     )
                 }
@@ -318,10 +350,12 @@ class QuranRepository @Inject constructor(
                 val tajweedWords = if (tajweedHtml.isNotBlank())
                     TajweedProcessor.splitTajweedHtmlIntoWords(tajweedHtml)
                 else emptyList()
+                val endMarkerDigits = extractEndMarkerDigits(tajweedHtml)
 
                 plainWords.forEachIndexed { wordIdx, wordText ->
                     val wordTajweed = tajweedWords.getOrNull(wordIdx)
-                    val isEndMarker = wordText.length <= 3 && wordText.any { it in '\u06D6'..'\u06ED' || it in '٠'..'٩' || it.isDigit() }
+                    // Only the ayah digit is a true end marker; pause marks (ۚ ۖ etc.) are word text.
+                    val isEndMarker = isArabicDigitText(wordText)
                     wordEntities.add(
                         WordEntity(
                             id = item.id * 100 + wordIdx + 1,
@@ -334,6 +368,24 @@ class QuranRepository @Inject constructor(
                             translation = null,
                             transliteration = null,
                             charTypeName = if (isEndMarker) "end" else "word"
+                        )
+                    )
+                }
+
+                // The ayah-end digit lives in the tajweed html end span, not in the plain text.
+                if (endMarkerDigits.isNotBlank() && plainWords.none { isArabicDigitText(it) }) {
+                    wordEntities.add(
+                        WordEntity(
+                            id = item.id * 100 + plainWords.size + 1,
+                            verseId = item.id,
+                            position = plainWords.size + 1,
+                            textUthmani = endMarkerDigits,
+                            textIndopak = endMarkerDigits,
+                            textQpcHafs = endMarkerDigits,
+                            textUthmaniTajweed = endMarkerDigits,
+                            translation = null,
+                            transliteration = null,
+                            charTypeName = "end"
                         )
                     )
                 }

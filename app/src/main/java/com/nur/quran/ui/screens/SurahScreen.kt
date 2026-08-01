@@ -136,11 +136,21 @@ fun formatArabicDigits(number: Int): String {
     return number.toString().map { arabicDigits[it - '0'] }.joinToString("")
 }
 
-fun formatArabicVerseEndMarker(verseNumber: Int): String {
-    return " <span class='end'>\u06dd${formatArabicDigits(verseNumber)}</span>"
+// The KFGQPC Hafs font draws the full end-of-ayah medallion from the digits alone
+// (its GSUB substitutes each digit with the ornament composite), so emitting the
+// U+06DD mark before the digits would render TWO medallions.
+fun usesEmbeddedEndMarker(fontName: String): Boolean {
+    val name = fontName.trim().lowercase()
+    return name == "kfgqpc-hafs" || name == "kfgqpc hafs"
 }
 
-fun formatCleanEndMarker(endWord: WordEntity?, verseNumber: Int): String {
+fun formatArabicVerseEndMarker(verseNumber: Int, fontName: String = "Scheherazade New"): String {
+    val digits = formatArabicDigits(verseNumber)
+    val mark = if (usesEmbeddedEndMarker(fontName)) digits else "\u06dd$digits"
+    return " <span class='end'>$mark</span>"
+}
+
+fun formatCleanEndMarker(endWord: WordEntity?, verseNumber: Int, fontName: String = "Scheherazade New"): String {
     val digits = if (endWord != null) {
         val raw = endWord.textUthmani ?: endWord.textQpcHafs ?: ""
         val cleaned = raw.replace("﴿", "").replace("﴾", "").replace("{", "").replace("}", "").replace("\u06dd", "").trim()
@@ -153,12 +163,13 @@ fun formatCleanEndMarker(endWord: WordEntity?, verseNumber: Int): String {
     } else {
         formatArabicDigits(verseNumber)
     }
-    return " <span class='end'>\u06dd$digits</span>"
+    val mark = if (usesEmbeddedEndMarker(fontName)) digits else "\u06dd$digits"
+    return " <span class='end'>$mark</span>"
 }
 
-fun buildCleanVerseTajweedHtml(fullVerseHtml: String?, words: List<WordEntity>, verseNumber: Int): String {
+fun buildCleanVerseTajweedHtml(fullVerseHtml: String?, words: List<WordEntity>, verseNumber: Int, fontName: String = "Scheherazade New"): String {
     val endWord = words.firstOrNull { it.charTypeName == "end" }
-    val cleanEndMarker = formatCleanEndMarker(endWord, verseNumber)
+    val cleanEndMarker = formatCleanEndMarker(endWord, verseNumber, fontName)
 
     val cleanInput = if (!fullVerseHtml.isNullOrBlank()) {
         fullVerseHtml
@@ -1964,7 +1975,7 @@ fun VerseItem(
                 val isVerseTajweedAvailable = !fullVerseHtml.isNullOrBlank()
 
                 if (isTajweedEnabled && (isVerseTajweedAvailable || words.any { it.textUthmaniTajweed != null })) {
-                    val finalTajweedHtml = buildCleanVerseTajweedHtml(fullVerseHtml, words, verse.verseNumber)
+                    val finalTajweedHtml = buildCleanVerseTajweedHtml(fullVerseHtml, words, verse.verseNumber, selectedArabicFontName)
                     val textColorHex = if (isDarkThemeGlobal) "#EFECE4" else "#2B3F3C"
 
                     TajweedHtmlView(
@@ -2605,7 +2616,7 @@ fun ContinuousReadingPageItem(
                         if (index > 0) append(" ")
                         val vHtml = tajweedMap?.get(verse.verseKey)
                         val vWords = wordsMap[verse.id] ?: emptyList()
-                        append(buildCleanVerseTajweedHtml(vHtml, vWords, verse.verseNumber))
+                        append(buildCleanVerseTajweedHtml(vHtml, vWords, verse.verseNumber, selectedArabicFontName))
                     }
                 }
                 

@@ -1,6 +1,7 @@
 package com.nur.quran.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -17,14 +18,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.nur.quran.data.db.entities.ChapterEntity
 import com.nur.quran.ui.screens.*
 
+/**
+ * Breakdown modal listing memorized surahs or ayahs. Each section is a
+ * (heading, body) pair — e.g. ("1. Al-Fatihah", "Verses: 1-3, 5").
+ */
 @Composable
 fun HifdhBreakdownModal(
     title: String,
-    items: List<String>,
-    chapters: List<ChapterEntity>,
+    sections: List<Pair<String, String>>,
     onDismiss: () -> Unit
 ) {
     Dialog(
@@ -77,7 +80,7 @@ fun HifdhBreakdownModal(
 
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    if (items.isEmpty()) {
+                    if (sections.isEmpty()) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -93,39 +96,31 @@ fun HifdhBreakdownModal(
                                 .heightIn(max = 340.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            items(items) { itemStr ->
-                                val parts = itemStr.split(":")
-                                val sId = parts.getOrNull(0)?.toIntOrNull()
-                                val chapter = chapters.find { it.id == sId }
-
+                            items(sections, key = { it.first }) { (heading, body) ->
                                 Card(
                                     shape = RoundedCornerShape(12.dp),
                                     colors = CardDefaults.cardColors(containerColor = hCream),
                                     border = androidx.compose.foundation.BorderStroke(1.dp, hBoneDark),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Row(
+                                    Column(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(12.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
+                                            .padding(12.dp)
                                     ) {
                                         Text(
-                                            text = if (chapter != null) "${chapter.id}. ${chapter.nameSimple}" else "Item $itemStr",
+                                            text = heading,
                                             fontSize = 13.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = hInk
                                         )
-                                        Surface(shape = RoundedCornerShape(100), color = hGreen.copy(alpha = 0.15f)) {
-                                            Text(
-                                                text = if (parts.size > 1) "Ayah ${parts[1]}" else "Memorized",
-                                                fontSize = 10.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = hGreen,
-                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                                            )
-                                        }
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = body,
+                                            fontSize = 11.sp,
+                                            color = hInkMuted,
+                                            fontFamily = fontFamilyMono
+                                        )
                                     }
                                 }
                             }

@@ -216,6 +216,21 @@ object NurIcons {
         "m9 12 2 2 4-4")
     }
 
+    val XCircle: ImageVector by lazy {
+        lucideIcon("XCircle",
+        "M 2 12 a 10 10 0 1 0 20 0 a 10 10 0 1 0 -20 0",
+        "m15 9-6 6",
+        "m9 9 6 6")
+    }
+
+    val RefreshCw: ImageVector by lazy {
+        lucideIcon("RefreshCw",
+        "M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8",
+        "M21 3v5h-5",
+        "M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16",
+        "M8 16H3v5")
+    }
+
     val Loader2: ImageVector by lazy {
         lucideIcon("Loader2",
         "M21 12a9 9 0 1 1-6.219-8.56")

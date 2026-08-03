@@ -16,6 +16,11 @@ import com.nur.quran.data.db.entities.CollectionItemEntity
 import com.nur.quran.data.db.entities.RecentlyReadEntity
 import com.nur.quran.data.db.entities.VerseEntity
 import com.nur.quran.data.db.entities.WordEntity
+import com.nur.quran.data.hifdh.FsrsCard
+import com.nur.quran.data.hifdh.FsrsScheduler
+import com.nur.quran.data.hifdh.HifdhGoal
+import com.nur.quran.data.hifdh.HifdhHistoryEntry
+import com.nur.quran.data.hifdh.HifdhStore
 import com.nur.quran.data.repository.QuranRepository
 import com.nur.quran.utils.TajweedProcessor
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -134,6 +139,79 @@ class SurahViewModel @Inject constructor(
     // Reading-session tracking (mirrors the web Surah page's start/unmount timer)
     private var readingSessionStart: Long = 0L
     private var readingSessionChapterId: Int = 0
+
+    // ── Hifdh (memorization) tracking ──────────────────────────────────
+    private val hifdhStore = HifdhStore(context)
+    private val fsrsScheduler = FsrsScheduler()
+
+    private val _hifdhHistory = MutableStateFlow(hifdhStore.loadHifdhHistory())
+    val hifdhHistory: StateFlow<Map<String, HifdhHistoryEntry>> = _hifdhHistory.asStateFlow()
+
+    private val _transitionLinks = MutableStateFlow(hifdhStore.loadTransitionLinks())
+    val transitionLinks: StateFlow<Set<String>> = _transitionLinks.asStateFlow()
+
+    private val _hifdhGoals = MutableStateFlow(hifdhStore.loadHifdhGoals())
+    val hifdhGoals: StateFlow<List<HifdhGoal>> = _hifdhGoals.asStateFlow()
+
+    /** Web: logHifdhReview(key, rating) — schedule a new review and persist it. */
+    fun logHifdhReview(verseKey: String, rating: Int) {
+        val now = System.currentTimeMillis()
+        val current = _hifdhHistory.value.toMutableMap()
+        val prevCard = current[verseKey]?.card
+        val card = if (prevCard != null) {
+            fsrsScheduler.next(prevCard, now, rating)
+        } else {
+            fsrsScheduler.next(fsrsScheduler.createEmptyCard(now), now, rating)
+        }
+        val strength = when (rating) {
+            4 -> "strong"
+            1 -> "weak"
+            else -> "medium"
+        }
+        current[verseKey] = HifdhHistoryEntry(card = card, lastReviewed = now, strength = strength)
+        _hifdhHistory.value = current
+        hifdhStore.saveHifdhHistory(current)
+
+        // Web: Again flags the transition link; Easy/Good clears it (Hard leaves it).
+        val links = _transitionLinks.value.toMutableSet()
+        when (rating) {
+            1 -> links.add(verseKey)
+            3, 4 -> links.remove(verseKey)
+        }
+        _transitionLinks.value = links
+        hifdhStore.saveTransitionLinks(links)
+    }
+
+    fun getHifdhCard(verseKey: String): FsrsCard? = _hifdhHistory.value[verseKey]?.card
+
+    /** Web: addHifdhGoal — persisted; targetDate is epoch millis. */
+    fun addHifdhGoal(targetId: Int, targetDateMillis: Long) {
+        val goal = HifdhGoal(
+            id = System.currentTimeMillis().toString(),
+            targetType = "surah",
+            targetId = targetId,
+            targetDate = targetDateMillis,
+            createdAt = System.currentTimeMillis()
+        )
+        _hifdhGoals.value = _hifdhGoals.value + goal
+        hifdhStore.saveHifdhGoals(_hifdhGoals.value)
+    }
+
+    fun deleteHifdhGoal(id: String) {
+        _hifdhGoals.value = _hifdhGoals.value.filterNot { it.id == id }
+        hifdhStore.saveHifdhGoals(_hifdhGoals.value)
+    }
+
+    /** Cached verse lookups used by the hifdh test modals. */
+    private val verseTextCache = mutableMapOf<String, VerseEntity>()
+
+    suspend fun getVerseTexts(keys: List<String>): Map<String, VerseEntity> {
+        val missing = keys.filterNot { it in verseTextCache }
+        if (missing.isNotEmpty()) {
+            repository.getVersesByKey(missing).forEach { verseTextCache[it.verseKey] = it }
+        }
+        return keys.mapNotNull { key -> verseTextCache[key]?.let { key to it } }.toMap()
+    }
 
     // Per-surah scroll positions (mirrors the web's surahScrollPositions map)
     val scrollPositions = mutableMapOf<Int, Pair<Int, Int>>()

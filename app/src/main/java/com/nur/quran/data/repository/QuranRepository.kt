@@ -109,6 +109,10 @@ class QuranRepository @Inject constructor(
         quranDao.getVersesByChapterDirect(chapterId)
     }
 
+    suspend fun getVersesByKey(keys: List<String>): List<VerseEntity> = withContext(Dispatchers.IO) {
+        quranDao.getVersesByKey(keys)
+    }
+
     fun getVersesByPageFlow(pageNumber: Int): Flow<List<VerseEntity>> = quranDao.getVersesByPage(pageNumber)
 
     suspend fun getVersesByPage(pageNumber: Int): List<VerseEntity> = withContext(Dispatchers.IO) {

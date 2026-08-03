@@ -105,6 +105,10 @@ interface QuranDao {
     @Query("DELETE FROM api_responses WHERE `key` LIKE :prefix || '%'")
     suspend fun clearCacheByPrefix(prefix: String)
 
+    // Verses by key (hifdh test modal lookups)
+    @Query("SELECT * FROM verses WHERE verseKey IN (:keys)")
+    suspend fun getVersesByKey(keys: List<String>): List<VerseEntity>
+
     // Reading Sessions
     @Query("SELECT * FROM reading_sessions ORDER BY timestamp ASC")
     fun getAllReadingSessions(): Flow<List<ReadingSessionEntity>>

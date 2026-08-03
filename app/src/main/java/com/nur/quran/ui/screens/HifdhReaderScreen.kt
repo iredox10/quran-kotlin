@@ -1,10 +1,13 @@
 package com.nur.quran.ui.screens
 
 import android.content.Context
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -18,9 +21,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nur.quran.data.db.entities.ChapterEntity
@@ -32,6 +42,7 @@ import com.nur.quran.ui.components.NurIcons
 import com.nur.quran.ui.components.SettingsDrawer
 import com.nur.quran.ui.viewmodels.SurahUiState
 import com.nur.quran.ui.viewmodels.SurahViewModel
+import com.nur.quran.utils.TajweedProcessor
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -45,9 +56,11 @@ fun HifdhReaderScreen(
     val uiState by surahViewModel.uiState.collectAsState()
     val memorizedAyahs by surahViewModel.memorizedAyahs.collectAsState()
     val isPlaying by surahViewModel.isPlaying.collectAsState()
+    val playingVerseKey by surahViewModel.playingVerseKey.collectAsState()
     val collections by surahViewModel.collections.collectAsState()
     val bookmarkedVerses by surahViewModel.bookmarkedVerses.collectAsState()
     val arabicFontScale by surahViewModel.arabicFontScale.collectAsState()
+    val isTajweedEnabled by surahViewModel.isTajweedEnabled.collectAsState()
     val selectedArabicFontName by surahViewModel.selectedArabicFontName.collectAsState(initial = "Scheherazade New")
 
     val fontFamilyArabic = remember(selectedArabicFontName) {
@@ -55,12 +68,13 @@ fun HifdhReaderScreen(
     }
 
     var currentVerseIndex by remember { mutableStateOf(0) }
-    var ayahsPerChunk by remember { mutableStateOf(1) } // 1, 3, 5, 10
+    var ayahsPerChunk by remember { mutableStateOf(1) } // 1, 3, 5, -1 (Page)
     var hideMode by remember { mutableStateOf("visible") } // "visible", "blur", "word", "firstletter"
     var showTranslation by remember { mutableStateOf(false) }
     var revealedWords by remember { mutableStateOf(setOf<String>()) }
     var ayahRepeatCount by remember { mutableStateOf(1) }
     var delayBetweenAyahs by remember { mutableStateOf(0) }
+    var rangeLoopCount by remember { mutableStateOf(1) } // 1, 2, 3, 5, 10, -1 (infinite)
     var showAudioSettingsPopover by remember { mutableStateOf(false) }
     var showCollectionsPopover by remember { mutableStateOf(false) }
     var showSettingsDrawer by remember { mutableStateOf(false) }
@@ -72,6 +86,22 @@ fun HifdhReaderScreen(
     var isAutoScrollPaused by remember { mutableStateOf(false) }
     var autoScrollSpeed by remember { mutableIntStateOf(3) }
     val speedMap = remember { mapOf(1 to 12f, 2 to 24f, 3 to 45f, 4 to 90f, 5 to 150f, 6 to 270f, 7 to 450f) }
+
+    // ── Auto-hide UI (web: Memorization.jsx showUI on 3s inactivity) ──
+    var showUI by remember { mutableStateOf(true) }
+    var activityTick by remember { mutableIntStateOf(1) }
+    val fadeAlpha by animateFloatAsState(
+        targetValue = if (showUI) 1f else 0f,
+        animationSpec = tween(durationMillis = 400),
+        label = "uiFade"
+    )
+    LaunchedEffect(activityTick) {
+        if (activityTick > 0) {
+            showUI = true
+            delay(3000)
+            showUI = false
+        }
+    }
 
     LaunchedEffect(isAutoScrollActive, isAutoScrollPaused, autoScrollSpeed) {
         if (isAutoScrollActive && !isAutoScrollPaused) {
@@ -113,6 +143,7 @@ fun HifdhReaderScreen(
         surahViewModel.startReadingSession(chapterId, "memorizing")
         onDispose {
             surahViewModel.endReadingSession("memorizing")
+            surahViewModel.stopPlaying()
         }
     }
 
@@ -129,7 +160,12 @@ fun HifdhReaderScreen(
         when (val state = uiState) {
             is SurahUiState.Success -> {
                 val total = state.verses.size
-                val sessionPct = if (total > 0) ((currentVerseIndex + ayahsPerChunk).toFloat() / total).coerceIn(0f, 1f) else 0f
+                val progressEnd = if (ayahsPerChunk == -1) {
+                    currentVerseIndex + currentVersesOf(state.verses, currentVerseIndex, -1).size
+                } else {
+                    currentVerseIndex + ayahsPerChunk
+                }
+                val sessionPct = if (total > 0) (progressEnd.toFloat() / total).coerceIn(0f, 1f) else 0f
                 LinearProgressIndicator(
                     progress = sessionPct,
                     modifier = Modifier.fillMaxWidth().height(3.dp),
@@ -269,13 +305,70 @@ fun HifdhReaderScreen(
             is SurahUiState.Success -> {
                 val versesList = state.verses
                 val chapterObj = state.chapter
+                val tajweedMap = state.tajweedMap
                 val currentVerses = remember(currentVerseIndex, ayahsPerChunk, versesList) {
-                    if (versesList.isEmpty()) emptyList()
-                    else versesList.subList(currentVerseIndex, (currentVerseIndex + ayahsPerChunk).coerceAtMost(versesList.size))
+                    currentVersesOf(versesList, currentVerseIndex, ayahsPerChunk)
+                }
+                val step = if (ayahsPerChunk == -1) currentVerses.size else ayahsPerChunk
+                val canNext = currentVerseIndex + step < versesList.size
+
+                val goNext: () -> Unit = {
+                    if (canNext) {
+                        currentVerseIndex += step
+                    }
+                    revealedWords = emptySet()
+                }
+                val goPrev: () -> Unit = {
+                    if (currentVerseIndex > 0) {
+                        if (ayahsPerChunk == -1) {
+                            val prevPage = versesList[currentVerseIndex - 1].pageNumber
+                            var newIndex = currentVerseIndex - 1
+                            while (newIndex > 0 && versesList[newIndex - 1].pageNumber == prevPage) newIndex--
+                            currentVerseIndex = newIndex
+                        } else {
+                            currentVerseIndex = (currentVerseIndex - ayahsPerChunk).coerceAtLeast(0)
+                        }
+                    }
+                    revealedWords = emptySet()
+                }
+                val latestGoNext by rememberUpdatedState(goNext)
+                val latestGoPrev by rememberUpdatedState(goPrev)
+                var totalDragX by remember { mutableFloatStateOf(0f) }
+
+                // Web: Memorization.jsx effect on currentVerseIndex — keep chunk playback following
+                LaunchedEffect(currentVerses, ayahRepeatCount, delayBetweenAyahs, rangeLoopCount) {
+                    if (isPlaying) {
+                        surahViewModel.followHifdhChunk(
+                            currentVerses, chapterId, ayahRepeatCount, delayBetweenAyahs, rangeLoopCount
+                        )
+                    }
                 }
 
-
-                Box(modifier = Modifier.weight(1f)) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .pointerInput(Unit) {
+                            detectHorizontalDragGestures(
+                                onDragEnd = {
+                                    if (totalDragX < -50.dp.toPx()) latestGoNext()
+                                    else if (totalDragX > 50.dp.toPx()) latestGoPrev()
+                                    totalDragX = 0f
+                                },
+                                onHorizontalDrag = { change, dragAmount ->
+                                    change.consume()
+                                    totalDragX += dragAmount
+                                }
+                            )
+                        }
+                        .pointerInput(Unit) {
+                            awaitPointerEventScope {
+                                while (true) {
+                                    awaitPointerEvent(PointerEventPass.Main)
+                                    activityTick++
+                                }
+                            }
+                        }
+                ) {
                     // ── 3. Distraction-Free Verses Canvas (Matching Web Memorization.jsx) ──
                     LazyColumn(
                         state = lazyListState,
@@ -289,6 +382,10 @@ fun HifdhReaderScreen(
                             val isBookmarked = bookmarkedVerses.contains(verseKey)
                             val rawText = verse.textUthmani ?: verse.textQpcHafs ?: verse.textIndopak ?: ""
                             val cleanedText = rawText.replace("\u25cc", "")
+                            val verseTajweedHtml = if (isTajweedEnabled) tajweedMap[verseKey] else null
+                            val isActiveAudio = playingVerseKey == verseKey
+                            val textColor = if (isActiveAudio) hTeal
+                            else if (isDarkThemeGlobal) Color(0xFFEFECE4) else Color(0xFF2B3F3C)
 
                             Column(
                                 modifier = Modifier.fillMaxWidth(),
@@ -339,7 +436,7 @@ fun HifdhReaderScreen(
                                         // Verse Key Badge
                                         Surface(shape = RoundedCornerShape(100), color = hGoldSoft) {
                                             Text(
-                                                text = verse.verseKey,
+                                                text = verseKey,
                                                 fontSize = 11.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 color = hGold,
@@ -353,26 +450,51 @@ fun HifdhReaderScreen(
                                         when (hideMode) {
                                             "blur" -> {
                                                 var tempRevealed by remember { mutableStateOf(false) }
-                                                Text(
-                                                    text = cleanedText,
-                                                    fontFamily = fontFamilyArabic,
-                                                    fontSize = (28 * arabicFontScale).sp,
-                                                    color = if (isDarkThemeGlobal) Color(0xFFEFECE4) else Color(0xFF2B3F3C),
-                                                    textAlign = TextAlign.Center,
-                                                    lineHeight = 48.sp,
+                                                Box(
                                                     modifier = Modifier
                                                         .fillMaxWidth()
-                                                        .blur(if (tempRevealed) 0.dp else 12.dp)
                                                         .clickable { tempRevealed = !tempRevealed }
-                                                )
+                                                ) {
+                                                    if (verseTajweedHtml != null) {
+                                                        HifdhTajweedText(
+                                                            text = cleanedText,
+                                                            tajweedHtml = verseTajweedHtml,
+                                                            defaultColorHex = if (isDarkThemeGlobal) "#EFECE4" else "#2B3F3C",
+                                                            fontFamily = fontFamilyArabic,
+                                                            fontSize = (28 * arabicFontScale).sp,
+                                                            lineHeight = 48.sp,
+                                                            baseColor = textColor,
+                                                            textAlign = TextAlign.Center,
+                                                            modifier = Modifier
+                                                                .fillMaxWidth()
+                                                                .blur(if (tempRevealed) 0.dp else 12.dp)
+                                                        )
+                                                    } else {
+                                                        Text(
+                                                            text = cleanedText,
+                                                            fontFamily = fontFamilyArabic,
+                                                            fontSize = (28 * arabicFontScale).sp,
+                                                            color = textColor,
+                                                            textAlign = TextAlign.Center,
+                                                            lineHeight = 48.sp,
+                                                            modifier = Modifier
+                                                                .fillMaxWidth()
+                                                                .blur(if (tempRevealed) 0.dp else 12.dp)
+                                                        )
+                                                    }
+                                                }
                                             }
                                             "word" -> {
-                                                val words = cleanedText.split(" ")
+                                                val words = remember(verseKey, cleanedText, verseTajweedHtml) {
+                                                    if (verseTajweedHtml != null) TajweedProcessor.splitTajweedHtmlIntoWords(verseTajweedHtml)
+                                                    else cleanedText.split(" ")
+                                                }
                                                 FlowRow(
                                                     modifier = Modifier.fillMaxWidth(),
                                                     horizontalArrangement = Arrangement.Center
                                                 ) {
-                                                    words.forEachIndexed { wordIdx, word ->
+                                                    words.forEachIndexed { wordIdx, rawWord ->
+                                                        val cleanWord = rawWord.replace(tajweedTagRegex, "")
                                                         val wordKey = "$verseKey-$wordIdx"
                                                         val isWordRevealed = revealedWords.contains(wordKey)
 
@@ -386,26 +508,52 @@ fun HifdhReaderScreen(
                                                                 }
                                                                 .padding(horizontal = 6.dp, vertical = 2.dp)
                                                         ) {
-                                                            Text(
-                                                                text = if (isWordRevealed) word else "▇".repeat(word.length.coerceAtLeast(3)),
-                                                                fontFamily = fontFamilyArabic,
-                                                                fontSize = (26 * arabicFontScale).sp,
-                                                                color = if (isWordRevealed) hInk else hInkMuted
-                                                            )
+                                                            if (isWordRevealed) {
+                                                                if (verseTajweedHtml != null) {
+                                                                    HifdhTajweedText(
+                                                                        text = cleanWord,
+                                                                        tajweedHtml = rawWord,
+                                                                        defaultColorHex = if (isDarkThemeGlobal) "#EFECE4" else "#2B3F3C",
+                                                                        fontFamily = fontFamilyArabic,
+                                                                        fontSize = (26 * arabicFontScale).sp,
+                                                                        lineHeight = TextUnit.Unspecified,
+                                                                        baseColor = hInk,
+                                                                        textAlign = TextAlign.Center
+                                                                    )
+                                                                } else {
+                                                                    Text(
+                                                                        text = cleanWord,
+                                                                        fontFamily = fontFamilyArabic,
+                                                                        fontSize = (26 * arabicFontScale).sp,
+                                                                        color = hInk
+                                                                    )
+                                                                }
+                                                            } else {
+                                                                Text(
+                                                                    text = "▇".repeat(cleanWord.length.coerceAtLeast(3)),
+                                                                    fontFamily = fontFamilyArabic,
+                                                                    fontSize = (26 * arabicFontScale).sp,
+                                                                    color = hInkMuted
+                                                                )
+                                                            }
                                                         }
                                                     }
                                                 }
                                             }
                                             "firstletter" -> {
-                                                val words = cleanedText.split(" ")
+                                                val words = remember(verseKey, cleanedText, verseTajweedHtml) {
+                                                    if (verseTajweedHtml != null) TajweedProcessor.splitTajweedHtmlIntoWords(verseTajweedHtml)
+                                                    else cleanedText.split(" ")
+                                                }
                                                 FlowRow(
                                                     modifier = Modifier.fillMaxWidth(),
                                                     horizontalArrangement = Arrangement.Center
                                                 ) {
-                                                    words.forEachIndexed { wordIdx, word ->
+                                                    words.forEachIndexed { wordIdx, rawWord ->
+                                                        val cleanWord = rawWord.replace(tajweedTagRegex, "")
                                                         val wordKey = "$verseKey-$wordIdx"
                                                         val isWordRevealed = revealedWords.contains(wordKey)
-                                                        val firstChar = if (word.isNotEmpty()) word.take(1) + "..." else ""
+                                                        val firstChar = if (cleanWord.isNotEmpty()) getHifdhFirstLetter(cleanWord) + "⸱".repeat((cleanWord.length / 4).coerceAtLeast(1)) else ""
 
                                                         Box(
                                                             modifier = Modifier
@@ -417,26 +565,62 @@ fun HifdhReaderScreen(
                                                                 }
                                                                 .padding(horizontal = 6.dp, vertical = 2.dp)
                                                         ) {
-                                                            Text(
-                                                                text = if (isWordRevealed) word else firstChar,
-                                                                fontFamily = fontFamilyArabic,
-                                                                fontSize = (26 * arabicFontScale).sp,
-                                                                color = if (isWordRevealed) hInk else hGold
-                                                            )
+                                                            if (isWordRevealed) {
+                                                                if (verseTajweedHtml != null) {
+                                                                    HifdhTajweedText(
+                                                                        text = cleanWord,
+                                                                        tajweedHtml = rawWord,
+                                                                        defaultColorHex = if (isDarkThemeGlobal) "#EFECE4" else "#2B3F3C",
+                                                                        fontFamily = fontFamilyArabic,
+                                                                        fontSize = (26 * arabicFontScale).sp,
+                                                                        lineHeight = TextUnit.Unspecified,
+                                                                        baseColor = hInk,
+                                                                        textAlign = TextAlign.Center
+                                                                    )
+                                                                } else {
+                                                                    Text(
+                                                                        text = cleanWord,
+                                                                        fontFamily = fontFamilyArabic,
+                                                                        fontSize = (26 * arabicFontScale).sp,
+                                                                        color = hInk
+                                                                    )
+                                                                }
+                                                            } else {
+                                                                Text(
+                                                                    text = firstChar,
+                                                                    fontFamily = fontFamilyArabic,
+                                                                    fontSize = (26 * arabicFontScale).sp,
+                                                                    color = hGold
+                                                                )
+                                                            }
                                                         }
                                                     }
                                                 }
                                             }
                                             else -> {
-                                                Text(
-                                                    text = cleanedText,
-                                                    fontFamily = fontFamilyArabic,
-                                                    fontSize = (28 * arabicFontScale).sp,
-                                                    color = if (isDarkThemeGlobal) Color(0xFFEFECE4) else Color(0xFF2B3F3C),
-                                                    textAlign = TextAlign.Center,
-                                                    lineHeight = 48.sp,
-                                                    modifier = Modifier.fillMaxWidth()
-                                                )
+                                                if (verseTajweedHtml != null) {
+                                                    HifdhTajweedText(
+                                                        text = cleanedText,
+                                                        tajweedHtml = verseTajweedHtml,
+                                                        defaultColorHex = if (isDarkThemeGlobal) "#EFECE4" else "#2B3F3C",
+                                                        fontFamily = fontFamilyArabic,
+                                                        fontSize = (28 * arabicFontScale).sp,
+                                                        lineHeight = 48.sp,
+                                                        baseColor = textColor,
+                                                        textAlign = TextAlign.Center,
+                                                        modifier = Modifier.fillMaxWidth()
+                                                    )
+                                                } else {
+                                                    Text(
+                                                        text = cleanedText,
+                                                        fontFamily = fontFamilyArabic,
+                                                        fontSize = (28 * arabicFontScale).sp,
+                                                        color = textColor,
+                                                        textAlign = TextAlign.Center,
+                                                        lineHeight = 48.sp,
+                                                        modifier = Modifier.fillMaxWidth()
+                                                    )
+                                                }
                                             }
                                         }
                                     }
@@ -468,8 +652,8 @@ fun HifdhReaderScreen(
                         item { Spacer(modifier = Modifier.height(140.dp)) }
                     }
 
-                    // ── 4. Floating Popovers for Collections & Audio Settings ──
-                    if (showCollectionsPopover) {
+                    // ── 4. Floating Popovers for Collections & Audio Settings (auto-hidden with UI) ──
+                    if (showUI && showCollectionsPopover) {
                         Surface(
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
@@ -503,7 +687,10 @@ fun HifdhReaderScreen(
                                                 modifier = Modifier
                                                     .fillMaxWidth()
                                                     .clickable {
-                                                        surahViewModel.addToCollection(col.id.toLong(), "$chapterId:${currentVerseIndex + 1}", chapterId, chapterObj.nameSimple)
+                                                        // Web: adds every verse of the visible chunk at once
+                                                        currentVerses.forEach { v ->
+                                                            surahViewModel.addToCollection(col.id.toLong(), v.verseKey, chapterId, chapterObj.nameSimple)
+                                                        }
                                                         showCollectionsPopover = false
                                                     }
                                                     .padding(vertical = 6.dp),
@@ -531,8 +718,13 @@ fun HifdhReaderScreen(
                                     IconButton(
                                         onClick = {
                                             if (newCollectionName.isNotBlank()) {
-                                                surahViewModel.addCollection(newCollectionName.trim())
+                                                surahViewModel.addCollection(newCollectionName.trim()) { newId ->
+                                                    currentVerses.forEach { v ->
+                                                        surahViewModel.addToCollection(newId, v.verseKey, chapterId, chapterObj.nameSimple)
+                                                    }
+                                                }
                                                 newCollectionName = ""
+                                                showCollectionsPopover = false
                                             }
                                         },
                                         modifier = Modifier
@@ -547,7 +739,7 @@ fun HifdhReaderScreen(
                         }
                     }
 
-                    if (showAudioSettingsPopover) {
+                    if (showUI && showAudioSettingsPopover) {
                         Surface(
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
@@ -574,11 +766,11 @@ fun HifdhReaderScreen(
 
                                 Text("Ayah Repeat Count", fontSize = 11.sp, color = hInkMuted)
                                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    listOf(1, 2, 3, 5, 10).forEach { r ->
+                                    listOf(1, 2, 3, 5, 10, -1).forEach { r ->
                                         FilterChip(
                                             selected = ayahRepeatCount == r,
                                             onClick = { ayahRepeatCount = r },
-                                            label = { Text("${r}x", fontSize = 10.sp) }
+                                            label = { Text(if (r == -1) "∞" else "${r}x", fontSize = 10.sp) }
                                         )
                                     }
                                 }
@@ -590,8 +782,23 @@ fun HifdhReaderScreen(
                                     listOf(0, 1, 2, 3, 5).forEach { d ->
                                         FilterChip(
                                             selected = delayBetweenAyahs == d,
-                                            onClick = { delayBetweenAyahs = d },
+                                            onClick = {
+                                                delayBetweenAyahs = d
+                                            },
                                             label = { Text("${d}s", fontSize = 10.sp) }
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                Text("Range Loop Count", fontSize = 11.sp, color = hInkMuted)
+                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    listOf(1, 2, 3, 5, 10, -1).forEach { r ->
+                                        FilterChip(
+                                            selected = rangeLoopCount == r,
+                                            onClick = { rangeLoopCount = r },
+                                            label = { Text(if (r == -1) "∞" else "${r}x", fontSize = 10.sp) }
                                         )
                                     }
                                 }
@@ -599,14 +806,31 @@ fun HifdhReaderScreen(
                         }
                     }
 
-                    // ── 5. Status Timer Line & Dock Bar Stack ──
+                    // ── 5. Status Timer Line & Dock Bar Stack (auto-hides with UI) ──
                     Column(
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
                             .fillMaxWidth()
-                            .padding(bottom = 12.dp),
+                            .padding(bottom = 12.dp)
+                            .graphicsLayer { alpha = fadeAlpha },
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        // Web pointer-events-none: while hidden, swallow dock-area taps (they still
+                        // reach the parent activity listener, which restores the UI).
+                        if (!showUI) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .pointerInput(Unit) {
+                                        awaitPointerEventScope {
+                                            while (true) {
+                                                awaitPointerEvent(PointerEventPass.Main).changes.forEach { it.consume() }
+                                            }
+                                        }
+                                    }
+                            )
+                        }
+
                         // Status Line (`Surah Al-Mulk · Page 562 · Ayah 67:1 · 02:45`)
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -615,7 +839,14 @@ fun HifdhReaderScreen(
                         ) {
                             val surahName = chapterObj.nameSimple
                             val pageNum = currentVerses.firstOrNull()?.pageNumber ?: 1
-                            val currentVKey = currentVerses.firstOrNull()?.verseKey ?: ""
+                            val firstV = currentVerses.firstOrNull()
+                            val lastV = currentVerses.lastOrNull()
+                            val ayahLabel = if (firstV == null) ""
+                            else {
+                                val firstNum = firstV.verseKey.substringAfter(':')
+                                val lastNum = lastV?.takeIf { it.verseKey != firstV.verseKey }?.verseKey?.substringAfter(':')
+                                if (lastNum != null) "$firstNum–$lastNum" else firstNum
+                            }
                             val mins = sessionSeconds / 60
                             val secs = sessionSeconds % 60
                             val timeStr = "%d:%02d".format(mins, secs)
@@ -624,7 +855,7 @@ fun HifdhReaderScreen(
                             Text(text = "·", fontSize = 11.sp, color = hInkMuted.copy(alpha = 0.5f))
                             Text(text = "Page $pageNum", fontSize = 11.sp, color = hInkMuted, fontFamily = fontFamilyMono)
                             Text(text = "·", fontSize = 11.sp, color = hInkMuted.copy(alpha = 0.5f))
-                            Text(text = "Ayah $currentVKey", fontSize = 11.sp, color = hInkMuted, fontFamily = fontFamilyMono)
+                            Text(text = "Ayah $ayahLabel", fontSize = 11.sp, color = hInkMuted, fontFamily = fontFamilyMono)
                             Text(text = "·", fontSize = 11.sp, color = hInkMuted.copy(alpha = 0.5f))
                             Text(text = timeStr, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = hGold, fontFamily = fontFamilyMono)
                         }
@@ -648,14 +879,7 @@ fun HifdhReaderScreen(
                             ) {
                                 // 1. Prev Chunk Button (<ChevronLeft>)
                                 IconButton(
-                                    onClick = {
-                                        if (currentVerseIndex - ayahsPerChunk >= 0) {
-                                            currentVerseIndex -= ayahsPerChunk
-                                        } else {
-                                            currentVerseIndex = 0
-                                        }
-                                        revealedWords = emptySet()
-                                    },
+                                    onClick = goPrev,
                                     enabled = currentVerseIndex > 0,
                                     modifier = Modifier.size(38.dp)
                                 ) {
@@ -673,6 +897,7 @@ fun HifdhReaderScreen(
                                         }
                                         revealedWords = emptySet()
                                     },
+                                    enabled = true,
                                     modifier = Modifier
                                         .size(38.dp)
                                         .clip(RoundedCornerShape(12.dp))
@@ -688,6 +913,7 @@ fun HifdhReaderScreen(
                                 // 3. Translation Toggle Button (<Languages> / <BookOpen>)
                                 IconButton(
                                     onClick = { showTranslation = !showTranslation },
+                                    enabled = true,
                                     modifier = Modifier
                                         .size(38.dp)
                                         .clip(RoundedCornerShape(12.dp))
@@ -699,13 +925,17 @@ fun HifdhReaderScreen(
                                 // Vertical Divider Line
                                 Box(modifier = Modifier.height(22.dp).width(1.dp).background(hBoneDark))
 
-                                // 4. Center Audio Play/Pause Circular Button (54.dp)
+                                // 4. Center Audio Play/Pause Circular Button (54.dp) — hifdh chunk loop
                                 Box(
                                     modifier = Modifier
                                         .size(54.dp)
                                         .clip(CircleShape)
                                         .background(if (isPlaying) hGold else hTeal)
-                                        .clickable { surahViewModel.playPauseChapter(versesList, chapterId) },
+                                        .clickable {
+                                            surahViewModel.playPauseHifdhChunk(
+                                                currentVerses, chapterId, ayahRepeatCount, delayBetweenAyahs, rangeLoopCount
+                                            )
+                                        },
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
@@ -719,43 +949,63 @@ fun HifdhReaderScreen(
                                 // Vertical Divider Line
                                 Box(modifier = Modifier.height(22.dp).width(1.dp).background(hBoneDark))
 
-                                // 5. Ayah Chunking Selector (1, 3, 5 Ayahs)
+                                // 5. Ayah Chunking Selector (1, 3, 5 Ayahs / Page)
                                 TextButton(
                                     onClick = {
                                         ayahsPerChunk = when (ayahsPerChunk) {
                                             1 -> 3
                                             3 -> 5
-                                            5 -> 1
+                                            5 -> -1
                                             else -> 1
                                         }
+                                        revealedWords = emptySet()
                                     },
+                                    enabled = true,
                                     modifier = Modifier.height(38.dp)
                                 ) {
-                                    Text("${ayahsPerChunk}A", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = hInkMid, fontFamily = fontFamilyMono)
+                                    Text(
+                                        if (ayahsPerChunk == -1) "Page" else "${ayahsPerChunk}A",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (ayahsPerChunk == -1) hTeal else hInkMid,
+                                        fontFamily = fontFamilyMono
+                                    )
                                 }
 
-                                // 6. Add to Collection Button (<Bookmark>)
-                                IconButton(onClick = { showCollectionsPopover = !showCollectionsPopover }, modifier = Modifier.size(38.dp)) {
+                                // 6. Add to Collection Button (<Bookmark>) — adds whole chunk
+                                IconButton(
+                                    onClick = { showCollectionsPopover = !showCollectionsPopover },
+                                    enabled = true,
+                                    modifier = Modifier.size(38.dp)
+                                ) {
                                     Icon(imageVector = NurIcons.Bookmark, contentDescription = "Add to Collection", tint = hInkMid, modifier = Modifier.size(18.dp))
                                 }
 
-                                // 7. Audio Settings Gear (<Settings>)
-                                IconButton(onClick = { showAudioSettingsPopover = !showAudioSettingsPopover }, modifier = Modifier.size(38.dp)) {
-                                    Icon(imageVector = NurIcons.Settings, contentDescription = "Audio Settings", tint = hInkMid, modifier = Modifier.size(18.dp))
+                                // 7. Audio Settings Gear (<Settings>) — highlighted when non-default
+                                val hasNonDefaultAudio = ayahRepeatCount != 1 || delayBetweenAyahs != 0 || rangeLoopCount != 1
+                                IconButton(
+                                    onClick = { showAudioSettingsPopover = !showAudioSettingsPopover },
+                                    enabled = true,
+                                    modifier = Modifier
+                                        .size(38.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(if (hasNonDefaultAudio) hGoldSoft else Color.Transparent)
+                                ) {
+                                    Icon(
+                                        imageVector = NurIcons.Settings,
+                                        contentDescription = "Audio Settings",
+                                        tint = if (hasNonDefaultAudio) hGold else hInkMid,
+                                        modifier = Modifier.size(18.dp)
+                                    )
                                 }
 
                                 // 8. Next Chunk Button (<ChevronRight>)
                                 IconButton(
-                                    onClick = {
-                                        if (currentVerseIndex + ayahsPerChunk < versesList.size) {
-                                            currentVerseIndex += ayahsPerChunk
-                                        }
-                                        revealedWords = emptySet()
-                                    },
-                                    enabled = currentVerseIndex + ayahsPerChunk < versesList.size,
+                                    onClick = goNext,
+                                    enabled = canNext,
                                     modifier = Modifier.size(38.dp)
                                 ) {
-                                    Icon(imageVector = NurIcons.ArrowRight, contentDescription = "Next", tint = if (currentVerseIndex + ayahsPerChunk < versesList.size) hInkMid else hInkMuted.copy(alpha = 0.3f))
+                                    Icon(imageVector = NurIcons.ArrowRight, contentDescription = "Next", tint = if (canNext) hInkMid else hInkMuted.copy(alpha = 0.3f))
                                 }
                             }
                         }
@@ -794,4 +1044,78 @@ fun HifdhReaderScreen(
             }
         }
     }
+}
+
+private val tajweedTagRegex = Regex("<[^>]+>")
+
+private fun currentVersesOf(
+    versesList: List<VerseEntity>,
+    currentVerseIndex: Int,
+    ayahsPerChunk: Int
+): List<VerseEntity> {
+    if (versesList.isEmpty()) return emptyList()
+    if (ayahsPerChunk == -1) {
+        // Page view (web: Memorization.jsx ayahsPerSwipe === -1) — whole mushaf page
+        val page = versesList[currentVerseIndex].pageNumber
+        var start = currentVerseIndex
+        while (start > 0 && versesList[start - 1].pageNumber == page) start--
+        var end = start
+        while (end < versesList.size && versesList[end].pageNumber == page) end++
+        return versesList.subList(start, end)
+    }
+    return versesList.subList(
+        currentVerseIndex,
+        (currentVerseIndex + ayahsPerChunk).coerceAtMost(versesList.size)
+    )
+}
+
+private fun getHifdhFirstLetter(word: String): String {
+    for (ch in word) {
+        if (ch in '\u0621'..'\u064A' || ch in '\u0671'..'\u06D3') return ch.toString()
+    }
+    return word.take(1)
+}
+
+/** Tajweed-colored Arabic text for the hifdh reader (plain Compose, no WebView). */
+@Composable
+private fun HifdhTajweedText(
+    text: String,
+    tajweedHtml: String,
+    defaultColorHex: String,
+    fontFamily: FontFamily,
+    fontSize: TextUnit,
+    baseColor: Color,
+    textAlign: TextAlign,
+    modifier: Modifier = Modifier,
+    lineHeight: TextUnit = TextUnit.Unspecified
+) {
+    val segments = remember(text, tajweedHtml, defaultColorHex) {
+        TajweedProcessor.getWordTajweedSegments(text, tajweedHtml, defaultColorHex)
+    }
+    val annotated = remember(text, segments) {
+        buildAnnotatedString {
+            var cursor = 0
+            for (seg in segments.sortedBy { it.start }) {
+                if (seg.start > cursor) append(text.substring(cursor, seg.start))
+                val segStart = length
+                append(text.substring(seg.start, seg.end))
+                addStyle(
+                    style = SpanStyle(color = Color(android.graphics.Color.parseColor(seg.colorHex))),
+                    start = segStart,
+                    end = length
+                )
+                cursor = seg.end
+            }
+            if (cursor < text.length) append(text.substring(cursor))
+        }
+    }
+    Text(
+        text = annotated,
+        fontFamily = fontFamily,
+        fontSize = fontSize,
+        lineHeight = lineHeight,
+        color = baseColor,
+        textAlign = textAlign,
+        modifier = modifier
+    )
 }

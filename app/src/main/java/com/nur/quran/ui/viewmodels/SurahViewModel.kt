@@ -221,6 +221,16 @@ class SurahViewModel @Inject constructor(
     private var playlist: List<VerseEntity> = emptyList()
     private var playlistChapterId: Int = 0
 
+    // Hifdh chunk loop (web: Memorization.jsx handleAudioEnded / toggleAudio)
+    private var hifdhLoopActive = false
+    private var hifdhAyahRepeat = 1        // -1 = infinite ayah repeat
+    private var hifdhDelayMs = 0L
+    private var hifdhRangeLoop = 1         // -1 = infinite range loop
+    private var hifdhAyahPlayCount = 0
+    private var hifdhRangeCount = 0
+    private var hifdhPlaylist: List<VerseEntity> = emptyList()
+    private var hifdhDelayJob: Job? = null
+
     private val _playingVerseKey = MutableStateFlow<String?>(null)
     val playingVerseKey: StateFlow<String?> = _playingVerseKey.asStateFlow()
 
@@ -234,15 +244,20 @@ class SurahViewModel @Inject constructor(
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             val index = exoPlayer?.currentMediaItemIndex ?: return
-            _playingVerseKey.value = playlist.getOrNull(index)?.verseKey
+            val list = if (hifdhLoopActive) hifdhPlaylist else playlist
+            _playingVerseKey.value = list.getOrNull(index)?.verseKey
         }
 
         override fun onPlaybackStateChanged(playbackState: Int) {
             if (playbackState == Player.STATE_ENDED) {
-                _isPlaying.value = false
-                _playingVerseKey.value = null
-                exoPlayer?.seekTo(0, 0L)
-                exoPlayer?.pause()
+                if (hifdhLoopActive) {
+                    handleHifdhChunkEnded()
+                } else {
+                    _isPlaying.value = false
+                    _playingVerseKey.value = null
+                    exoPlayer?.seekTo(0, 0L)
+                    exoPlayer?.pause()
+                }
             }
         }
     }
@@ -287,7 +302,101 @@ class SurahViewModel @Inject constructor(
 
     private fun togglePlayPause() {
         val player = getOrCreatePlayer()
-        if (player.isPlaying) player.pause() else player.play()
+        if (player.isPlaying) {
+            hifdhDelayJob?.cancel()
+            player.pause()
+        } else {
+            if (player.playbackState == Player.STATE_ENDED && player.currentMediaItemIndex >= 0) {
+                player.seekTo(player.currentMediaItemIndex, 0L)
+            }
+            player.play()
+        }
+    }
+
+    /** Web: Memorization.jsx toggleAudio — play the visible hifdh chunk with repeat/delay/range options. */
+    fun playPauseHifdhChunk(verses: List<VerseEntity>, chapterId: Int, ayahRepeat: Int, delaySec: Int, rangeLoop: Int) {
+        val playable = verses.filter { audioDownloadManager.playableSource(it) != null }
+        if (playable.isEmpty()) return
+        val player = getOrCreatePlayer()
+        val sameChunk = hifdhLoopActive && playlistChapterId == chapterId &&
+            hifdhPlaylist.map { it.verseKey } == playable.map { it.verseKey }
+        if (sameChunk) {
+            togglePlayPause()
+            return
+        }
+        hifdhLoopActive = true
+        hifdhAyahRepeat = ayahRepeat
+        hifdhDelayMs = delaySec * 1000L
+        hifdhRangeLoop = rangeLoop
+        hifdhAyahPlayCount = 0
+        hifdhRangeCount = 0
+        hifdhPlaylist = playable
+        playlistChapterId = chapterId
+        player.setMediaItems(playable.map { MediaItem.fromUri(audioDownloadManager.playableSource(it)!!) })
+        player.prepare()
+        player.play()
+    }
+
+    /** Web: Memorization.jsx effect on currentVerseIndex — keep playing, follow the visible chunk. */
+    fun followHifdhChunk(verses: List<VerseEntity>, chapterId: Int, ayahRepeat: Int, delaySec: Int, rangeLoop: Int) {
+        if (!hifdhLoopActive || !_isPlaying.value) return
+        val playable = verses.filter { audioDownloadManager.playableSource(it) != null }
+        if (playable.isEmpty()) return
+        if (hifdhPlaylist.map { it.verseKey } == playable.map { it.verseKey }) return
+        val player = getOrCreatePlayer()
+        hifdhPlaylist = playable
+        playlistChapterId = chapterId
+        hifdhAyahRepeat = ayahRepeat
+        hifdhDelayMs = delaySec * 1000L
+        hifdhRangeLoop = rangeLoop
+        hifdhAyahPlayCount = 0
+        hifdhRangeCount = 0
+        player.setMediaItems(playable.map { MediaItem.fromUri(audioDownloadManager.playableSource(it)!!) })
+        player.prepare()
+        player.play()
+    }
+
+    /** Web: Memorization.jsx handleAudioEnded — ayah repeat, then next ayah, then range loop. */
+    private fun handleHifdhChunkEnded() {
+        val player = exoPlayer ?: return
+        val currentIdx = player.currentMediaItemIndex
+        if (currentIdx < 0 || currentIdx >= hifdhPlaylist.size) {
+            hifdhLoopActive = false
+            return
+        }
+        if (hifdhAyahRepeat == -1 || hifdhAyahPlayCount + 1 < hifdhAyahRepeat) {
+            if (hifdhAyahRepeat != -1) hifdhAyahPlayCount++
+            hifdhDelayThen { player.seekTo(currentIdx, 0L); player.play() }
+            return
+        }
+        hifdhAyahPlayCount = 0
+        if (currentIdx < hifdhPlaylist.size - 1) {
+            hifdhDelayThen { player.seekTo(currentIdx + 1, 0L); player.play() }
+            return
+        }
+        if (hifdhRangeLoop == -1 || hifdhRangeCount + 1 < hifdhRangeLoop) {
+            if (hifdhRangeLoop != -1) hifdhRangeCount++
+            hifdhDelayThen { player.seekTo(0, 0L); player.play() }
+            return
+        }
+        hifdhLoopActive = false
+        hifdhAyahPlayCount = 0
+        hifdhRangeCount = 0
+        _isPlaying.value = false
+        _playingVerseKey.value = null
+        player.pause()
+    }
+
+    private fun hifdhDelayThen(action: () -> Unit) {
+        hifdhDelayJob?.cancel()
+        if (hifdhDelayMs > 0) {
+            hifdhDelayJob = viewModelScope.launch {
+                delay(hifdhDelayMs)
+                if (_isPlaying.value) action()
+            }
+        } else {
+            action()
+        }
     }
 
     private fun startPlaylist(verses: List<VerseEntity>, chapterId: Int, startIndex: Int) {
@@ -303,6 +412,11 @@ class SurahViewModel @Inject constructor(
     }
 
     fun stopPlaying() {
+        hifdhDelayJob?.cancel()
+        hifdhLoopActive = false
+        hifdhPlaylist = emptyList()
+        hifdhAyahPlayCount = 0
+        hifdhRangeCount = 0
         exoPlayer?.stop()
         exoPlayer?.clearMediaItems()
         playlist = emptyList()

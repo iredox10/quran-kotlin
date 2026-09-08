@@ -56,6 +56,19 @@ class QuranRepository @Inject constructor(
     // Chapters
     fun getChaptersFlow(): Flow<List<ChapterEntity>> = quranDao.getAllChapters()
 
+    private fun apiChapterToEntity(apiChapter: com.nur.quran.data.api.ApiChapter) = ChapterEntity(
+        id = apiChapter.id,
+        nameSimple = apiChapter.name_simple,
+        nameArabic = apiChapter.name_arabic,
+        nameComplex = apiChapter.name_complex,
+        translatedName = apiChapter.translated_name?.name ?: "",
+        revelationPlace = apiChapter.revelation_place,
+        revelationOrder = apiChapter.revelation_order,
+        versesCount = apiChapter.verses_count,
+        pagesStart = apiChapter.pages.firstOrNull() ?: 1,
+        pagesEnd = apiChapter.pages.lastOrNull() ?: 1
+    )
+
     suspend fun refreshChapters() = withContext(Dispatchers.IO) {
         val existing = quranDao.getAllChapters().firstOrNull()
         if (!existing.isNullOrEmpty()) {
@@ -63,43 +76,49 @@ class QuranRepository @Inject constructor(
         }
         try {
             val response = quranApi.getChapters()
-            val entities = response.chapters.map { apiChapter ->
-                ChapterEntity(
-                    id = apiChapter.id,
-                    nameSimple = apiChapter.name_simple,
-                    nameArabic = apiChapter.name_arabic,
-                    nameComplex = apiChapter.name_complex,
-                    translatedName = apiChapter.translated_name?.name ?: "",
-                    revelationPlace = apiChapter.revelation_place,
-                    revelationOrder = apiChapter.revelation_order,
-                    versesCount = apiChapter.verses_count,
-                    pagesStart = apiChapter.pages.firstOrNull() ?: 1,
-                    pagesEnd = apiChapter.pages.lastOrNull() ?: 1
-                )
-            }
-            quranDao.insertChapters(entities)
+            quranDao.insertChapters(response.chapters.map(::apiChapterToEntity))
         } catch (e: Exception) {
-            try {
-                val jsonString = context.assets.open("data/chapters.json").bufferedReader().use { it.readText() }
-                val type = object : TypeToken<List<com.nur.quran.data.api.ApiChapter>>() {}.type
-                val chapters: List<com.nur.quran.data.api.ApiChapter> = gson.fromJson(jsonString, type)
-                val entities = chapters.map { apiChapter ->
-                    ChapterEntity(
-                        id = apiChapter.id,
-                        nameSimple = apiChapter.name_simple,
-                        nameArabic = apiChapter.name_arabic,
-                        nameComplex = apiChapter.name_complex,
-                        translatedName = apiChapter.translated_name?.name ?: "",
-                        revelationPlace = apiChapter.revelation_place,
-                        revelationOrder = apiChapter.revelation_order,
-                        versesCount = apiChapter.verses_count,
-                        pagesStart = apiChapter.pages.firstOrNull() ?: 1,
-                        pagesEnd = apiChapter.pages.lastOrNull() ?: 1
-                    )
-                }
-                quranDao.insertChapters(entities)
-            } catch (_: Exception) {}
+            ensureChaptersFromAssets()
         }
+    }
+
+    /** Seed chapters from the bundled asset when Room is empty. No network. */
+    suspend fun ensureChaptersFromAssets() = withContext(Dispatchers.IO) {
+        val existing = quranDao.getAllChapters().firstOrNull()
+        if (!existing.isNullOrEmpty()) return@withContext
+        try {
+            val jsonString = context.assets.open("data/chapters.json").bufferedReader().use { it.readText() }
+            val type = object : TypeToken<List<com.nur.quran.data.api.ApiChapter>>() {}.type
+            val chapters: List<com.nur.quran.data.api.ApiChapter> = gson.fromJson(jsonString, type)
+            quranDao.insertChapters(chapters.map(::apiChapterToEntity))
+        } catch (_: Exception) {}
+    }
+
+    /**
+     * Startup warm: parse the bundled JSONs into memory and seed chapters,
+     * so the first surah open never pays parse/network cost. No network.
+     */
+    suspend fun warmOfflineCaches() = withContext(Dispatchers.IO) {
+        try { getAllOfflineVerses() } catch (_: Exception) {}
+        try { getAllOfflineTafsirs() } catch (_: Exception) {}
+        try { ensureChaptersFromAssets() } catch (_: Exception) {}
+    }
+
+    /**
+     * Seed a chapter's verses/words from bundled assets when Room is empty.
+     * Returns true when verses are available afterwards. Never touches network —
+     * used to paint the screen instantly before the background network upgrade.
+     */
+    suspend fun ensureOfflineChapter(chapterId: Int): Boolean = withContext(Dispatchers.IO) {
+        val existing = quranDao.getVersesByChapter(chapterId).firstOrNull()
+        if (!existing.isNullOrEmpty()) return@withContext true
+        return@withContext try {
+            val (offlineVerses, offlineWords) = loadOfflineVersesFromAssets(chapterId)
+            if (offlineVerses.isNotEmpty()) {
+                quranDao.insertVersesAndWords(offlineVerses, offlineWords)
+                true
+            } else false
+        } catch (_: Exception) { false }
     }
 
     // Verses by Chapter
@@ -115,15 +134,17 @@ class QuranRepository @Inject constructor(
 
     fun getVersesByPageFlow(pageNumber: Int): Flow<List<VerseEntity>> = quranDao.getVersesByPage(pageNumber)
 
-    suspend fun getVersesByPage(pageNumber: Int): List<VerseEntity> = withContext(Dispatchers.IO) {
+    suspend fun getVersesByPage(pageNumber: Int, mushafId: String? = null): List<VerseEntity> = withContext(Dispatchers.IO) {
+        val mushaf = com.nur.quran.data.mushaf.Mushaf.fromId(mushafId)
         var list = quranDao.getVersesByPage(pageNumber).firstOrNull()
         if (list.isNullOrEmpty() || list.any { it.textUthmani.isNullOrBlank() }) {
             try {
                 val response = quranApi.getVersesByPage(
                     pageNumber = pageNumber,
                     translations = "85",
-                    fields = "text_uthmani,text_indopak,text_qpc_hafs",
-                    wordFields = "text_uthmani,text_indopak,text_qpc_hafs,text_uthmani_tajweed,translation,transliteration",
+                    fields = com.nur.quran.data.mushaf.Mushaf.verseFields(mushaf),
+                    wordFields = com.nur.quran.data.mushaf.Mushaf.wordFields(mushaf),
+                    mushaf = mushaf.apiMushafId,
                     perPage = 50
                 )
                 val verseEntities = mutableListOf<VerseEntity>()
@@ -165,13 +186,14 @@ class QuranRepository @Inject constructor(
                                 textUthmaniTajweed = apiWord.text_uthmani_tajweed,
                                 translation = apiWord.translation?.text,
                                 transliteration = apiWord.transliteration?.text,
-                                charTypeName = apiWord.char_type_name
+                                charTypeName = apiWord.char_type_name,
+                                lineNumber = apiWord.line_number ?: 0
                             )
                         )
                     }
                 }
                 if (verseEntities.isNotEmpty()) {
-                    quranDao.insertVersesAndWords(verseEntities, wordEntities)
+                    quranDao.replaceVersesAndWords(verseEntities, wordEntities)
                     list = verseEntities
                 }
             } catch (e: Exception) {
@@ -445,7 +467,8 @@ class QuranRepository @Inject constructor(
         }
     }
 
-    suspend fun refreshVersesByChapter(chapterId: Int, translationId: Int) = withContext(Dispatchers.IO) {
+    suspend fun refreshVersesByChapter(chapterId: Int, translationId: Int, mushafId: String? = null) = withContext(Dispatchers.IO) {
+        val mushaf = com.nur.quran.data.mushaf.Mushaf.fromId(mushafId)
         var existing = quranDao.getVersesByChapter(chapterId).firstOrNull()
         if (existing.isNullOrEmpty()) {
             val (offlineVerses, offlineWords) = loadOfflineVersesFromAssets(chapterId)
@@ -454,16 +477,29 @@ class QuranRepository @Inject constructor(
                 existing = offlineVerses
             }
         }
-        if (!existing.isNullOrEmpty() && existing.none { it.textUthmani.isNullOrBlank() }
+        // If verses were fetched for a different mushaf (line numbers differ),
+        // force a refetch so page-accurate layout matches the printed edition.
+        val storedMushaf = quranDao.getCacheEntry("verses_mushaf_$chapterId")?.dataJson
+        val mushafMismatch = storedMushaf != null && storedMushaf.isNotBlank() && storedMushaf != mushaf.id
+        if (!mushafMismatch && !existing.isNullOrEmpty() && existing.none { it.textUthmani.isNullOrBlank() }
             && existing.any { !it.translation.isNullOrBlank() }) {
-            return@withContext
+            // Still backfill missing line numbers if words lack them and we are online-capable.
+            val wordSample = existing.take(3).flatMap {
+                try { quranDao.getWordsForVerse(it.id) } catch (_: Exception) { emptyList() }
+            }
+            if (wordSample.isNotEmpty() && wordSample.all { it.lineNumber == 0 }) {
+                // Fall through to network refetch to obtain line_number.
+            } else {
+                return@withContext
+            }
         }
         try {
             val response = quranApi.getVersesByChapter(
                 chapterId = chapterId,
                 translations = translationId.toString(),
-                fields = "text_uthmani,text_indopak,text_qpc_hafs",
-                wordFields = "text_uthmani,text_indopak,text_qpc_hafs,text_uthmani_tajweed,translation,transliteration",
+                fields = com.nur.quran.data.mushaf.Mushaf.verseFields(mushaf),
+                wordFields = com.nur.quran.data.mushaf.Mushaf.wordFields(mushaf),
+                mushaf = mushaf.apiMushafId,
                 perPage = 300
             )
             
@@ -471,6 +507,15 @@ class QuranRepository @Inject constructor(
                 quranApi.getUthmaniTajweed(chapterNumber = chapterId)
             } catch (e: Exception) {
                 null
+            }
+            // Store for getTajweedHtmlForChapter's offline cache (same key/format as
+            // fetchWithOfflineCache) so the UI's tajweed load doesn't re-hit network.
+            if (tajweedResponse != null) {
+                try {
+                    quranDao.insertCacheEntry(
+                        ApiResponseCacheEntity("tajweed_chapter_$chapterId", gson.toJson(tajweedResponse))
+                    )
+                } catch (_: Exception) {}
             }
             val tajweedMap = tajweedResponse?.verses?.associate { it.verse_key to it.text_uthmani_tajweed } ?: emptyMap()
             
@@ -509,13 +554,15 @@ class QuranRepository @Inject constructor(
                             textUthmaniTajweed = apiWord.text_uthmani_tajweed ?: wordTajweed,
                             translation = apiWord.translation?.text,
                             transliteration = apiWord.transliteration?.text,
-                            charTypeName = apiWord.char_type_name
+                            charTypeName = apiWord.char_type_name,
+                            lineNumber = apiWord.line_number ?: 0
                         )
                     )
                 }
             }
 
-            quranDao.insertVersesAndWords(verseEntities, wordEntities)
+            quranDao.replaceVersesAndWords(verseEntities, wordEntities)
+            quranDao.insertCacheEntry(ApiResponseCacheEntity("verses_mushaf_$chapterId", mushaf.id))
         } catch (e: Exception) {
             // Offline fallback: load from bundled asset with WordEntity generation
             val (offlineVerses, offlineWords) = loadOfflineVersesFromAssets(chapterId)

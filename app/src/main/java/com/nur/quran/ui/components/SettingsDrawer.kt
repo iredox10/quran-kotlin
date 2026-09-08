@@ -25,11 +25,9 @@ import androidx.compose.ui.window.DialogProperties
 import com.nur.quran.ui.screens.*
 import com.nur.quran.ui.viewmodels.SurahViewModel
 
-private val MUSHAF_PRESETS = listOf(
-    "uthmani" to "Uthmani Madani (15 lines)",
-    "tajweed" to "Tajweed Color Mushaf",
-    "indopak" to "Indopak Naskh (16 lines)"
-)
+private val MUSHAF_PRESETS = com.nur.quran.data.mushaf.Mushaf.ALL.map {
+    it.id to "${it.name} (${if (it.id == "indopak") "16 lines" else "15 lines"})"
+}
 
 private val TRANSLATIONS_LIST = listOf(
     85 to "English · M.A.S. Abdel Haleem",
@@ -73,13 +71,16 @@ fun SettingsDrawer(
     viewModel: SurahViewModel,
     onDismiss: () -> Unit
 ) {
-    val isTajweedEnabled by viewModel.isTajweedEnabled.collectAsState()
     val arabicFontScale by viewModel.arabicFontScale.collectAsState()
     val translationFontScale by viewModel.translationFontScale.collectAsState()
     val selectedArabicFontName by viewModel.selectedArabicFontName.collectAsState()
     val activeTranslationId by viewModel.currentTranslationId.collectAsState()
     val wordTapBehavior by viewModel.wordTapBehavior.collectAsState()
     val mushafPreset by viewModel.mushafPreset.collectAsState()
+    val currentMushaf = remember(mushafPreset) {
+        com.nur.quran.data.mushaf.Mushaf.fromId(mushafPreset)
+    }
+    val isTajweedEffective by viewModel.isTajweedEffective.collectAsState()
 
     var activeTab by remember { mutableStateOf("general") }
     var activeSubView by remember { mutableStateOf<String?>(null) }
@@ -347,8 +348,10 @@ fun SettingsDrawer(
                                                 )
                                                 Divider(color = hBoneDark)
                                                 SettingsToggleItem(
-                                                    label = "Tajweed",
-                                                    checked = isTajweedEnabled,
+                                                    label = if (currentMushaf.supportsTajweedToggle) "Tajweed"
+                                                        else "Tajweed (Not available for IndoPak)",
+                                                    checked = isTajweedEffective,
+                                                    enabled = currentMushaf.supportsTajweedToggle,
                                                     onToggle = { viewModel.toggleTajweed() }
                                                 )
                                                 Divider(color = hBoneDark)
@@ -585,7 +588,11 @@ fun SettingsDrawer(
                                                             color = if (isSelected) hGold else hInk
                                                         )
                                                         Text(
-                                                            text = "Compatible with Madani Standard",
+                                                            text = if (currentMushaf.supportedFontIds.contains(
+                                                                    com.nur.quran.data.mushaf.fontNameToId(font.name)
+                                                                )
+                                                            ) "Compatible with ${currentMushaf.name}"
+                                                            else "Not recommended for ${currentMushaf.name}",
                                                             fontSize = 11.sp,
                                                             color = hInkMuted
                                                         )
@@ -656,19 +663,26 @@ private fun SettingsRowItem(
 private fun SettingsToggleItem(
     label: String,
     checked: Boolean,
-    onToggle: () -> Unit
+    onToggle: () -> Unit,
+    enabled: Boolean = true
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onToggle() }
+            .clickable(enabled = enabled) { onToggle() }
             .padding(horizontal = 14.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(text = label, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = hInk)
+        Text(
+            text = label,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+            color = if (enabled) hInk else hInkMuted
+        )
         Switch(
             checked = checked,
+            enabled = enabled,
             onCheckedChange = { onToggle() },
             colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = hGold)
         )

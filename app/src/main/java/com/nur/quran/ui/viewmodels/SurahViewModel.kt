@@ -96,8 +96,29 @@ class SurahViewModel @Inject constructor(
     private val _wordTapBehavior = MutableStateFlow(hifdhPrefs.getString("word_tap_behavior", "translation") ?: "translation")
     val wordTapBehavior: StateFlow<String> = _wordTapBehavior.asStateFlow()
 
-    private val _mushafPreset = MutableStateFlow(hifdhPrefs.getString("mushaf_preset", "uthmani") ?: "uthmani")
+    private val _mushafPreset = MutableStateFlow(
+        com.nur.quran.data.mushaf.Mushaf.fromPresetKey(
+            hifdhPrefs.getString("mushaf_preset", "uthmani")
+        ).id
+    )
     val mushafPreset: StateFlow<String> = _mushafPreset.asStateFlow()
+
+    /** Canonical mushaf derived from the stored preset (web: getMushafById). */
+    val currentMushaf: StateFlow<com.nur.quran.data.mushaf.Mushaf> = _mushafPreset
+        .map { com.nur.quran.data.mushaf.Mushaf.fromId(it) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, com.nur.quran.data.mushaf.Mushaf.fromId(_mushafPreset.value))
+
+    /** Web: isTajweedEnabledForMushaf — Indopak never, Tajweed preset always. */
+    val isTajweedEffective: StateFlow<Boolean> = kotlinx.coroutines.flow.combine(
+        _mushafPreset, _isTajweedEnabled
+    ) { preset, toggle ->
+        com.nur.quran.data.mushaf.Mushaf.isTajweedEffective(
+            com.nur.quran.data.mushaf.Mushaf.fromId(preset), toggle
+        )
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
+    /** Tracks which mushaf each loaded chapter was fetched with (forces refetch on switch). */
+    private val loadedMushafByChapter = mutableMapOf<Int, String>()
 
     private val _currentReciterId = MutableStateFlow(hifdhPrefs.getInt("reciter_id", 7))
     val currentReciterId: StateFlow<Int> = _currentReciterId.asStateFlow()
@@ -457,7 +478,10 @@ class SurahViewModel @Inject constructor(
     private var loadChapterJob: Job? = null
 
     fun loadChapterDetails(chapterId: Int) {
-        if (currentChapterId == chapterId && _uiState.value is SurahUiState.Success) {
+        val requestedMushaf = _mushafPreset.value
+        if (currentChapterId == chapterId && _uiState.value is SurahUiState.Success
+            && loadedMushafByChapter[chapterId] == requestedMushaf
+        ) {
             return
         }
         currentChapterId = chapterId
@@ -472,24 +496,61 @@ class SurahViewModel @Inject constructor(
 
         loadChapterJob?.cancel()
         loadChapterJob = viewModelScope.launch(Dispatchers.IO) {
+            val t0 = System.currentTimeMillis()
+            // Chapter metadata offline-first (one indexed query when already seeded).
+            repository.ensureChaptersFromAssets()
             var localChapter = repository.getChapterById(chapterId)
             var cachedVerses = if (localChapter != null) repository.getVersesByChapterDirect(localChapter.id) else emptyList()
 
+            if (loadedMushafByChapter[chapterId] != null
+                && loadedMushafByChapter[chapterId] != _mushafPreset.value
+            ) {
+                // Bust the in-memory cache when the mushaf changed (line numbers differ).
+                chapterMemoryCache.remove(chapterId)
+            }
+
             if (cachedVerses.isEmpty()) {
-                repository.refreshVersesByChapter(chapterId, _currentTranslationId.value)
+                // Offline-first: bundled assets paint instantly, no network.
+                repository.ensureOfflineChapter(chapterId)
                 if (localChapter == null) localChapter = repository.getChapterById(chapterId)
                 if (localChapter != null) cachedVerses = repository.getVersesByChapterDirect(localChapter.id)
             }
 
-            if (localChapter != null && cachedVerses.isNotEmpty()) {
-                currentChapterName = localChapter.nameSimple
-                repository.addRecentlyRead(localChapter.id, localChapter.nameSimple)
+            val chapter = localChapter
+            if (chapter != null && cachedVerses.isNotEmpty()) {
+                currentChapterName = chapter.nameSimple
+                repository.addRecentlyRead(chapter.id, chapter.nameSimple)
                 val wordsMap = repository.getWordsForVerses(cachedVerses.map { it.id })
                 val existingTajweed = (_uiState.value as? SurahUiState.Success)?.tajweedMap ?: emptyMap()
-                val successState = SurahUiState.Success(localChapter, cachedVerses, wordsMap, existingTajweed)
+                val successState = SurahUiState.Success(chapter, cachedVerses, wordsMap, existingTajweed)
                 chapterMemoryCache[chapterId] = successState
-                _uiState.value = successState
-                loadTajweed(localChapter.id)
+                if (currentChapterId == chapterId) _uiState.value = successState
+                android.util.Log.d("SurahPerf", "surah $chapterId first paint in ${System.currentTimeMillis() - t0}ms (offline)")
+                // Background upgrade: selected translation + line numbers + tajweed cache.
+                // Verse ids/order never change, so scroll position is preserved.
+                // Child of loadChapterJob: a fast chapter switch cancels it.
+                try {
+                    repository.refreshVersesByChapter(chapterId, _currentTranslationId.value, _mushafPreset.value)
+                    val updatedVerses = repository.getVersesByChapterDirect(chapterId)
+                    if (updatedVerses.isNotEmpty() && currentChapterId == chapterId) {
+                        val updatedWords = repository.getWordsForVerses(updatedVerses.map { it.id })
+                        val tajweed = (_uiState.value as? SurahUiState.Success)?.tajweedMap ?: emptyMap()
+                        val upgraded = SurahUiState.Success(chapter, updatedVerses, updatedWords, tajweed)
+                        chapterMemoryCache[chapterId] = upgraded
+                        loadedMushafByChapter[chapterId] = _mushafPreset.value
+                        _uiState.value = upgraded
+                    } else if (updatedVerses.isNotEmpty()) {
+                        loadedMushafByChapter[chapterId] = _mushafPreset.value
+                    }
+                } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                }
+                try {
+                    if (currentChapterId == chapterId) loadTajweed(chapterId)
+                } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                }
+                android.util.Log.d("SurahPerf", "surah $chapterId background upgrade done in ${System.currentTimeMillis() - t0}ms total")
             } else {
                 _uiState.value = SurahUiState.Error("Chapter $chapterId not found")
             }
@@ -526,7 +587,7 @@ class SurahViewModel @Inject constructor(
             val hasTranslations = cachedVerses.any { !it.translation.isNullOrBlank() }
             if (!hasTranslations) {
                 try {
-                    repository.refreshVersesByChapter(chapter.id, _currentTranslationId.value)
+                    repository.refreshVersesByChapter(chapter.id, _currentTranslationId.value, _mushafPreset.value)
                     val updatedVerses = repository.getVersesByChapterDirect(chapter.id)
                     val updatedWords = repository.getWordsForVerses(updatedVerses.map { it.id })
                     _uiState.value = SurahUiState.Success(chapter, updatedVerses, updatedWords, tajweed)
@@ -536,7 +597,7 @@ class SurahViewModel @Inject constructor(
             }
         } else {
             try {
-                repository.refreshVersesByChapter(chapter.id, _currentTranslationId.value)
+                repository.refreshVersesByChapter(chapter.id, _currentTranslationId.value, _mushafPreset.value)
                 val downloadedVerses = repository.getVersesByChapterDirect(chapter.id)
                 if (downloadedVerses.isEmpty()) {
                     _uiState.value = SurahUiState.Error("Failed to load Surah ${chapter.nameSimple}.")
@@ -608,6 +669,9 @@ class SurahViewModel @Inject constructor(
     }
 
     fun toggleTajweed() {
+        // Web: setTajweed blocked unless supportsTajweedToggle (Indopak never).
+        val mushaf = com.nur.quran.data.mushaf.Mushaf.fromId(_mushafPreset.value)
+        if (!mushaf.supportsTajweedToggle) return
         _isTajweedEnabled.value = !_isTajweedEnabled.value
         hifdhPrefs.edit().putBoolean("is_tajweed_enabled", _isTajweedEnabled.value).apply()
     }
@@ -722,7 +786,7 @@ class SurahViewModel @Inject constructor(
         hifdhPrefs.edit().putInt("translation_id", translationId).apply()
         viewModelScope.launch {
             try {
-                repository.refreshVersesByChapter(currentChapterId, translationId)
+                repository.refreshVersesByChapter(currentChapterId, translationId, _mushafPreset.value)
             } catch (_: Exception) {
             }
         }
@@ -752,8 +816,13 @@ class SurahViewModel @Inject constructor(
     }
 
     fun setSelectedArabicFontName(name: String) {
-        _selectedArabicFontName.value = name
-        hifdhPrefs.edit().putString("arabic_font", name).apply()
+        // Web: setArabicFont coerced to mushaf-compatible font.
+        val mushaf = com.nur.quran.data.mushaf.Mushaf.fromId(_mushafPreset.value)
+        val requestedId = com.nur.quran.data.mushaf.fontNameToId(name)
+        val coercedId = com.nur.quran.data.mushaf.Mushaf.compatibleFontId(mushaf, requestedId)
+        val coercedName = com.nur.quran.data.mushaf.fontIdToName(coercedId)
+        _selectedArabicFontName.value = coercedName
+        hifdhPrefs.edit().putString("arabic_font", coercedName).apply()
     }
 
     fun setWordTapBehavior(behavior: String) {
@@ -762,8 +831,34 @@ class SurahViewModel @Inject constructor(
     }
 
     fun setMushafPreset(preset: String) {
-        _mushafPreset.value = preset
-        hifdhPrefs.edit().putString("mushaf_preset", preset).apply()
+        // Web: setSelectedMushaf — canonicalize, coerce font, force tajweed rules, reload.
+        val mushaf = com.nur.quran.data.mushaf.Mushaf.fromId(preset)
+        _mushafPreset.value = mushaf.id
+        hifdhPrefs.edit().putString("mushaf_preset", mushaf.id).apply()
+        // Coerce font to a mushaf-compatible one (web: getCompatibleArabicFontId).
+        val currentFontId = com.nur.quran.data.mushaf.fontNameToId(_selectedArabicFontName.value)
+        val coercedId = com.nur.quran.data.mushaf.Mushaf.compatibleFontId(mushaf, currentFontId)
+        val coercedName = com.nur.quran.data.mushaf.fontIdToName(coercedId)
+        if (coercedName != _selectedArabicFontName.value) {
+            _selectedArabicFontName.value = coercedName
+            hifdhPrefs.edit().putString("arabic_font", coercedName).apply()
+        }
+        // Web: Indopak disables tajweed; Tajweed preset forces it on.
+        if (!mushaf.supportsTajweedToggle && _isTajweedEnabled.value) {
+            _isTajweedEnabled.value = false
+            hifdhPrefs.edit().putBoolean("is_tajweed_enabled", false).apply()
+        } else if (mushaf.forcesTajweed && !_isTajweedEnabled.value) {
+            _isTajweedEnabled.value = true
+            hifdhPrefs.edit().putBoolean("is_tajweed_enabled", true).apply()
+        }
+        // Bust caches so line numbers + script are refetched for the new mushaf.
+        chapterMemoryCache.clear()
+        loadedMushafByChapter.clear()
+        val chapterToReload = currentChapterId
+        if (chapterToReload > 0) {
+            currentChapterId = 0
+            loadChapterDetails(chapterToReload)
+        }
     }
 
     fun completeSaukaJuz(assignmentId: String, backToSauka: String, onDone: () -> Unit) {

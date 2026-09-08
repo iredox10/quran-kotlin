@@ -43,6 +43,21 @@ interface QuranDao {
         insertWords(words)
     }
 
+    @Query("DELETE FROM words WHERE verseId IN (:verseIds)")
+    suspend fun deleteWordsForVerses(verseIds: List<Int>)
+
+    /**
+     * Network refresh setter: deletes stale words (e.g. offline synthetic rows
+     * with different PKs) before inserting, so a verse never renders
+     * duplicated words / double ayah end markers.
+     */
+    @Transaction
+    suspend fun replaceVersesAndWords(verses: List<VerseEntity>, words: List<WordEntity>) {
+        if (verses.isNotEmpty()) deleteWordsForVerses(verses.map { it.id })
+        insertVerses(verses)
+        insertWords(words)
+    }
+
     // Words
     @Query("SELECT * FROM words WHERE verseId = :verseId ORDER BY position ASC")
     suspend fun getWordsForVerse(verseId: Int): List<WordEntity>

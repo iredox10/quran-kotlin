@@ -67,7 +67,9 @@ data class WordEntity(
     val textUthmaniTajweed: String?,
     val translation: String?,
     val transliteration: String?,
-    val charTypeName: String
+    val charTypeName: String,
+    /** Printed-mushaf line number for this word (0 = unknown/offline fallback). */
+    val lineNumber: Int = 0
 )
 
 @Entity(tableName = "bookmarks")

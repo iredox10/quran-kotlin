@@ -147,7 +147,7 @@ fun usesEmbeddedEndMarker(fontName: String): Boolean {
 fun formatArabicVerseEndMarker(verseNumber: Int, fontName: String = "Scheherazade New"): String {
     val digits = formatArabicDigits(verseNumber)
     val mark = if (usesEmbeddedEndMarker(fontName)) digits else "\u06dd$digits"
-    return " <span class='end'>$mark</span>"
+    return " <tajweed class='end'>$mark</tajweed>"
 }
 
 fun formatCleanEndMarker(endWord: WordEntity?, verseNumber: Int, fontName: String = "Scheherazade New"): String {
@@ -164,7 +164,7 @@ fun formatCleanEndMarker(endWord: WordEntity?, verseNumber: Int, fontName: Strin
         formatArabicDigits(verseNumber)
     }
     val mark = if (usesEmbeddedEndMarker(fontName)) digits else "\u06dd$digits"
-    return " <span class='end'>$mark</span>"
+    return " <tajweed class='end'>$mark</tajweed>"
 }
 
 fun buildCleanVerseTajweedHtml(fullVerseHtml: String?, words: List<WordEntity>, verseNumber: Int, fontName: String = "Scheherazade New"): String {
@@ -189,6 +189,47 @@ fun buildCleanVerseTajweedHtml(fullVerseHtml: String?, words: List<WordEntity>, 
         .replace("[﴿﴾{}]".toRegex(), "")
 
     return baseHtml.trim() + cleanEndMarker
+}
+
+private val ORNAMENT_EMBEDDED_REGEX = "[\u06dd\u06de\u06df\u06e0\u06e2\u06ea-\u06ec\u25cc﴿﴾{}]".toRegex()
+private val ORNAMENT_PLAIN_REGEX = "[\u06df\u06e0\u06e2\u06ea-\u06ec\u25cc]".toRegex()
+
+/**
+ * Display text per word, index-aligned with [words] (no reordering/removal,
+ * so tap-target indices stay valid).
+ *
+ * - Picks the mushaf script (QPC Hafs vs Indopak).
+ * - KFGQPC Hafs shapes bare digits into ONE ayah medallion via GSUB, so any
+ *   U+06DD/ornament chars are stripped — otherwise TWO medallions render
+ *   (empty frame + numbered medallion).
+ * - Other fonts need the U+06DD frame to draw the medallion, so it is kept
+ *   (and ensured) on the single end marker.
+ * - Extra `end` words (e.g. stale offline rows surviving alongside network
+ *   rows) collapse to "" so exactly one ayah marker renders.
+ */
+fun mushafPlainWordTexts(words: List<WordEntity>, mushafId: String, fontName: String): List<String> {
+    val mushaf = com.nur.quran.data.mushaf.Mushaf.fromId(mushafId)
+    val embedded = usesEmbeddedEndMarker(fontName)
+    var endSeen = false
+    return words.map { word ->
+        var t = com.nur.quran.data.mushaf.wordTextForMushaf(mushaf, word.textUthmani, word.textIndopak, word.textQpcHafs)
+        t = if (embedded) t.replace(ORNAMENT_EMBEDDED_REGEX, "") else t.replace(ORNAMENT_PLAIN_REGEX, "")
+        if (word.charTypeName == "end") {
+            if (endSeen) return@map ""
+            endSeen = true
+            t = t.trim()
+            if (!embedded && t.isNotBlank() && !t.contains("\u06dd")) t = "\u06dd$t"
+        }
+        t
+    }
+}
+
+/** Verse-level fallback (words empty): same per-font ornament rules. */
+fun mushafPlainVerseText(verse: VerseEntity, mushafId: String, fontName: String): String {
+    val mushaf = com.nur.quran.data.mushaf.Mushaf.fromId(mushafId)
+    var t = com.nur.quran.data.mushaf.verseTextForMushaf(mushaf, verse.textUthmani, verse.textIndopak, verse.textQpcHafs)
+    t = if (usesEmbeddedEndMarker(fontName)) t.replace(ORNAMENT_EMBEDDED_REGEX, "") else t.replace(ORNAMENT_PLAIN_REGEX, "")
+    return t
 }
 
 // Colors matching the web app CSS variables (index.css) with dynamic dark mode mapping
@@ -241,7 +282,8 @@ fun SurahScreen(
     backToSauka: String? = null
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val isTajweedEnabled by viewModel.isTajweedEnabled.collectAsState()
+    val isTajweedEffective by viewModel.isTajweedEffective.collectAsState()
+    val currentMushaf by viewModel.currentMushaf.collectAsState()
     val isTranslationEnabled by viewModel.isTranslationEnabled.collectAsState()
     val isPlaying by viewModel.isPlaying.collectAsState()
     val playingVerseKey by viewModel.playingVerseKey.collectAsState()
@@ -894,7 +936,8 @@ fun SurahScreen(
                                     words = words,
                                     tajweedMap = tajweedMap,
                                     isTranslationEnabled = isTranslationEnabled,
-                                    isTajweedEnabled = isTajweedEnabled,
+                                    isTajweedEnabled = isTajweedEffective,
+                                    mushafId = currentMushaf.id,
                                     isCurrentlyPlaying = playingVerseKey == verse.verseKey && isPlaying,
                                     isBookmarked = verse.verseKey in bookmarkedVerses,
                                     isTafsirOpen = (tafsirState as? TafsirUiState.Visible)?.verseKey == verse.verseKey,
@@ -934,7 +977,8 @@ fun SurahScreen(
                                     pageVerses = pageVerses,
                                     wordsMap = wordsMap,
                                     tajweedMap = tajweedMap,
-                                    isTajweedEnabled = isTajweedEnabled,
+                                    isTajweedEnabled = isTajweedEffective,
+                                    mushafId = currentMushaf.id,
                                     onWordClick = { word ->
                                         if (wordTapBehavior != "none") {
                                             selectedWordForTooltip = word
@@ -1357,9 +1401,14 @@ fun SurahScreen(
                                                     horizontalArrangement = Arrangement.SpaceBetween,
                                                     verticalAlignment = Alignment.CenterVertically
                                                 ) {
-                                                    Text("Tajweed Color Rules", fontSize = 13.sp, color = hInk)
+                                                    Text(
+                                                        "Tajweed Color Rules" + if (!currentMushaf.supportsTajweedToggle) " (N/A for IndoPak)" else "",
+                                                        fontSize = 13.sp,
+                                                        color = if (!currentMushaf.supportsTajweedToggle) hInkMuted else hInk
+                                                    )
                                                     Switch(
-                                                        checked = isTajweedEnabled,
+                                                        checked = isTajweedEffective,
+                                                        enabled = currentMushaf.supportsTajweedToggle,
                                                         onCheckedChange = { viewModel.toggleTajweed() },
                                                         colors = SwitchDefaults.colors(checkedThumbColor = hGold, checkedTrackColor = hGoldSoft)
                                                     )
@@ -1848,6 +1897,7 @@ fun VerseItem(
     tajweedMap: Map<String, String>?,
     isTranslationEnabled: Boolean,
     isTajweedEnabled: Boolean,
+    mushafId: String = "madani-standard",
     isCurrentlyPlaying: Boolean,
     isBookmarked: Boolean,
     isTafsirOpen: Boolean,
@@ -1979,21 +2029,22 @@ fun VerseItem(
                     val finalTajweedHtml = remember(verse.verseKey, fullVerseHtml, selectedArabicFontName) {
                         buildCleanVerseTajweedHtml(fullVerseHtml, words, verse.verseNumber, selectedArabicFontName)
                     }
-                    val tajweedPlainText = remember(verse.verseKey, words) {
+                    val tajweedPlainText = remember(verse.verseKey, words, mushafId, selectedArabicFontName) {
                         if (words.isNotEmpty()) {
                             val sb = StringBuilder()
                             val ranges = mutableListOf<Pair<IntRange, Int>>()
+                            val displayWords = mushafPlainWordTexts(words, mushafId, selectedArabicFontName)
                             words.forEachIndexed { wordIndex, word ->
                                 if (wordIndex > 0) sb.append(" ")
-                                val rawText = if (!word.textQpcHafs.isNullOrBlank()) word.textQpcHafs else (word.textUthmani ?: "")
+                                val rawText = displayWords.getOrElse(wordIndex) { "" }
                                 val start = sb.length
-                                sb.append(rawText.replace("[\u06df\u06e0\u06e2\u06ea-\u06ec\u25cc]".toRegex(), ""))
+                                sb.append(rawText)
                                 ranges.add(Pair(start..sb.length, wordIndex))
                             }
                             sb.toString() to ranges
                         } else {
-                            val rawText = verse.textUthmani ?: verse.textQpcHafs ?: verse.textIndopak ?: ""
-                            rawText.replace("[\u06df\u06e0\u06e2\u06ea-\u06ec\u25cc]".toRegex(), "") to emptyList<Pair<IntRange, Int>>()
+                            val rawText = mushafPlainVerseText(verse, mushafId, selectedArabicFontName)
+                            rawText to emptyList<Pair<IntRange, Int>>()
                         }
                     }
                     val tajweedSegments = remember(finalTajweedHtml, tajweedPlainText.first, isDarkThemeGlobal) {
@@ -2024,15 +2075,16 @@ fun VerseItem(
                     )
                 } else {
                     // Non-tajweed: simple verse text as single AnnotatedString
-                    val verseAnnotated = remember(verse, words, fontFamilyArabic, arabicFontScale, isDarkThemeGlobal) {
+                    val verseAnnotated = remember(verse, words, fontFamilyArabic, arabicFontScale, isDarkThemeGlobal, mushafId, selectedArabicFontName) {
                         buildAnnotatedString {
                             if (words.isNotEmpty()) {
+                                val displayWords = mushafPlainWordTexts(words, mushafId, selectedArabicFontName)
                                 words.forEachIndexed { wordIndex, word ->
                                     if (wordIndex > 0) append(" ")
                                     val wordStart = length
                                     val isEndMarker = word.charTypeName == "end"
-                                    val rawText = if (!word.textQpcHafs.isNullOrBlank()) word.textQpcHafs else (word.textUthmani ?: "")
-                                    val plainText = rawText.replace("[\u06df\u06e0\u06e2\u06ea-\u06ec\u25cc]".toRegex(), "")
+                                    val rawText = displayWords.getOrElse(wordIndex) { "" }
+                                    val plainText = rawText
                                     val displayText = plainText
                                     append(displayText)
                                     if (isEndMarker) {
@@ -2044,8 +2096,8 @@ fun VerseItem(
                                     addStringAnnotation("WORD_INDEX", wordIndex.toString(), wordStart, length)
                                 }
                             } else {
-                                val rawText = verse.textUthmani ?: verse.textQpcHafs ?: verse.textIndopak ?: ""
-                                val plainText = rawText.replace("[\u06df\u06e0\u06e2\u06ea-\u06ec\u25cc]".toRegex(), "")
+                                val rawText = mushafPlainVerseText(verse, mushafId, selectedArabicFontName)
+                                val plainText = rawText
                                 append(plainText)
                             }
                         }
@@ -2686,6 +2738,7 @@ fun ContinuousReadingPageItem(
     wordsMap: Map<Int, List<WordEntity>>,
     tajweedMap: Map<String, String>?,
     isTajweedEnabled: Boolean,
+    mushafId: String = "madani-standard",
     onWordClick: (WordEntity) -> Unit,
     onTajweedClick: (TajweedRule) -> Unit = {},
     arabicFontScale: Float = 1.0f,
@@ -2718,14 +2771,15 @@ fun ContinuousReadingPageItem(
                 }
                 
                 if (isTajweedEnabled && fullPageHtml.isNotBlank()) {
-                    val pagePlainText = remember(allPageWords) {
+                    val pagePlainText = remember(allPageWords, mushafId, selectedArabicFontName) {
                         val sb = StringBuilder()
                         val ranges = mutableListOf<Pair<IntRange, Int>>()
+                        val displayWords = mushafPlainWordTexts(allPageWords, mushafId, selectedArabicFontName)
                         allPageWords.forEachIndexed { wordIndex, word ->
                             if (wordIndex > 0) sb.append(" ")
-                            val rawText = if (!word.textQpcHafs.isNullOrBlank()) word.textQpcHafs else (word.textUthmani ?: "")
+                            val rawText = displayWords.getOrElse(wordIndex) { "" }
                             val start = sb.length
-                            sb.append(rawText.replace("[\u06df\u06e0\u06e2\u06ea-\u06ec\u25cc]".toRegex(), ""))
+                            sb.append(rawText)
                             ranges.add(Pair(start..sb.length, wordIndex))
                         }
                         sb.toString() to ranges
@@ -2756,14 +2810,15 @@ fun ContinuousReadingPageItem(
                         modifier = Modifier.fillMaxWidth()
                     )
                 } else {
-                    val pageAnnotated = remember(allPageWords, fontFamilyArabic, arabicFontScale, isDarkThemeGlobal) {
+                    val pageAnnotated = remember(allPageWords, fontFamilyArabic, arabicFontScale, isDarkThemeGlobal, mushafId, selectedArabicFontName) {
                         buildAnnotatedString {
+                            val displayWords = mushafPlainWordTexts(allPageWords, mushafId, selectedArabicFontName)
                             allPageWords.forEachIndexed { wordIndex, word ->
                                 if (wordIndex > 0) append(" ")
                                 val wordStart = length
                                 val isEndMarker = word.charTypeName == "end"
-                                val rawText = if (!word.textQpcHafs.isNullOrBlank()) word.textQpcHafs else (word.textUthmani ?: "")
-                                val plainText = rawText.replace("\u25cc", "")
+                                val rawText = displayWords.getOrElse(wordIndex) { "" }
+                                val plainText = rawText
                                 val displayText = plainText
                                 append(displayText)
                                 if (isEndMarker) {

@@ -26,6 +26,7 @@ interface QuranApi {
         @Query("audio") audio: Int? = null,
         @Query("fields") fields: String? = null,
         @Query("word_fields") wordFields: String? = null,
+        @Query("mushaf") mushaf: Int? = null,
         @Query("page") page: Int = 1,
         @Query("per_page") perPage: Int = 10
     ): VersesResponse
@@ -38,6 +39,7 @@ interface QuranApi {
         @Query("translations") translations: String? = null,
         @Query("fields") fields: String? = null,
         @Query("word_fields") wordFields: String? = null,
+        @Query("mushaf") mushaf: Int? = null,
         @Query("page") page: Int = 1,
         @Query("per_page") perPage: Int = 10
     ): VersesResponse
@@ -113,7 +115,9 @@ data class ApiWord(
     val text_uthmani_tajweed: String?,
     val char_type_name: String,
     val translation: ApiWordTranslation?,
-    val transliteration: ApiWordTransliteration?
+    val transliteration: ApiWordTransliteration?,
+    val line_number: Int? = null,
+    val page_number: Int? = null
 )
 
 data class ApiWordTranslation(val text: String?)

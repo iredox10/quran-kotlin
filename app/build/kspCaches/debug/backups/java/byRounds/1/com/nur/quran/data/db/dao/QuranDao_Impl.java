@@ -148,7 +148,7 @@ public final class QuranDao_Impl implements QuranDao {
       @Override
       @NonNull
       protected String createQuery() {
-        return "INSERT OR REPLACE INTO `words` (`id`,`verseId`,`position`,`textUthmani`,`textIndopak`,`textQpcHafs`,`textUthmaniTajweed`,`translation`,`transliteration`,`charTypeName`) VALUES (?,?,?,?,?,?,?,?,?,?)";
+        return "INSERT OR REPLACE INTO `words` (`id`,`verseId`,`position`,`textUthmani`,`textIndopak`,`textQpcHafs`,`textUthmaniTajweed`,`translation`,`transliteration`,`charTypeName`,`lineNumber`) VALUES (?,?,?,?,?,?,?,?,?,?,?)";
       }
 
       @Override
@@ -188,6 +188,7 @@ public final class QuranDao_Impl implements QuranDao {
           statement.bindString(9, entity.getTransliteration());
         }
         statement.bindString(10, entity.getCharTypeName());
+        statement.bindLong(11, entity.getLineNumber());
       }
     };
     this.__insertionAdapterOfBookmarkEntity = new EntityInsertionAdapter<BookmarkEntity>(__db) {
@@ -529,6 +530,12 @@ public final class QuranDao_Impl implements QuranDao {
   public Object insertVersesAndWords(final List<VerseEntity> verses, final List<WordEntity> words,
       final Continuation<? super Unit> $completion) {
     return RoomDatabaseKt.withTransaction(__db, (__cont) -> QuranDao.DefaultImpls.insertVersesAndWords(QuranDao_Impl.this, verses, words, __cont), $completion);
+  }
+
+  @Override
+  public Object replaceVersesAndWords(final List<VerseEntity> verses, final List<WordEntity> words,
+      final Continuation<? super Unit> $completion) {
+    return RoomDatabaseKt.withTransaction(__db, (__cont) -> QuranDao.DefaultImpls.replaceVersesAndWords(QuranDao_Impl.this, verses, words, __cont), $completion);
   }
 
   @Override
@@ -1154,6 +1161,7 @@ public final class QuranDao_Impl implements QuranDao {
           final int _cursorIndexOfTranslation = CursorUtil.getColumnIndexOrThrow(_cursor, "translation");
           final int _cursorIndexOfTransliteration = CursorUtil.getColumnIndexOrThrow(_cursor, "transliteration");
           final int _cursorIndexOfCharTypeName = CursorUtil.getColumnIndexOrThrow(_cursor, "charTypeName");
+          final int _cursorIndexOfLineNumber = CursorUtil.getColumnIndexOrThrow(_cursor, "lineNumber");
           final List<WordEntity> _result = new ArrayList<WordEntity>(_cursor.getCount());
           while (_cursor.moveToNext()) {
             final WordEntity _item;
@@ -1201,7 +1209,9 @@ public final class QuranDao_Impl implements QuranDao {
             }
             final String _tmpCharTypeName;
             _tmpCharTypeName = _cursor.getString(_cursorIndexOfCharTypeName);
-            _item = new WordEntity(_tmpId,_tmpVerseId,_tmpPosition,_tmpTextUthmani,_tmpTextIndopak,_tmpTextQpcHafs,_tmpTextUthmaniTajweed,_tmpTranslation,_tmpTransliteration,_tmpCharTypeName);
+            final int _tmpLineNumber;
+            _tmpLineNumber = _cursor.getInt(_cursorIndexOfLineNumber);
+            _item = new WordEntity(_tmpId,_tmpVerseId,_tmpPosition,_tmpTextUthmani,_tmpTextIndopak,_tmpTextQpcHafs,_tmpTextUthmaniTajweed,_tmpTranslation,_tmpTransliteration,_tmpCharTypeName,_tmpLineNumber);
             _result.add(_item);
           }
           return _result;
@@ -1246,6 +1256,7 @@ public final class QuranDao_Impl implements QuranDao {
           final int _cursorIndexOfTranslation = CursorUtil.getColumnIndexOrThrow(_cursor, "translation");
           final int _cursorIndexOfTransliteration = CursorUtil.getColumnIndexOrThrow(_cursor, "transliteration");
           final int _cursorIndexOfCharTypeName = CursorUtil.getColumnIndexOrThrow(_cursor, "charTypeName");
+          final int _cursorIndexOfLineNumber = CursorUtil.getColumnIndexOrThrow(_cursor, "lineNumber");
           final List<WordEntity> _result = new ArrayList<WordEntity>(_cursor.getCount());
           while (_cursor.moveToNext()) {
             final WordEntity _item_1;
@@ -1293,7 +1304,9 @@ public final class QuranDao_Impl implements QuranDao {
             }
             final String _tmpCharTypeName;
             _tmpCharTypeName = _cursor.getString(_cursorIndexOfCharTypeName);
-            _item_1 = new WordEntity(_tmpId,_tmpVerseId,_tmpPosition,_tmpTextUthmani,_tmpTextIndopak,_tmpTextQpcHafs,_tmpTextUthmaniTajweed,_tmpTranslation,_tmpTransliteration,_tmpCharTypeName);
+            final int _tmpLineNumber;
+            _tmpLineNumber = _cursor.getInt(_cursorIndexOfLineNumber);
+            _item_1 = new WordEntity(_tmpId,_tmpVerseId,_tmpPosition,_tmpTextUthmani,_tmpTextIndopak,_tmpTextQpcHafs,_tmpTextUthmaniTajweed,_tmpTranslation,_tmpTransliteration,_tmpCharTypeName,_tmpLineNumber);
             _result.add(_item_1);
           }
           return _result;
@@ -1864,6 +1877,37 @@ public final class QuranDao_Impl implements QuranDao {
         _statement.release();
       }
     });
+  }
+
+  @Override
+  public Object deleteWordsForVerses(final List<Integer> verseIds,
+      final Continuation<? super Unit> $completion) {
+    return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
+      @Override
+      @NonNull
+      public Unit call() throws Exception {
+        final StringBuilder _stringBuilder = StringUtil.newStringBuilder();
+        _stringBuilder.append("DELETE FROM words WHERE verseId IN (");
+        final int _inputSize = verseIds.size();
+        StringUtil.appendPlaceholders(_stringBuilder, _inputSize);
+        _stringBuilder.append(")");
+        final String _sql = _stringBuilder.toString();
+        final SupportSQLiteStatement _stmt = __db.compileStatement(_sql);
+        int _argIndex = 1;
+        for (int _item : verseIds) {
+          _stmt.bindLong(_argIndex, _item);
+          _argIndex++;
+        }
+        __db.beginTransaction();
+        try {
+          _stmt.executeUpdateDelete();
+          __db.setTransactionSuccessful();
+          return Unit.INSTANCE;
+        } finally {
+          __db.endTransaction();
+        }
+      }
+    }, $completion);
   }
 
   @NonNull

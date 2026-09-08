@@ -34,7 +34,7 @@ public final class QuranDatabase_Impl extends QuranDatabase {
   @Override
   @NonNull
   protected SupportSQLiteOpenHelper createOpenHelper(@NonNull final DatabaseConfiguration config) {
-    final SupportSQLiteOpenHelper.Callback _openCallback = new RoomOpenHelper(config, new RoomOpenHelper.Delegate(4) {
+    final SupportSQLiteOpenHelper.Callback _openCallback = new RoomOpenHelper(config, new RoomOpenHelper.Delegate(5) {
       @Override
       public void createAllTables(@NonNull final SupportSQLiteDatabase db) {
         db.execSQL("CREATE TABLE IF NOT EXISTS `chapters` (`id` INTEGER NOT NULL, `nameSimple` TEXT NOT NULL, `nameArabic` TEXT NOT NULL, `nameComplex` TEXT NOT NULL, `translatedName` TEXT NOT NULL, `revelationPlace` TEXT NOT NULL, `revelationOrder` INTEGER NOT NULL, `versesCount` INTEGER NOT NULL, `pagesStart` INTEGER NOT NULL, `pagesEnd` INTEGER NOT NULL, PRIMARY KEY(`id`))");
@@ -42,7 +42,7 @@ public final class QuranDatabase_Impl extends QuranDatabase {
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_verses_chapterId` ON `verses` (`chapterId`)");
         db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_verses_verseKey` ON `verses` (`verseKey`)");
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_verses_pageNumber` ON `verses` (`pageNumber`)");
-        db.execSQL("CREATE TABLE IF NOT EXISTS `words` (`id` INTEGER NOT NULL, `verseId` INTEGER NOT NULL, `position` INTEGER NOT NULL, `textUthmani` TEXT, `textIndopak` TEXT, `textQpcHafs` TEXT, `textUthmaniTajweed` TEXT, `translation` TEXT, `transliteration` TEXT, `charTypeName` TEXT NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`verseId`) REFERENCES `verses`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )");
+        db.execSQL("CREATE TABLE IF NOT EXISTS `words` (`id` INTEGER NOT NULL, `verseId` INTEGER NOT NULL, `position` INTEGER NOT NULL, `textUthmani` TEXT, `textIndopak` TEXT, `textQpcHafs` TEXT, `textUthmaniTajweed` TEXT, `translation` TEXT, `transliteration` TEXT, `charTypeName` TEXT NOT NULL, `lineNumber` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`verseId`) REFERENCES `verses`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )");
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_words_verseId` ON `words` (`verseId`)");
         db.execSQL("CREATE TABLE IF NOT EXISTS `bookmarks` (`id` INTEGER NOT NULL, `verseKey` TEXT NOT NULL, `chapterId` INTEGER NOT NULL, `surahName` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, PRIMARY KEY(`id`))");
         db.execSQL("CREATE TABLE IF NOT EXISTS `collections` (`id` INTEGER NOT NULL, `name` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, PRIMARY KEY(`id`))");
@@ -51,7 +51,7 @@ public final class QuranDatabase_Impl extends QuranDatabase {
         db.execSQL("CREATE TABLE IF NOT EXISTS `reading_sessions` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `date` TEXT NOT NULL, `duration` INTEGER NOT NULL, `type` TEXT NOT NULL, `chapterId` INTEGER, `timestamp` INTEGER NOT NULL)");
         db.execSQL("CREATE TABLE IF NOT EXISTS `recently_read` (`chapterId` INTEGER NOT NULL, `chapterName` TEXT NOT NULL, `verseKey` TEXT, `timestamp` INTEGER NOT NULL, PRIMARY KEY(`chapterId`))");
         db.execSQL("CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)");
-        db.execSQL("INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'e4b76cca6d410d13f12bf021c629bf0d')");
+        db.execSQL("INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '5640df8bcdd4d22d685a34e11f62cba6')");
       }
 
       @Override
@@ -154,7 +154,7 @@ public final class QuranDatabase_Impl extends QuranDatabase {
                   + " Expected:\n" + _infoVerses + "\n"
                   + " Found:\n" + _existingVerses);
         }
-        final HashMap<String, TableInfo.Column> _columnsWords = new HashMap<String, TableInfo.Column>(10);
+        final HashMap<String, TableInfo.Column> _columnsWords = new HashMap<String, TableInfo.Column>(11);
         _columnsWords.put("id", new TableInfo.Column("id", "INTEGER", true, 1, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsWords.put("verseId", new TableInfo.Column("verseId", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsWords.put("position", new TableInfo.Column("position", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
@@ -165,6 +165,7 @@ public final class QuranDatabase_Impl extends QuranDatabase {
         _columnsWords.put("translation", new TableInfo.Column("translation", "TEXT", false, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsWords.put("transliteration", new TableInfo.Column("transliteration", "TEXT", false, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsWords.put("charTypeName", new TableInfo.Column("charTypeName", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsWords.put("lineNumber", new TableInfo.Column("lineNumber", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         final HashSet<TableInfo.ForeignKey> _foreignKeysWords = new HashSet<TableInfo.ForeignKey>(1);
         _foreignKeysWords.add(new TableInfo.ForeignKey("verses", "CASCADE", "NO ACTION", Arrays.asList("verseId"), Arrays.asList("id")));
         final HashSet<TableInfo.Index> _indicesWords = new HashSet<TableInfo.Index>(1);
@@ -265,7 +266,7 @@ public final class QuranDatabase_Impl extends QuranDatabase {
         }
         return new RoomOpenHelper.ValidationResult(true, null);
       }
-    }, "e4b76cca6d410d13f12bf021c629bf0d", "b74137dcd1c58df08e195e2e32681586");
+    }, "5640df8bcdd4d22d685a34e11f62cba6", "94d6ceedfb7e1eafe9a28e8c7a969e81");
     final SupportSQLiteOpenHelper.Configuration _sqliteConfig = SupportSQLiteOpenHelper.Configuration.builder(config.context).name(config.name).callback(_openCallback).build();
     final SupportSQLiteOpenHelper _helper = config.sqliteOpenHelperFactory.create(_sqliteConfig);
     return _helper;

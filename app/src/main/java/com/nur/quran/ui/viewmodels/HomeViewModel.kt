@@ -189,6 +189,11 @@ class HomeViewModel @Inject constructor(
     init {
         _isOnline.value = isCurrentlyOnline()
         connectivityManager.registerDefaultNetworkCallback(networkCallback)
+        // Offline-first warm: parse bundled JSONs + seed chapters in background
+        // so the first surah open never pays parse/network cost.
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try { repository.warmOfflineCaches() } catch (_: Exception) {}
+        }
         loadChapters()
     }
 

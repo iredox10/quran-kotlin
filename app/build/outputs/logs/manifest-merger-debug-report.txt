@@ -1,9 +1,9 @@
 -- Merging decision tree log ---
 manifest
-ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:2:1-39:12
-INJECTED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:2:1-39:12
-INJECTED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:2:1-39:12
-INJECTED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:2:1-39:12
+ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:2:1-40:12
+INJECTED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:2:1-40:12
+INJECTED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:2:1-40:12
+INJECTED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:2:1-40:12
 MERGED from [androidx.media3:media3-session:1.2.1] /home/iredox/.gradle/caches/transforms-3/8fa126116dd3c2cc4c75397880bbed72/transformed/media3-session-1.2.1/AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.media3:media3-extractor:1.2.1] /home/iredox/.gradle/caches/transforms-3/cf94f6ec2bd564346ceba97f85d058b7/transformed/media3-extractor-1.2.1/AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.media3:media3-container:1.2.1] /home/iredox/.gradle/caches/transforms-3/93f87b5525bf58b90a6a8802480c2cd8/transformed/media3-container-1.2.1/AndroidManifest.xml:17:1-22:12
@@ -99,17 +99,21 @@ MERGED from [androidx.media3:media3-exoplayer:1.2.1] /home/iredox/.gradle/caches
 MERGED from [androidx.media3:media3-exoplayer:1.2.1] /home/iredox/.gradle/caches/transforms-3/9ba56482d29b881cde8594f5368b7a04/transformed/media3-exoplayer-1.2.1/AndroidManifest.xml:22:5-79
 	android:name
 		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:5:22-76
+uses-permission#android.permission.ACCESS_COARSE_LOCATION
+ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:6:5-81
+	android:name
+		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:6:22-78
 uses-permission#android.permission.FOREGROUND_SERVICE
-ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:6:5-77
+ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:7:5-77
 	android:name
-		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:6:22-74
+		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:7:22-74
 uses-permission#android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK
-ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:7:5-92
+ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:8:5-92
 	android:name
-		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:7:22-89
+		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:8:22-89
 application
-ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:9:5-38:19
-INJECTED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:9:5-38:19
+ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:10:5-39:19
+INJECTED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:10:5-39:19
 MERGED from [androidx.compose.ui:ui-tooling-android:1.5.4] /home/iredox/.gradle/caches/transforms-3/ccc9fdcddff9d1ca2f1fdc9ddc6a13ca/transformed/ui-tooling-release/AndroidManifest.xml:22:5-26:19
 MERGED from [androidx.compose.ui:ui-tooling-android:1.5.4] /home/iredox/.gradle/caches/transforms-3/ccc9fdcddff9d1ca2f1fdc9ddc6a13ca/transformed/ui-tooling-release/AndroidManifest.xml:22:5-26:19
 MERGED from [androidx.emoji2:emoji2:1.4.0] /home/iredox/.gradle/caches/transforms-3/5b149bac17a9c163b22a5fe302a4b6c0/transformed/emoji2-1.4.0/AndroidManifest.xml:23:5-33:19
@@ -133,53 +137,53 @@ MERGED from [androidx.startup:startup-runtime:1.1.1] /home/iredox/.gradle/caches
 	android:appComponentFactory
 		ADDED from [androidx.core:core:1.12.0] /home/iredox/.gradle/caches/transforms-3/bca6c9987ba02360b62a1726b382f3a1/transformed/core-1.12.0/AndroidManifest.xml:28:18-86
 	android:supportsRtl
-		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:15:9-35
+		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:16:9-35
 	android:label
-		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:13:9-34
+		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:14:9-34
 	android:roundIcon
-		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:14:9-46
+		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:15:9-46
 	android:icon
-		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:12:9-41
+		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:13:9-41
 	android:allowBackup
-		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:11:9-35
+		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:12:9-35
 	android:theme
-		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:16:9-43
+		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:17:9-43
 	android:usesCleartextTraffic
-		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:17:9-44
+		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:18:9-44
 	android:name
-		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:10:9-41
+		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:11:9-41
 activity#com.nur.quran.MainActivity
-ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:19:9-27:20
+ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:20:9-28:20
 	android:exported
-		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:21:13-36
+		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:22:13-36
 	android:theme
-		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:22:13-47
+		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:23:13-47
 	android:name
-		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:20:13-41
+		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:21:13-41
 intent-filter#action:name:android.intent.action.MAIN+category:name:android.intent.category.LAUNCHER
-ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:23:13-26:29
+ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:24:13-27:29
 action#android.intent.action.MAIN
-ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:24:17-69
+ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:25:17-69
 	android:name
-		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:24:25-66
+		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:25:25-66
 category#android.intent.category.LAUNCHER
-ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:25:17-77
+ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:26:17-77
 	android:name
-		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:25:27-74
+		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:26:27-74
 service#com.nur.quran.services.QuranAudioService
-ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:30:9-37:19
+ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:31:9-38:19
 	android:exported
-		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:32:13-37
+		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:33:13-37
 	android:foregroundServiceType
-		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:33:13-58
+		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:34:13-58
 	android:name
-		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:31:13-55
+		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:32:13-55
 intent-filter#action:name:androidx.media3.session.MediaSessionService
-ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:34:13-36:29
+ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:35:13-37:29
 action#androidx.media3.session.MediaSessionService
-ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:35:17-86
+ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:36:17-86
 	android:name
-		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:35:25-83
+		ADDED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml:36:25-83
 uses-sdk
 INJECTED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml reason: use-sdk injection requested
 INJECTED from /home/iredox/Desktop/personal-apps/quran-kotlin/app/src/main/AndroidManifest.xml

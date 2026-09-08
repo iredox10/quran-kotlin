@@ -1,5 +1,6 @@
 package com.nur.quran.ui.viewmodels;
 
+import android.content.Context;
 import com.nur.quran.data.repository.QuranRepository;
 import dagger.internal.DaggerGenerated;
 import dagger.internal.Factory;
@@ -9,7 +10,7 @@ import javax.annotation.processing.Generated;
 import javax.inject.Provider;
 
 @ScopeMetadata
-@QualifierMetadata
+@QualifierMetadata("dagger.hilt.android.qualifiers.ApplicationContext")
 @DaggerGenerated
 @Generated(
     value = "dagger.internal.codegen.ComponentProcessor",
@@ -24,20 +25,25 @@ import javax.inject.Provider;
 public final class PlannerViewModel_Factory implements Factory<PlannerViewModel> {
   private final Provider<QuranRepository> repositoryProvider;
 
-  public PlannerViewModel_Factory(Provider<QuranRepository> repositoryProvider) {
+  private final Provider<Context> appContextProvider;
+
+  public PlannerViewModel_Factory(Provider<QuranRepository> repositoryProvider,
+      Provider<Context> appContextProvider) {
     this.repositoryProvider = repositoryProvider;
+    this.appContextProvider = appContextProvider;
   }
 
   @Override
   public PlannerViewModel get() {
-    return newInstance(repositoryProvider.get());
+    return newInstance(repositoryProvider.get(), appContextProvider.get());
   }
 
-  public static PlannerViewModel_Factory create(Provider<QuranRepository> repositoryProvider) {
-    return new PlannerViewModel_Factory(repositoryProvider);
+  public static PlannerViewModel_Factory create(Provider<QuranRepository> repositoryProvider,
+      Provider<Context> appContextProvider) {
+    return new PlannerViewModel_Factory(repositoryProvider, appContextProvider);
   }
 
-  public static PlannerViewModel newInstance(QuranRepository repository) {
-    return new PlannerViewModel(repository);
+  public static PlannerViewModel newInstance(QuranRepository repository, Context appContext) {
+    return new PlannerViewModel(repository, appContext);
   }
 }

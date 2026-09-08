@@ -25,6 +25,12 @@ object NurIcons {
         "M12 6v6l4 2")
     }
 
+    val Lock: ImageVector by lazy {
+        lucideIcon("Lock",
+        "M 5 11 H 19 A 2 2 0 0 1 21 13 V 20 A 2 2 0 0 1 19 22 H 5 A 2 2 0 0 1 3 20 V 13 A 2 2 0 0 1 5 11 Z",
+        "M 7 11 V 7 a 5 5 0 0 1 10 0 v 4")
+    }
+
     val RotateCcw: ImageVector by lazy {
         lucideIcon("RotateCcw",
         "M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8",

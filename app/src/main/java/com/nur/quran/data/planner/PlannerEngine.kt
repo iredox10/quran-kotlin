@@ -85,6 +85,14 @@ data class ReadingPlan(
     val lastReadVerseKey: String? = null
 )
 
+/** Web: plannerBookmarks[planId] entry — a verse highlighted from the reader. */
+data class PlannerBookmark(
+    val verseKey: String,
+    val surahName: String = "",
+    val note: String = "",
+    val createdAt: Long = System.currentTimeMillis()
+)
+
 data class AssignmentProgress(
     val completedCount: Int,
     val totalCount: Int,
@@ -699,7 +707,7 @@ data class PrayerSlot(
     val doneInSlot: Int,      // Items completed in this slot
     val slotStart: Int,       // Start index into items list
     val slotEnd: Int,         // End index into items list
-    val status: String        // "completed", "current", "upcoming", "empty"
+    val status: String        // "completed", "current", "upcoming", "empty", "locked"
 )
 
 fun buildPrayerSlots(
@@ -731,9 +739,19 @@ fun buildPrayerSlots(
 
         val isComplete = count > 0 && doneInSlot >= count
         val isCurrent = count > 0 && !isComplete && doneInSlot > 0
+        // Web parity: slots unlock sequentially — a slot with pending items is
+        // locked until every earlier slot is complete.
+        val earlierIncomplete = (0 until i).any { prevIdx ->
+            val pStart = ceil((prevIdx.toDouble() / numSlots) * total).toInt()
+            val pEnd = ceil(((prevIdx + 1).toDouble() / numSlots) * total).toInt()
+            val pItems = items.subList(pStart.coerceAtMost(total), pEnd.coerceAtMost(total))
+            pItems.isNotEmpty() && pItems.any { !completedRangeValues.contains(it.rangeValue) }
+        }
+        // Web order: empty -> completed -> locked -> current -> upcoming.
         val status = when {
             count == 0 -> "empty"
             isComplete -> "completed"
+            earlierIncomplete -> "locked"
             isCurrent -> "current"
             else -> "upcoming"
         }

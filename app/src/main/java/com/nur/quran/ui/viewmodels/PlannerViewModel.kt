@@ -16,8 +16,13 @@ import javax.inject.Inject
 
 @HiltViewModel
 class PlannerViewModel @Inject constructor(
-    private val repository: QuranRepository
+    private val repository: QuranRepository,
+    @dagger.hilt.android.qualifiers.ApplicationContext private val appContext: android.content.Context
 ) : ViewModel() {
+
+    private val plannerPrefs by lazy {
+        appContext.getSharedPreferences("PlannerSettings", android.content.Context.MODE_PRIVATE)
+    }
 
     private val _activePlan = MutableStateFlow<ReadingPlan?>(null)
     val activePlan: StateFlow<ReadingPlan?> = _activePlan.asStateFlow()
@@ -40,9 +45,50 @@ class PlannerViewModel @Inject constructor(
     private val _bookmarks = MutableStateFlow<List<BookmarkEntity>>(emptyList())
     val bookmarks: StateFlow<List<BookmarkEntity>> = _bookmarks.asStateFlow()
 
+    // ── Per-plan highlights (web: plannerBookmarks) ─────────────────────
+    private val _plannerBookmarks = MutableStateFlow<List<PlannerBookmark>>(emptyList())
+    val plannerBookmarks: StateFlow<List<PlannerBookmark>> = _plannerBookmarks.asStateFlow()
+
+    // ── Per-plan reading timers, day -> total seconds (web: plannerSessionTimers)
+    private val _sessionTotals = MutableStateFlow<Map<Int, Long>>(emptyMap())
+    val sessionTotals: StateFlow<Map<Int, Long>> = _sessionTotals.asStateFlow()
+
+    // ── Planner settings (same SharedPreferences file the UI already uses)
+    private val _useDeviceLocation = MutableStateFlow(false)
+    val useDeviceLocation: StateFlow<Boolean> = _useDeviceLocation.asStateFlow()
+
+    private val _activePrayers = MutableStateFlow<List<String>>(PRAYER_NAMES)
+    val activePrayers: StateFlow<List<String>> = _activePrayers.asStateFlow()
+
+    private var extrasPlanId: String? = null
+
     init {
+        _useDeviceLocation.value = plannerPrefs.getBoolean("use_device_location", false)
+        _activePrayers.value = plannerPrefs.getStringSet("active_prayers", null)
+            ?.filter { PRAYER_NAMES.contains(it) }
+            ?.sortedBy { PRAYER_NAMES.indexOf(it) }
+            ?.takeIf { it.isNotEmpty() } ?: PRAYER_NAMES
         loadData()
-        fetchPrayerTimings()
+        if (_useDeviceLocation.value) {
+            refreshPrayerTimingsWithDeviceLocation()
+        } else {
+            fetchPrayerTimings()
+        }
+    }
+
+    /** Load per-plan extras (bookmarks, timers) when the active plan changes. */
+    private fun loadPlanExtras(planId: String?) {
+        if (planId == extrasPlanId) return
+        extrasPlanId = planId
+        if (planId == null) {
+            _plannerBookmarks.value = emptyList()
+            _sessionTotals.value = emptyMap()
+            return
+        }
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try { _plannerBookmarks.value = repository.getPlannerBookmarks(planId) } catch (_: Exception) {}
+            try { _sessionTotals.value = repository.getPlannerSessionTotals(planId) } catch (_: Exception) {}
+        }
     }
 
     private fun loadData() {
@@ -72,6 +118,7 @@ class PlannerViewModel @Inject constructor(
             _activePlannerId.value = actId
             _activePlan.value = all.find { it.id == actId }
             _archivedPlans.value = repository.getArchivedPlans()
+            loadPlanExtras(actId)
 
             repository.getAllBookmarksFlow().collect { bmList ->
                 _bookmarks.value = bmList
@@ -93,6 +140,7 @@ class PlannerViewModel @Inject constructor(
             _activePlan.value = plan
             repository.saveAllPlans(updatedAll)
             repository.saveActivePlannerId(plan.id)
+            loadPlanExtras(plan.id)
         }
     }
 
@@ -103,6 +151,7 @@ class PlannerViewModel @Inject constructor(
                 _activePlannerId.value = planId
                 _activePlan.value = plan
                 repository.saveActivePlannerId(planId)
+                loadPlanExtras(planId)
             }
         }
     }
@@ -118,6 +167,7 @@ class PlannerViewModel @Inject constructor(
                 _activePlannerId.value = nextActive?.id
                 _activePlan.value = nextActive
                 repository.saveActivePlannerId(nextActive?.id)
+                loadPlanExtras(nextActive?.id)
             }
         }
     }
@@ -165,39 +215,112 @@ class PlannerViewModel @Inject constructor(
             updatedCompletedAtMap[dayNumber] = PlannerEngine.formatPlannerDate()
         }
 
+        // Keep the explicit completed-items map in sync so prayer-slot progress
+        // (doneInSlot) agrees with page-derived completion.
+        val updatedCompletedItemsMap = current.assignmentCompletedItems.toMutableMap()
+        val updatedProgressMap = current.assignmentProgress.toMutableMap()
+        if (isNowComplete && assignment != null) {
+            updatedCompletedItemsMap[dayNumber] = assignment.items.map { it.rangeValue }
+            updatedProgressMap[dayNumber] = assignment.items.size
+        }
+
         val updatedPlan = current.copy(
             assignmentReadPages = updatedReadPagesMap,
             completedDays = updatedCompletedDays,
             assignmentCompletedAt = updatedCompletedAtMap,
+            assignmentCompletedItems = updatedCompletedItemsMap,
+            assignmentProgress = updatedProgressMap,
             lastReadPage = pageNumber
         )
 
         setActivePlan(updatedPlan)
     }
 
+    /**
+     * Web: setPlannerAssignmentProgress — clamp count, take first N items as
+     * completed, stamp/clear completion date, recompute completedDays.
+     * Used by prayer-slot mark/undo on the dashboard.
+     */
+    fun setPlannerAssignmentProgress(dayNumber: Int, completedCount: Int) {
+        val current = _activePlan.value ?: return
+        val assignment = current.assignments.find { it.dayNumber == dayNumber } ?: return
+        val total = assignment.items.size
+        val safe = completedCount.coerceIn(0, total)
+        val completedItems = assignment.items.take(safe).map { it.rangeValue }
+
+        val completedAtMap = current.assignmentCompletedAt.toMutableMap()
+        if (safe >= total && total > 0) {
+            if (!completedAtMap.containsKey(dayNumber)) {
+                completedAtMap[dayNumber] = PlannerEngine.formatPlannerDate()
+            }
+        } else {
+            completedAtMap.remove(dayNumber)
+        }
+
+        val completedItemsMap = current.assignmentCompletedItems.toMutableMap()
+        completedItemsMap[dayNumber] = completedItems
+        val progressMap = current.assignmentProgress.toMutableMap()
+        progressMap[dayNumber] = safe
+
+        val completedDays = current.assignments
+            .filter { (completedItemsMap[it.dayNumber]?.size ?: 0) >= it.items.size && it.items.isNotEmpty() }
+            .map { it.dayNumber }
+            .sorted()
+
+        setActivePlan(
+            current.copy(
+                assignmentProgress = progressMap,
+                assignmentCompletedItems = completedItemsMap,
+                assignmentCompletedAt = completedAtMap,
+                completedDays = completedDays
+            )
+        )
+    }
+
+    /**
+     * Web: markPlannerItemComplete — union a single item rangeValue into the
+     * day's completed items (used by the reader's per-item Done button).
+     */
+    fun markPlannerItemComplete(dayNumber: Int, rangeValue: String) {
+        val current = _activePlan.value ?: return
+        val assignment = current.assignments.find { it.dayNumber == dayNumber } ?: return
+        if (assignment.items.none { it.rangeValue == rangeValue }) return
+        val existing = current.assignmentCompletedItems[dayNumber] ?: emptyList()
+        if (existing.contains(rangeValue)) return
+        val next = (existing + rangeValue).filter { v -> assignment.items.any { it.rangeValue == v } }
+
+        val completedItemsMap = current.assignmentCompletedItems.toMutableMap()
+        completedItemsMap[dayNumber] = next
+        val progressMap = current.assignmentProgress.toMutableMap()
+        progressMap[dayNumber] = next.size
+        val completedAtMap = current.assignmentCompletedAt.toMutableMap()
+        if (next.size >= assignment.items.size) {
+            if (!completedAtMap.containsKey(dayNumber)) {
+                completedAtMap[dayNumber] = PlannerEngine.formatPlannerDate()
+            }
+        }
+        val completedDays = current.assignments
+            .filter { (completedItemsMap[it.dayNumber]?.size ?: 0) >= it.items.size && it.items.isNotEmpty() }
+            .map { it.dayNumber }
+            .sorted()
+
+        setActivePlan(
+            current.copy(
+                assignmentProgress = progressMap,
+                assignmentCompletedItems = completedItemsMap,
+                assignmentCompletedAt = completedAtMap,
+                completedDays = completedDays
+            )
+        )
+    }
+
     fun toggleAssignmentCompleted(dayNumber: Int) {
         val current = _activePlan.value ?: return
+        val assignment = current.assignments.find { it.dayNumber == dayNumber } ?: return
         val isCompleted = current.completedDays.contains(dayNumber)
-
-        val updatedCompletedDays = if (isCompleted) {
-            current.completedDays - dayNumber
-        } else {
-            current.completedDays + dayNumber
-        }
-
-        val updatedCompletedAtMap = current.assignmentCompletedAt.toMutableMap()
-        if (!isCompleted) {
-            updatedCompletedAtMap[dayNumber] = PlannerEngine.formatPlannerDate()
-        } else {
-            updatedCompletedAtMap.remove(dayNumber)
-        }
-
-        val updatedPlan = current.copy(
-            completedDays = updatedCompletedDays,
-            assignmentCompletedAt = updatedCompletedAtMap
-        )
-
-        setActivePlan(updatedPlan)
+        // Route through the progress maps so completedDays never disagrees
+        // with the underlying completed items.
+        setPlannerAssignmentProgress(dayNumber, if (isCompleted) 0 else assignment.items.size)
     }
 
     fun setLastReadPosition(pageNumber: Int, verseKey: String? = null) {
@@ -311,6 +434,131 @@ class PlannerViewModel @Inject constructor(
                     "Isha" to "19:45"
                 )
             )
+        }
+    }
+
+    // ── Per-plan highlights ─────────────────────────────────────────────
+    fun togglePlannerBookmark(verseKey: String, surahName: String) {
+        val planId = _activePlannerId.value ?: return
+        val current = _plannerBookmarks.value.toMutableList()
+        val existing = current.indexOfFirst { it.verseKey == verseKey }
+        if (existing >= 0) {
+            current.removeAt(existing)
+        } else {
+            current.add(PlannerBookmark(verseKey = verseKey, surahName = surahName))
+        }
+        _plannerBookmarks.value = current
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try { repository.savePlannerBookmarks(planId, current) } catch (_: Exception) {}
+        }
+    }
+
+    fun removePlannerBookmark(verseKey: String) {
+        val planId = _activePlannerId.value ?: return
+        val current = _plannerBookmarks.value.filterNot { it.verseKey == verseKey }
+        _plannerBookmarks.value = current
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try { repository.savePlannerBookmarks(planId, current) } catch (_: Exception) {}
+        }
+    }
+
+    // ── Reading timers (web: startPlannerTimer/stopPlannerTimer) ────────
+    /** Persist additional seconds for a day (called periodically + on pause/exit). */
+    fun stopPlannerTimer(dayNumber: Int, additionalSeconds: Long) {
+        val planId = _activePlannerId.value ?: return
+        if (additionalSeconds <= 0) return
+        val updated = _sessionTotals.value.toMutableMap()
+        updated[dayNumber] = (updated[dayNumber] ?: 0L) + additionalSeconds
+        _sessionTotals.value = updated
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try { repository.savePlannerSessionTotals(planId, updated) } catch (_: Exception) {}
+        }
+    }
+
+    // ── Prayer settings ─────────────────────────────────────────────────
+    fun setActivePrayers(prayers: List<String>) {
+        val cleaned = prayers.filter { PRAYER_NAMES.contains(it) }
+            .sortedBy { PRAYER_NAMES.indexOf(it) }
+            .takeIf { it.isNotEmpty() } ?: PRAYER_NAMES
+        _activePrayers.value = cleaned
+        plannerPrefs.edit().putStringSet("active_prayers", cleaned.toSet()).apply()
+    }
+
+    fun setUseDeviceLocation(enabled: Boolean) {
+        _useDeviceLocation.value = enabled
+        plannerPrefs.edit().putBoolean("use_device_location", enabled).apply()
+        if (enabled) {
+            refreshPrayerTimingsWithDeviceLocation()
+        } else {
+            fetchPrayerTimings()
+        }
+    }
+
+    /** Web parity: Aladhan timings for the device location (Mecca fallback). */
+    fun refreshPrayerTimingsWithDeviceLocation() {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val loc = getDeviceLocation()
+            if (loc != null) {
+                fetchPrayerTimings(loc.first, loc.second)
+            } else {
+                fetchPrayerTimings()
+            }
+        }
+    }
+
+    private fun getDeviceLocation(): Pair<Double, Double>? {
+        return try {
+            if (androidx.core.content.ContextCompat.checkSelfPermission(
+                    appContext, android.Manifest.permission.ACCESS_COARSE_LOCATION
+                ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+            ) return null
+            val manager = appContext.getSystemService(android.content.Context.LOCATION_SERVICE)
+                as? android.location.LocationManager ?: return null
+            val providers = manager.getProviders(true)
+            // Last-known first: instant, no GPS wait.
+            for (name in listOf(
+                android.location.LocationManager.NETWORK_PROVIDER,
+                android.location.LocationManager.GPS_PROVIDER
+            )) {
+                if (!providers.contains(name)) continue
+                try {
+                    @Suppress("MissingPermission")
+                    val last = manager.getLastKnownLocation(name)
+                    if (last != null) return last.latitude to last.longitude
+                } catch (_: Exception) {}
+            }
+            // Single fresh fix with a bounded wait (IO thread: blocking is fine).
+            val latch = java.util.concurrent.CountDownLatch(1)
+            var fresh: Pair<Double, Double>? = null
+            val listener = object : android.location.LocationListener {
+                override fun onLocationChanged(location: android.location.Location) {
+                    fresh = location.latitude to location.longitude
+                    latch.countDown()
+                }
+                override fun onProviderEnabled(provider: String) {}
+                override fun onProviderDisabled(provider: String) {}
+                @Deprecated("Deprecated in Java")
+                override fun onStatusChanged(provider: String?, status: Int, extras: android.os.Bundle?) {}
+            }
+            try {
+                for (name in listOf(
+                    android.location.LocationManager.NETWORK_PROVIDER,
+                    android.location.LocationManager.GPS_PROVIDER
+                )) {
+                    if (!providers.contains(name)) continue
+                    try {
+                        @Suppress("MissingPermission")
+                        manager.requestSingleUpdate(name, listener, null)
+                        break
+                    } catch (_: Exception) {}
+                }
+                latch.await(8, java.util.concurrent.TimeUnit.SECONDS)
+            } finally {
+                try { manager.removeUpdates(listener) } catch (_: Exception) {}
+            }
+            fresh
+        } catch (_: Exception) {
+            null
         }
     }
 }

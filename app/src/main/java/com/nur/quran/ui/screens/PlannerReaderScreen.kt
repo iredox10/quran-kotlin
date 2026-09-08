@@ -94,6 +94,17 @@ fun PlannerReaderScreen(
     val isPlaying by surahViewModel.isPlaying.collectAsState()
     var verseToShare by remember { mutableStateOf<VerseEntity?>(null) }
 
+    // Mushaf-aware rendering (web parity: script/tajweed follow the mushaf)
+    val isTajweedEffective by surahViewModel.isTajweedEffective.collectAsState()
+    val currentMushaf by surahViewModel.currentMushaf.collectAsState()
+    val isTranslationEnabled by surahViewModel.isTranslationEnabled.collectAsState()
+    val arabicFontScale by surahViewModel.arabicFontScale.collectAsState()
+    val translationFontScale by surahViewModel.translationFontScale.collectAsState()
+    val planBookmarks by plannerViewModel.plannerBookmarks.collectAsState()
+    val sessionTotals by plannerViewModel.sessionTotals.collectAsState()
+    val appPrefs = LocalContext.current.getSharedPreferences("PlannerSettings", Context.MODE_PRIVATE)
+    val showIntentionPrompt = appPrefs.getBoolean("show_intention_prompt", true)
+
     // ── Focus mode: auto-hide header during scroll ───────────────────
     val lazyListState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
@@ -142,14 +153,29 @@ fun PlannerReaderScreen(
         }
     }
 
-    // ── Session timer ────────────────────────────────────────────────
-    var timerSeconds by remember { mutableIntStateOf(0) }
-    LaunchedEffect(Unit) {
+    // ── Session timer (web parity: persisted per plan/day) ──────────
+    // Display ticks locally; deltas are flushed to the store every 30s + on exit.
+    var timerTick by remember(dayNumber) { mutableIntStateOf(0) }
+    var savedTick by remember(dayNumber) { mutableIntStateOf(0) }
+    LaunchedEffect(dayNumber) {
         while (true) {
             delay(1000)
-            timerSeconds++
+            timerTick++
+            if (timerTick - savedTick >= 30) {
+                plannerViewModel.stopPlannerTimer(dayNumber, (timerTick - savedTick).toLong())
+                savedTick = timerTick
+            }
         }
     }
+    DisposableEffect(dayNumber) {
+        onDispose {
+            val delta = timerTick - savedTick
+            if (delta > 0) plannerViewModel.stopPlannerTimer(dayNumber, delta.toLong())
+        }
+    }
+    // NB: totals already include everything flushed this session (savedTick),
+    // so only the unflushed remainder is added — otherwise time counts double.
+    val displayedSeconds = ((sessionTotals[dayNumber] ?: 0L).toInt() + (timerTick - savedTick).coerceAtLeast(0))
 
     // Fetch verses for page
     LaunchedEffect(currentPage) {
@@ -278,7 +304,7 @@ fun PlannerReaderScreen(
                                 }
                                 // Session timer
                                 Text(
-                                    text = formatSessionTime(timerSeconds),
+                                    text = formatSessionTime(displayedSeconds),
                                     fontSize = 9.sp,
                                     color = hInkMuted,
                                     fontFamily = fontFamilyMono,
@@ -314,9 +340,14 @@ fun PlannerReaderScreen(
                 }
                 is SurahUiState.Success -> {
                     val verses = state.verses
+                    val wordsMap = state.wordsMap
+                    val tajweedMap = state.tajweedMap
 
-                    // Store a verse for takeaway
+                    // Tajweed overlays for every chapter on this page
                     LaunchedEffect(verses) {
+                        verses.map { it.chapterId }.distinct().forEach { chapterId ->
+                            surahViewModel.ensureTajweedForChapter(chapterId)
+                        }
                         if (verses.isNotEmpty() && takeawayVerse == null) {
                             takeawayVerse = verses.random()
                         }
@@ -328,21 +359,23 @@ fun PlannerReaderScreen(
                         contentPadding = PaddingValues(horizontal = 24.dp, vertical = 24.dp),
                         verticalArrangement = Arrangement.spacedBy(28.dp)
                     ) {
-                        item {
-                            // Renewal of Intention Banner
-                            Surface(
-                                shape = RoundedCornerShape(16.dp),
-                                color = hGoldSoft,
-                                border = androidx.compose.foundation.BorderStroke(1.dp, hGold.copy(alpha = 0.3f)),
-                                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(14.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                        // Renewal of Intention Banner (web: intentionPromptEnabled)
+                        if (showIntentionPrompt) {
+                            item {
+                                Surface(
+                                    shape = RoundedCornerShape(16.dp),
+                                    color = hGoldSoft,
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, hGold.copy(alpha = 0.3f)),
+                                    modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
                                 ) {
-                                    Icon(imageVector = NurIcons.Sparkles, contentDescription = null, tint = hGold, modifier = Modifier.size(18.dp))
-                                    Spacer(modifier = Modifier.width(10.dp))
-                                    Text("Pause to renew your intention for Allah's sake before reading.", fontSize = 12.sp, color = hInk, fontFamily = fontFamilyUi)
+                                    Row(
+                                        modifier = Modifier.padding(14.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(imageVector = NurIcons.Sparkles, contentDescription = null, tint = hGold, modifier = Modifier.size(18.dp))
+                                        Spacer(modifier = Modifier.width(10.dp))
+                                        Text("Pause to renew your intention for Allah's sake before reading.", fontSize = 12.sp, color = hInk, fontFamily = fontFamilyUi)
+                                    }
                                 }
                             }
                         }
@@ -404,17 +437,25 @@ fun PlannerReaderScreen(
 
                                 WebVerseDivider()
 
+                                val verseWords = wordsMap[verse.id] ?: emptyList()
+                                val verseChapter = chapters.find { it.id == verse.chapterId }
                                 VerseItem(
                                     verse = verse,
-                                    words = emptyList(),
-                                    isTranslationEnabled = true,
-                                    isTajweedEnabled = false,
-                                    tajweedMap = null,
+                                    words = verseWords,
+                                    isTranslationEnabled = isTranslationEnabled,
+                                    isTajweedEnabled = isTajweedEffective,
+                                    mushafId = currentMushaf.id,
+                                    tajweedMap = tajweedMap,
                                     isCurrentlyPlaying = playingVerseKey == verse.verseKey && isPlaying,
-                                    isBookmarked = false,
+                                    isBookmarked = planBookmarks.any { it.verseKey == verse.verseKey },
                                     isTafsirOpen = (tafsirState as? TafsirUiState.Visible)?.verseKey == verse.verseKey,
                                     onPlayClick = { surahViewModel.playVerse(verses, verse.chapterId, verse) },
-                                    onBookmarkClick = {},
+                                    onBookmarkClick = {
+                                        plannerViewModel.togglePlannerBookmark(
+                                            verse.verseKey,
+                                            verseChapter?.nameSimple ?: "Surah ${verse.chapterId}"
+                                        )
+                                    },
                                     onTafsirClick = {
                                         if ((tafsirState as? TafsirUiState.Visible)?.verseKey == verse.verseKey) {
                                             surahViewModel.dismissTafsir()
@@ -427,9 +468,10 @@ fun PlannerReaderScreen(
                                     onWordClick = {},
                                     onTajweedClick = {},
                                     onLoadFootnote = { id -> surahViewModel.getFootnoteText(id) },
-                                    arabicFontScale = 1.0f,
-                                    translationFontScale = 1.0f,
-                                    fontFamilyArabic = fontFamilyArabic
+                                    arabicFontScale = arabicFontScale,
+                                    translationFontScale = translationFontScale,
+                                    fontFamilyArabic = fontFamilyArabic,
+                                    selectedArabicFontName = selectedArabicFontName
                                 )
                             }
                         }
@@ -475,6 +517,27 @@ fun PlannerReaderScreen(
                     onDismiss = { surahViewModel.dismissTafsir() }
                 )
                 TafsirUiState.Hidden -> {}
+            }
+        }
+
+        // Per-item Done (web: Mark {currentItem.title} Done)
+        val completedRangeValues = activePlan?.assignmentCompletedItems?.get(dayNumber) ?: emptyList()
+        val currentItem = assignment.items.find { currentPage in it.pageStart..it.pageEnd }
+            ?: assignment.items.firstOrNull()
+        val dayProgressComplete = activePlan?.let { PlannerEngine.getAssignmentProgress(it, assignment).isComplete } == true
+        val isCurrentItemComplete = currentItem == null || completedRangeValues.contains(currentItem.rangeValue)
+        if (currentItem != null && !isCurrentItemComplete && !dayProgressComplete &&
+            (assignment.unitType != "surah" || currentPage >= assignment.pageEnd)
+        ) {
+            Button(
+                onClick = { plannerViewModel.markPlannerItemComplete(dayNumber, currentItem.rangeValue) },
+                colors = ButtonDefaults.buttonColors(containerColor = hTeal),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)
+            ) {
+                Icon(imageVector = NurIcons.CheckCircle2, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Mark ${currentItem.title} Done", fontSize = 13.sp, color = Color.White, fontWeight = FontWeight.Bold)
             }
         }
 
@@ -599,7 +662,7 @@ fun PlannerReaderScreen(
                         ) {
                             Text("⏱ ", fontSize = 14.sp)
                             Text(
-                                "Session: ${formatSessionTime(timerSeconds)}",
+                                "Session: ${formatSessionTime(displayedSeconds)}",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = hInkMid,
@@ -697,7 +760,11 @@ fun PlannerReaderScreen(
                 }
             }
         )
+    }
 
+    // Auto-scroll controls: screen-level overlay (was unreachable inside the
+    // celebration dialog). Toggle via the header Rows3 button.
+    if (isAutoScrollActive || isAutoScrollPaused) {
         AutoScrollerBar(
             isAutoScrollActive = isAutoScrollActive,
             isAutoScrollPaused = isAutoScrollPaused,

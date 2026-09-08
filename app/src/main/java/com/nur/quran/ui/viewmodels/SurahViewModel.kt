@@ -611,6 +611,13 @@ class SurahViewModel @Inject constructor(
         }
     }
 
+    /** Public entry for screens (planner reader) that need tajweed without a full chapter load. */
+    fun ensureTajweedForChapter(chapterId: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try { loadTajweed(chapterId) } catch (_: Exception) {}
+        }
+    }
+
     private suspend fun loadTajweed(chapterId: Int) {
         try {
             val tajweedResponse = repository.getTajweedHtmlForChapter(chapterId)

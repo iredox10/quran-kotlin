@@ -50,7 +50,8 @@ fun PlannerScreen(
     val archivedPlans by plannerViewModel.archivedPlans.collectAsState()
     val prayerTimings by plannerViewModel.prayerTimings.collectAsState()
     val chapters by plannerViewModel.chapters.collectAsState()
-    val bookmarks by plannerViewModel.bookmarks.collectAsState()
+    // Web parity: journal highlights come from per-plan bookmarks.
+    val planBookmarks by plannerViewModel.plannerBookmarks.collectAsState()
     val context = LocalContext.current
 
     var showSettingsDrawer by remember { mutableStateOf(false) }
@@ -122,13 +123,17 @@ fun PlannerScreen(
             val metrics = remember(plan) { PlannerEngine.getPlannerSuccessMetrics(plan) }
             val prefs = context.getSharedPreferences("PlannerSettings", Context.MODE_PRIVATE)
             val pref = prefs.getString("reading_preference", "after") ?: "after"
+            val activePrayers by plannerViewModel.activePrayers.collectAsState()
             val todayAssignment = remember(plan, todayStr) {
                 plan.assignments.find { PlannerEngine.getAssignmentStatus(plan, it) == "today" || PlannerEngine.getAssignmentStatus(plan, it) == "partial" }
                     ?: plan.assignments.find { it.date == todayStr }
                     ?: plan.assignments.firstOrNull { !plan.completedDays.contains(it.dayNumber) }
             }
-            val prayerSlots = remember(plan, todayAssignment, prayerTimings, pref) {
-                buildPrayerSlots(plan, todayAssignment, prayerTimings, readPreference = pref)
+            val prayerSlots = remember(plan, todayAssignment, prayerTimings, pref, activePrayers) {
+                buildPrayerSlots(
+                    plan, todayAssignment, prayerTimings,
+                    readPreference = pref, activePrayers = activePrayers
+                )
             }
 
             LazyColumn(
@@ -447,10 +452,12 @@ fun PlannerScreen(
                                         val isCompleted = slot.status == "completed"
                                         val isCurrent = slot.status == "current"
                                         val isEmpty = slot.status == "empty"
+                                        val isLocked = slot.status == "locked"
                                         val containerBg = when {
                                             isCompleted -> hTeal.copy(alpha = 0.08f)
                                             isCurrent -> hGoldSoft
                                             isEmpty -> hBone.copy(alpha = 0.5f)
+                                            isLocked -> hBone.copy(alpha = 0.35f)
                                             else -> hCream
                                         }
                                         val borderColor = when {
@@ -488,6 +495,8 @@ fun PlannerScreen(
                                                             Icon(NurIcons.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
                                                         } else if (isCurrent) {
                                                             Icon(NurIcons.BookOpen, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                                        } else if (isLocked) {
+                                                            Icon(NurIcons.Lock, contentDescription = "Locked", tint = hInkMuted, modifier = Modifier.size(16.dp))
                                                         } else {
                                                             Icon(NurIcons.Clock, contentDescription = null, tint = hInkMuted, modifier = Modifier.size(16.dp))
                                                         }
@@ -511,6 +520,7 @@ fun PlannerScreen(
                                                                 isCompleted -> "${slot.doneInSlot}/${slot.count} $unitLabel ✓"
                                                                 isCurrent -> "${slot.doneInSlot} of ${slot.count} $unitLabel read"
                                                                 isEmpty -> "No reading required"
+                                                                isLocked -> "${slot.count} $unitLabel • locked"
                                                                 else -> "${slot.count} $unitLabel • pending"
                                                             },
                                                             fontSize = 11.sp,
@@ -520,15 +530,62 @@ fun PlannerScreen(
                                                     }
                                                 }
 
-                                                if (!isEmpty) {
-                                                    Button(
-                                                        onClick = { onReadAssignment(todayAssignment.dayNumber) },
-                                                        colors = ButtonDefaults.buttonColors(containerColor = if (isCompleted) hTeal.copy(alpha = 0.2f) else hTeal),
-                                                        shape = RoundedCornerShape(8.dp),
-                                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                                                        modifier = Modifier.height(32.dp)
-                                                    ) {
-                                                        Text(if (isCompleted) "Review" else "Read", fontSize = 11.sp, color = if (isCompleted) hTeal else Color.White, fontWeight = FontWeight.Bold)
+                                                // Web parity: mark/undo per prayer slot + read navigation.
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                                ) {
+                                                    if (isCompleted) {
+                                                        IconButton(
+                                                            onClick = {
+                                                                plannerViewModel.setPlannerAssignmentProgress(
+                                                                    todayAssignment.dayNumber, slot.slotStart
+                                                                )
+                                                            },
+                                                            modifier = Modifier.size(32.dp)
+                                                        ) {
+                                                            Icon(
+                                                                NurIcons.RotateCcw,
+                                                                contentDescription = "Undo slot",
+                                                                tint = hTeal,
+                                                                modifier = Modifier.size(16.dp)
+                                                            )
+                                                        }
+                                                    } else if (!isEmpty && !isLocked) {
+                                                        IconButton(
+                                                            onClick = {
+                                                                plannerViewModel.setPlannerAssignmentProgress(
+                                                                    todayAssignment.dayNumber, slot.slotEnd
+                                                                )
+                                                            },
+                                                            modifier = Modifier.size(32.dp)
+                                                        ) {
+                                                            Box(
+                                                                modifier = Modifier
+                                                                    .size(22.dp)
+                                                                    .clip(CircleShape)
+                                                                    .border(1.5.dp, hTeal, CircleShape),
+                                                                contentAlignment = Alignment.Center
+                                                            ) {
+                                                                Icon(
+                                                                    NurIcons.Check,
+                                                                    contentDescription = "Mark slot done",
+                                                                    tint = hTeal,
+                                                                    modifier = Modifier.size(13.dp)
+                                                                )
+                                                            }
+                                                        }
+                                                    }
+                                                    if (!isEmpty && !isLocked) {
+                                                        Button(
+                                                            onClick = { onReadAssignment(todayAssignment.dayNumber) },
+                                                            colors = ButtonDefaults.buttonColors(containerColor = if (isCompleted) hTeal.copy(alpha = 0.2f) else hTeal),
+                                                            shape = RoundedCornerShape(8.dp),
+                                                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                                                            modifier = Modifier.height(32.dp)
+                                                        ) {
+                                                            Text(if (isCompleted) "Review" else "Read", fontSize = 11.sp, color = if (isCompleted) hTeal else Color.White, fontWeight = FontWeight.Bold)
+                                                        }
                                                     }
                                                 }
                                             }
@@ -755,7 +812,7 @@ fun PlannerScreen(
                             Spacer(modifier = Modifier.height(28.dp))
                             Text("PLAN HIGHLIGHTS", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = hGold, fontFamily = fontFamilyMono, letterSpacing = 1.sp)
                             Spacer(modifier = Modifier.height(12.dp))
-                            if (bookmarks.isEmpty()) {
+                            if (planBookmarks.isEmpty()) {
                                 Card(
                                     shape = RoundedCornerShape(12.dp),
                                     colors = CardDefaults.cardColors(containerColor = hBone),
@@ -773,7 +830,7 @@ fun PlannerScreen(
                                 }
                             } else {
                                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    bookmarks.sortedByDescending { it.timestamp }.forEach { bm ->
+                                    planBookmarks.sortedByDescending { it.createdAt }.forEach { bm ->
                                         Card(
                                             shape = RoundedCornerShape(12.dp),
                                             colors = CardDefaults.cardColors(containerColor = hCream),
@@ -789,7 +846,12 @@ fun PlannerScreen(
                                                     Text(bm.surahName, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = hInk, fontFamily = fontFamilyUi)
                                                     Text(bm.verseKey, fontSize = 11.sp, color = hGold, fontFamily = fontFamilyMono)
                                                 }
-                                                Icon(NurIcons.Bookmark, contentDescription = null, tint = hGold, modifier = Modifier.size(16.dp))
+                                                IconButton(
+                                                    onClick = { plannerViewModel.removePlannerBookmark(bm.verseKey) },
+                                                    modifier = Modifier.size(32.dp)
+                                                ) {
+                                                    Icon(NurIcons.X, contentDescription = "Remove highlight", tint = hInkMuted, modifier = Modifier.size(16.dp))
+                                                }
                                             }
                                         }
                                     }
@@ -857,6 +919,9 @@ fun PlannerScreen(
     }
 
     if (showRebalanceDialog) {
+        var customDaysText by remember(activePlan?.id) {
+            mutableStateOf((activePlan?.durationDays ?: 30).toString())
+        }
         AlertDialog(
             onDismissRequest = { showRebalanceDialog = false },
             title = { Text("Smart Pace Rebalance", fontSize = 18.sp, fontWeight = FontWeight.Bold, fontFamily = fontFamilyUi) },
@@ -886,6 +951,38 @@ fun PlannerScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("Extend Target End Date", fontSize = 13.sp, color = Color.White)
+                    }
+
+                    // Web parity: adjust pace to a custom total duration.
+                    Text("Or set a custom total duration:", fontSize = 13.sp, color = hInkMid)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = customDaysText,
+                            onValueChange = { v -> customDaysText = v.filter { it.isDigit() }.take(4) },
+                            label = { Text("Total days", fontSize = 11.sp) },
+                            singleLine = true,
+                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                                keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                            ),
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        Button(
+                            onClick = {
+                                val days = customDaysText.toIntOrNull()
+                                if (days != null && days >= 1) {
+                                    plannerViewModel.rebalancePlan("custom_pace", days)
+                                    showRebalanceDialog = false
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = hTeal),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Apply", fontSize = 13.sp, color = Color.White)
+                        }
                     }
                 }
             },
@@ -962,6 +1059,13 @@ fun PlannerScreen(
         val prefs = context.getSharedPreferences("PlannerSettings", Context.MODE_PRIVATE)
         var showIntentionPrompt by remember { mutableStateOf(prefs.getBoolean("show_intention_prompt", true)) }
         var readingPreference by remember { mutableStateOf(prefs.getString("reading_preference", "after") ?: "after") }
+        val useDeviceLocation by plannerViewModel.useDeviceLocation.collectAsState()
+        val activePrayers by plannerViewModel.activePrayers.collectAsState()
+        val locationPermissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+            androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+        ) { granted ->
+            if (granted) plannerViewModel.setUseDeviceLocation(true)
+        }
 
         AlertDialog(
             onDismissRequest = { showPlannerSettings = false },
@@ -1018,6 +1122,75 @@ fun PlannerScreen(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(label, fontSize = 13.sp, color = hInk)
+                            }
+                        }
+                    }
+
+                    // Prayer Times Source (web parity: geolocation, Mecca fallback)
+                    Text("Prayer Times Location", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = hInk)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Use my location", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = hInk)
+                            Text(
+                                if (useDeviceLocation) "Prayer times for your location" else "Using Makkah times",
+                                fontSize = 11.sp, color = hInkMuted
+                            )
+                        }
+                        Switch(
+                            checked = useDeviceLocation,
+                            onCheckedChange = { enabled ->
+                                if (enabled) {
+                                    val granted = androidx.core.content.ContextCompat.checkSelfPermission(
+                                        context, android.Manifest.permission.ACCESS_COARSE_LOCATION
+                                    ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                                    if (granted) {
+                                        plannerViewModel.setUseDeviceLocation(true)
+                                    } else {
+                                        locationPermissionLauncher.launch(
+                                            android.Manifest.permission.ACCESS_COARSE_LOCATION
+                                        )
+                                    }
+                                } else {
+                                    plannerViewModel.setUseDeviceLocation(false)
+                                }
+                            },
+                            colors = SwitchDefaults.colors(checkedThumbColor = hTeal, checkedTrackColor = hTeal.copy(alpha = 0.3f))
+                        )
+                    }
+
+                    // Daily Prayers (web parity: activePrayers drives slot division)
+                    Text("Daily Prayers", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = hInk)
+                    Text("Uncheck prayers to skip them in the daily schedule (min 1).", fontSize = 11.sp, color = hInkMuted)
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        PRAYER_NAMES.forEach { prayer ->
+                            val selected = activePrayers.contains(prayer)
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(if (selected) hGoldSoft else hBone)
+                                    .clickable {
+                                        val next = if (selected) {
+                                            activePrayers - prayer
+                                        } else {
+                                            activePrayers + prayer
+                                        }
+                                        plannerViewModel.setActivePrayers(next)
+                                    }
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(prayer, fontSize = 13.sp, color = hInk)
+                                Checkbox(
+                                    checked = selected,
+                                    onCheckedChange = null,
+                                    colors = CheckboxDefaults.colors(checkedColor = hGold)
+                                )
                             }
                         }
                     }
@@ -1305,12 +1478,26 @@ private fun IntentionView(
                             )
                         )
 
-                        // Start Date
+                        // Start Date (web parity: editable via date picker)
                         Text("Start Date", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = hInkMid)
+                        val datePickerContext = LocalContext.current
                         Surface(
                             shape = RoundedCornerShape(12.dp),
                             color = hBone,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    val parts = startDateText.split("-").mapNotNull { it.toIntOrNull() }
+                                    val cal = java.util.Calendar.getInstance()
+                                    val initY = parts.getOrNull(0) ?: cal.get(java.util.Calendar.YEAR)
+                                    val initM = (parts.getOrNull(1) ?: (cal.get(java.util.Calendar.MONTH) + 1)) - 1
+                                    val initD = parts.getOrNull(2) ?: cal.get(java.util.Calendar.DAY_OF_MONTH)
+                                    android.app.DatePickerDialog(
+                                        datePickerContext, { _, y, m, d ->
+                                            startDateText = "%04d-%02d-%02d".format(y, m + 1, d)
+                                        }, initY, initM, initD
+                                    ).show()
+                                }
                         ) {
                             Row(
                                 modifier = Modifier.padding(12.dp),
@@ -1323,7 +1510,7 @@ private fun IntentionView(
                                     fontWeight = FontWeight.Bold,
                                     color = hInk
                                 )
-                                Icon(NurIcons.CalendarDays, contentDescription = null, tint = hGold, modifier = Modifier.size(18.dp))
+                                Icon(NurIcons.CalendarDays, contentDescription = "Pick start date", tint = hGold, modifier = Modifier.size(18.dp))
                             }
                         }
 

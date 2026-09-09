@@ -424,6 +424,7 @@ private fun SheetSectionLabel(text: String) {
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun RepeatChip(
     label: String,
@@ -443,15 +444,7 @@ private fun RepeatChip(
         },
         colors = FilterChipDefaults.filterChipColors(
             selectedContainerColor = hGold,
-            selectedLabelColor = Color.White,
-            containerColor = hCream,
-            labelColor = hInkMid
-        ),
-        border = FilterChipDefaults.filterChipBorder(
-            enabled = true,
-            selected = selected,
-            borderColor = hBoneDark,
-            selectedBorderColor = hGold
+            containerColor = hCream
         )
     )
 }

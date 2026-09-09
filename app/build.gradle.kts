@@ -22,6 +22,27 @@ android {
         }
     }
 
+    // Release signing credentials live OUTSIDE the repo:
+    // ~/.gradle/gradle.properties (QURAN_NUR_STORE_FILE/_PASSWORD/_ALIAS)
+    // or the same names as environment variables. Unsigned release builds
+    // still work when they are absent (not installable — debug instead).
+    val releaseStoreFile = (project.findProperty("QURAN_NUR_STORE_FILE") as String?)
+        ?: System.getenv("QURAN_NUR_STORE_FILE")
+    val releaseStorePassword = (project.findProperty("QURAN_NUR_STORE_PASSWORD") as String?)
+        ?: System.getenv("QURAN_NUR_STORE_PASSWORD")
+    val releaseKeyAlias = (project.findProperty("QURAN_NUR_KEY_ALIAS") as String?)
+        ?: System.getenv("QURAN_NUR_KEY_ALIAS")
+    if (releaseStoreFile != null && releaseStorePassword != null && releaseKeyAlias != null) {
+        signingConfigs {
+            create("release") {
+                storeFile = file(releaseStoreFile)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseStorePassword
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -29,6 +50,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            val releaseSigning = signingConfigs.findByName("release")
+            if (releaseSigning != null) signingConfig = releaseSigning
         }
     }
     compileOptions {

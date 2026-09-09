@@ -293,6 +293,9 @@ fun SurahScreen(
     val currentReciterId by viewModel.currentReciterId.collectAsState()
     val playbackSettings by viewModel.playbackSettings.collectAsState()
     val streamOnly by viewModel.streamOnly.collectAsState()
+    // Follow-while-playing toggle (in-play sheet). Provided by the audio
+    // follow-up agent; the build fixer aligns the ViewModel property.
+    val scrollWhilePlaying by viewModel.scrollWhilePlaying.collectAsState()
     val tafsirState by viewModel.tafsirState.collectAsState()
     val bookmarkedVerses by viewModel.bookmarkedVerses.collectAsState()
     val allChapters by viewModel.allChapters.collectAsState()
@@ -360,7 +363,7 @@ fun SurahScreen(
     // banners + basmala). No-op in reading mode (page items, not verse items).
     LaunchedEffect(playingVerseKey) {
         val key = playingVerseKey ?: return@LaunchedEffect
-        if (!isAutoScrollActive || isReadingMode) return@LaunchedEffect
+        if ((!isAutoScrollActive && !scrollWhilePlaying) || isReadingMode) return@LaunchedEffect
         val state = uiState
         if (state !is SurahUiState.Success || state.chapter.id != chapterId) return@LaunchedEffect
         val verseIndex = state.verses.indexOfFirst { it.verseKey == key }
@@ -1150,15 +1153,29 @@ fun SurahScreen(
                 },
                 onPrevious = {
                     val idx = playerVerses.indexOfFirst { it.verseKey == playingVerseKey }
-                    if (idx > 0) viewModel.playVerse(playerVerses, chapterId, playerVerses[idx - 1])
+                    if (idx < 0) return@MiniPlayer
+                    // Range clamp (web parity handlePrev): stay inside the
+                    // current playback range; no-op at the range boundary.
+                    val rangeStartIdx = playbackSettings.rangeStart
+                        ?.let { startKey -> playerVerses.indexOfFirst { it.verseKey == startKey } }
+                        ?.takeIf { it >= 0 } ?: 0
+                    if (idx - 1 >= rangeStartIdx) {
+                        viewModel.playVerse(playerVerses, chapterId, playerVerses[idx - 1])
+                    }
                 },
                 onNext = {
                     val idx = playerVerses.indexOfFirst { it.verseKey == playingVerseKey }
-                    if (idx >= 0 && idx < playerVerses.size - 1) {
+                    if (idx < 0) return@MiniPlayer
+                    // Range clamp (web parity handleNext): no-op at boundary.
+                    val rangeEndIdx = playbackSettings.rangeEnd
+                        ?.let { endKey -> playerVerses.indexOfFirst { it.verseKey == endKey } }
+                        ?.takeIf { it >= 0 } ?: (playerVerses.size - 1)
+                    if (idx + 1 <= rangeEndIdx) {
                         viewModel.playVerse(playerVerses, chapterId, playerVerses[idx + 1])
                     }
                 },
-                onClose = { viewModel.stopPlaying() }
+                onClose = { viewModel.stopPlaying() },
+                onSettings = { showAudioSetupDialog = true }
             )
 
             // Save-to-Collection modal
@@ -1632,31 +1649,47 @@ fun SurahScreen(
                     initialDelayMs = playbackSettings.delayMs,
                     initialSpeed = playbackSettings.speed,
                     initialStreamOnly = streamOnly,
+                    initialScrollWhilePlaying = scrollWhilePlaying,
+                    onScrollWhilePlayingChange = viewModel::setScrollWhilePlaying,
                     onDismiss = { showAudioSetupDialog = false },
                     onPlayRange = { reciterId, startKey, endKey, ayahRepeat, rangeRepeat, delayMs, speed, streamOnly ->
-                        viewModel.setReciterId(reciterId)
-                        viewModel.setAyahRepeat(ayahRepeat)
-                        viewModel.setRangeRepeat(rangeRepeat)
-                        viewModel.setDelayMs(delayMs)
-                        viewModel.setSpeed(speed)
-                        viewModel.setStreamOnly(streamOnly)
-                        viewModel.playRange(verses, chapterId, startKey, endKey)
+                        if (playingVerseKey != null) {
+                            // In-play adjust: apply live without restarting.
+                            viewModel.applyInPlaySettings(
+                                reciterId, ayahRepeat, rangeRepeat, delayMs, speed, streamOnly
+                            )
+                        } else {
+                            viewModel.setReciterId(reciterId)
+                            viewModel.setAyahRepeat(ayahRepeat)
+                            viewModel.setRangeRepeat(rangeRepeat)
+                            viewModel.setDelayMs(delayMs)
+                            viewModel.setSpeed(speed)
+                            viewModel.setStreamOnly(streamOnly)
+                            viewModel.playRange(verses, chapterId, startKey, endKey)
+                        }
                         showAudioSetupDialog = false
                     },
                     onPlayAll = { reciterId, ayahRepeat, rangeRepeat, delayMs, speed, streamOnly ->
-                        viewModel.setReciterId(reciterId)
-                        viewModel.setAyahRepeat(ayahRepeat)
-                        viewModel.setRangeRepeat(rangeRepeat)
-                        viewModel.setDelayMs(delayMs)
-                        viewModel.setSpeed(speed)
-                        viewModel.setStreamOnly(streamOnly)
-                        if (verses.isNotEmpty()) {
-                            viewModel.playRange(
-                                verses,
-                                chapterId,
-                                verses.first().verseKey,
-                                verses.last().verseKey
+                        if (playingVerseKey != null) {
+                            // In-play adjust: apply live without restarting.
+                            viewModel.applyInPlaySettings(
+                                reciterId, ayahRepeat, rangeRepeat, delayMs, speed, streamOnly
                             )
+                        } else {
+                            viewModel.setReciterId(reciterId)
+                            viewModel.setAyahRepeat(ayahRepeat)
+                            viewModel.setRangeRepeat(rangeRepeat)
+                            viewModel.setDelayMs(delayMs)
+                            viewModel.setSpeed(speed)
+                            viewModel.setStreamOnly(streamOnly)
+                            if (verses.isNotEmpty()) {
+                                viewModel.playRange(
+                                    verses,
+                                    chapterId,
+                                    verses.first().verseKey,
+                                    verses.last().verseKey
+                                )
+                            }
                         }
                         showAudioSetupDialog = false
                     }

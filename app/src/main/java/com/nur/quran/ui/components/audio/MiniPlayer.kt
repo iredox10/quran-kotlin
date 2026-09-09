@@ -56,6 +56,7 @@ fun MiniPlayer(
     onNext: () -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
+    onSettings: (() -> Unit)? = null,
 ) {
     val pillBg = if (isDarkThemeGlobal) Color(0xF22D2D2A) else Color(0xF2EFECE4)
     val pillBorder = if (isDarkThemeGlobal) Color(0xFF4A4A45) else Color(0x66FFFFFF)
@@ -160,6 +161,25 @@ fun MiniPlayer(
                             .height(20.dp)
                             .background(hBoneDark)
                     )
+
+                    // Audio settings (gear) — only when the host passes onSettings
+                    if (onSettings != null) {
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(btnSecondaryBg)
+                                .clickable { onSettings() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = NurIcons.Settings,
+                                contentDescription = "Audio settings",
+                                tint = hInk,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
 
                     // Close
                     Box(

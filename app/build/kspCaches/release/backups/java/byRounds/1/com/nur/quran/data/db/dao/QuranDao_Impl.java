@@ -12,6 +12,7 @@ import androidx.room.RoomSQLiteQuery;
 import androidx.room.SharedSQLiteStatement;
 import androidx.room.util.CursorUtil;
 import androidx.room.util.DBUtil;
+import androidx.room.util.StringUtil;
 import androidx.sqlite.db.SupportSQLiteStatement;
 import com.nur.quran.data.db.entities.ApiResponseCacheEntity;
 import com.nur.quran.data.db.entities.BookmarkEntity;
@@ -28,6 +29,7 @@ import java.lang.Integer;
 import java.lang.Object;
 import java.lang.Override;
 import java.lang.String;
+import java.lang.StringBuilder;
 import java.lang.SuppressWarnings;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -146,7 +148,7 @@ public final class QuranDao_Impl implements QuranDao {
       @Override
       @NonNull
       protected String createQuery() {
-        return "INSERT OR REPLACE INTO `words` (`id`,`verseId`,`position`,`textUthmani`,`textIndopak`,`textQpcHafs`,`textUthmaniTajweed`,`translation`,`transliteration`,`charTypeName`) VALUES (?,?,?,?,?,?,?,?,?,?)";
+        return "INSERT OR REPLACE INTO `words` (`id`,`verseId`,`position`,`textUthmani`,`textIndopak`,`textQpcHafs`,`textUthmaniTajweed`,`translation`,`transliteration`,`charTypeName`,`lineNumber`) VALUES (?,?,?,?,?,?,?,?,?,?,?)";
       }
 
       @Override
@@ -186,6 +188,7 @@ public final class QuranDao_Impl implements QuranDao {
           statement.bindString(9, entity.getTransliteration());
         }
         statement.bindString(10, entity.getCharTypeName());
+        statement.bindLong(11, entity.getLineNumber());
       }
     };
     this.__insertionAdapterOfBookmarkEntity = new EntityInsertionAdapter<BookmarkEntity>(__db) {
@@ -530,6 +533,12 @@ public final class QuranDao_Impl implements QuranDao {
   }
 
   @Override
+  public Object replaceVersesAndWords(final List<VerseEntity> verses, final List<WordEntity> words,
+      final Continuation<? super Unit> $completion) {
+    return RoomDatabaseKt.withTransaction(__db, (__cont) -> QuranDao.DefaultImpls.replaceVersesAndWords(QuranDao_Impl.this, verses, words, __cont), $completion);
+  }
+
+  @Override
   public Object deleteBookmark(final String verseKey,
       final Continuation<? super Unit> $completion) {
     return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
@@ -764,6 +773,62 @@ public final class QuranDao_Impl implements QuranDao {
   }
 
   @Override
+  public Object getAllChaptersDirect(final Continuation<? super List<ChapterEntity>> $completion) {
+    final String _sql = "SELECT * FROM chapters ORDER BY id ASC";
+    final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 0);
+    final CancellationSignal _cancellationSignal = DBUtil.createCancellationSignal();
+    return CoroutinesRoom.execute(__db, false, _cancellationSignal, new Callable<List<ChapterEntity>>() {
+      @Override
+      @NonNull
+      public List<ChapterEntity> call() throws Exception {
+        final Cursor _cursor = DBUtil.query(__db, _statement, false, null);
+        try {
+          final int _cursorIndexOfId = CursorUtil.getColumnIndexOrThrow(_cursor, "id");
+          final int _cursorIndexOfNameSimple = CursorUtil.getColumnIndexOrThrow(_cursor, "nameSimple");
+          final int _cursorIndexOfNameArabic = CursorUtil.getColumnIndexOrThrow(_cursor, "nameArabic");
+          final int _cursorIndexOfNameComplex = CursorUtil.getColumnIndexOrThrow(_cursor, "nameComplex");
+          final int _cursorIndexOfTranslatedName = CursorUtil.getColumnIndexOrThrow(_cursor, "translatedName");
+          final int _cursorIndexOfRevelationPlace = CursorUtil.getColumnIndexOrThrow(_cursor, "revelationPlace");
+          final int _cursorIndexOfRevelationOrder = CursorUtil.getColumnIndexOrThrow(_cursor, "revelationOrder");
+          final int _cursorIndexOfVersesCount = CursorUtil.getColumnIndexOrThrow(_cursor, "versesCount");
+          final int _cursorIndexOfPagesStart = CursorUtil.getColumnIndexOrThrow(_cursor, "pagesStart");
+          final int _cursorIndexOfPagesEnd = CursorUtil.getColumnIndexOrThrow(_cursor, "pagesEnd");
+          final List<ChapterEntity> _result = new ArrayList<ChapterEntity>(_cursor.getCount());
+          while (_cursor.moveToNext()) {
+            final ChapterEntity _item;
+            final int _tmpId;
+            _tmpId = _cursor.getInt(_cursorIndexOfId);
+            final String _tmpNameSimple;
+            _tmpNameSimple = _cursor.getString(_cursorIndexOfNameSimple);
+            final String _tmpNameArabic;
+            _tmpNameArabic = _cursor.getString(_cursorIndexOfNameArabic);
+            final String _tmpNameComplex;
+            _tmpNameComplex = _cursor.getString(_cursorIndexOfNameComplex);
+            final String _tmpTranslatedName;
+            _tmpTranslatedName = _cursor.getString(_cursorIndexOfTranslatedName);
+            final String _tmpRevelationPlace;
+            _tmpRevelationPlace = _cursor.getString(_cursorIndexOfRevelationPlace);
+            final int _tmpRevelationOrder;
+            _tmpRevelationOrder = _cursor.getInt(_cursorIndexOfRevelationOrder);
+            final int _tmpVersesCount;
+            _tmpVersesCount = _cursor.getInt(_cursorIndexOfVersesCount);
+            final int _tmpPagesStart;
+            _tmpPagesStart = _cursor.getInt(_cursorIndexOfPagesStart);
+            final int _tmpPagesEnd;
+            _tmpPagesEnd = _cursor.getInt(_cursorIndexOfPagesEnd);
+            _item = new ChapterEntity(_tmpId,_tmpNameSimple,_tmpNameArabic,_tmpNameComplex,_tmpTranslatedName,_tmpRevelationPlace,_tmpRevelationOrder,_tmpVersesCount,_tmpPagesStart,_tmpPagesEnd);
+            _result.add(_item);
+          }
+          return _result;
+        } finally {
+          _cursor.close();
+          _statement.release();
+        }
+      }
+    }, $completion);
+  }
+
+  @Override
   public Object getChapterById(final int chapterId,
       final Continuation<? super ChapterEntity> $completion) {
     final String _sql = "SELECT * FROM chapters WHERE id = ? LIMIT 1";
@@ -907,6 +972,88 @@ public final class QuranDao_Impl implements QuranDao {
   }
 
   @Override
+  public Object getVersesByChapterDirect(final int chapterId,
+      final Continuation<? super List<VerseEntity>> $completion) {
+    final String _sql = "SELECT * FROM verses WHERE chapterId = ? ORDER BY verseNumber ASC";
+    final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 1);
+    int _argIndex = 1;
+    _statement.bindLong(_argIndex, chapterId);
+    final CancellationSignal _cancellationSignal = DBUtil.createCancellationSignal();
+    return CoroutinesRoom.execute(__db, false, _cancellationSignal, new Callable<List<VerseEntity>>() {
+      @Override
+      @NonNull
+      public List<VerseEntity> call() throws Exception {
+        final Cursor _cursor = DBUtil.query(__db, _statement, false, null);
+        try {
+          final int _cursorIndexOfId = CursorUtil.getColumnIndexOrThrow(_cursor, "id");
+          final int _cursorIndexOfChapterId = CursorUtil.getColumnIndexOrThrow(_cursor, "chapterId");
+          final int _cursorIndexOfVerseNumber = CursorUtil.getColumnIndexOrThrow(_cursor, "verseNumber");
+          final int _cursorIndexOfVerseKey = CursorUtil.getColumnIndexOrThrow(_cursor, "verseKey");
+          final int _cursorIndexOfTextUthmani = CursorUtil.getColumnIndexOrThrow(_cursor, "textUthmani");
+          final int _cursorIndexOfTextIndopak = CursorUtil.getColumnIndexOrThrow(_cursor, "textIndopak");
+          final int _cursorIndexOfTextQpcHafs = CursorUtil.getColumnIndexOrThrow(_cursor, "textQpcHafs");
+          final int _cursorIndexOfPageNumber = CursorUtil.getColumnIndexOrThrow(_cursor, "pageNumber");
+          final int _cursorIndexOfJuzNumber = CursorUtil.getColumnIndexOrThrow(_cursor, "juzNumber");
+          final int _cursorIndexOfTranslation = CursorUtil.getColumnIndexOrThrow(_cursor, "translation");
+          final int _cursorIndexOfAudioUrl = CursorUtil.getColumnIndexOrThrow(_cursor, "audioUrl");
+          final List<VerseEntity> _result = new ArrayList<VerseEntity>(_cursor.getCount());
+          while (_cursor.moveToNext()) {
+            final VerseEntity _item;
+            final int _tmpId;
+            _tmpId = _cursor.getInt(_cursorIndexOfId);
+            final int _tmpChapterId;
+            _tmpChapterId = _cursor.getInt(_cursorIndexOfChapterId);
+            final int _tmpVerseNumber;
+            _tmpVerseNumber = _cursor.getInt(_cursorIndexOfVerseNumber);
+            final String _tmpVerseKey;
+            _tmpVerseKey = _cursor.getString(_cursorIndexOfVerseKey);
+            final String _tmpTextUthmani;
+            if (_cursor.isNull(_cursorIndexOfTextUthmani)) {
+              _tmpTextUthmani = null;
+            } else {
+              _tmpTextUthmani = _cursor.getString(_cursorIndexOfTextUthmani);
+            }
+            final String _tmpTextIndopak;
+            if (_cursor.isNull(_cursorIndexOfTextIndopak)) {
+              _tmpTextIndopak = null;
+            } else {
+              _tmpTextIndopak = _cursor.getString(_cursorIndexOfTextIndopak);
+            }
+            final String _tmpTextQpcHafs;
+            if (_cursor.isNull(_cursorIndexOfTextQpcHafs)) {
+              _tmpTextQpcHafs = null;
+            } else {
+              _tmpTextQpcHafs = _cursor.getString(_cursorIndexOfTextQpcHafs);
+            }
+            final int _tmpPageNumber;
+            _tmpPageNumber = _cursor.getInt(_cursorIndexOfPageNumber);
+            final int _tmpJuzNumber;
+            _tmpJuzNumber = _cursor.getInt(_cursorIndexOfJuzNumber);
+            final String _tmpTranslation;
+            if (_cursor.isNull(_cursorIndexOfTranslation)) {
+              _tmpTranslation = null;
+            } else {
+              _tmpTranslation = _cursor.getString(_cursorIndexOfTranslation);
+            }
+            final String _tmpAudioUrl;
+            if (_cursor.isNull(_cursorIndexOfAudioUrl)) {
+              _tmpAudioUrl = null;
+            } else {
+              _tmpAudioUrl = _cursor.getString(_cursorIndexOfAudioUrl);
+            }
+            _item = new VerseEntity(_tmpId,_tmpChapterId,_tmpVerseNumber,_tmpVerseKey,_tmpTextUthmani,_tmpTextIndopak,_tmpTextQpcHafs,_tmpPageNumber,_tmpJuzNumber,_tmpTranslation,_tmpAudioUrl);
+            _result.add(_item);
+          }
+          return _result;
+        } finally {
+          _cursor.close();
+          _statement.release();
+        }
+      }
+    }, $completion);
+  }
+
+  @Override
   public Flow<List<VerseEntity>> getVersesByPage(final int pageNumber) {
     final String _sql = "SELECT * FROM verses WHERE pageNumber = ? ORDER BY chapterId ASC, verseNumber ASC";
     final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 1);
@@ -1014,6 +1161,7 @@ public final class QuranDao_Impl implements QuranDao {
           final int _cursorIndexOfTranslation = CursorUtil.getColumnIndexOrThrow(_cursor, "translation");
           final int _cursorIndexOfTransliteration = CursorUtil.getColumnIndexOrThrow(_cursor, "transliteration");
           final int _cursorIndexOfCharTypeName = CursorUtil.getColumnIndexOrThrow(_cursor, "charTypeName");
+          final int _cursorIndexOfLineNumber = CursorUtil.getColumnIndexOrThrow(_cursor, "lineNumber");
           final List<WordEntity> _result = new ArrayList<WordEntity>(_cursor.getCount());
           while (_cursor.moveToNext()) {
             final WordEntity _item;
@@ -1061,8 +1209,105 @@ public final class QuranDao_Impl implements QuranDao {
             }
             final String _tmpCharTypeName;
             _tmpCharTypeName = _cursor.getString(_cursorIndexOfCharTypeName);
-            _item = new WordEntity(_tmpId,_tmpVerseId,_tmpPosition,_tmpTextUthmani,_tmpTextIndopak,_tmpTextQpcHafs,_tmpTextUthmaniTajweed,_tmpTranslation,_tmpTransliteration,_tmpCharTypeName);
+            final int _tmpLineNumber;
+            _tmpLineNumber = _cursor.getInt(_cursorIndexOfLineNumber);
+            _item = new WordEntity(_tmpId,_tmpVerseId,_tmpPosition,_tmpTextUthmani,_tmpTextIndopak,_tmpTextQpcHafs,_tmpTextUthmaniTajweed,_tmpTranslation,_tmpTransliteration,_tmpCharTypeName,_tmpLineNumber);
             _result.add(_item);
+          }
+          return _result;
+        } finally {
+          _cursor.close();
+          _statement.release();
+        }
+      }
+    }, $completion);
+  }
+
+  @Override
+  public Object getWordsForVerses(final List<Integer> verseIds,
+      final Continuation<? super List<WordEntity>> $completion) {
+    final StringBuilder _stringBuilder = StringUtil.newStringBuilder();
+    _stringBuilder.append("SELECT * FROM words WHERE verseId IN (");
+    final int _inputSize = verseIds.size();
+    StringUtil.appendPlaceholders(_stringBuilder, _inputSize);
+    _stringBuilder.append(") ORDER BY verseId ASC, position ASC");
+    final String _sql = _stringBuilder.toString();
+    final int _argCount = 0 + _inputSize;
+    final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, _argCount);
+    int _argIndex = 1;
+    for (int _item : verseIds) {
+      _statement.bindLong(_argIndex, _item);
+      _argIndex++;
+    }
+    final CancellationSignal _cancellationSignal = DBUtil.createCancellationSignal();
+    return CoroutinesRoom.execute(__db, false, _cancellationSignal, new Callable<List<WordEntity>>() {
+      @Override
+      @NonNull
+      public List<WordEntity> call() throws Exception {
+        final Cursor _cursor = DBUtil.query(__db, _statement, false, null);
+        try {
+          final int _cursorIndexOfId = CursorUtil.getColumnIndexOrThrow(_cursor, "id");
+          final int _cursorIndexOfVerseId = CursorUtil.getColumnIndexOrThrow(_cursor, "verseId");
+          final int _cursorIndexOfPosition = CursorUtil.getColumnIndexOrThrow(_cursor, "position");
+          final int _cursorIndexOfTextUthmani = CursorUtil.getColumnIndexOrThrow(_cursor, "textUthmani");
+          final int _cursorIndexOfTextIndopak = CursorUtil.getColumnIndexOrThrow(_cursor, "textIndopak");
+          final int _cursorIndexOfTextQpcHafs = CursorUtil.getColumnIndexOrThrow(_cursor, "textQpcHafs");
+          final int _cursorIndexOfTextUthmaniTajweed = CursorUtil.getColumnIndexOrThrow(_cursor, "textUthmaniTajweed");
+          final int _cursorIndexOfTranslation = CursorUtil.getColumnIndexOrThrow(_cursor, "translation");
+          final int _cursorIndexOfTransliteration = CursorUtil.getColumnIndexOrThrow(_cursor, "transliteration");
+          final int _cursorIndexOfCharTypeName = CursorUtil.getColumnIndexOrThrow(_cursor, "charTypeName");
+          final int _cursorIndexOfLineNumber = CursorUtil.getColumnIndexOrThrow(_cursor, "lineNumber");
+          final List<WordEntity> _result = new ArrayList<WordEntity>(_cursor.getCount());
+          while (_cursor.moveToNext()) {
+            final WordEntity _item_1;
+            final int _tmpId;
+            _tmpId = _cursor.getInt(_cursorIndexOfId);
+            final int _tmpVerseId;
+            _tmpVerseId = _cursor.getInt(_cursorIndexOfVerseId);
+            final int _tmpPosition;
+            _tmpPosition = _cursor.getInt(_cursorIndexOfPosition);
+            final String _tmpTextUthmani;
+            if (_cursor.isNull(_cursorIndexOfTextUthmani)) {
+              _tmpTextUthmani = null;
+            } else {
+              _tmpTextUthmani = _cursor.getString(_cursorIndexOfTextUthmani);
+            }
+            final String _tmpTextIndopak;
+            if (_cursor.isNull(_cursorIndexOfTextIndopak)) {
+              _tmpTextIndopak = null;
+            } else {
+              _tmpTextIndopak = _cursor.getString(_cursorIndexOfTextIndopak);
+            }
+            final String _tmpTextQpcHafs;
+            if (_cursor.isNull(_cursorIndexOfTextQpcHafs)) {
+              _tmpTextQpcHafs = null;
+            } else {
+              _tmpTextQpcHafs = _cursor.getString(_cursorIndexOfTextQpcHafs);
+            }
+            final String _tmpTextUthmaniTajweed;
+            if (_cursor.isNull(_cursorIndexOfTextUthmaniTajweed)) {
+              _tmpTextUthmaniTajweed = null;
+            } else {
+              _tmpTextUthmaniTajweed = _cursor.getString(_cursorIndexOfTextUthmaniTajweed);
+            }
+            final String _tmpTranslation;
+            if (_cursor.isNull(_cursorIndexOfTranslation)) {
+              _tmpTranslation = null;
+            } else {
+              _tmpTranslation = _cursor.getString(_cursorIndexOfTranslation);
+            }
+            final String _tmpTransliteration;
+            if (_cursor.isNull(_cursorIndexOfTransliteration)) {
+              _tmpTransliteration = null;
+            } else {
+              _tmpTransliteration = _cursor.getString(_cursorIndexOfTransliteration);
+            }
+            final String _tmpCharTypeName;
+            _tmpCharTypeName = _cursor.getString(_cursorIndexOfCharTypeName);
+            final int _tmpLineNumber;
+            _tmpLineNumber = _cursor.getInt(_cursorIndexOfLineNumber);
+            _item_1 = new WordEntity(_tmpId,_tmpVerseId,_tmpPosition,_tmpTextUthmani,_tmpTextIndopak,_tmpTextQpcHafs,_tmpTextUthmaniTajweed,_tmpTranslation,_tmpTransliteration,_tmpCharTypeName,_tmpLineNumber);
+            _result.add(_item_1);
           }
           return _result;
         } finally {
@@ -1357,6 +1602,97 @@ public final class QuranDao_Impl implements QuranDao {
   }
 
   @Override
+  public Object getVersesByKey(final List<String> keys,
+      final Continuation<? super List<VerseEntity>> $completion) {
+    final StringBuilder _stringBuilder = StringUtil.newStringBuilder();
+    _stringBuilder.append("SELECT * FROM verses WHERE verseKey IN (");
+    final int _inputSize = keys.size();
+    StringUtil.appendPlaceholders(_stringBuilder, _inputSize);
+    _stringBuilder.append(")");
+    final String _sql = _stringBuilder.toString();
+    final int _argCount = 0 + _inputSize;
+    final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, _argCount);
+    int _argIndex = 1;
+    for (String _item : keys) {
+      _statement.bindString(_argIndex, _item);
+      _argIndex++;
+    }
+    final CancellationSignal _cancellationSignal = DBUtil.createCancellationSignal();
+    return CoroutinesRoom.execute(__db, false, _cancellationSignal, new Callable<List<VerseEntity>>() {
+      @Override
+      @NonNull
+      public List<VerseEntity> call() throws Exception {
+        final Cursor _cursor = DBUtil.query(__db, _statement, false, null);
+        try {
+          final int _cursorIndexOfId = CursorUtil.getColumnIndexOrThrow(_cursor, "id");
+          final int _cursorIndexOfChapterId = CursorUtil.getColumnIndexOrThrow(_cursor, "chapterId");
+          final int _cursorIndexOfVerseNumber = CursorUtil.getColumnIndexOrThrow(_cursor, "verseNumber");
+          final int _cursorIndexOfVerseKey = CursorUtil.getColumnIndexOrThrow(_cursor, "verseKey");
+          final int _cursorIndexOfTextUthmani = CursorUtil.getColumnIndexOrThrow(_cursor, "textUthmani");
+          final int _cursorIndexOfTextIndopak = CursorUtil.getColumnIndexOrThrow(_cursor, "textIndopak");
+          final int _cursorIndexOfTextQpcHafs = CursorUtil.getColumnIndexOrThrow(_cursor, "textQpcHafs");
+          final int _cursorIndexOfPageNumber = CursorUtil.getColumnIndexOrThrow(_cursor, "pageNumber");
+          final int _cursorIndexOfJuzNumber = CursorUtil.getColumnIndexOrThrow(_cursor, "juzNumber");
+          final int _cursorIndexOfTranslation = CursorUtil.getColumnIndexOrThrow(_cursor, "translation");
+          final int _cursorIndexOfAudioUrl = CursorUtil.getColumnIndexOrThrow(_cursor, "audioUrl");
+          final List<VerseEntity> _result = new ArrayList<VerseEntity>(_cursor.getCount());
+          while (_cursor.moveToNext()) {
+            final VerseEntity _item_1;
+            final int _tmpId;
+            _tmpId = _cursor.getInt(_cursorIndexOfId);
+            final int _tmpChapterId;
+            _tmpChapterId = _cursor.getInt(_cursorIndexOfChapterId);
+            final int _tmpVerseNumber;
+            _tmpVerseNumber = _cursor.getInt(_cursorIndexOfVerseNumber);
+            final String _tmpVerseKey;
+            _tmpVerseKey = _cursor.getString(_cursorIndexOfVerseKey);
+            final String _tmpTextUthmani;
+            if (_cursor.isNull(_cursorIndexOfTextUthmani)) {
+              _tmpTextUthmani = null;
+            } else {
+              _tmpTextUthmani = _cursor.getString(_cursorIndexOfTextUthmani);
+            }
+            final String _tmpTextIndopak;
+            if (_cursor.isNull(_cursorIndexOfTextIndopak)) {
+              _tmpTextIndopak = null;
+            } else {
+              _tmpTextIndopak = _cursor.getString(_cursorIndexOfTextIndopak);
+            }
+            final String _tmpTextQpcHafs;
+            if (_cursor.isNull(_cursorIndexOfTextQpcHafs)) {
+              _tmpTextQpcHafs = null;
+            } else {
+              _tmpTextQpcHafs = _cursor.getString(_cursorIndexOfTextQpcHafs);
+            }
+            final int _tmpPageNumber;
+            _tmpPageNumber = _cursor.getInt(_cursorIndexOfPageNumber);
+            final int _tmpJuzNumber;
+            _tmpJuzNumber = _cursor.getInt(_cursorIndexOfJuzNumber);
+            final String _tmpTranslation;
+            if (_cursor.isNull(_cursorIndexOfTranslation)) {
+              _tmpTranslation = null;
+            } else {
+              _tmpTranslation = _cursor.getString(_cursorIndexOfTranslation);
+            }
+            final String _tmpAudioUrl;
+            if (_cursor.isNull(_cursorIndexOfAudioUrl)) {
+              _tmpAudioUrl = null;
+            } else {
+              _tmpAudioUrl = _cursor.getString(_cursorIndexOfAudioUrl);
+            }
+            _item_1 = new VerseEntity(_tmpId,_tmpChapterId,_tmpVerseNumber,_tmpVerseKey,_tmpTextUthmani,_tmpTextIndopak,_tmpTextQpcHafs,_tmpPageNumber,_tmpJuzNumber,_tmpTranslation,_tmpAudioUrl);
+            _result.add(_item_1);
+          }
+          return _result;
+        } finally {
+          _cursor.close();
+          _statement.release();
+        }
+      }
+    }, $completion);
+  }
+
+  @Override
   public Flow<List<ReadingSessionEntity>> getAllReadingSessions() {
     final String _sql = "SELECT * FROM reading_sessions ORDER BY timestamp ASC";
     final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 0);
@@ -1541,6 +1877,37 @@ public final class QuranDao_Impl implements QuranDao {
         _statement.release();
       }
     });
+  }
+
+  @Override
+  public Object deleteWordsForVerses(final List<Integer> verseIds,
+      final Continuation<? super Unit> $completion) {
+    return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
+      @Override
+      @NonNull
+      public Unit call() throws Exception {
+        final StringBuilder _stringBuilder = StringUtil.newStringBuilder();
+        _stringBuilder.append("DELETE FROM words WHERE verseId IN (");
+        final int _inputSize = verseIds.size();
+        StringUtil.appendPlaceholders(_stringBuilder, _inputSize);
+        _stringBuilder.append(")");
+        final String _sql = _stringBuilder.toString();
+        final SupportSQLiteStatement _stmt = __db.compileStatement(_sql);
+        int _argIndex = 1;
+        for (int _item : verseIds) {
+          _stmt.bindLong(_argIndex, _item);
+          _argIndex++;
+        }
+        __db.beginTransaction();
+        try {
+          _stmt.executeUpdateDelete();
+          __db.setTransactionSuccessful();
+          return Unit.INSTANCE;
+        } finally {
+          __db.endTransaction();
+        }
+      }
+    }, $completion);
   }
 
   @NonNull

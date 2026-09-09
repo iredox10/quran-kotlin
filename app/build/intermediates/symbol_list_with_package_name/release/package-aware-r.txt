@@ -112,9 +112,13 @@ drawable notification_tile_bg
 drawable notify_panel_notification_icon_bg
 font amiri_bold
 font amiri_regular
+font cormorant_garamond_bold
+font cormorant_garamond_regular
 font kfgqpc_hafs
 font noto_bold
 font noto_regular
+font piazzolla_bold
+font piazzolla_regular
 font scheherazade_bold
 font scheherazade_regular
 font uthman_taha_naskh

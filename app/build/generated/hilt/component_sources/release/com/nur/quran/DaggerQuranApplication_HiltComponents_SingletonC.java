@@ -465,7 +465,7 @@ public final class DaggerQuranApplication_HiltComponents_SingletonC {
           return (T) new HomeViewModel(singletonCImpl.quranRepositoryProvider.get(), ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
 
           case 1: // com.nur.quran.ui.viewmodels.PlannerViewModel 
-          return (T) new PlannerViewModel(singletonCImpl.quranRepositoryProvider.get());
+          return (T) new PlannerViewModel(singletonCImpl.quranRepositoryProvider.get(), ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
 
           case 2: // com.nur.quran.ui.viewmodels.SurahViewModel 
           return (T) new SurahViewModel(singletonCImpl.quranRepositoryProvider.get(), singletonCImpl.audioDownloadManagerProvider.get(), ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));

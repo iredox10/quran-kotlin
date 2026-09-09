@@ -156,6 +156,9 @@ class SurahViewModel @Inject constructor(
     private val _downloadedChapters = MutableStateFlow(audioDownloadManager.getDownloadedChapters())
     val downloadedChapters: StateFlow<Set<Int>> = _downloadedChapters.asStateFlow()
 
+    /** Linked GreenTech/quran_android surahs: reciterId → linked surah numbers. */
+    val linkedState: StateFlow<Map<Int, Set<Int>>> = linkedAudioStore.linkedState
+
     private val _isDownloading = MutableStateFlow(false)
     val isDownloading: StateFlow<Boolean> = _isDownloading.asStateFlow()
 
@@ -361,13 +364,21 @@ class SurahViewModel @Inject constructor(
                 linkedSurahUriCache[key] = null
                 return null
             }
-            // Find the persisted tree Uri whose folder maps to this reciter.
-            val treeUriString = linkedAudioStore.linkedState.value.entries
-                .firstOrNull { it.value == reciterId }?.key?.toString()
-                ?: run { linkedSurahUriCache[key] = null; return null }
-            val treeUri = Uri.parse(treeUriString)
             val fileName = "%03d.mp3".format(surah)
-            DocumentFile.fromTreeUri(context, treeUri)?.findFile(fileName)?.uri
+            // 1. Qari subfolders mapped to this reciter (scanner's setFolderReciter).
+            val viaFolder = linkedAudioStore.getFolderUrisForReciter(reciterId).firstNotNullOfOrNull { folder ->
+                runCatching {
+                    val doc = DocumentFile.fromSingleUri(context, Uri.parse(folder))
+                    if (doc?.isDirectory == true) doc.findFile(fileName)?.uri else null
+                }.getOrNull()
+            }
+            if (viaFolder != null) return viaFolder.also { linkedSurahUriCache[key] = it }
+            // 2. Fallback: tree roots holding SSS.mp3 directly (user picked the qari folder).
+            linkedAudioStore.getTrees().firstNotNullOfOrNull { tree ->
+                runCatching {
+                    DocumentFile.fromTreeUri(context, Uri.parse(tree))?.findFile(fileName)?.uri
+                }.getOrNull()
+            }
         } catch (_: Exception) {
             null
         }

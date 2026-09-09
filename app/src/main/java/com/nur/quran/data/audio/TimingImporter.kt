@@ -57,24 +57,24 @@ class TimingImporter @Inject constructor(
                     SQLiteDatabase.OPEN_READONLY
                 )
                 val rows = mutableListOf<LinkedTimingEntity>()
-                var cursor: android.database.Cursor? = null
+                val nonNullDb = db ?: return@withContext 0
+                val cursor = try {
+                    nonNullDb.query(
+                        "timings",
+                        arrayOf("sura", "ayah", "timing"),
+                        null, null, null, null,
+                        "sura, ayah"
+                    )
+                } catch (e: Exception) {
+                    // Fallback: singular table name "timing".
+                    nonNullDb.query(
+                        "timing",
+                        arrayOf("sura", "ayah", "timing"),
+                        null, null, null, null,
+                        "sura, ayah"
+                    )
+                }
                 try {
-                    cursor = try {
-                        db.query(
-                            "timings",
-                            arrayOf("sura", "ayah", "timing"),
-                            null, null, null, null,
-                            "sura, ayah"
-                        )
-                    } catch (e: Exception) {
-                        // Fallback: singular table name "timing".
-                        db.query(
-                            "timing",
-                            arrayOf("sura", "ayah", "timing"),
-                            null, null, null, null,
-                            "sura, ayah"
-                        )
-                    }
                     val suraIdx = cursor.getColumnIndex("sura")
                     val ayahIdx = cursor.getColumnIndex("ayah")
                     val timingIdx = cursor.getColumnIndex("timing")
@@ -88,7 +88,7 @@ class TimingImporter @Inject constructor(
                         rows.add(LinkedTimingEntity(reciterId, sura, ayah, timing))
                     }
                 } finally {
-                    cursor?.close()
+                    cursor.close()
                 }
 
                 rows.chunked(500).forEach { chunk ->
@@ -107,6 +107,16 @@ class TimingImporter @Inject constructor(
             }
         }
 
+    /** All imported timings for a reciter + sura, ordered by ayah. */
+    suspend fun getTimings(reciterId: Int, sura: Int): List<LinkedTimingEntity> =
+        withContext(Dispatchers.IO) {
+            try {
+                quranDao.getTimings(reciterId, sura)
+            } catch (e: Exception) {
+                emptyList()
+            }
+        }
+
     /** True when more than one timing row exists for the reciter + sura. */
     suspend fun hasTimings(reciterId: Int, sura: Int): Boolean =
         withContext(Dispatchers.IO) {
@@ -119,11 +129,5 @@ class TimingImporter @Inject constructor(
 
     /** Start position in ms for a single ayah, or null when absent. */
     suspend fun getStartMs(reciterId: Int, sura: Int, ayah: Int): Long? =
-        withContext(Dispatchers.IO) {
-            try {
-                quranDao.getTimings(reciterId, sura).find { it.ayah == ayah }?.startMs
-            } catch (e: Exception) {
-                null
-            }
-        }
+        getTimings(reciterId, sura).find { it.ayah == ayah }?.startMs
 }

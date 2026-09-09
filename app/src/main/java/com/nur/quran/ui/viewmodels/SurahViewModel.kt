@@ -394,7 +394,7 @@ class SurahViewModel @Inject constructor(
         }
         val uriString = linkedUriString
             ?: audioDownloadManager.localFile(verse.verseKey)?.let { Uri.fromFile(it).toString() }
-            ?: audioDownloadManager.remoteUrl(verse)
+            ?: audioDownloadManager.remoteUrl(_currentReciterId.value, verse)
             ?: return null
         val metadata = MediaMetadata.Builder()
             .setTitle("Surah $chapterId Ayah ${verse.verseNumber}")
@@ -685,6 +685,8 @@ class SurahViewModel @Inject constructor(
             if (index >= 0) {
                 getOrCreatePlayer().seekTo(index, 0L)
                 getOrCreatePlayer().play()
+                _playingVerseKey.value = verse.verseKey
+                _isPlaying.value = true
                 autoCacheChapter(_currentReciterId.value, chapterId, verses.ifEmpty { playlist })
                 return
             }
@@ -846,6 +848,10 @@ class SurahViewModel @Inject constructor(
         lastMediaIndex = idx
         player.seekTo(idx, 0L)
         player.prepare()
+        // Optimistic state so the mini-player (web: GlobalAudioPlayer pill)
+        // appears instantly; the player listener keeps it in sync after.
+        _playingVerseKey.value = playable.getOrNull(idx)?.verseKey
+        _isPlaying.value = true
         player.play()
     }
 

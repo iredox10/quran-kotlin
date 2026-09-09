@@ -146,12 +146,23 @@ class AudioDownloadManager @Inject constructor(
         return if (url.startsWith("http")) url else "https://verses.quran.com/$url"
     }
 
+    /**
+     * Reciter-aware remote URL: deterministic per-reciter path first (web:
+     * buildReciterUrl — works even when the verse row has no stored audioUrl,
+     * which the API omits unless requested and offline seeds never have),
+     * stored verse audioUrl as fallback.
+     */
+    fun remoteUrl(reciterId: Int, verse: VerseEntity): String? {
+        Reciters.buildAudioUrl(reciterId, verse.verseKey)?.let { return it }
+        return remoteUrl(verse)
+    }
+
     /** Playable source for a verse: per-reciter local file when downloaded, otherwise the remote URL. */
     fun playableSource(reciterId: Int, verse: VerseEntity): String? {
         localFile(reciterId, verse.verseKey)?.let { return it.absolutePath }
         // Fall back to a legacy-layout file from before per-reciter storage.
         legacyFile(verse.verseKey)?.let { return it.absolutePath }
-        return remoteUrl(verse)
+        return remoteUrl(reciterId, verse)
     }
 
     /** Legacy playable source: local file when downloaded, otherwise the remote URL. */
@@ -185,7 +196,7 @@ class AudioDownloadManager @Inject constructor(
         try {
             val dir = reciterDir(reciterId).apply { mkdirs() }
             val targets = verses.mapNotNull { verse ->
-                remoteUrl(verse)?.let { url -> Triple(verse.verseKey, url, File(dir, fileNameFor(verse.verseKey))) }
+                remoteUrl(reciterId, verse)?.let { url -> Triple(verse.verseKey, url, File(dir, fileNameFor(verse.verseKey))) }
             }
             val total = targets.size
             if (total == 0) {
@@ -298,7 +309,7 @@ class AudioDownloadManager @Inject constructor(
             val missing = verses
                 .filter { verse -> localFile(reciterId, verse.verseKey) == null }
                 .mapNotNull { verse ->
-                    remoteUrl(verse)?.let { url ->
+                    remoteUrl(reciterId, verse)?.let { url ->
                         Triple(verse.verseKey, url, File(dir, fileNameFor(verse.verseKey)))
                     }
                 }

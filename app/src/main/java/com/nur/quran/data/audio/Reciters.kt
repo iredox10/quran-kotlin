@@ -42,7 +42,13 @@ object Reciters {
         Reciter(11, "Maher Al-Muaiqly (Gapless)", STYLE_MURATTAL),
         Reciter(12, "Idris Abkar", STYLE_MURATTAL),
         Reciter(13, "Mahmoud Khalil Al-Husary (Gapless)", STYLE_MURATTAL, "everyayah/Husary_64kbps"),
-        Reciter(14, "Maher Al-Muaiqly (KFGQPC)", STYLE_MURATTAL)
+        Reciter(14, "Maher Al-Muaiqly (KFGQPC)", STYLE_MURATTAL),
+        Reciter(15, "Mohamed Siddiq al-Minshawi (Mujawwad)", STYLE_MUJAWWAD, "Minshawi/Mujawwad/mp3"),
+        Reciter(16, "Saud ash-Shuraym", STYLE_MURATTAL, "Shuraym/mp3"),
+        Reciter(17, "Mohamed al-Tablawi", STYLE_MURATTAL, "everyayah/Mohammad_al_Tablaway_128kbps"),
+        Reciter(18, "Maher Al Muaiqly", STYLE_MURATTAL, "everyayah/MaherAlMuaiqly128kbps"),
+        Reciter(19, "Maher Al Muaiqly (Haramain)", STYLE_MURATTAL, "everyayah/Maher_AlMuaiqly_64kbps"),
+        Reciter(20, "Yasser Ad-Dussary", STYLE_MURATTAL, "everyayah/Yasser_Ad-Dussary_128kbps")
     )
 
     /** Web parity: buildReciterUrl — deterministic per-ayah mp3 URL without API. */
@@ -64,6 +70,8 @@ object Reciters {
     fun nameOf(id: Int): String = byId(id)?.name ?: "Reciter $id"
 
     fun normalizeFolder(name: String): String = name.trim().lowercase()
+
+    fun groupedByStyle(): Map<String, List<Reciter>> = ALL.groupBy { it.style }
 
     fun findByFolder(folderName: String): Reciter? {
         val normalized = normalizeFolder(folderName)

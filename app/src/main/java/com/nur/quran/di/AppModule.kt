@@ -1,10 +1,12 @@
 package com.nur.quran.di
 
 import android.content.Context
+import androidx.media3.exoplayer.ExoPlayer
 import androidx.room.Room
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.nur.quran.data.api.QuranApi
+import com.nur.quran.data.audio.AudioPlayerHolder
 import com.nur.quran.data.db.QuranDatabase
 import com.nur.quran.data.db.dao.QuranDao
 import dagger.Module
@@ -71,5 +73,17 @@ object AppModule {
     @Singleton
     fun provideQuranDao(database: QuranDatabase): QuranDao {
         return database.quranDao()
+    }
+
+    /**
+     * Shared ExoPlayer singleton. Delegates to [AudioPlayerHolder] (itself a
+     * @Singleton @Inject binding, so no @Provides method for it — adding one
+     * would be a duplicate-binding error) so the Service and ViewModels never
+     * end up with double player instances.
+     */
+    @Provides
+    @Singleton
+    fun provideExoPlayer(holder: AudioPlayerHolder): ExoPlayer {
+        return holder.getOrCreate()
     }
 }

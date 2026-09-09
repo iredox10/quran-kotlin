@@ -1,5 +1,6 @@
 package com.nur.quran.ui.components.audio
 
+import android.media.MediaPlayer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -21,12 +22,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -34,6 +37,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -48,6 +52,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nur.quran.data.audio.PlaybackSettings.Companion.REPEAT_INFINITE
+import com.nur.quran.data.audio.Reciter
 import com.nur.quran.data.audio.Reciters
 import com.nur.quran.ui.components.NurIcons
 import com.nur.quran.ui.screens.fontFamilyBody
@@ -99,6 +104,8 @@ fun AudioSetupSheet(
     initialDelayMs: Long = 0L,
     initialSpeed: Float = 1f,
     initialStreamOnly: Boolean = false,
+    initialScrollWhilePlaying: Boolean = true,
+    onScrollWhilePlayingChange: (Boolean) -> Unit = {},
     onDismiss: () -> Unit,
     onPlayRange: (reciterId: Int, startKey: String, endKey: String, ayahRepeat: Int, rangeRepeat: Int, delayMs: Long, speed: Float, streamOnly: Boolean) -> Unit,
     onPlayAll: (reciterId: Int, ayahRepeat: Int, rangeRepeat: Int, delayMs: Long, speed: Float, streamOnly: Boolean) -> Unit,
@@ -120,9 +127,71 @@ fun AudioSetupSheet(
     var delaySec by remember { mutableFloatStateOf(initialDelayMs.coerceIn(0L, 10_000L) / 1000f) }
     var speed by remember { mutableFloatStateOf(initialSpeed) }
     var streamOnly by remember { mutableStateOf(initialStreamOnly) }
+    var scrollWhilePlaying by remember(initialScrollWhilePlaying) {
+        mutableStateOf(initialScrollWhilePlaying)
+    }
     var reciterExpanded by remember { mutableStateOf(false) }
 
     val selectedReciter = Reciters.byId(reciterId) ?: Reciters.byId(Reciters.DEFAULT_ID)!!
+
+    // ── Reciter preview player (sample verse 1:1 stream, never throws) ──
+    var previewPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
+    var previewPlayingId by remember { mutableIntStateOf(-1) }
+    var previewLoadingId by remember { mutableIntStateOf(-1) }
+
+    fun stopPreview() {
+        runCatching {
+            previewPlayer?.setOnPreparedListener(null)
+            previewPlayer?.setOnCompletionListener(null)
+            previewPlayer?.setOnErrorListener(null)
+            runCatching { previewPlayer?.stop() }
+            previewPlayer?.release()
+        }
+        previewPlayer = null
+        previewPlayingId = -1
+        previewLoadingId = -1
+    }
+
+    fun startPreview(targetId: Int) {
+        // Toggle off when tapping the reciter that is already previewing/loading.
+        if (previewPlayingId == targetId || previewLoadingId == targetId) {
+            stopPreview()
+            return
+        }
+        val url = runCatching { Reciters.buildAudioUrl(targetId, "1:1") }.getOrNull() ?: return
+        stopPreview()
+        previewLoadingId = targetId
+        runCatching {
+            val player = MediaPlayer()
+            previewPlayer = player
+            player.setDataSource(url)
+            player.setOnPreparedListener {
+                if (previewLoadingId == targetId) {
+                    previewLoadingId = -1
+                    previewPlayingId = targetId
+                    runCatching { it.start() }
+                } else {
+                    runCatching { it.release() }
+                }
+            }
+            player.setOnCompletionListener { stopPreview() }
+            player.setOnErrorListener { _, _, _ ->
+                stopPreview()
+                true
+            }
+            player.prepareAsync()
+        }.onFailure { stopPreview() }
+    }
+
+    fun previewUrlOrNull(id: Int): String? =
+        runCatching { Reciters.buildAudioUrl(id, "1:1") }.getOrNull()
+
+    val selectedPreviewUrl = remember(selectedReciter.id) { previewUrlOrNull(selectedReciter.id) }
+
+    // Release the preview player when the sheet dismisses.
+    DisposableEffect(Unit) {
+        onDispose { stopPreview() }
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -178,73 +247,148 @@ fun AudioSetupSheet(
                 }
             }
 
-            // ── Reciter dropdown ──
+            // ── Reciter dropdown (grouped by style) + preview ──
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 SheetSectionLabel("RECITER")
-                Box {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(hCream)
-                            .clickable { reciterExpanded = true }
-                            .padding(horizontal = 14.dp, vertical = 13.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = selectedReciter.name,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = hInk,
-                            fontFamily = fontFamilyUi,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Icon(
-                            imageVector = NurIcons.ChevronDown,
-                            contentDescription = "Choose reciter",
-                            tint = hInkMuted,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                    DropdownMenu(
-                        expanded = reciterExpanded,
-                        onDismissRequest = { reciterExpanded = false },
-                        modifier = Modifier.heightIn(max = 320.dp)
-                    ) {
-                        Reciters.ALL.forEach { option ->
-                            DropdownMenuItem(
-                                text = {
-                                    Column {
-                                        Text(
-                                            text = option.name,
-                                            fontSize = 14.sp,
-                                            fontWeight = if (option.id == reciterId) FontWeight.Bold else FontWeight.Normal,
-                                            color = if (option.id == reciterId) hGold else hInk
-                                        )
-                                        Text(
-                                            text = option.style,
-                                            fontSize = 11.sp,
-                                            color = hInkMuted,
-                                            fontFamily = fontFamilyMono
-                                        )
-                                    }
-                                },
-                                trailingIcon = if (option.id == reciterId) {
-                                    {
-                                        Icon(
-                                            imageVector = NurIcons.Check,
-                                            contentDescription = null,
-                                            tint = hGold,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    }
-                                } else null,
-                                onClick = {
-                                    reciterId = option.id
-                                    reciterExpanded = false
-                                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(modifier = Modifier.weight(1f)) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(hCream)
+                                .clickable { reciterExpanded = true }
+                                .padding(horizontal = 14.dp, vertical = 13.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = selectedReciter.name,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = hInk,
+                                fontFamily = fontFamilyUi,
+                                modifier = Modifier.weight(1f)
                             )
+                            Icon(
+                                imageVector = NurIcons.ChevronDown,
+                                contentDescription = "Choose reciter",
+                                tint = hInkMuted,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = reciterExpanded,
+                            onDismissRequest = { reciterExpanded = false },
+                            modifier = Modifier.heightIn(max = 320.dp)
+                        ) {
+                            val grouped =
+                                runCatching { Reciters.groupedByStyle() }.getOrNull()
+                            if (grouped.isNullOrEmpty()) {
+                                Reciters.ALL.forEach { option ->
+                                    ReciterMenuRow(
+                                        option = option,
+                                        selected = option.id == reciterId,
+                                        previewTrailing = if (previewUrlOrNull(option.id) != null) {
+                                            {
+                                                ReciterPreviewButton(
+                                                    playing = previewPlayingId == option.id,
+                                                    loading = previewLoadingId == option.id,
+                                                    onClick = { startPreview(option.id) }
+                                                )
+                                            }
+                                        } else null,
+                                        onClick = {
+                                            reciterId = option.id
+                                            reciterExpanded = false
+                                        }
+                                    )
+                                }
+                            } else {
+                                val styleOrder = listOf(
+                                    Reciters.STYLE_MURATTAL,
+                                    Reciters.STYLE_MUJAWWAD,
+                                    Reciters.STYLE_MUALLIM
+                                )
+                                val orderedStyles =
+                                    styleOrder.filter { grouped.containsKey(it) } +
+                                        (grouped.keys - styleOrder.toSet()).sorted()
+                                orderedStyles.forEach { style ->
+                                    Text(
+                                        text = style.uppercase(),
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = hInkMuted,
+                                        letterSpacing = 1.sp,
+                                        fontFamily = fontFamilyMono,
+                                        modifier = Modifier.padding(
+                                            horizontal = 12.dp,
+                                            vertical = 6.dp
+                                        )
+                                    )
+                                    grouped[style].orEmpty().forEach { option ->
+                                        ReciterMenuRow(
+                                            option = option,
+                                            selected = option.id == reciterId,
+                                            previewTrailing = if (previewUrlOrNull(option.id) != null) {
+                                                {
+                                                    ReciterPreviewButton(
+                                                        playing = previewPlayingId == option.id,
+                                                        loading = previewLoadingId == option.id,
+                                                        onClick = { startPreview(option.id) }
+                                                    )
+                                                }
+                                            } else null,
+                                            onClick = {
+                                                reciterId = option.id
+                                                reciterExpanded = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    // Preview button for the currently selected reciter; hidden
+                    // when buildAudioUrl has no streamable sample (null).
+                    if (selectedPreviewUrl != null) {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(hCream)
+                                .clickable { startPreview(selectedReciter.id) },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            when {
+                                previewLoadingId == selectedReciter.id -> {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(20.dp),
+                                        strokeWidth = 2.dp,
+                                        color = hGold
+                                    )
+                                }
+                                previewPlayingId == selectedReciter.id -> {
+                                    Icon(
+                                        imageVector = NurIcons.PauseFilled,
+                                        contentDescription = "Stop preview",
+                                        tint = hGold,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                                else -> {
+                                    Icon(
+                                        imageVector = NurIcons.Play,
+                                        contentDescription = "Preview reciter voice",
+                                        tint = hInkMid,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -399,6 +543,34 @@ fun AudioSetupSheet(
                 }
             }
 
+            // ── Auto-scroll ──
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                SheetSectionLabel("AUTO-SCROLL")
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    PlaybackModeChip(
+                        title = "Follow ayahs",
+                        subtitle = "Highlight and scroll to each ayah",
+                        selected = scrollWhilePlaying,
+                        onClick = {
+                            scrollWhilePlaying = true
+                            onScrollWhilePlayingChange(true)
+                        }
+                    )
+                    PlaybackModeChip(
+                        title = "Stay put",
+                        subtitle = "Audio plays, list stays",
+                        selected = !scrollWhilePlaying,
+                        onClick = {
+                            scrollWhilePlaying = false
+                            onScrollWhilePlayingChange(false)
+                        }
+                    )
+                }
+            }
+
             // ── Actions ──
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -406,6 +578,7 @@ fun AudioSetupSheet(
             ) {
                 TextButton(
                     onClick = {
+                        stopPreview()
                         onPlayAll(reciterId, ayahRepeat, rangeRepeat, (delaySec.toInt() * 1000).toLong(), speed, streamOnly)
                     },
                     modifier = Modifier.weight(1f)
@@ -414,6 +587,7 @@ fun AudioSetupSheet(
                 }
                 Button(
                     onClick = {
+                        stopPreview()
                         onConfirm(
                             reciterId,
                             "$chapterId:$startAyah",
@@ -507,6 +681,82 @@ private fun PlaybackModeChip(
             containerColor = hCream
         )
     )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ReciterMenuRow(
+    option: Reciter,
+    selected: Boolean,
+    previewTrailing: (@Composable () -> Unit)?,
+    onClick: () -> Unit,
+) {
+    DropdownMenuItem(
+        text = {
+            Column {
+                Text(
+                    text = option.name,
+                    fontSize = 14.sp,
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                    color = if (selected) hGold else hInk
+                )
+                Text(
+                    text = option.style,
+                    fontSize = 11.sp,
+                    color = hInkMuted,
+                    fontFamily = fontFamilyMono
+                )
+            }
+        },
+        trailingIcon = if (selected) {
+            {
+                Icon(
+                    imageVector = NurIcons.Check,
+                    contentDescription = null,
+                    tint = hGold,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        } else previewTrailing,
+        onClick = onClick
+    )
+}
+
+@Composable
+private fun ReciterPreviewButton(
+    playing: Boolean,
+    loading: Boolean,
+    onClick: () -> Unit,
+) {
+    when {
+        loading -> {
+            CircularProgressIndicator(
+                modifier = Modifier.size(18.dp),
+                strokeWidth = 2.dp,
+                color = hGold
+            )
+        }
+        playing -> {
+            IconButton(onClick = onClick, modifier = Modifier.size(32.dp)) {
+                Icon(
+                    imageVector = NurIcons.PauseFilled,
+                    contentDescription = "Stop preview",
+                    tint = hGold,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+        else -> {
+            IconButton(onClick = onClick, modifier = Modifier.size(32.dp)) {
+                Icon(
+                    imageVector = NurIcons.Play,
+                    contentDescription = "Preview reciter voice",
+                    tint = hInkMuted,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+    }
 }
 
 private fun formatSpeed(speed: Float): String {

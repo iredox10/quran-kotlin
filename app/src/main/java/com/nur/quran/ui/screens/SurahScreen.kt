@@ -73,9 +73,12 @@ import androidx.core.text.HtmlCompat
 import com.nur.quran.data.db.entities.ChapterEntity
 import com.nur.quran.data.db.entities.VerseEntity
 import com.nur.quran.data.db.entities.WordEntity
+import com.nur.quran.data.audio.Reciters
 import com.nur.quran.data.getHizbByPage
 import com.nur.quran.data.getJuzByPage
 import com.nur.quran.ui.components.ColoredArabicText
+import com.nur.quran.ui.components.audio.AudioSetupSheet
+import com.nur.quran.ui.components.audio.MiniPlayer
 import com.nur.quran.ui.components.TajweedSegment
 import com.nur.quran.ui.components.NurIcons
 import com.nur.quran.ui.components.ShareVerseDialog
@@ -287,6 +290,8 @@ fun SurahScreen(
     val isTranslationEnabled by viewModel.isTranslationEnabled.collectAsState()
     val isPlaying by viewModel.isPlaying.collectAsState()
     val playingVerseKey by viewModel.playingVerseKey.collectAsState()
+    val currentReciterId by viewModel.currentReciterId.collectAsState()
+    val playbackSettings by viewModel.playbackSettings.collectAsState()
     val tafsirState by viewModel.tafsirState.collectAsState()
     val bookmarkedVerses by viewModel.bookmarkedVerses.collectAsState()
     val allChapters by viewModel.allChapters.collectAsState()
@@ -316,8 +321,6 @@ fun SurahScreen(
     var showSettingsDrawer by remember { mutableStateOf(false) }
     var showFontSettingsDialog by remember { mutableStateOf(false) }
     var showAudioSetupDialog by remember { mutableStateOf(false) }
-    var startAyahIndex by remember { mutableStateOf(0) }
-    var endAyahIndex by remember { mutableStateOf(0) }
     var showNavigationDialog by remember { mutableStateOf(false) }
     var isAutoScrollActive by remember { mutableStateOf(false) }
     var settingsSubView by remember { mutableStateOf(SettingsSubView.ROOT) }
@@ -345,6 +348,29 @@ fun SurahScreen(
         pendingScrollTarget?.let { target ->
             listState.scrollToItem(target)
             pendingScrollTarget = null
+        }
+    }
+
+    // Follow-along: scroll the now-playing ayah into view while auto-scroll is on.
+    // Header offset mirrors the targetVerseKey effect above (header + optional
+    // banners + basmala). No-op in reading mode (page items, not verse items).
+    LaunchedEffect(playingVerseKey) {
+        val key = playingVerseKey ?: return@LaunchedEffect
+        if (!isAutoScrollActive || isReadingMode) return@LaunchedEffect
+        val state = uiState
+        if (state !is SurahUiState.Success || state.chapter.id != chapterId) return@LaunchedEffect
+        val verseIndex = state.verses.indexOfFirst { it.verseKey == key }
+        if (verseIndex < 0) return@LaunchedEffect
+        var hOffset = 1
+        if (isMemorizeModeEnabled) hOffset += 1
+        if (showSwipeTip) hOffset += 1
+        if (saukaAssignmentId != null && backToSauka != null) hOffset += 1
+        if (isMemorizeModeEnabled) hOffset += 1
+        if (chapterId != 1 && chapterId != 9) hOffset += 1
+        try {
+            listState.animateScrollToItem(verseIndex + hOffset)
+        } catch (_: Exception) {
+            // List not laid out yet — next key change will retry
         }
     }
 
@@ -677,6 +703,9 @@ fun SurahScreen(
                                 isPlaying = isPlaying,
                                 isDownloaded = chapter.id in downloadedChapters,
                                 isDownloading = isDownloading,
+                                reciterName = Reciters.nameOf(currentReciterId),
+                                downloadedCount = if (chapter.id in downloadedChapters) verses.size else 0,
+                                totalCount = verses.size,
                                 onPlayClick = { showAudioSetupDialog = true },
                                 onDownloadClick = { viewModel.downloadChapterAudio(chapter.id, verses) }
                             )
@@ -1096,6 +1125,32 @@ fun SurahScreen(
                     isAutoScrollActive = false
                     isAutoScrollPaused = false
                 }
+            )
+
+            // Bottom mini-player: overlays above BottomNav padding, visible while
+            // a verse is loaded in the player. togglePlayPause() is private in
+            // the ViewModel, so play/pause goes through playPauseChapter (toggles
+            // when this chapter's playlist is loaded, else starts at verse 1);
+            // prev/next seek via playVerse on the neighbouring playlist item.
+            val playerVerses = (uiState as? SurahUiState.Success)?.verses ?: emptyList()
+            MiniPlayer(
+                verseKey = playingVerseKey ?: "",
+                isPlaying = isPlaying,
+                visible = playingVerseKey != null,
+                onPlayPause = {
+                    if (playerVerses.isNotEmpty()) viewModel.playPauseChapter(playerVerses, chapterId)
+                },
+                onPrevious = {
+                    val idx = playerVerses.indexOfFirst { it.verseKey == playingVerseKey }
+                    if (idx > 0) viewModel.playVerse(playerVerses, chapterId, playerVerses[idx - 1])
+                },
+                onNext = {
+                    val idx = playerVerses.indexOfFirst { it.verseKey == playingVerseKey }
+                    if (idx >= 0 && idx < playerVerses.size - 1) {
+                        viewModel.playVerse(playerVerses, chapterId, playerVerses[idx + 1])
+                    }
+                },
+                onClose = { viewModel.stopPlaying() }
             )
 
             // Save-to-Collection modal
@@ -1560,71 +1615,40 @@ fun SurahScreen(
 
             if (showAudioSetupDialog && uiState is SurahUiState.Success) {
                 val verses = (uiState as SurahUiState.Success).verses
-                AlertDialog(
-                    onDismissRequest = { showAudioSetupDialog = false },
-                    title = { Text("Audio Settings", fontFamily = fontFamilyUi, fontWeight = FontWeight.Bold, color = hInk) },
-                    text = {
-                        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                            Text("Select Ayah Range to Play", fontSize = 14.sp, color = hInkMid)
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text("Start", fontSize = 12.sp, color = hInkMuted)
-                                    Slider(
-                                        value = startAyahIndex.toFloat(),
-                                        onValueChange = { 
-                                            startAyahIndex = it.toInt().coerceIn(0, verses.size - 1)
-                                            if (endAyahIndex < startAyahIndex) {
-                                                endAyahIndex = startAyahIndex
-                                            }
-                                        },
-                                        valueRange = 0f..(verses.size - 1).toFloat(),
-                                        steps = (verses.size - 2).coerceAtLeast(0),
-                                        colors = SliderDefaults.colors(thumbColor = hGold, activeTrackColor = hGold)
-                                    )
-                                    Text("Ayah ${verses.getOrNull(startAyahIndex)?.verseNumber ?: (startAyahIndex + 1)}", fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.CenterHorizontally))
-                                }
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text("End", fontSize = 12.sp, color = hInkMuted)
-                                    Slider(
-                                        value = endAyahIndex.toFloat(),
-                                        onValueChange = { 
-                                            endAyahIndex = it.toInt().coerceIn(startAyahIndex, verses.size - 1)
-                                        },
-                                        valueRange = startAyahIndex.toFloat()..(verses.size - 1).toFloat(),
-                                        steps = ((verses.size - 1 - startAyahIndex) - 1).coerceAtLeast(0),
-                                        colors = SliderDefaults.colors(thumbColor = hGold, activeTrackColor = hGold)
-                                    )
-                                    Text("Ayah ${verses.getOrNull(endAyahIndex)?.verseNumber ?: (endAyahIndex + 1)}", fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.CenterHorizontally))
-                                }
-                            }
-                        }
+                AudioSetupSheet(
+                    chapterId = chapterId,
+                    versesCount = verses.size,
+                    initialReciterId = currentReciterId,
+                    initialAyahRepeat = playbackSettings.ayahRepeat,
+                    initialRangeRepeat = playbackSettings.rangeRepeat,
+                    initialDelayMs = playbackSettings.delayMs,
+                    initialSpeed = playbackSettings.speed,
+                    onDismiss = { showAudioSetupDialog = false },
+                    onPlayRange = { reciterId, startKey, endKey, ayahRepeat, rangeRepeat, delayMs, speed ->
+                        viewModel.setReciterId(reciterId)
+                        viewModel.setAyahRepeat(ayahRepeat)
+                        viewModel.setRangeRepeat(rangeRepeat)
+                        viewModel.setDelayMs(delayMs)
+                        viewModel.setSpeed(speed)
+                        viewModel.playRange(verses, chapterId, startKey, endKey)
+                        showAudioSetupDialog = false
                     },
-                    confirmButton = {
-                        Button(
-                            onClick = {
-                                val rangeVerses = verses.subList(startAyahIndex, endAyahIndex + 1)
-                                viewModel.playPauseChapter(rangeVerses, chapterId)
-                                showAudioSetupDialog = false
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = hGold)
-                        ) {
-                            Text("Play Range", color = Color.White)
+                    onPlayAll = { reciterId, ayahRepeat, rangeRepeat, delayMs, speed ->
+                        viewModel.setReciterId(reciterId)
+                        viewModel.setAyahRepeat(ayahRepeat)
+                        viewModel.setRangeRepeat(rangeRepeat)
+                        viewModel.setDelayMs(delayMs)
+                        viewModel.setSpeed(speed)
+                        if (verses.isNotEmpty()) {
+                            viewModel.playRange(
+                                verses,
+                                chapterId,
+                                verses.first().verseKey,
+                                verses.last().verseKey
+                            )
                         }
-                    },
-                    dismissButton = {
-                        TextButton(
-                            onClick = {
-                                viewModel.playPauseChapter(verses, chapterId)
-                                showAudioSetupDialog = false
-                            }
-                        ) {
-                            Text("Play All", color = hInkMid)
-                        }
-                    },
-                    containerColor = hWhite
+                        showAudioSetupDialog = false
+                    }
                 )
             }
         }
@@ -1666,6 +1690,9 @@ fun SurahHeader(
     isPlaying: Boolean,
     isDownloaded: Boolean,
     isDownloading: Boolean,
+    reciterName: String = "",
+    downloadedCount: Int = 0,
+    totalCount: Int = 0,
     onPlayClick: () -> Unit,
     onDownloadClick: () -> Unit
 ) {
@@ -1806,6 +1833,24 @@ fun SurahHeader(
                     }
                 }
             }
+        }
+
+        // Reciter + offline-count subtitle (keeps the pill above untouched)
+        if (reciterName.isNotBlank()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = if (totalCount > 0) {
+                    "$reciterName • $downloadedCount/$totalCount offline"
+                } else {
+                    reciterName
+                },
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium,
+                color = hInkMuted,
+                fontFamily = fontFamilyMono,
+                letterSpacing = 0.5.sp,
+                textAlign = TextAlign.Center
+            )
         }
     }
 }

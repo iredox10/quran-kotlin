@@ -258,6 +258,110 @@ class AudioDownloadManager @Inject constructor(
     fun isDownloading(reciterId: Int, chapterId: Int): Boolean =
         _downloadState.value[keyFor(reciterId, chapterId)]?.isDownloading == true
 
+    /**
+     * True when the verse's audio file exists under the given reciter
+     * (non-empty file in `filesDir/audio/<reciterId>/SSSAAA.mp3`).
+     */
+    fun isVerseDownloaded(reciterId: Int, verseKey: String): Boolean =
+        localFile(reciterId, verseKey) != null
+
+    /**
+     * Downloads only the verses that are missing locally under the given
+     * reciter (where [localFile] returns null). Uses the same chunked(5),
+     * `.tmp`+rename, timeout, buffer and `fd.sync` pattern as
+     * [downloadChapter] via [downloadUrlToFile].
+     *
+     * Progress ([onProgress]/[downloadState]) is reported over the missing
+     * count. When the chapter id is known (passed explicitly or parsed from
+     * the first verse's `"S:A"` key) and every verse in [verses] is present
+     * afterwards (per-reciter file or legacy root-level file), the chapter
+     * is marked downloaded. Returns the count newly downloaded; never throws
+     * (per-file failures are skipped, outer failures return progress so far).
+     */
+    suspend fun downloadMissing(
+        reciterId: Int,
+        verses: List<VerseEntity>,
+        chapterId: Int = -1,
+        onProgress: (done: Int, total: Int) -> Unit = { _, _ -> }
+    ): Int = withContext(Dispatchers.IO) {
+        var effectiveChapterId = chapterId
+        if (effectiveChapterId == -1) {
+            effectiveChapterId = verses.firstOrNull()?.verseKey
+                ?.substringBefore(":")?.toIntOrNull() ?: -1
+        }
+        val key = keyFor(reciterId, effectiveChapterId)
+        val currentJob = currentCoroutineContext()[Job]
+        if (currentJob != null) jobs[key] = currentJob
+        var downloaded = 0
+        try {
+            val dir = reciterDir(reciterId).apply { mkdirs() }
+            val missing = verses
+                .filter { verse -> localFile(reciterId, verse.verseKey) == null }
+                .mapNotNull { verse ->
+                    remoteUrl(verse)?.let { url ->
+                        Triple(verse.verseKey, url, File(dir, fileNameFor(verse.verseKey)))
+                    }
+                }
+            val total = missing.size
+            var lastError: String? = null
+            _downloadState.update { it + (key to DownloadProgress(downloaded, total, true, null)) }
+            onProgress(downloaded, total)
+
+            missing.chunked(5).forEach { chunk ->
+                chunk.forEach { (_, url, file) ->
+                    ensureActive()
+                    try {
+                        downloadUrlToFile(url, file)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        lastError = e.message ?: e::class.simpleName
+                    }
+                    if (file.exists() && file.length() > 0) downloaded++
+                    _downloadState.update {
+                        it + (key to DownloadProgress(downloaded, total, true, lastError))
+                    }
+                    onProgress(downloaded, total)
+                }
+            }
+
+            if (effectiveChapterId != -1) {
+                val allPresent = verses.all { verse ->
+                    val name = fileNameFor(verse.verseKey)
+                    val file = File(dir, name)
+                    if (file.exists() && file.length() > 0) {
+                        true
+                    } else {
+                        val legacy = File(audioDir, name)
+                        legacy.exists() && legacy.length() > 0
+                    }
+                }
+                if (allPresent) {
+                    markDownloaded(reciterId, effectiveChapterId)
+                    _downloadState.update { it + (key to DownloadProgress(total, total, false, null)) }
+                } else {
+                    _downloadState.update {
+                        it + (key to DownloadProgress(downloaded, total, false, lastError))
+                    }
+                }
+            } else {
+                _downloadState.update {
+                    it + (key to DownloadProgress(downloaded, total, false, lastError))
+                }
+            }
+            downloaded
+        } catch (e: Exception) {
+            _downloadState.update { current ->
+                val prev = current[key]
+                current + (key to (prev?.copy(isDownloading = false)
+                    ?: DownloadProgress(downloaded, 0, false, null)))
+            }
+            downloaded
+        } finally {
+            if (currentJob != null) jobs.remove(key, currentJob) else jobs.remove(key)
+        }
+    }
+
     // ── Deletion / storage / completeness ─────────────────────────────────
 
     /** Deletes downloaded audio for one chapter under the given reciter. */

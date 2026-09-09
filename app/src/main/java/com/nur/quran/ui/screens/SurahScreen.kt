@@ -292,6 +292,7 @@ fun SurahScreen(
     val playingVerseKey by viewModel.playingVerseKey.collectAsState()
     val currentReciterId by viewModel.currentReciterId.collectAsState()
     val playbackSettings by viewModel.playbackSettings.collectAsState()
+    val streamOnly by viewModel.streamOnly.collectAsState()
     val tafsirState by viewModel.tafsirState.collectAsState()
     val bookmarkedVerses by viewModel.bookmarkedVerses.collectAsState()
     val allChapters by viewModel.allChapters.collectAsState()
@@ -1630,22 +1631,25 @@ fun SurahScreen(
                     initialRangeRepeat = playbackSettings.rangeRepeat,
                     initialDelayMs = playbackSettings.delayMs,
                     initialSpeed = playbackSettings.speed,
+                    initialStreamOnly = streamOnly,
                     onDismiss = { showAudioSetupDialog = false },
-                    onPlayRange = { reciterId, startKey, endKey, ayahRepeat, rangeRepeat, delayMs, speed ->
+                    onPlayRange = { reciterId, startKey, endKey, ayahRepeat, rangeRepeat, delayMs, speed, streamOnly ->
                         viewModel.setReciterId(reciterId)
                         viewModel.setAyahRepeat(ayahRepeat)
                         viewModel.setRangeRepeat(rangeRepeat)
                         viewModel.setDelayMs(delayMs)
                         viewModel.setSpeed(speed)
+                        viewModel.setStreamOnly(streamOnly)
                         viewModel.playRange(verses, chapterId, startKey, endKey)
                         showAudioSetupDialog = false
                     },
-                    onPlayAll = { reciterId, ayahRepeat, rangeRepeat, delayMs, speed ->
+                    onPlayAll = { reciterId, ayahRepeat, rangeRepeat, delayMs, speed, streamOnly ->
                         viewModel.setReciterId(reciterId)
                         viewModel.setAyahRepeat(ayahRepeat)
                         viewModel.setRangeRepeat(rangeRepeat)
                         viewModel.setDelayMs(delayMs)
                         viewModel.setSpeed(speed)
+                        viewModel.setStreamOnly(streamOnly)
                         if (verses.isNotEmpty()) {
                             viewModel.playRange(
                                 verses,

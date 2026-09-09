@@ -98,9 +98,10 @@ fun AudioSetupSheet(
     initialRangeRepeat: Int = 1,
     initialDelayMs: Long = 0L,
     initialSpeed: Float = 1f,
+    initialStreamOnly: Boolean = false,
     onDismiss: () -> Unit,
-    onPlayRange: (reciterId: Int, startKey: String, endKey: String, ayahRepeat: Int, rangeRepeat: Int, delayMs: Long, speed: Float) -> Unit,
-    onPlayAll: (reciterId: Int, ayahRepeat: Int, rangeRepeat: Int, delayMs: Long, speed: Float) -> Unit,
+    onPlayRange: (reciterId: Int, startKey: String, endKey: String, ayahRepeat: Int, rangeRepeat: Int, delayMs: Long, speed: Float, streamOnly: Boolean) -> Unit,
+    onPlayAll: (reciterId: Int, ayahRepeat: Int, rangeRepeat: Int, delayMs: Long, speed: Float, streamOnly: Boolean) -> Unit,
 ) {
     // Alias matching the requested `onConfirm(reciterId, startKey, endKey,
     // ayahRepeat, rangeRepeat, delayMs, speed)` wiring name.
@@ -118,6 +119,7 @@ fun AudioSetupSheet(
     var rangeRepeat by remember { mutableIntStateOf(initialRangeRepeat) }
     var delaySec by remember { mutableFloatStateOf(initialDelayMs.coerceIn(0L, 10_000L) / 1000f) }
     var speed by remember { mutableFloatStateOf(initialSpeed) }
+    var streamOnly by remember { mutableStateOf(initialStreamOnly) }
     var reciterExpanded by remember { mutableStateOf(false) }
 
     val selectedReciter = Reciters.byId(reciterId) ?: Reciters.byId(Reciters.DEFAULT_ID)!!
@@ -375,6 +377,28 @@ fun AudioSetupSheet(
                 }
             }
 
+            // ── Playback mode ──
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                SheetSectionLabel("PLAYBACK MODE")
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    PlaybackModeChip(
+                        title = "Download for offline",
+                        subtitle = "Save, play offline next time",
+                        selected = !streamOnly,
+                        onClick = { streamOnly = false }
+                    )
+                    PlaybackModeChip(
+                        title = "Stream only",
+                        subtitle = "No storage used",
+                        selected = streamOnly,
+                        onClick = { streamOnly = true }
+                    )
+                }
+            }
+
             // ── Actions ──
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -382,7 +406,7 @@ fun AudioSetupSheet(
             ) {
                 TextButton(
                     onClick = {
-                        onPlayAll(reciterId, ayahRepeat, rangeRepeat, (delaySec.toInt() * 1000).toLong(), speed)
+                        onPlayAll(reciterId, ayahRepeat, rangeRepeat, (delaySec.toInt() * 1000).toLong(), speed, streamOnly)
                     },
                     modifier = Modifier.weight(1f)
                 ) {
@@ -397,7 +421,8 @@ fun AudioSetupSheet(
                             ayahRepeat,
                             rangeRepeat,
                             (delaySec.toInt() * 1000).toLong(),
-                            speed
+                            speed,
+                            streamOnly
                         )
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = hGold),
@@ -441,6 +466,41 @@ private fun RepeatChip(
                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
                 fontFamily = fontFamilyMono
             )
+        },
+        colors = FilterChipDefaults.filterChipColors(
+            selectedContainerColor = hGold,
+            containerColor = hCream
+        )
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PlaybackModeChip(
+    title: String,
+    subtitle: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    FilterChip(
+        selected = selected,
+        onClick = onClick,
+        label = {
+            Column {
+                Text(
+                    text = title,
+                    fontSize = 13.sp,
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                    fontFamily = fontFamilyUi
+                )
+                Text(
+                    text = subtitle,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Normal,
+                    color = if (selected) Color.White.copy(alpha = 0.9f) else hInkMuted,
+                    fontFamily = fontFamilyBody
+                )
+            }
         },
         colors = FilterChipDefaults.filterChipColors(
             selectedContainerColor = hGold,

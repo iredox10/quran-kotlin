@@ -276,10 +276,71 @@ class SurahViewModel @Inject constructor(
             ayahRepeat = hifdhPrefs.getInt("pb_ayah_repeat", 1),
             rangeRepeat = hifdhPrefs.getInt("pb_range_repeat", 1),
             delayMs = hifdhPrefs.getLong("pb_delay_ms", 0L),
-            speed = hifdhPrefs.getFloat("pb_speed", 1f)
+            speed = hifdhPrefs.getFloat("pb_speed", 1f),
+            streamOnly = hifdhPrefs.getBoolean("pb_stream_only", false)
         )
     )
     val playbackSettings: StateFlow<PlaybackSettings> = _playbackSettings.asStateFlow()
+
+    private val _streamOnly = MutableStateFlow(hifdhPrefs.getBoolean("pb_stream_only", false))
+    val streamOnly: StateFlow<Boolean> = _streamOnly.asStateFlow()
+
+    fun setStreamOnly(v: Boolean) {
+        _streamOnly.value = v
+        hifdhPrefs.edit().putBoolean("pb_stream_only", v).apply()
+        _playbackSettings.value = _playbackSettings.value.copy(streamOnly = v)
+    }
+
+    /** In-flight auto-cache guards keyed `"$reciterId:$chapterId"` (fire-and-forget dedupe). */
+    private val autoCacheInFlight = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+
+    /**
+     * Auto-download-on-play: after streaming starts, cache the chapter in the
+     * background for offline next time. Skipped when stream-only mode is on,
+     * the chapter is linked (gapless file), already fully downloaded, or a
+     * download for the same key is already running. Never throws.
+     */
+    private fun autoCacheChapter(reciterId: Int, chapterId: Int, verses: List<VerseEntity>) {
+        if (verses.isEmpty()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                if (_streamOnly.value) return@launch
+                if (runCatching { linkedAudioStore.isLinked(reciterId, chapterId) }.getOrDefault(false)) return@launch
+                val key = "$reciterId:$chapterId"
+                if (!autoCacheInFlight.add(key)) return@launch
+                try {
+                    if (_isDownloading.value) return@launch
+                    if (audioDownloadManager.isDownloading(reciterId, chapterId)) return@launch
+                    if (runCatching { audioDownloadManager.isFullyDownloaded(reciterId, chapterId, verses) }.getOrDefault(false)) return@launch
+                    val onProgress: (Int, Int) -> Unit = { done, total ->
+                        _downloadProgress.value = if (total > 0) done.toFloat() / total else 1f
+                    }
+                    // Download only the missing verses; falls back to full
+                    // chapter download if anything goes wrong.
+                    val missingCount: Int? = runCatching {
+                        audioDownloadManager.downloadMissing(reciterId, verses, chapterId, onProgress)
+                    }.getOrNull()
+                    if (missingCount != null) {
+                        if (missingCount >= 0) {
+                            _downloadedChapters.value = audioDownloadManager.getDownloadedChapters()
+                        }
+                    } else {
+                        val ok = runCatching {
+                            audioDownloadManager.downloadChapter(reciterId, chapterId, verses, onProgress)
+                        }.getOrDefault(false)
+                        if (ok) {
+                            _downloadedChapters.value = audioDownloadManager.getDownloadedChapters()
+                            _downloadProgress.value = 1f
+                        }
+                    }
+                } finally {
+                    autoCacheInFlight.remove(key)
+                }
+            } catch (_: Exception) {
+                // Fire-and-forget: playback already started, never surface errors.
+            }
+        }
+    }
 
     // Unified repeat state for the general (non-hifdh) playlist path.
     private var repeatAyahCount = 0
@@ -603,9 +664,13 @@ class SurahViewModel @Inject constructor(
     /** Web: handlePlayClick — toggle when this surah is loaded, else start from verse 1. */
     fun playPauseChapter(verses: List<VerseEntity>, chapterId: Int) {
         if (isCurrentChapterPlaylist(chapterId)) {
+            val wasPlaying = exoPlayer?.isPlaying == true
             togglePlayPause()
+            // Fire-and-forget background cache on resume; never on pause.
+            if (!wasPlaying) autoCacheChapter(_currentReciterId.value, chapterId, verses.ifEmpty { playlist })
         } else {
             startPlaylist(verses, chapterId, 0)
+            autoCacheChapter(_currentReciterId.value, chapterId, verses)
         }
     }
 
@@ -620,11 +685,13 @@ class SurahViewModel @Inject constructor(
             if (index >= 0) {
                 getOrCreatePlayer().seekTo(index, 0L)
                 getOrCreatePlayer().play()
+                autoCacheChapter(_currentReciterId.value, chapterId, verses.ifEmpty { playlist })
                 return
             }
         }
         val startIndex = verses.indexOfFirst { it.verseKey == verse.verseKey }.coerceAtLeast(0)
         startPlaylist(verses, chapterId, startIndex)
+        autoCacheChapter(_currentReciterId.value, chapterId, verses)
     }
 
     private fun togglePlayPause() {
@@ -801,6 +868,8 @@ class SurahViewModel @Inject constructor(
             rangeEnd = sub.last().verseKey
         )
         startPlayback(sub, chapterId, 0)
+        // Cache the full chapter (not just the range) for offline next time.
+        autoCacheChapter(_currentReciterId.value, chapterId, verses)
     }
 
     fun stopPlaying() {

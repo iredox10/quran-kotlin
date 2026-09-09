@@ -14,7 +14,8 @@ data class PlaybackSettings(
     val delayMs: Long = 0L,
     val speed: Float = 1f,
     val rangeStart: String? = null,
-    val rangeEnd: String? = null
+    val rangeEnd: String? = null,
+    val streamOnly: Boolean = false
 ) {
     companion object {
         const val REPEAT_INFINITE = -1

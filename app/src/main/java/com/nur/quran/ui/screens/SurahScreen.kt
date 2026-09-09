@@ -1068,16 +1068,27 @@ fun SurahScreen(
             }
 
             if (showSettingsDrawer) {
+                val tafsirPackRows by viewModel.tafsirPacks.collectAsState()
+                val wordCached by viewModel.wordPackCached.collectAsState()
+                val wordDownloading by viewModel.wordPackDownloading.collectAsState()
                 SettingsDrawer(
                     viewModel = viewModel,
-                    onDismiss = { showSettingsDrawer = false }
+                    onDismiss = { showSettingsDrawer = false },
+                    tafsirPacks = tafsirPackRows,
+                    onDownloadTafsir = viewModel::downloadTafsirPack,
+                    onCancelTafsir = viewModel::cancelTafsirPack,
+                    onDeleteTafsir = viewModel::deleteTafsirPack,
+                    wordCachedCount = wordCached.size,
+                    wordIsDownloading = wordDownloading,
+                    onDownloadAllWords = viewModel::downloadAllMissingWordPacks
                 )
             }
 
             selectedWordForTooltip?.let { word ->
                 WordTranslationTooltipDrawer(
                     word = word,
-                    onDismiss = { selectedWordForTooltip = null }
+                    onDismiss = { selectedWordForTooltip = null },
+                    onDownloadWordPack = { viewModel.downloadChapterWords(chapterId) }
                 )
             }
 
@@ -2965,7 +2976,10 @@ fun ContinuousReadingPageItem(
 @Composable
 fun WordTranslationTooltipDrawer(
     word: WordEntity,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    isOffline: Boolean = false,
+    wordPackDownloaded: Boolean = true,
+    onDownloadWordPack: () -> Unit = {}
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -2997,31 +3011,69 @@ fun WordTranslationTooltipDrawer(
                 color = hInk
             )
             Spacer(modifier = Modifier.height(8.dp))
-            if (!word.transliteration.isNullOrEmpty()) {
-                Text(
-                    text = word.transliteration,
-                    fontSize = 14.sp,
-                    fontStyle = FontStyle.Italic,
-                    color = hInkMuted,
-                    fontFamily = fontFamilyMono
+            val missingBoth = word.translation.isNullOrBlank() && word.transliteration.isNullOrBlank()
+            if (missingBoth) {
+                Box(
+                    modifier = Modifier
+                        .width(60.dp)
+                        .height(1.dp)
+                        .background(hBorderColor)
                 )
                 Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "Translation not downloaded",
+                    fontSize = 15.sp,
+                    color = hInkMuted,
+                    textAlign = TextAlign.Center,
+                    fontFamily = fontFamilyUi
+                )
+                if (!wordPackDownloaded) {
+                    if (isOffline) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Connect once to download, then works offline",
+                            fontSize = 13.sp,
+                            color = hInkMuted,
+                            textAlign = TextAlign.Center,
+                            fontFamily = fontFamilyUi
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = onDownloadWordPack,
+                        colors = ButtonDefaults.buttonColors(containerColor = hGold),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Download word translations", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                }
+            } else {
+                if (!word.transliteration.isNullOrEmpty()) {
+                    Text(
+                        text = word.transliteration,
+                        fontSize = 14.sp,
+                        fontStyle = FontStyle.Italic,
+                        color = hInkMuted,
+                        fontFamily = fontFamilyMono
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+                Box(
+                    modifier = Modifier
+                        .width(60.dp)
+                        .height(1.dp)
+                        .background(hBorderColor)
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = word.translation ?: "Translation not available",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = hTeal,
+                    textAlign = TextAlign.Center,
+                    fontFamily = fontFamilyUi
+                )
             }
-            Box(
-                modifier = Modifier
-                    .width(60.dp)
-                    .height(1.dp)
-                    .background(hBorderColor)
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = word.translation ?: "Translation not available",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = hTeal,
-                textAlign = TextAlign.Center,
-                fontFamily = fontFamilyUi
-            )
             Spacer(modifier = Modifier.height(32.dp))
         }
     }

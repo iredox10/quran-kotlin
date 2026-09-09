@@ -16,6 +16,9 @@ import com.nur.quran.data.audio.LinkedAudioStore
 import com.nur.quran.data.audio.PlaybackSettings
 import com.nur.quran.data.audio.Reciters
 import com.nur.quran.data.audio.TimingImporter
+import com.nur.quran.data.tafsir.TafsirPackManager
+import com.nur.quran.data.words.WordPackManager
+import com.nur.quran.ui.components.audio.PackUiState
 import com.nur.quran.data.db.entities.BookmarkEntity
 import com.nur.quran.data.db.entities.ChapterEntity
 import com.nur.quran.data.db.entities.CollectionEntity
@@ -67,7 +70,9 @@ class SurahViewModel @Inject constructor(
     private val audioDownloadManager: AudioDownloadManager,
     @ApplicationContext private val context: Context,
     private val linkedAudioStore: LinkedAudioStore,
-    private val timingImporter: TimingImporter
+    private val timingImporter: TimingImporter,
+    private val tafsirPackManager: TafsirPackManager,
+    private val wordPackManager: WordPackManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<SurahUiState>(SurahUiState.Loading)
@@ -158,6 +163,71 @@ class SurahViewModel @Inject constructor(
 
     /** Linked GreenTech/quran_android surahs: reciterId → linked surah numbers. */
     val linkedState: StateFlow<Map<Int, Set<Int>>> = linkedAudioStore.linkedState
+
+    // ── Offline packs (tafsir + word translations) ─────────────────────
+    /** Tafsir packs mapped for Settings UI rows. */
+    val tafsirPacks: StateFlow<List<PackUiState>> =
+        tafsirPackManager.packStates
+            .map { states ->
+                tafsirPackManager.supported.map { (id, title) ->
+                    val s = states[id]
+                    PackUiState(
+                        id = id,
+                        title = title,
+                        downloaded = s?.downloaded ?: 0,
+                        total = s?.total ?: 114,
+                        isDownloading = s?.isDownloading == true,
+                        error = s?.error
+                    )
+                }
+            }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** Chapters with cached word translations. */
+    val wordPackCached: StateFlow<Set<Int>> =
+        wordPackManager.packStates
+            .map { states ->
+                states.filter { (_, s) -> !s.isDownloading && s.downloaded >= s.total && s.total > 0 }.keys +
+                    wordPackManager.getCachedChapters()
+            }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
+
+    val wordPackDownloading: StateFlow<Boolean> =
+        wordPackManager.packStates
+            .map { states -> states.values.any { it.isDownloading } }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    fun downloadTafsirPack(tafsirId: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try { tafsirPackManager.downloadPack(tafsirId) } catch (_: Exception) {}
+        }
+    }
+
+    fun cancelTafsirPack(tafsirId: Int) = tafsirPackManager.cancelPack(tafsirId)
+
+    fun deleteTafsirPack(tafsirId: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try { tafsirPackManager.deletePack(tafsirId) } catch (_: Exception) {}
+        }
+    }
+
+    /** Non-suspend entry for the word tooltip button; runs in its own scope. */
+    fun downloadChapterWords(chapterId: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try { wordPackManager.downloadChapterWords(chapterId) } catch (_: Exception) {}
+        }
+    }
+
+    /** Downloads word translations for every chapter missing them. */
+    fun downloadAllMissingWordPacks() {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                (1..114).filter { !wordPackManager.isChapterCached(it) }.forEach { id ->
+                    try { wordPackManager.downloadChapterWords(id) } catch (_: Exception) {}
+                }
+            } catch (_: Exception) {}
+        }
+    }
 
     private val _isDownloading = MutableStateFlow(false)
     val isDownloading: StateFlow<Boolean> = _isDownloading.asStateFlow()

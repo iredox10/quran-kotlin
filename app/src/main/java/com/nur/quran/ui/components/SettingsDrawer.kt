@@ -25,6 +25,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.nur.quran.ui.components.audio.DEFAULT_TAFSIR_PACKS
+import com.nur.quran.ui.components.audio.PackDownloadRow
+import com.nur.quran.ui.components.audio.PackUiState
+import com.nur.quran.ui.components.audio.WordPackSummaryRow
 import com.nur.quran.ui.screens.*
 import com.nur.quran.ui.viewmodels.SurahViewModel
 
@@ -74,7 +78,15 @@ fun SettingsDrawer(
     viewModel: SurahViewModel,
     onDismiss: () -> Unit,
     onLinkTree: ((Uri) -> Unit)? = null,
-    linkedSummary: String? = null
+    linkedSummary: String? = null,
+    tafsirPacks: List<PackUiState> = emptyList(),
+    onDownloadTafsir: (Int) -> Unit = {},
+    onCancelTafsir: (Int) -> Unit = {},
+    onDeleteTafsir: (Int) -> Unit = {},
+    wordCachedCount: Int = 0,
+    wordTotal: Int = 114,
+    wordIsDownloading: Boolean = false,
+    onDownloadAllWords: () -> Unit = {}
 ) {
     val arabicFontScale by viewModel.arabicFontScale.collectAsState()
     val translationFontScale by viewModel.translationFontScale.collectAsState()
@@ -501,6 +513,60 @@ fun SettingsDrawer(
                                                 Spacer(modifier = Modifier.height(6.dp))
                                                 Text(
                                                     text = "All Quran texts, translations, and audio files are stored locally for fast offline access.",
+                                                    fontSize = 12.sp,
+                                                    color = hInkMid,
+                                                    lineHeight = 18.sp
+                                                )
+                                            }
+                                        }
+
+                                        Spacer(modifier = Modifier.height(14.dp))
+
+                                        // Offline packs (tafsir + word translations).
+                                        // Host maps manager flows to PackUiState; until wired,
+                                        // the fallback catalogue below renders idle rows.
+                                        Text(
+                                            text = "OFFLINE PACKS",
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = hInkMuted,
+                                            letterSpacing = 1.sp,
+                                            modifier = Modifier.padding(vertical = 6.dp)
+                                        )
+                                        Card(
+                                            shape = RoundedCornerShape(12.dp),
+                                            colors = CardDefaults.cardColors(containerColor = hCream),
+                                            border = androidx.compose.foundation.BorderStroke(1.dp, hBoneDark)
+                                        ) {
+                                            Column(modifier = Modifier.padding(12.dp)) {
+                                                val effectiveTafsirPacks = if (tafsirPacks.isEmpty()) {
+                                                    DEFAULT_TAFSIR_PACKS.map { (id, title) ->
+                                                        PackUiState(id = id, title = title)
+                                                    }
+                                                } else tafsirPacks
+                                                effectiveTafsirPacks.forEachIndexed { index, pack ->
+                                                    PackDownloadRow(
+                                                        pack = pack,
+                                                        onDownloadClick = onDownloadTafsir,
+                                                        onCancelClick = onCancelTafsir,
+                                                        onDeleteClick = onDeleteTafsir
+                                                    )
+                                                    if (index < effectiveTafsirPacks.lastIndex) {
+                                                        Spacer(modifier = Modifier.height(8.dp))
+                                                    }
+                                                }
+                                                Spacer(modifier = Modifier.height(8.dp))
+                                                Divider(color = hBoneDark)
+                                                Spacer(modifier = Modifier.height(8.dp))
+                                                WordPackSummaryRow(
+                                                    cachedCount = wordCachedCount,
+                                                    totalCount = wordTotal,
+                                                    isDownloading = wordIsDownloading,
+                                                    onDownloadAllClick = onDownloadAllWords
+                                                )
+                                                Spacer(modifier = Modifier.height(8.dp))
+                                                Text(
+                                                    text = "Packs work fully offline once downloaded.",
                                                     fontSize = 12.sp,
                                                     color = hInkMid,
                                                     lineHeight = 18.sp

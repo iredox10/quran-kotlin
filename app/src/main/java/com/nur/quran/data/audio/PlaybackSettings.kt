@@ -15,7 +15,9 @@ data class PlaybackSettings(
     val speed: Float = 1f,
     val rangeStart: String? = null,
     val rangeEnd: String? = null,
-    val streamOnly: Boolean = false
+    val streamOnly: Boolean = false,
+    /** Web: scrollWhilePlaying — highlight and scroll to each ayah while playing. */
+    val scrollWhilePlaying: Boolean = true
 ) {
     companion object {
         const val REPEAT_INFINITE = -1

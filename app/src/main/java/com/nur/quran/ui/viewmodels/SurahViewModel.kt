@@ -277,7 +277,8 @@ class SurahViewModel @Inject constructor(
             rangeRepeat = hifdhPrefs.getInt("pb_range_repeat", 1),
             delayMs = hifdhPrefs.getLong("pb_delay_ms", 0L),
             speed = hifdhPrefs.getFloat("pb_speed", 1f),
-            streamOnly = hifdhPrefs.getBoolean("pb_stream_only", false)
+            streamOnly = hifdhPrefs.getBoolean("pb_stream_only", false),
+            scrollWhilePlaying = hifdhPrefs.getBoolean("pb_scroll_while_playing", true)
         )
     )
     val playbackSettings: StateFlow<PlaybackSettings> = _playbackSettings.asStateFlow()
@@ -289,6 +290,57 @@ class SurahViewModel @Inject constructor(
         _streamOnly.value = v
         hifdhPrefs.edit().putBoolean("pb_stream_only", v).apply()
         _playbackSettings.value = _playbackSettings.value.copy(streamOnly = v)
+    }
+
+    private val _scrollWhilePlaying = MutableStateFlow(hifdhPrefs.getBoolean("pb_scroll_while_playing", true))
+    /** Web: scrollWhilePlaying — follow/highlight each ayah while playing. */
+    val scrollWhilePlaying: StateFlow<Boolean> = _scrollWhilePlaying.asStateFlow()
+
+    fun setScrollWhilePlaying(v: Boolean) {
+        _scrollWhilePlaying.value = v
+        hifdhPrefs.edit().putBoolean("pb_scroll_while_playing", v).apply()
+        _playbackSettings.value = _playbackSettings.value.copy(scrollWhilePlaying = v)
+    }
+
+    /**
+     * Web parity: in-play settings adjust (GlobalAudioPlayer drawer). Applies
+     * speed/repeats/delay/streamOnly live without restarting; a reciter change
+     * rebuilds the current playlist preserving the active verse index.
+     */
+    fun applyInPlaySettings(
+        reciterId: Int,
+        ayahRepeat: Int,
+        rangeRepeat: Int,
+        delayMs: Long,
+        speed: Float,
+        streamOnly: Boolean
+    ) {
+        setAyahRepeat(ayahRepeat)
+        setRangeRepeat(rangeRepeat)
+        setDelayMs(delayMs)
+        setSpeed(speed)
+        setStreamOnly(streamOnly)
+        if (reciterId == _currentReciterId.value) return
+        setReciterId(reciterId)
+        val player = exoPlayer ?: return
+        if (playlist.isEmpty()) return
+        val currentKey = _playingVerseKey.value
+        val wasPlaying = player.isPlaying
+        val (playable, items) = buildPlaylistItems(playlist, playlistChapterId)
+        if (playable.isEmpty() || items.size != playable.size) return
+        val idx = playable.indexOfFirst { it.verseKey == currentKey }.coerceAtLeast(0)
+        repeatGeneration++
+        repeatDelayJob?.cancel()
+        repeatAyahCount = 0
+        repeatRangeCount = 0
+        repeatSeekPending = false
+        playlist = playable
+        lastMediaIndex = idx
+        player.setMediaItems(items)
+        player.seekTo(idx, 0L)
+        player.prepare()
+        _playingVerseKey.value = playable.getOrNull(idx)?.verseKey
+        if (wasPlaying) player.play() else player.pause()
     }
 
     /** In-flight auto-cache guards keyed `"$reciterId:$chapterId"` (fire-and-forget dedupe). */
@@ -853,6 +905,30 @@ class SurahViewModel @Inject constructor(
         _playingVerseKey.value = playable.getOrNull(idx)?.verseKey
         _isPlaying.value = true
         player.play()
+        // Gapless linked file (one surah Uri shared by all items): drive the
+        // active verse from timing data so highlight/follow stay ayah-precise.
+        maybeStartGaplessFollow(items, chapterId)
+    }
+
+    /**
+     * Starts position polling when the playlist is a single gapless surah file
+     * with imported timings; no-op for normal per-ayah playlists.
+     */
+    private fun maybeStartGaplessFollow(items: List<MediaItem>, chapterId: Int) {
+        stopFollow()
+        try {
+            val uris = items.mapNotNull { it.localConfiguration?.uri?.toString() }.distinct()
+            if (uris.size != 1) return
+            val reciterId = _currentReciterId.value
+            viewModelScope.launch {
+                val hasTimings = runCatching { timingImporter.hasTimings(reciterId, chapterId) }.getOrDefault(false)
+                if (!hasTimings) return@launch
+                startFollowAyah(chapterId) { ayah ->
+                    _playingVerseKey.value = "$chapterId:$ayah"
+                }
+            }
+        } catch (_: Exception) {
+        }
     }
 
     private fun startPlaylist(verses: List<VerseEntity>, chapterId: Int, startIndex: Int) {
@@ -882,6 +958,7 @@ class SurahViewModel @Inject constructor(
         repeatGeneration++
         repeatDelayJob?.cancel()
         hifdhDelayJob?.cancel()
+        stopFollow()
         hifdhLoopActive = false
         hifdhPlaylist = emptyList()
         hifdhAyahPlayCount = 0
@@ -923,9 +1000,7 @@ class SurahViewModel @Inject constructor(
 
     /**
      * Reciter-aware entry point: resolves the chapter verses locally, then
-     * delegates to [AudioDownloadManager.downloadChapter] with progress.
-     * Files are keyed per verse and the verse audioUrl already encodes the
-     * reciter, so [reciterId] is accepted for call-site clarity.
+     * downloads into that reciter's folder (web: per-reciter pack).
      */
     fun downloadChapterAudio(reciterId: Int, chapterId: Int) {
         if (_isDownloading.value) return
@@ -934,7 +1009,7 @@ class SurahViewModel @Inject constructor(
             _downloadProgress.value = 0f
             try {
                 val verses = repository.getVersesByChapterDirect(chapterId)
-                val ok = audioDownloadManager.downloadChapter(chapterId, verses) { done, total ->
+                val ok = audioDownloadManager.downloadChapter(reciterId, chapterId, verses) { done, total ->
                     _downloadProgress.value = if (total > 0) done.toFloat() / total else 1f
                 }
                 if (ok) {

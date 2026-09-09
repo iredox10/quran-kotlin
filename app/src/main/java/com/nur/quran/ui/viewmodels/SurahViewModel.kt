@@ -2,13 +2,17 @@ package com.nur.quran.ui.viewmodels
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.nur.quran.data.api.ApiTafsirVerse
 import com.nur.quran.data.audio.AudioDownloadManager
+import com.nur.quran.data.audio.PlaybackSettings
+import com.nur.quran.data.audio.Reciters
 import com.nur.quran.data.db.entities.BookmarkEntity
 import com.nur.quran.data.db.entities.ChapterEntity
 import com.nur.quran.data.db.entities.CollectionEntity
@@ -258,15 +262,121 @@ class SurahViewModel @Inject constructor(
     private val _isPlaying = MutableStateFlow(false)
     val isPlaying: StateFlow<Boolean> = _isPlaying.asStateFlow()
 
+    // ── Playback settings (repeat / delay / speed, persisted) ─────────────
+    private val _playbackSettings = MutableStateFlow(
+        PlaybackSettings(
+            ayahRepeat = hifdhPrefs.getInt("pb_ayah_repeat", 1),
+            rangeRepeat = hifdhPrefs.getInt("pb_range_repeat", 1),
+            delayMs = hifdhPrefs.getLong("pb_delay_ms", 0L),
+            speed = hifdhPrefs.getFloat("pb_speed", 1f)
+        )
+    )
+    val playbackSettings: StateFlow<PlaybackSettings> = _playbackSettings.asStateFlow()
+
+    // Unified repeat state for the general (non-hifdh) playlist path.
+    private var repeatAyahCount = 0
+    private var repeatRangeCount = 0
+    private var repeatDelayJob: Job? = null
+    private var repeatGeneration = 0
+    private var lastMediaIndex = -1
+    private var repeatSeekPending = false
+
+    fun setAyahRepeat(repeat: Int) {
+        _playbackSettings.value = _playbackSettings.value.copy(ayahRepeat = repeat)
+        hifdhPrefs.edit().putInt("pb_ayah_repeat", repeat).apply()
+        repeatAyahCount = 0
+    }
+
+    fun setRangeRepeat(repeat: Int) {
+        _playbackSettings.value = _playbackSettings.value.copy(rangeRepeat = repeat)
+        hifdhPrefs.edit().putInt("pb_range_repeat", repeat).apply()
+        repeatRangeCount = 0
+    }
+
+    fun setDelayMs(delayMs: Long) {
+        val safe = delayMs.coerceAtLeast(0L)
+        _playbackSettings.value = _playbackSettings.value.copy(delayMs = safe)
+        hifdhPrefs.edit().putLong("pb_delay_ms", safe).apply()
+    }
+
+    fun setSpeed(speed: Float) {
+        val safe = speed.coerceIn(0.25f, 3f)
+        _playbackSettings.value = _playbackSettings.value.copy(speed = safe)
+        hifdhPrefs.edit().putFloat("pb_speed", safe).apply()
+        exoPlayer?.setPlaybackSpeed(safe)
+    }
+
+    private fun reciterName(reciterId: Int): String = Reciters.nameOf(reciterId)
+
+    /**
+     * Local-first media item: the downloaded file URI wins, otherwise the
+     * remote URL. Null when the verse has neither.
+     */
+    private fun buildMediaItem(verse: VerseEntity, chapterId: Int): MediaItem? {
+        val uriString = audioDownloadManager.localFile(verse.verseKey)?.let { Uri.fromFile(it).toString() }
+            ?: audioDownloadManager.remoteUrl(verse)
+            ?: return null
+        val metadata = MediaMetadata.Builder()
+            .setTitle("Surah $chapterId Ayah ${verse.verseNumber}")
+            .setArtist(reciterName(_currentReciterId.value))
+            .build()
+        return MediaItem.Builder()
+            .setUri(uriString)
+            .setMediaId(verse.verseKey)
+            .setMediaMetadata(metadata)
+            .build()
+    }
+
+    /** Pairs verses with their media items so playlist indices always line up. */
+    private fun buildPlaylistItems(verses: List<VerseEntity>, chapterId: Int): Pair<List<VerseEntity>, List<MediaItem>> {
+        val pairs = verses.mapNotNull { verse -> buildMediaItem(verse, chapterId)?.let { verse to it } }
+        return pairs.map { it.first } to pairs.map { it.second }
+    }
+
+    /** Runs [action] after the configured settings delay; cancelled on pause/stop/seek. */
+    private fun scheduleRepeatDelay(action: () -> Unit) {
+        repeatDelayJob?.cancel()
+        hifdhDelayJob?.cancel()
+        val delayMs = _playbackSettings.value.delayMs
+        if (delayMs > 0) {
+            val job = viewModelScope.launch {
+                delay(delayMs)
+                action()
+            }
+            repeatDelayJob = job
+            hifdhDelayJob = job
+        } else {
+            action()
+        }
+    }
+
+    private fun rangeStartIndex(): Int {
+        val key = _playbackSettings.value.rangeStart ?: return 0
+        return playlist.indexOfFirst { it.verseKey == key }.coerceAtLeast(0)
+    }
+
+    private fun resetPlaybackState(player: ExoPlayer? = exoPlayer) {
+        _isPlaying.value = false
+        _playingVerseKey.value = null
+        player?.seekTo(0, 0L)
+        player?.pause()
+    }
+
     private val playerListener = object : Player.Listener {
         override fun onIsPlayingChanged(playing: Boolean) {
             _isPlaying.value = playing
         }
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-            val index = exoPlayer?.currentMediaItemIndex ?: return
+            val player = exoPlayer ?: return
+            val index = player.currentMediaItemIndex
             val list = if (hifdhLoopActive) hifdhPlaylist else playlist
             _playingVerseKey.value = list.getOrNull(index)?.verseKey
+            if (hifdhLoopActive) {
+                lastMediaIndex = index
+            } else {
+                handlePlaylistTransition(player, index, reason)
+            }
         }
 
         override fun onPlaybackStateChanged(playbackState: Int) {
@@ -274,18 +384,103 @@ class SurahViewModel @Inject constructor(
                 if (hifdhLoopActive) {
                     handleHifdhChunkEnded()
                 } else {
-                    _isPlaying.value = false
-                    _playingVerseKey.value = null
-                    exoPlayer?.seekTo(0, 0L)
-                    exoPlayer?.pause()
+                    handlePlaylistEnded()
                 }
             }
         }
     }
 
+    /**
+     * Per-ayah repeat for the general playlist: when ExoPlayer auto-advances,
+     * replay the finished ayah until [PlaybackSettings.ayahRepeat] is reached
+     * (-1 = infinite), honouring [PlaybackSettings.delayMs] between plays.
+     */
+    private fun handlePlaylistTransition(player: ExoPlayer, index: Int, reason: Int) {
+        if (repeatSeekPending) {
+            repeatSeekPending = false
+            lastMediaIndex = index
+            return
+        }
+        if (reason != Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
+            // Manual seek / playlist change: drop pending repeats.
+            repeatGeneration++
+            repeatDelayJob?.cancel()
+            repeatAyahCount = 0
+            lastMediaIndex = index
+            return
+        }
+        val finishedIdx = lastMediaIndex
+        lastMediaIndex = index
+        val ayahRepeat = _playbackSettings.value.ayahRepeat
+        if (finishedIdx !in playlist.indices || finishedIdx == index) return
+        if (ayahRepeat != -1 && repeatAyahCount + 1 >= ayahRepeat) {
+            repeatAyahCount = 0
+            return
+        }
+        if (ayahRepeat != -1) repeatAyahCount++
+        repeatSeekPending = true
+        lastMediaIndex = finishedIdx
+        _playingVerseKey.value = playlist.getOrNull(finishedIdx)?.verseKey
+        val gen = repeatGeneration
+        player.pause()
+        player.seekTo(finishedIdx, 0L)
+        scheduleRepeatDelay {
+            if (gen != repeatGeneration) return@scheduleRepeatDelay
+            player.seekTo(finishedIdx, 0L)
+            player.play()
+        }
+    }
+
+    /**
+     * End-of-playlist repeat for the general path: final-ayah repeat first,
+     * then loop back to the range start while [PlaybackSettings.rangeRepeat]
+     * allows (-1 = infinite). With 1/1 settings this is the plain stop.
+     */
+    private fun handlePlaylistEnded() {
+        val player = exoPlayer ?: return
+        if (playlist.isEmpty()) {
+            resetPlaybackState(player)
+            return
+        }
+        val settings = _playbackSettings.value
+        val lastIdx = playlist.size - 1
+        val endedIdx = player.currentMediaItemIndex.coerceIn(0, lastIdx)
+        // 1) Final ayah repeat.
+        if (settings.ayahRepeat == -1 || repeatAyahCount + 1 < settings.ayahRepeat) {
+            if (settings.ayahRepeat != -1) repeatAyahCount++
+            val gen = repeatGeneration
+            player.pause()
+            player.seekTo(endedIdx, 0L)
+            _playingVerseKey.value = playlist.getOrNull(endedIdx)?.verseKey
+            scheduleRepeatDelay {
+                if (gen != repeatGeneration) return@scheduleRepeatDelay
+                player.play()
+            }
+            return
+        }
+        repeatAyahCount = 0
+        // 2) Range loop back to the range start (whole playlist when unset).
+        if (settings.rangeRepeat == -1 || repeatRangeCount + 1 < settings.rangeRepeat) {
+            if (settings.rangeRepeat != -1) repeatRangeCount++
+            val startIdx = rangeStartIndex()
+            val gen = repeatGeneration
+            player.pause()
+            player.seekTo(startIdx, 0L)
+            _playingVerseKey.value = playlist.getOrNull(startIdx)?.verseKey
+            scheduleRepeatDelay {
+                if (gen != repeatGeneration) return@scheduleRepeatDelay
+                player.play()
+            }
+            return
+        }
+        repeatRangeCount = 0
+        resetPlaybackState(player)
+    }
+
     private fun getOrCreatePlayer(): ExoPlayer {
         return exoPlayer ?: ExoPlayer.Builder(context).build().also { player ->
             player.addListener(playerListener)
+            player.setPlaybackSpeed(_playbackSettings.value.speed)
             exoPlayer = player
         }
     }
@@ -325,6 +520,7 @@ class SurahViewModel @Inject constructor(
         val player = getOrCreatePlayer()
         if (player.isPlaying) {
             hifdhDelayJob?.cancel()
+            repeatDelayJob?.cancel()
             player.pause()
         } else {
             if (player.playbackState == Player.STATE_ENDED && player.currentMediaItemIndex >= 0) {
@@ -336,7 +532,7 @@ class SurahViewModel @Inject constructor(
 
     /** Web: Memorization.jsx toggleAudio — play the visible hifdh chunk with repeat/delay/range options. */
     fun playPauseHifdhChunk(verses: List<VerseEntity>, chapterId: Int, ayahRepeat: Int, delaySec: Int, rangeLoop: Int) {
-        val playable = verses.filter { audioDownloadManager.playableSource(it) != null }
+        val (playable, items) = buildPlaylistItems(verses, chapterId)
         if (playable.isEmpty()) return
         val player = getOrCreatePlayer()
         val sameChunk = hifdhLoopActive && playlistChapterId == chapterId &&
@@ -353,7 +549,25 @@ class SurahViewModel @Inject constructor(
         hifdhRangeCount = 0
         hifdhPlaylist = playable
         playlistChapterId = chapterId
-        player.setMediaItems(playable.map { MediaItem.fromUri(audioDownloadManager.playableSource(it)!!) })
+        // Mirror into the shared settings/counters so the listener stays consistent.
+        _playbackSettings.value = _playbackSettings.value.copy(
+            ayahRepeat = ayahRepeat,
+            rangeRepeat = rangeLoop,
+            delayMs = delaySec * 1000L
+        )
+        hifdhPrefs.edit()
+            .putInt("pb_ayah_repeat", ayahRepeat)
+            .putInt("pb_range_repeat", rangeLoop)
+            .putLong("pb_delay_ms", delaySec * 1000L)
+            .apply()
+        repeatGeneration++
+        repeatDelayJob?.cancel()
+        repeatAyahCount = 0
+        repeatRangeCount = 0
+        repeatSeekPending = false
+        lastMediaIndex = 0
+        player.setPlaybackSpeed(_playbackSettings.value.speed)
+        player.setMediaItems(items)
         player.prepare()
         player.play()
     }
@@ -361,7 +575,7 @@ class SurahViewModel @Inject constructor(
     /** Web: Memorization.jsx effect on currentVerseIndex — keep playing, follow the visible chunk. */
     fun followHifdhChunk(verses: List<VerseEntity>, chapterId: Int, ayahRepeat: Int, delaySec: Int, rangeLoop: Int) {
         if (!hifdhLoopActive || !_isPlaying.value) return
-        val playable = verses.filter { audioDownloadManager.playableSource(it) != null }
+        val (playable, items) = buildPlaylistItems(verses, chapterId)
         if (playable.isEmpty()) return
         if (hifdhPlaylist.map { it.verseKey } == playable.map { it.verseKey }) return
         val player = getOrCreatePlayer()
@@ -372,7 +586,19 @@ class SurahViewModel @Inject constructor(
         hifdhRangeLoop = rangeLoop
         hifdhAyahPlayCount = 0
         hifdhRangeCount = 0
-        player.setMediaItems(playable.map { MediaItem.fromUri(audioDownloadManager.playableSource(it)!!) })
+        _playbackSettings.value = _playbackSettings.value.copy(
+            ayahRepeat = ayahRepeat,
+            rangeRepeat = rangeLoop,
+            delayMs = delaySec * 1000L
+        )
+        repeatGeneration++
+        repeatDelayJob?.cancel()
+        repeatAyahCount = 0
+        repeatRangeCount = 0
+        repeatSeekPending = false
+        lastMediaIndex = 0
+        player.setPlaybackSpeed(_playbackSettings.value.speed)
+        player.setMediaItems(items)
         player.prepare()
         player.play()
     }
@@ -420,24 +646,64 @@ class SurahViewModel @Inject constructor(
         }
     }
 
-    private fun startPlaylist(verses: List<VerseEntity>, chapterId: Int, startIndex: Int) {
-        val playable = verses.filter { audioDownloadManager.playableSource(it) != null }
+    /** Shared local-first starter: metadata items, repeat reset, stored speed. */
+    private fun startPlayback(verses: List<VerseEntity>, chapterId: Int, startIndex: Int) {
+        val (playable, items) = buildPlaylistItems(verses, chapterId)
         if (playable.isEmpty()) return
+        hifdhLoopActive = false
+        repeatGeneration++
+        repeatDelayJob?.cancel()
+        hifdhDelayJob?.cancel()
+        hifdhAyahPlayCount = 0
+        hifdhRangeCount = 0
+        repeatAyahCount = 0
+        repeatRangeCount = 0
+        repeatSeekPending = false
         playlist = playable
         playlistChapterId = chapterId
         val player = getOrCreatePlayer()
-        player.setMediaItems(playable.map { MediaItem.fromUri(audioDownloadManager.playableSource(it)!!) })
-        player.seekTo(startIndex.coerceIn(0, playable.size - 1), 0L)
+        player.setPlaybackSpeed(_playbackSettings.value.speed)
+        player.setMediaItems(items)
+        val idx = startIndex.coerceIn(0, playable.size - 1)
+        lastMediaIndex = idx
+        player.seekTo(idx, 0L)
         player.prepare()
         player.play()
     }
 
+    private fun startPlaylist(verses: List<VerseEntity>, chapterId: Int, startIndex: Int) {
+        _playbackSettings.value = _playbackSettings.value.copy(rangeStart = null, rangeEnd = null)
+        startPlayback(verses, chapterId, startIndex)
+    }
+
+    /** Plays a closed verse range with the configured ayah/range repeat applied. */
+    fun playRange(verses: List<VerseEntity>, chapterId: Int, startVerseKey: String, endVerseKey: String) {
+        if (verses.isEmpty()) return
+        val fromKey = verses.indexOfFirst { it.verseKey == startVerseKey }.coerceAtLeast(0)
+        val toKey = verses.indexOfFirst { it.verseKey == endVerseKey }.takeIf { it >= 0 } ?: (verses.size - 1)
+        val from = minOf(fromKey, toKey)
+        val to = maxOf(fromKey, toKey)
+        val sub = verses.subList(from, to + 1)
+        if (sub.isEmpty()) return
+        _playbackSettings.value = _playbackSettings.value.copy(
+            rangeStart = sub.first().verseKey,
+            rangeEnd = sub.last().verseKey
+        )
+        startPlayback(sub, chapterId, 0)
+    }
+
     fun stopPlaying() {
+        repeatGeneration++
+        repeatDelayJob?.cancel()
         hifdhDelayJob?.cancel()
         hifdhLoopActive = false
         hifdhPlaylist = emptyList()
         hifdhAyahPlayCount = 0
         hifdhRangeCount = 0
+        repeatAyahCount = 0
+        repeatRangeCount = 0
+        repeatSeekPending = false
+        lastMediaIndex = -1
         exoPlayer?.stop()
         exoPlayer?.clearMediaItems()
         playlist = emptyList()
@@ -447,13 +713,48 @@ class SurahViewModel @Inject constructor(
     }
 
     // ── Download ────────────────────────────────────────────────────────
+    private val _downloadProgress = MutableStateFlow(0f)
+    val downloadProgress: StateFlow<Float> = _downloadProgress.asStateFlow()
+
     fun downloadChapterAudio(chapterId: Int, verses: List<VerseEntity>) {
         if (_isDownloading.value) return
         viewModelScope.launch {
             _isDownloading.value = true
+            _downloadProgress.value = 0f
             try {
-                val ok = audioDownloadManager.downloadChapter(chapterId, verses)
-                if (ok) _downloadedChapters.value = audioDownloadManager.getDownloadedChapters()
+                val ok = audioDownloadManager.downloadChapter(chapterId, verses) { done, total ->
+                    _downloadProgress.value = if (total > 0) done.toFloat() / total else 1f
+                }
+                if (ok) {
+                    _downloadedChapters.value = audioDownloadManager.getDownloadedChapters()
+                    _downloadProgress.value = 1f
+                }
+            } finally {
+                _isDownloading.value = false
+            }
+        }
+    }
+
+    /**
+     * Reciter-aware entry point: resolves the chapter verses locally, then
+     * delegates to [AudioDownloadManager.downloadChapter] with progress.
+     * Files are keyed per verse and the verse audioUrl already encodes the
+     * reciter, so [reciterId] is accepted for call-site clarity.
+     */
+    fun downloadChapterAudio(reciterId: Int, chapterId: Int) {
+        if (_isDownloading.value) return
+        viewModelScope.launch {
+            _isDownloading.value = true
+            _downloadProgress.value = 0f
+            try {
+                val verses = repository.getVersesByChapterDirect(chapterId)
+                val ok = audioDownloadManager.downloadChapter(chapterId, verses) { done, total ->
+                    _downloadProgress.value = if (total > 0) done.toFloat() / total else 1f
+                }
+                if (ok) {
+                    _downloadedChapters.value = audioDownloadManager.getDownloadedChapters()
+                    _downloadProgress.value = 1f
+                }
             } finally {
                 _isDownloading.value = false
             }

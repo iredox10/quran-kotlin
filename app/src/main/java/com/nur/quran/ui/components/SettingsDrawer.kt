@@ -1,5 +1,8 @@
 package com.nur.quran.ui.components
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -69,7 +72,9 @@ private val ARABIC_FONT_OPTIONS = listOf(
 @Composable
 fun SettingsDrawer(
     viewModel: SurahViewModel,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onLinkTree: ((Uri) -> Unit)? = null,
+    linkedSummary: String? = null
 ) {
     val arabicFontScale by viewModel.arabicFontScale.collectAsState()
     val translationFontScale by viewModel.translationFontScale.collectAsState()
@@ -86,6 +91,15 @@ fun SettingsDrawer(
     var activeSubView by remember { mutableStateOf<String?>(null) }
     var previewingReciterId by remember { mutableStateOf<Int?>(null) }
     var isVisible by remember { mutableStateOf(false) }
+
+    // Link-in-place folder picker (GreenTech/quran_android layout).
+    // Registered unconditionally so composition stays stable; the Link
+    // button itself only renders when [onLinkTree] is provided.
+    val linkTreeLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        if (uri != null) onLinkTree?.invoke(uri)
+    }
 
     LaunchedEffect(Unit) {
         isVisible = true
@@ -491,6 +505,72 @@ fun SettingsDrawer(
                                                     color = hInkMid,
                                                     lineHeight = 18.sp
                                                 )
+                                            }
+                                        }
+
+                                        Spacer(modifier = Modifier.height(14.dp))
+
+                                        // Linked Audio Section (link-in-place, no re-download)
+                                        Text(
+                                            text = "LINKED AUDIO",
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = hInkMuted,
+                                            letterSpacing = 1.sp,
+                                            modifier = Modifier.padding(vertical = 6.dp)
+                                        )
+                                        Card(
+                                            shape = RoundedCornerShape(12.dp),
+                                            colors = CardDefaults.cardColors(containerColor = hCream),
+                                            border = androidx.compose.foundation.BorderStroke(1.dp, hBoneDark)
+                                        ) {
+                                            Column(modifier = Modifier.padding(16.dp)) {
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                                        Icon(imageVector = NurIcons.Volume2, contentDescription = null, tint = hGold, modifier = Modifier.size(16.dp))
+                                                        Spacer(modifier = Modifier.width(8.dp))
+                                                        Text("Linked Audio", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = hInk)
+                                                    }
+                                                    if (linkedSummary != null) {
+                                                        Surface(
+                                                            shape = RoundedCornerShape(100),
+                                                            color = hGreen.copy(alpha = 0.15f)
+                                                        ) {
+                                                            Text(
+                                                                text = linkedSummary,
+                                                                color = hGreen,
+                                                                fontSize = 10.sp,
+                                                                fontWeight = FontWeight.Bold,
+                                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                                Spacer(modifier = Modifier.height(6.dp))
+                                                Text(
+                                                    text = "Link GreenTech/quran_android folders (001..114.mp3 + timings.db) — no re-download.",
+                                                    fontSize = 12.sp,
+                                                    color = hInkMid,
+                                                    lineHeight = 18.sp
+                                                )
+                                                if (onLinkTree != null) {
+                                                    Spacer(modifier = Modifier.height(10.dp))
+                                                    Button(
+                                                        onClick = { linkTreeLauncher.launch(null) },
+                                                        colors = ButtonDefaults.buttonColors(containerColor = hGold)
+                                                    ) {
+                                                        Text(
+                                                            text = "Link folder",
+                                                            color = Color.White,
+                                                            fontWeight = FontWeight.Bold,
+                                                            fontSize = 13.sp
+                                                        )
+                                                    }
+                                                }
                                             }
                                         }
                                     }

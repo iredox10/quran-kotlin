@@ -152,4 +152,17 @@ interface QuranDao {
     // Latest bookmark (web app shows a single active bookmark card on Home)
     @Query("SELECT * FROM bookmarks ORDER BY timestamp DESC LIMIT 1")
     fun getLatestBookmark(): Flow<BookmarkEntity?>
+
+    // Linked timings (gapless pack timings.db import)
+    @Query("SELECT * FROM linked_timings WHERE reciterId = :r AND sura = :s ORDER BY ayah")
+    suspend fun getTimings(r: Int, s: Int): List<LinkedTimingEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTimings(rows: List<LinkedTimingEntity>)
+
+    @Query("DELETE FROM linked_timings WHERE reciterId = :r")
+    suspend fun clearTimings(r: Int)
+
+    @Query("SELECT COUNT(*) FROM linked_timings WHERE reciterId = :r AND sura = :s")
+    suspend fun timingCount(r: Int, s: Int): Int
 }

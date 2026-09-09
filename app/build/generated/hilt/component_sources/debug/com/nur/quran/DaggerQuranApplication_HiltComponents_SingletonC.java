@@ -11,6 +11,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.gson.Gson;
 import com.nur.quran.data.api.QuranApi;
 import com.nur.quran.data.audio.AudioDownloadManager;
+import com.nur.quran.data.audio.AudioPlayerHolder;
 import com.nur.quran.data.db.QuranDatabase;
 import com.nur.quran.data.db.dao.QuranDao;
 import com.nur.quran.data.repository.QuranRepository;
@@ -19,6 +20,8 @@ import com.nur.quran.di.AppModule_ProvideOkHttpClientFactory;
 import com.nur.quran.di.AppModule_ProvideQuranApiFactory;
 import com.nur.quran.di.AppModule_ProvideQuranDaoFactory;
 import com.nur.quran.di.AppModule_ProvideQuranDatabaseFactory;
+import com.nur.quran.services.QuranAudioService;
+import com.nur.quran.services.QuranAudioService_MembersInjector;
 import com.nur.quran.ui.viewmodels.HomeViewModel;
 import com.nur.quran.ui.viewmodels.HomeViewModel_HiltModules_KeyModule_ProvideFactory;
 import com.nur.quran.ui.viewmodels.PlannerViewModel;
@@ -543,6 +546,16 @@ public final class DaggerQuranApplication_HiltComponents_SingletonC {
 
 
     }
+
+    @Override
+    public void injectQuranAudioService(QuranAudioService quranAudioService) {
+      injectQuranAudioService2(quranAudioService);
+    }
+
+    private QuranAudioService injectQuranAudioService2(QuranAudioService instance) {
+      QuranAudioService_MembersInjector.injectAudioPlayerHolder(instance, singletonCImpl.audioPlayerHolderProvider.get());
+      return instance;
+    }
   }
 
   private static final class SingletonCImpl extends QuranApplication_HiltComponents.SingletonC {
@@ -564,6 +577,8 @@ public final class DaggerQuranApplication_HiltComponents_SingletonC {
 
     private Provider<AudioDownloadManager> audioDownloadManagerProvider;
 
+    private Provider<AudioPlayerHolder> audioPlayerHolderProvider;
+
     private SingletonCImpl(ApplicationContextModule applicationContextModuleParam) {
       this.applicationContextModule = applicationContextModuleParam;
       initialize(applicationContextModuleParam);
@@ -579,6 +594,7 @@ public final class DaggerQuranApplication_HiltComponents_SingletonC {
       this.provideGsonProvider = DoubleCheck.provider(new SwitchingProvider<Gson>(singletonCImpl, 5));
       this.quranRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<QuranRepository>(singletonCImpl, 0));
       this.audioDownloadManagerProvider = DoubleCheck.provider(new SwitchingProvider<AudioDownloadManager>(singletonCImpl, 6));
+      this.audioPlayerHolderProvider = DoubleCheck.provider(new SwitchingProvider<AudioPlayerHolder>(singletonCImpl, 7));
     }
 
     @Override
@@ -634,6 +650,9 @@ public final class DaggerQuranApplication_HiltComponents_SingletonC {
 
           case 6: // com.nur.quran.data.audio.AudioDownloadManager 
           return (T) new AudioDownloadManager(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
+
+          case 7: // com.nur.quran.data.audio.AudioPlayerHolder 
+          return (T) new AudioPlayerHolder(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
 
           default: throw new AssertionError(id);
         }

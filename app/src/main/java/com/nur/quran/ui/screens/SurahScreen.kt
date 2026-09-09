@@ -296,6 +296,9 @@ fun SurahScreen(
     val bookmarkedVerses by viewModel.bookmarkedVerses.collectAsState()
     val allChapters by viewModel.allChapters.collectAsState()
     val downloadedChapters by viewModel.downloadedChapters.collectAsState()
+    // Link-in-place state (reciterId -> linked surah ids). Provided by the
+    // audio-link agent; the build fixer aligns the ViewModel property.
+    val linkedMap by viewModel.linkedState.collectAsState()
     val isDownloading by viewModel.isDownloading.collectAsState()
     val collections by viewModel.collections.collectAsState()
     val collectionItems by viewModel.collectionItems.collectAsState()
@@ -697,6 +700,8 @@ fun SurahScreen(
                         contentPadding = PaddingValues(bottom = 120.dp)
                     ) {
                         item {
+                            // Linked (link-in-place) surah count for the current reciter.
+                            val linkedCount = linkedMap[currentReciterId]?.size ?: 0
                             SurahHeader(
                                 chapter = chapter,
                                 versesStartPage = verses.firstOrNull()?.pageNumber ?: 0,
@@ -706,8 +711,10 @@ fun SurahScreen(
                                 reciterName = Reciters.nameOf(currentReciterId),
                                 downloadedCount = if (chapter.id in downloadedChapters) verses.size else 0,
                                 totalCount = verses.size,
+                                linkedCount = linkedCount,
                                 onPlayClick = { showAudioSetupDialog = true },
-                                onDownloadClick = { viewModel.downloadChapterAudio(chapter.id, verses) }
+                                onDownloadClick = { viewModel.downloadChapterAudio(chapter.id, verses) },
+                                onRelinkClick = { showSettingsDrawer = true }
                             )
                         }
 
@@ -1693,8 +1700,10 @@ fun SurahHeader(
     reciterName: String = "",
     downloadedCount: Int = 0,
     totalCount: Int = 0,
+    linkedCount: Int = 0,
     onPlayClick: () -> Unit,
-    onDownloadClick: () -> Unit
+    onDownloadClick: () -> Unit,
+    onRelinkClick: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -1839,7 +1848,9 @@ fun SurahHeader(
         if (reciterName.isNotBlank()) {
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = if (totalCount > 0) {
+                text = if (linkedCount > 0) {
+                    "$reciterName • Linked • $linkedCount/114"
+                } else if (totalCount > 0) {
                     "$reciterName • $downloadedCount/$totalCount offline"
                 } else {
                     reciterName
@@ -1851,6 +1862,17 @@ fun SurahHeader(
                 letterSpacing = 0.5.sp,
                 textAlign = TextAlign.Center
             )
+            if (linkedCount > 0) {
+                TextButton(onClick = onRelinkClick) {
+                    Text(
+                        text = "Re-link",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = hGold,
+                        fontFamily = fontFamilyMono
+                    )
+                }
+            }
         }
     }
 }

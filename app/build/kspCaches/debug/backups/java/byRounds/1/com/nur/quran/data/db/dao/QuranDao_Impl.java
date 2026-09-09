@@ -19,6 +19,7 @@ import com.nur.quran.data.db.entities.BookmarkEntity;
 import com.nur.quran.data.db.entities.ChapterEntity;
 import com.nur.quran.data.db.entities.CollectionEntity;
 import com.nur.quran.data.db.entities.CollectionItemEntity;
+import com.nur.quran.data.db.entities.LinkedTimingEntity;
 import com.nur.quran.data.db.entities.ReadingSessionEntity;
 import com.nur.quran.data.db.entities.RecentlyReadEntity;
 import com.nur.quran.data.db.entities.VerseEntity;
@@ -63,6 +64,8 @@ public final class QuranDao_Impl implements QuranDao {
 
   private final EntityInsertionAdapter<RecentlyReadEntity> __insertionAdapterOfRecentlyReadEntity;
 
+  private final EntityInsertionAdapter<LinkedTimingEntity> __insertionAdapterOfLinkedTimingEntity;
+
   private final SharedSQLiteStatement __preparedStmtOfDeleteBookmark;
 
   private final SharedSQLiteStatement __preparedStmtOfDeleteAllBookmarks;
@@ -76,6 +79,8 @@ public final class QuranDao_Impl implements QuranDao {
   private final SharedSQLiteStatement __preparedStmtOfPruneReadingSessions;
 
   private final SharedSQLiteStatement __preparedStmtOfPruneRecentlyRead;
+
+  private final SharedSQLiteStatement __preparedStmtOfClearTimings;
 
   public QuranDao_Impl(@NonNull final RoomDatabase __db) {
     this.__db = __db;
@@ -297,6 +302,22 @@ public final class QuranDao_Impl implements QuranDao {
         statement.bindLong(4, entity.getTimestamp());
       }
     };
+    this.__insertionAdapterOfLinkedTimingEntity = new EntityInsertionAdapter<LinkedTimingEntity>(__db) {
+      @Override
+      @NonNull
+      protected String createQuery() {
+        return "INSERT OR REPLACE INTO `linked_timings` (`reciterId`,`sura`,`ayah`,`startMs`) VALUES (?,?,?,?)";
+      }
+
+      @Override
+      protected void bind(@NonNull final SupportSQLiteStatement statement,
+          @NonNull final LinkedTimingEntity entity) {
+        statement.bindLong(1, entity.getReciterId());
+        statement.bindLong(2, entity.getSura());
+        statement.bindLong(3, entity.getAyah());
+        statement.bindLong(4, entity.getStartMs());
+      }
+    };
     this.__preparedStmtOfDeleteBookmark = new SharedSQLiteStatement(__db) {
       @Override
       @NonNull
@@ -350,6 +371,14 @@ public final class QuranDao_Impl implements QuranDao {
       @NonNull
       public String createQuery() {
         final String _query = "DELETE FROM recently_read WHERE chapterId NOT IN (SELECT chapterId FROM recently_read ORDER BY timestamp DESC LIMIT 5)";
+        return _query;
+      }
+    };
+    this.__preparedStmtOfClearTimings = new SharedSQLiteStatement(__db) {
+      @Override
+      @NonNull
+      public String createQuery() {
+        final String _query = "DELETE FROM linked_timings WHERE reciterId = ?";
         return _query;
       }
     };
@@ -517,6 +546,25 @@ public final class QuranDao_Impl implements QuranDao {
         __db.beginTransaction();
         try {
           __insertionAdapterOfRecentlyReadEntity.insert(item);
+          __db.setTransactionSuccessful();
+          return Unit.INSTANCE;
+        } finally {
+          __db.endTransaction();
+        }
+      }
+    }, $completion);
+  }
+
+  @Override
+  public Object insertTimings(final List<LinkedTimingEntity> rows,
+      final Continuation<? super Unit> $completion) {
+    return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
+      @Override
+      @NonNull
+      public Unit call() throws Exception {
+        __db.beginTransaction();
+        try {
+          __insertionAdapterOfLinkedTimingEntity.insert(rows);
           __db.setTransactionSuccessful();
           return Unit.INSTANCE;
         } finally {
@@ -708,6 +756,31 @@ public final class QuranDao_Impl implements QuranDao {
           }
         } finally {
           __preparedStmtOfPruneRecentlyRead.release(_stmt);
+        }
+      }
+    }, $completion);
+  }
+
+  @Override
+  public Object clearTimings(final int r, final Continuation<? super Unit> $completion) {
+    return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
+      @Override
+      @NonNull
+      public Unit call() throws Exception {
+        final SupportSQLiteStatement _stmt = __preparedStmtOfClearTimings.acquire();
+        int _argIndex = 1;
+        _stmt.bindLong(_argIndex, r);
+        try {
+          __db.beginTransaction();
+          try {
+            _stmt.executeUpdateDelete();
+            __db.setTransactionSuccessful();
+            return Unit.INSTANCE;
+          } finally {
+            __db.endTransaction();
+          }
+        } finally {
+          __preparedStmtOfClearTimings.release(_stmt);
         }
       }
     }, $completion);
@@ -1877,6 +1950,82 @@ public final class QuranDao_Impl implements QuranDao {
         _statement.release();
       }
     });
+  }
+
+  @Override
+  public Object getTimings(final int r, final int s,
+      final Continuation<? super List<LinkedTimingEntity>> $completion) {
+    final String _sql = "SELECT * FROM linked_timings WHERE reciterId = ? AND sura = ? ORDER BY ayah";
+    final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 2);
+    int _argIndex = 1;
+    _statement.bindLong(_argIndex, r);
+    _argIndex = 2;
+    _statement.bindLong(_argIndex, s);
+    final CancellationSignal _cancellationSignal = DBUtil.createCancellationSignal();
+    return CoroutinesRoom.execute(__db, false, _cancellationSignal, new Callable<List<LinkedTimingEntity>>() {
+      @Override
+      @NonNull
+      public List<LinkedTimingEntity> call() throws Exception {
+        final Cursor _cursor = DBUtil.query(__db, _statement, false, null);
+        try {
+          final int _cursorIndexOfReciterId = CursorUtil.getColumnIndexOrThrow(_cursor, "reciterId");
+          final int _cursorIndexOfSura = CursorUtil.getColumnIndexOrThrow(_cursor, "sura");
+          final int _cursorIndexOfAyah = CursorUtil.getColumnIndexOrThrow(_cursor, "ayah");
+          final int _cursorIndexOfStartMs = CursorUtil.getColumnIndexOrThrow(_cursor, "startMs");
+          final List<LinkedTimingEntity> _result = new ArrayList<LinkedTimingEntity>(_cursor.getCount());
+          while (_cursor.moveToNext()) {
+            final LinkedTimingEntity _item;
+            final int _tmpReciterId;
+            _tmpReciterId = _cursor.getInt(_cursorIndexOfReciterId);
+            final int _tmpSura;
+            _tmpSura = _cursor.getInt(_cursorIndexOfSura);
+            final int _tmpAyah;
+            _tmpAyah = _cursor.getInt(_cursorIndexOfAyah);
+            final long _tmpStartMs;
+            _tmpStartMs = _cursor.getLong(_cursorIndexOfStartMs);
+            _item = new LinkedTimingEntity(_tmpReciterId,_tmpSura,_tmpAyah,_tmpStartMs);
+            _result.add(_item);
+          }
+          return _result;
+        } finally {
+          _cursor.close();
+          _statement.release();
+        }
+      }
+    }, $completion);
+  }
+
+  @Override
+  public Object timingCount(final int r, final int s,
+      final Continuation<? super Integer> $completion) {
+    final String _sql = "SELECT COUNT(*) FROM linked_timings WHERE reciterId = ? AND sura = ?";
+    final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 2);
+    int _argIndex = 1;
+    _statement.bindLong(_argIndex, r);
+    _argIndex = 2;
+    _statement.bindLong(_argIndex, s);
+    final CancellationSignal _cancellationSignal = DBUtil.createCancellationSignal();
+    return CoroutinesRoom.execute(__db, false, _cancellationSignal, new Callable<Integer>() {
+      @Override
+      @NonNull
+      public Integer call() throws Exception {
+        final Cursor _cursor = DBUtil.query(__db, _statement, false, null);
+        try {
+          final Integer _result;
+          if (_cursor.moveToFirst()) {
+            final int _tmp;
+            _tmp = _cursor.getInt(0);
+            _result = _tmp;
+          } else {
+            _result = 0;
+          }
+          return _result;
+        } finally {
+          _cursor.close();
+          _statement.release();
+        }
+      }
+    }, $completion);
   }
 
   @Override

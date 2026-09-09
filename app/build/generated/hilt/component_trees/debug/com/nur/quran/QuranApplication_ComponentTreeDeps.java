@@ -20,6 +20,7 @@ import dagger.hilt.processor.internal.definecomponent.codegen._dagger_hilt_compo
 import hilt_aggregated_deps._com_nur_quran_MainActivity_GeneratedInjector;
 import hilt_aggregated_deps._com_nur_quran_QuranApplication_GeneratedInjector;
 import hilt_aggregated_deps._com_nur_quran_di_AppModule;
+import hilt_aggregated_deps._com_nur_quran_services_QuranAudioService_GeneratedInjector;
 import hilt_aggregated_deps._com_nur_quran_ui_viewmodels_HomeViewModel_HiltModules_BindsModule;
 import hilt_aggregated_deps._com_nur_quran_ui_viewmodels_HomeViewModel_HiltModules_KeyModule;
 import hilt_aggregated_deps._com_nur_quran_ui_viewmodels_PlannerViewModel_HiltModules_BindsModule;
@@ -69,6 +70,7 @@ import hilt_aggregated_deps._dagger_hilt_android_internal_modules_HiltWrapper_Ac
         _com_nur_quran_MainActivity_GeneratedInjector.class,
         _com_nur_quran_QuranApplication_GeneratedInjector.class,
         _com_nur_quran_di_AppModule.class,
+        _com_nur_quran_services_QuranAudioService_GeneratedInjector.class,
         _com_nur_quran_ui_viewmodels_HomeViewModel_HiltModules_BindsModule.class,
         _com_nur_quran_ui_viewmodels_HomeViewModel_HiltModules_KeyModule.class,
         _com_nur_quran_ui_viewmodels_PlannerViewModel_HiltModules_BindsModule.class,

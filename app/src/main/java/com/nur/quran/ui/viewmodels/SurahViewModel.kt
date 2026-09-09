@@ -3,6 +3,7 @@ package com.nur.quran.ui.viewmodels
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
@@ -11,8 +12,10 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.nur.quran.data.api.ApiTafsirVerse
 import com.nur.quran.data.audio.AudioDownloadManager
+import com.nur.quran.data.audio.LinkedAudioStore
 import com.nur.quran.data.audio.PlaybackSettings
 import com.nur.quran.data.audio.Reciters
+import com.nur.quran.data.audio.TimingImporter
 import com.nur.quran.data.db.entities.BookmarkEntity
 import com.nur.quran.data.db.entities.ChapterEntity
 import com.nur.quran.data.db.entities.CollectionEntity
@@ -62,7 +65,9 @@ sealed interface TafsirUiState {
 class SurahViewModel @Inject constructor(
     private val repository: QuranRepository,
     private val audioDownloadManager: AudioDownloadManager,
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val linkedAudioStore: LinkedAudioStore,
+    private val timingImporter: TimingImporter
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<SurahUiState>(SurahUiState.Loading)
@@ -309,11 +314,22 @@ class SurahViewModel @Inject constructor(
     private fun reciterName(reciterId: Int): String = Reciters.nameOf(reciterId)
 
     /**
-     * Local-first media item: the downloaded file URI wins, otherwise the
-     * remote URL. Null when the verse has neither.
+     * Local-first media item: the linked gapless file URI wins, then the
+     * downloaded file URI, otherwise the remote URL.
+     * Null when the verse has neither.
      */
     private fun buildMediaItem(verse: VerseEntity, chapterId: Int): MediaItem? {
-        val uriString = audioDownloadManager.localFile(verse.verseKey)?.let { Uri.fromFile(it).toString() }
+        // Linked gapless fast path: synchronous prefs check only; the detailed
+        // timing check happens in the seek path (seekToAyah / getAyahAtPosition).
+        val linkedUriString: String? = try {
+            if (linkedAudioStore.isLinked(_currentReciterId.value, chapterId)) {
+                linkedUriSync(_currentReciterId.value, chapterId)?.toString()
+            } else null
+        } catch (_: Exception) {
+            null
+        }
+        val uriString = linkedUriString
+            ?: audioDownloadManager.localFile(verse.verseKey)?.let { Uri.fromFile(it).toString() }
             ?: audioDownloadManager.remoteUrl(verse)
             ?: return null
         val metadata = MediaMetadata.Builder()
@@ -331,6 +347,90 @@ class SurahViewModel @Inject constructor(
     private fun buildPlaylistItems(verses: List<VerseEntity>, chapterId: Int): Pair<List<VerseEntity>, List<MediaItem>> {
         val pairs = verses.mapNotNull { verse -> buildMediaItem(verse, chapterId)?.let { verse to it } }
         return pairs.map { it.first } to pairs.map { it.second }
+    }
+
+    // ── Linked gapless playback ─────────────────────────────────────────
+    private val linkedSurahUriCache = mutableMapOf<Pair<Int, Int>, Uri?>()
+
+    /** Synchronous fast-path lookup of the persisted gapless file (prefs + DocumentFile). */
+    private fun linkedUriSync(reciterId: Int, surah: Int): Uri? {
+        val key = reciterId to surah
+        if (linkedSurahUriCache.containsKey(key)) return linkedSurahUriCache[key]
+        val uri = try {
+            if (!linkedAudioStore.isLinked(reciterId, surah)) {
+                linkedSurahUriCache[key] = null
+                return null
+            }
+            // Find the persisted tree Uri whose folder maps to this reciter.
+            val treeUriString = linkedAudioStore.linkedState.value.entries
+                .firstOrNull { it.value == reciterId }?.key?.toString()
+                ?: run { linkedSurahUriCache[key] = null; return null }
+            val treeUri = Uri.parse(treeUriString)
+            val fileName = "%03d.mp3".format(surah)
+            DocumentFile.fromTreeUri(context, treeUri)?.findFile(fileName)?.uri
+        } catch (_: Exception) {
+            null
+        }
+        linkedSurahUriCache[key] = uri
+        return uri
+    }
+
+    /** Resolve the persisted gapless surah file Uri, or null on any failure. */
+    suspend fun resolveLinkedSurahUri(reciterId: Int, surah: Int): Uri? {
+        val key = reciterId to surah
+        if (linkedSurahUriCache.containsKey(key)) return linkedSurahUriCache[key]
+        return try {
+            linkedUriSync(reciterId, surah)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /** Seek the gapless surah file to the start of [ayah] using imported timings. */
+    fun seekToAyah(surah: Int, ayah: Int) {
+        viewModelScope.launch {
+            try {
+                val ms = timingImporter.getStartMs(_currentReciterId.value, surah, ayah)
+                exoPlayer?.seekTo(ms ?: 0L)
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    /** Ayah active at [posMs] within [surah], or null on any failure. */
+    suspend fun getAyahAtPosition(surah: Int, posMs: Long): Int? {
+        return try {
+            timingImporter.getTimings(_currentReciterId.value, surah)
+                .findLast { it.startMs <= posMs }?.ayah
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    // Position-poll hook for gapless follow mode. Existing repeat/delay handlers untouched.
+    private var followJob: Job? = null
+
+    /** Poll ExoPlayer position and emit the current ayah until stopped. */
+    fun startFollowAyah(surah: Int, onAyah: (Int) -> Unit) {
+        followJob?.cancel()
+        followJob = viewModelScope.launch {
+            try {
+                while (_isPlaying.value) {
+                    try {
+                        val pos = exoPlayer?.currentPosition ?: 0L
+                        getAyahAtPosition(surah, pos)?.let { onAyah(it) }
+                    } catch (_: Exception) {
+                    }
+                    delay(100)
+                }
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    fun stopFollow() {
+        followJob?.cancel()
+        followJob = null
     }
 
     /** Runs [action] after the configured settings delay; cancelled on pause/stop/seek. */

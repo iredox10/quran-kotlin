@@ -1,6 +1,7 @@
 package com.nur.quran;
 
 import com.nur.quran.di.AppModule;
+import com.nur.quran.services.QuranAudioService_GeneratedInjector;
 import com.nur.quran.ui.viewmodels.HomeViewModel_HiltModules;
 import com.nur.quran.ui.viewmodels.PlannerViewModel_HiltModules;
 import com.nur.quran.ui.viewmodels.SurahViewModel_HiltModules;
@@ -146,7 +147,8 @@ public final class QuranApplication_HiltComponents {
 
   @Subcomponent
   @ServiceScoped
-  public abstract static class ServiceC implements ServiceComponent,
+  public abstract static class ServiceC implements QuranAudioService_GeneratedInjector,
+      ServiceComponent,
       GeneratedComponent {
     @Subcomponent.Builder
     abstract interface Builder extends ServiceComponentBuilder {

@@ -62,6 +62,9 @@ datastore-preferences = { group = "androidx.datastore", name = "datastore-prefer
 # Coroutines
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 
+# DocumentFile (SAF linked audio)
+androidx-documentfile = { group = "androidx.documentfile", name = "documentfile", version = "1.0.1" }
+
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }

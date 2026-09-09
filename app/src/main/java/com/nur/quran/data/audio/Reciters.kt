@@ -31,10 +31,37 @@ object Reciters {
         Reciter(5, "Mahmoud Khalil Al-Husary", STYLE_MURATTAL),
         Reciter(6, "Mohamed Siddiq Al-Minshawi", STYLE_MURATTAL),
         Reciter(9, "Mishari Rashid al-Afasy (Mujawwad)", STYLE_MUJAWWAD),
-        Reciter(10, "Mahmoud Khalil Al-Husary (Muallim)", STYLE_MUALLIM)
+        Reciter(10, "Mahmoud Khalil Al-Husary (Muallim)", STYLE_MUALLIM),
+        Reciter(11, "Maher Al-Muaiqly (Gapless)", STYLE_MURATTAL),
+        Reciter(12, "Idris Abkar", STYLE_MURATTAL),
+        Reciter(13, "Mahmoud Khalil Al-Husary (Gapless)", STYLE_MURATTAL),
+        Reciter(14, "Maher Al-Muaiqly (KFGQPC)", STYLE_MURATTAL)
     )
 
     fun byId(id: Int): Reciter? = ALL.find { it.id == id }
 
     fun nameOf(id: Int): String = byId(id)?.name ?: "Reciter $id"
+
+    fun normalizeFolder(name: String): String = name.trim().lowercase()
+
+    fun findByFolder(folderName: String): Reciter? {
+        val normalized = normalizeFolder(folderName)
+        val exactId = when (normalized) {
+            "muaiqly_non_haramain_gapless" -> 11
+            "muaigly_non_haramain_gapless" -> 11
+            "idris-abkar" -> 12
+            "idris_abkar" -> 12
+            "husary" -> 13
+            "muaiqly_kfgqpc" -> 14
+            else -> null
+        }
+        if (exactId != null) return byId(exactId)
+        val fuzzyId = when {
+            normalized.contains("muaiqly") || normalized.contains("muaigly") -> 11
+            normalized.contains("abkar") -> 12
+            normalized.contains("husary") -> 13
+            else -> null
+        }
+        return fuzzyId?.let { byId(it) }
+    }
 }

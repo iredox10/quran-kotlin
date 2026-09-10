@@ -1499,10 +1499,39 @@ class SurahViewModel @Inject constructor(
     fun setTranslationId(translationId: Int) {
         _currentTranslationId.value = translationId
         hifdhPrefs.edit().putInt("translation_id", translationId).apply()
-        viewModelScope.launch {
+        val chapterId = currentChapterId
+        if (chapterId <= 0) return
+        viewModelScope.launch(Dispatchers.IO) {
             try {
-                repository.refreshVersesByChapter(currentChapterId, translationId, _mushafPreset.value)
+                repository.refreshVersesByChapter(chapterId, translationId, _mushafPreset.value)
             } catch (_: Exception) {
+            }
+            // Offline pack backfill: refresh may have left blank translations
+            // (offline fallback asset or failed fetch) — fill from packed
+            // translation_texts, then push into the Success verses state.
+            try {
+                val fresh = repository.getVersesByChapterDirect(chapterId)
+                val source = if (fresh.isNotEmpty()) fresh
+                    else (_uiState.value as? SurahUiState.Success)?.verses ?: emptyList()
+                if (source.isEmpty() || currentChapterId != chapterId) return@launch
+                val filled = source.map { verse ->
+                    if (!verse.translation.isNullOrBlank()) {
+                        verse
+                    } else {
+                        val packed = runCatching {
+                            repository.getStoredTranslation(translationId, verse.verseKey)
+                        }.getOrNull()
+                        if (!packed.isNullOrBlank()) verse.copy(translation = packed) else verse
+                    }
+                }
+                val current = _uiState.value
+                if (current is SurahUiState.Success && currentChapterId == chapterId) {
+                    val updated = current.copy(verses = filled)
+                    _uiState.value = updated
+                    chapterMemoryCache[chapterId] = updated
+                }
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
             }
         }
     }

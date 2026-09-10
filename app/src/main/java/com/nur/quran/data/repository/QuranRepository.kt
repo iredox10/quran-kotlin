@@ -135,6 +135,39 @@ class QuranRepository @Inject constructor(
         quranDao.getVersesByKey(keys)
     }
 
+    /**
+     * Packed-translation read: single verse text for [translationId] from the
+     * `translation_texts` table (filled by the pack manager). Null on any miss
+     * so callers can fall back to the verse row's embedded translation.
+     */
+    suspend fun getStoredTranslation(translationId: Int, verseKey: String): String? =
+        withContext(Dispatchers.IO) {
+            runCatching { quranDao.getTranslationText(translationId, verseKey) }.getOrNull()
+        }
+
+    /**
+     * Fill every verse whose [VerseEntity.translation] is blank from the packed
+     * `translation_texts` table. Already-filled verses are returned untouched,
+     * so the online path (network translations present) is behavior-identical.
+     */
+    private suspend fun backfillBlankTranslations(
+        verses: List<VerseEntity>,
+        translationId: Int
+    ): List<VerseEntity> {
+        if (verses.isEmpty()) return verses
+        if (verses.none { it.translation.isNullOrBlank() }) return verses
+        return verses.map { verse ->
+            if (!verse.translation.isNullOrBlank()) {
+                verse
+            } else {
+                val packed = runCatching {
+                    quranDao.getTranslationText(translationId, verse.verseKey)
+                }.getOrNull()
+                if (!packed.isNullOrBlank()) verse.copy(translation = packed) else verse
+            }
+        }
+    }
+
     fun getVersesByPageFlow(pageNumber: Int): Flow<List<VerseEntity>> = quranDao.getVersesByPage(pageNumber)
 
     suspend fun getVersesByPage(pageNumber: Int, mushafId: String? = null): List<VerseEntity> = withContext(Dispatchers.IO) {
@@ -564,13 +597,15 @@ class QuranRepository @Inject constructor(
                 }
             }
 
-            quranDao.replaceVersesAndWords(verseEntities, wordEntities)
+            quranDao.replaceVersesAndWords(backfillBlankTranslations(verseEntities, translationId), wordEntities)
             quranDao.insertCacheEntry(ApiResponseCacheEntity("verses_mushaf_$chapterId", mushaf.id))
         } catch (e: Exception) {
-            // Offline fallback: load from bundled asset with WordEntity generation
+            // Offline fallback: load from bundled asset with WordEntity generation,
+            // then backfill blank translations from packed translation_texts so
+            // offline reads show packed text for the requested translationId.
             val (offlineVerses, offlineWords) = loadOfflineVersesFromAssets(chapterId)
             if (offlineVerses.isNotEmpty()) {
-                quranDao.insertVersesAndWords(offlineVerses, offlineWords)
+                quranDao.insertVersesAndWords(backfillBlankTranslations(offlineVerses, translationId), offlineWords)
             }
         }
     }

@@ -116,6 +116,9 @@ dependencies {
     // DocumentFile (SAF linked audio)
     implementation(libs.androidx.documentfile)
 
+    // WorkManager (background audio downloads)
+    implementation(libs.androidx.work.runtime)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

@@ -1095,7 +1095,7 @@ private fun getHifdhFirstLetter(word: String): String {
     return word.take(1)
 }
 
-/** Tajweed-colored Arabic text for the hifdh reader (plain Compose, no WebView). */
+/** Tajweed-colored Arabic text for the hifdh reader. */
 @Composable
 private fun HifdhTajweedText(
     text: String,

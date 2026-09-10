@@ -2860,7 +2860,7 @@ fun WebSurahNavButtons(
     }
 }
 
-// ── Compose-native tajweed renderer (no WebView) ────────────────────────
+// ── Compose-native tajweed renderer ────────────────────────
 /** Colors tajweed segments over `text` and exposes word / tajweed-rule taps via annotations. */
 @Composable
 private fun SurahTajweedText(

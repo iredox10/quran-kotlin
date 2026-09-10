@@ -4,8 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 
 /**
- * Lightweight persistence for onboarding UI state (tours, coachmarks, page visits),
- * mirroring the web app's zustand-persisted keys in localStorage.
+ * Lightweight persistence for onboarding UI state (tours, coachmarks, page visits).
  */
 class TourPrefs(context: Context) {
 

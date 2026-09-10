@@ -79,6 +79,7 @@ import com.nur.quran.data.getHizbByPage
 import com.nur.quran.data.getJuzByPage
 import com.nur.quran.ui.components.ColoredArabicText
 import com.nur.quran.ui.components.audio.AudioSetupSheet
+import com.nur.quran.ui.components.audio.DownloadRow
 import com.nur.quran.ui.components.audio.MiniPlayer
 import com.nur.quran.ui.components.TajweedSegment
 import com.nur.quran.ui.components.NurIcons
@@ -708,6 +709,8 @@ fun SurahScreen(
                         item {
                             // Linked (link-in-place) surah count for the current reciter.
                             val linkedCount = linkedMap[currentReciterId]?.size ?: 0
+                            val downloadError by viewModel.downloadError.collectAsState()
+                            val downloadProgress by viewModel.downloadProgress.collectAsState()
                             SurahHeader(
                                 chapter = chapter,
                                 versesStartPage = verses.firstOrNull()?.pageNumber ?: 0,
@@ -718,8 +721,16 @@ fun SurahScreen(
                                 downloadedCount = if (chapter.id in downloadedChapters) verses.size else 0,
                                 totalCount = verses.size,
                                 linkedCount = linkedCount,
+                                downloadError = downloadError,
+                                downloadProgress = downloadProgress,
                                 onPlayClick = { showAudioSetupDialog = true },
-                                onDownloadClick = { viewModel.downloadChapterAudio(chapter.id, verses) },
+                                onDownloadClick = { viewModel.downloadChapterAudio(currentReciterId, chapter.id) },
+                                onCancelClick = { viewModel.cancelChapterDownload(currentReciterId, chapter.id) },
+                                onDeleteClick = { viewModel.deleteChapterAudio(currentReciterId, chapter.id) },
+                                onRetryClick = {
+                                    viewModel.clearDownloadError()
+                                    viewModel.downloadChapterAudio(currentReciterId, chapter.id)
+                                },
                                 onRelinkClick = { showSettingsDrawer = true }
                             )
                         }
@@ -1755,8 +1766,14 @@ fun SurahHeader(
     downloadedCount: Int = 0,
     totalCount: Int = 0,
     linkedCount: Int = 0,
+    downloadError: String? = null,
+    downloadProgress: Float = 0f,
+    sizeLabel: String = "",
     onPlayClick: () -> Unit,
     onDownloadClick: () -> Unit,
+    onCancelClick: () -> Unit = {},
+    onDeleteClick: () -> Unit = {},
+    onRetryClick: () -> Unit = {},
     onRelinkClick: () -> Unit = {}
 ) {
     Column(
@@ -1869,7 +1886,7 @@ fun SurahHeader(
                     modifier = Modifier
                         .size(40.dp)
                         .clip(CircleShape)
-                        .clickable(enabled = !isDownloading, onClick = onDownloadClick),
+                        .clickable(onClick = { if (isDownloading) onCancelClick() else onDownloadClick() }),
                     contentAlignment = Alignment.Center
                 ) {
                     if (isDownloading) {
@@ -1894,6 +1911,62 @@ fun SurahHeader(
                             modifier = Modifier.size(18.dp)
                         )
                     }
+                }
+            }
+        }
+
+        // Per-reciter download row: real counts, size label, OFFLINE badge,
+        // Cancel while downloading, Delete when done.
+        val effectiveDownloaded = when {
+            isDownloaded -> totalCount
+            isDownloading && totalCount > 0 ->
+                (downloadProgress.coerceIn(0f, 1f) * totalCount).toInt().coerceIn(0, totalCount)
+            else -> downloadedCount.coerceIn(0, totalCount.coerceAtLeast(0))
+        }
+        val effectiveSizeLabel = sizeLabel.ifBlank {
+            if (totalCount > 0) "≈ ${"%.1f".format(totalCount * 0.3f)} MB" else ""
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+        DownloadRow(
+            reciterName = reciterName.ifBlank { "Audio" },
+            downloadedCount = effectiveDownloaded,
+            totalCount = totalCount,
+            sizeLabel = effectiveSizeLabel,
+            isDownloading = isDownloading,
+            isDownloaded = isDownloaded,
+            showOfflineBadge = isDownloaded,
+            onDownloadClick = onDownloadClick,
+            onCancelClick = onCancelClick,
+            onDeleteClick = onDeleteClick,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        // Error state: red message + Retry (clears error, restarts download).
+        if (!downloadError.isNullOrBlank()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = downloadError,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = hRed,
+                    fontFamily = fontFamilyBody,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                TextButton(onClick = onRetryClick) {
+                    Text(
+                        text = "Retry",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = hRed,
+                        fontFamily = fontFamilyUi
+                    )
                 }
             }
         }

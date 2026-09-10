@@ -72,7 +72,7 @@ fun AnalyticsScreen(
         else -> "Good Evening"
     }
 
-    // 7 Days Labels and Totals
+    // 7 Days Labels and Totals (web parity: Math.round like Progress.jsx dailyActivity)
     val last7DaysData = remember(sessions) {
         val days = mutableListOf<Pair<String, Int>>()
         val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
@@ -82,7 +82,7 @@ fun AnalyticsScreen(
             cal.add(Calendar.DATE, -i)
             val dStr = sdf.format(cal.time)
             val dayLabel = labelSdf.format(cal.time)
-            val dayMins = (sessions.filter { it.date == dStr }.sumOf { it.duration } / 60.0).toInt()
+            val dayMins = Math.round(sessions.filter { it.date == dStr }.sumOf { it.duration } / 60.0f).toInt()
             days.add(Pair(dayLabel, dayMins))
         }
         days
@@ -107,11 +107,11 @@ fun AnalyticsScreen(
     }
 
     val todayTotalMins = remember(sessions, todayStr) {
-        (sessions.filter { it.date == todayStr }.sumOf { it.duration } / 60.0).toInt()
+        Math.round(sessions.filter { it.date == todayStr }.sumOf { it.duration } / 60.0f).toInt()
     }
 
     val allTimeTotalMins = remember(sessions) {
-        (sessions.sumOf { it.duration } / 60.0).toInt()
+        Math.round(sessions.sumOf { it.duration } / 60.0f).toInt()
     }
 
     val weeklyGoalMins = 180
@@ -124,10 +124,10 @@ fun AnalyticsScreen(
 
     // Activity breakdown mix (Reading, Memorizing, Focus, Listening)
     val activityMix = remember(sessions) {
-        val readingMins = (sessions.filter { it.type == "reading" || it.type.isEmpty() }.sumOf { it.duration } / 60.0).toInt()
-        val memorizingMins = (sessions.filter { it.type == "memorizing" }.sumOf { it.duration } / 60.0).toInt()
-        val focusMins = (sessions.filter { it.type == "pomodoro" || it.type == "focus" }.sumOf { it.duration } / 60.0).toInt()
-        val listeningMins = (sessions.filter { it.type == "listening" }.sumOf { it.duration } / 60.0).toInt()
+        val readingMins = Math.round(sessions.filter { it.type == "reading" || it.type.isEmpty() }.sumOf { it.duration } / 60.0f).toInt()
+        val memorizingMins = Math.round(sessions.filter { it.type == "memorizing" }.sumOf { it.duration } / 60.0f).toInt()
+        val focusMins = Math.round(sessions.filter { it.type == "pomodoro" || it.type == "focus" }.sumOf { it.duration } / 60.0f).toInt()
+        val listeningMins = Math.round(sessions.filter { it.type == "listening" }.sumOf { it.duration } / 60.0f).toInt()
         listOf(
             Triple("Reading", readingMins, Color(0xFF10B981)),
             Triple("Memorizing", memorizingMins, Color(0xFF3B82F6)),
@@ -180,14 +180,14 @@ fun AnalyticsScreen(
         badges.takeLast(3).reversed()
     }
 
-    // Heatmap data (35 days = 5 weeks)
+    // Heatmap data (35 days = 5 weeks, web parity: Math.round like heatmapData)
     val heatmap35Days = remember(sessions) {
         val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
         (34 downTo 0).map { i ->
             val cal = Calendar.getInstance()
             cal.add(Calendar.DATE, -i)
             val dStr = sdf.format(cal.time)
-            val dayMins = (sessions.filter { it.date == dStr }.sumOf { it.duration } / 60.0).toInt()
+            val dayMins = Math.round(sessions.filter { it.date == dStr }.sumOf { it.duration } / 60.0f).toInt()
             Pair(dStr, dayMins)
         }
     }

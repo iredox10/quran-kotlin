@@ -119,6 +119,9 @@ dependencies {
     // WorkManager (background audio downloads)
     implementation(libs.androidx.work.runtime)
 
+    // Appwrite
+    implementation(libs.appwrite.android)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

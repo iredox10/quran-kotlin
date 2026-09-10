@@ -49,7 +49,9 @@ data class BadgeItem(
 fun AnalyticsScreen(
     homeViewModel: HomeViewModel,
     surahViewModel: SurahViewModel,
-    onOpenQuranClick: () -> Unit
+    onOpenQuranClick: () -> Unit,
+    onOpenLibraryClick: () -> Unit = onOpenQuranClick,
+    onOpenCollectionsClick: () -> Unit = onOpenQuranClick
 ) {
     val context = LocalContext.current
     val sessions by homeViewModel.readingSessions.collectAsState()
@@ -983,8 +985,9 @@ fun AnalyticsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    // Bookmarks Card
+                    // Bookmarks Card (web parity: Link to /bookmarks)
                     Card(
+                        onClick = onOpenLibraryClick,
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(20.dp),
                         colors = CardDefaults.cardColors(containerColor = hSurface),
@@ -1017,8 +1020,9 @@ fun AnalyticsScreen(
                         }
                     }
 
-                    // Collections Card
+                    // Collections Card (web parity: Link to /collections)
                     Card(
+                        onClick = onOpenCollectionsClick,
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(20.dp),
                         colors = CardDefaults.cardColors(containerColor = hSurface),
@@ -1051,8 +1055,9 @@ fun AnalyticsScreen(
                         }
                     }
 
-                    // Recent Surahs Card
+                    // Recent Surahs Card (web parity: Link to /)
                     Card(
+                        onClick = onOpenQuranClick,
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(20.dp),
                         colors = CardDefaults.cardColors(containerColor = hSurface),

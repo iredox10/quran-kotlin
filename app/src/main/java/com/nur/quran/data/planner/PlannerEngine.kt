@@ -93,6 +93,12 @@ data class PlannerBookmark(
     val createdAt: Long = System.currentTimeMillis()
 )
 
+/** Web: groupContiguousPages entry — one contiguous page range { pStart, pEnd }. */
+data class ContiguousPageGroup(
+    val pStart: Int,
+    val pEnd: Int
+)
+
 data class AssignmentProgress(
     val completedCount: Int,
     val totalCount: Int,
@@ -156,6 +162,30 @@ object PlannerEngine {
         val start = parsePlannerDate(startDateStr).time
         val end = parsePlannerDate(endDateStr).time
         return floor((end - start).toDouble() / 86400000.0).toInt()
+    }
+
+    /**
+     * Web: groupContiguousPages (planner.js:306-324, tested) — dedupe, sort,
+     * and fold a page list into contiguous { pStart, pEnd } groups.
+     * Pure function, unit-testable.
+     */
+    fun groupContiguousPages(pages: List<Int>): List<ContiguousPageGroup> {
+        if (pages.isEmpty()) return emptyList()
+        val sorted = pages.toSet().sorted()
+        val groups = mutableListOf<ContiguousPageGroup>()
+        var pStart = sorted[0]
+        var pEnd = sorted[0]
+        for (i in 1 until sorted.size) {
+            if (sorted[i] == pEnd + 1) {
+                pEnd = sorted[i]
+            } else {
+                groups.add(ContiguousPageGroup(pStart, pEnd))
+                pStart = sorted[i]
+                pEnd = sorted[i]
+            }
+        }
+        groups.add(ContiguousPageGroup(pStart, pEnd))
+        return groups
     }
 
     fun getReadingDate(startDateStr: String, index: Int, excludeDays: List<Int> = emptyList()): String {

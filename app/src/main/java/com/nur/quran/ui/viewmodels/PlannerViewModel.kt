@@ -60,6 +60,14 @@ class PlannerViewModel @Inject constructor(
     private val _activePrayers = MutableStateFlow<List<String>>(PRAYER_NAMES)
     val activePrayers: StateFlow<List<String>> = _activePrayers.asStateFlow()
 
+    // ── Prayer reading preference (web: prayerSettings.readPreference, default 'after')
+    private val _readPreference = MutableStateFlow("after")
+    val readPreference: StateFlow<String> = _readPreference.asStateFlow()
+
+    // ── Intention prompt (web: intentionPromptEnabled, default true)
+    private val _useIntentionPrompt = MutableStateFlow(true)
+    val useIntentionPrompt: StateFlow<Boolean> = _useIntentionPrompt.asStateFlow()
+
     private var extrasPlanId: String? = null
 
     init {
@@ -68,6 +76,10 @@ class PlannerViewModel @Inject constructor(
             ?.filter { PRAYER_NAMES.contains(it) }
             ?.sortedBy { PRAYER_NAMES.indexOf(it) }
             ?.takeIf { it.isNotEmpty() } ?: PRAYER_NAMES
+        _readPreference.value = plannerPrefs.getString("reading_preference", "after")
+            ?.takeIf { it == "before" || it == "after" || it == "split" } ?: "after"
+        // Same key the screens already read/write ("show_intention_prompt") so both stay in sync.
+        _useIntentionPrompt.value = plannerPrefs.getBoolean("show_intention_prompt", true)
         loadData()
         if (_useDeviceLocation.value) {
             refreshPrayerTimingsWithDeviceLocation()
@@ -80,6 +92,7 @@ class PlannerViewModel @Inject constructor(
     private fun loadPlanExtras(planId: String?) {
         if (planId == extrasPlanId) return
         extrasPlanId = planId
+        _timerStartedAt.value = emptyMap()
         if (planId == null) {
             _plannerBookmarks.value = emptyList()
             _sessionTotals.value = emptyMap()
@@ -338,6 +351,23 @@ class PlannerViewModel @Inject constructor(
         setActivePlan(rebalanced)
     }
 
+    /**
+     * Web: adjustActivePlannerPace — thin wrapper over the custom_pace rebalance.
+     * Web store :559 → adjustPlannerPace → rebalancePlanner('custom_pace', n).
+     */
+    fun adjustActivePlannerPace(newDurationDays: Int) {
+        rebalancePlan("custom_pace", newDurationDays)
+    }
+
+    /** Creation guard: true when a plan with this title already exists (case-insensitive). */
+    fun planTitleExists(title: String): Boolean {
+        val needle = title.trim()
+        if (needle.isEmpty()) return false
+        return (_allPlans.value + _archivedPlans.value).any {
+            it.title.trim().equals(needle, ignoreCase = true)
+        }
+    }
+
     fun restoreArchivedPlan(planId: String) {
         val target = _archivedPlans.value.find { it.id == planId } ?: return
         val updatedArchives = _archivedPlans.value.filter { it.id != planId }
@@ -463,9 +493,38 @@ class PlannerViewModel @Inject constructor(
     }
 
     // ── Reading timers (web: startPlannerTimer/stopPlannerTimer) ────────
+    // Web keeps plannerSessionTimers[planId][day] = { totalSeconds, startedAt }.
+    // Totals persist in the repository (key "planner_sessions_$planId", the same
+    // store stopPlannerTimer reads); startedAt is session-only in-memory state.
+    private val _timerStartedAt = MutableStateFlow<Map<Int, Long?>>(emptyMap())
+    val timerStartedAt: StateFlow<Map<Int, Long?>> = _timerStartedAt.asStateFlow()
+
+    /**
+     * Web: startPlannerTimer — ensure a { totalSeconds: 0 } entry exists, then
+     * stamp startedAt. Mirrors the web guard `if (!timers[planId][day])`.
+     */
+    fun startPlannerTimer(planId: String? = null, dayNumber: Int) {
+        val resolvedPlanId = planId ?: _activePlannerId.value ?: return
+        val updated = _sessionTotals.value.toMutableMap()
+        if (!updated.containsKey(dayNumber)) {
+            updated[dayNumber] = 0L
+        }
+        _sessionTotals.value = updated
+        val started = _timerStartedAt.value.toMutableMap()
+        started[dayNumber] = System.currentTimeMillis()
+        _timerStartedAt.value = started
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try { repository.savePlannerSessionTotals(resolvedPlanId, updated) } catch (_: Exception) {}
+        }
+    }
+
     /** Persist additional seconds for a day (called periodically + on pause/exit). */
     fun stopPlannerTimer(dayNumber: Int, additionalSeconds: Long) {
         val planId = _activePlannerId.value ?: return
+        val started = _timerStartedAt.value.toMutableMap()
+        if (started.remove(dayNumber) != null) {
+            _timerStartedAt.value = started
+        }
         if (additionalSeconds <= 0) return
         val updated = _sessionTotals.value.toMutableMap()
         updated[dayNumber] = (updated[dayNumber] ?: 0L) + additionalSeconds
@@ -482,6 +541,23 @@ class PlannerViewModel @Inject constructor(
             .takeIf { it.isNotEmpty() } ?: PRAYER_NAMES
         _activePrayers.value = cleaned
         plannerPrefs.edit().putStringSet("active_prayers", cleaned.toSet()).apply()
+    }
+
+    /** Web parity: prayerSettings.readPreference ('before' | 'after' | 'split', default 'after'). */
+    fun setReadPreference(preference: String) {
+        val cleaned = if (preference == "before" || preference == "after" || preference == "split") {
+            preference
+        } else {
+            "after"
+        }
+        _readPreference.value = cleaned
+        plannerPrefs.edit().putString("reading_preference", cleaned).apply()
+    }
+
+    /** Web parity: intentionPromptEnabled (default true). */
+    fun setUseIntentionPrompt(enabled: Boolean) {
+        _useIntentionPrompt.value = enabled
+        plannerPrefs.edit().putBoolean("show_intention_prompt", enabled).apply()
     }
 
     fun setUseDeviceLocation(enabled: Boolean) {

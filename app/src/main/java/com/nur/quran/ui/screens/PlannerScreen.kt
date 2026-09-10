@@ -1,6 +1,11 @@
 package com.nur.quran.ui.screens
 
 import android.content.Context
+import android.content.Intent
+import android.widget.Toast
+import androidx.compose.ui.draw.alpha
+import androidx.core.content.FileProvider
+import java.io.File
 import androidx.compose.animation.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -66,6 +71,9 @@ fun PlannerScreen(
     val todayStr = remember { PlannerEngine.formatPlannerDate() }
     val allPlans by plannerViewModel.allPlans.collectAsState()
     val activePlannerId by plannerViewModel.activePlannerId.collectAsState()
+    // Web parity: persisted per-day reading seconds (session chip) + duplicate-title guard state.
+    val sessionTotals by plannerViewModel.sessionTotals.collectAsState()
+    var pendingDuplicatePlan by remember { mutableStateOf<ReadingPlan?>(null) }
 
     LaunchedEffect(activePlan) {
         if (activePlan != null && viewMode == "intention") {
@@ -108,8 +116,14 @@ fun PlannerScreen(
                 activePlannerId = activePlannerId,
                 onViewActive = { viewMode = "dashboard" },
                 onBeginPlan = { plan ->
-                    plannerViewModel.setActivePlan(plan)
-                    viewMode = "dashboard"
+                    // Web parity (Planner.jsx handleBegin): confirm replace if title exists.
+                    val existing = allPlans.find { it.title.isNotBlank() && it.title == plan.title }
+                    if (existing != null) {
+                        pendingDuplicatePlan = plan
+                    } else {
+                        runCatching { plannerViewModel.setActivePlan(plan) }
+                        viewMode = "dashboard"
+                    }
                 },
                 onSwitchPlan = { planId ->
                     plannerViewModel.switchActivePlan(planId)
@@ -197,7 +211,7 @@ fun PlannerScreen(
                                         val pct = Math.round((ov?.completionRatio ?: 0f) * 100)
                                         val shareText = "📖 Quran Reading Progress\n" +
                                             "${plan1.title}: $pct% complete\n" +
-                                            "${ov?.completedCount ?: 0}/${plan1.durationDays} days done \u2022 ${mt?.consistencyStreak ?: 0}d streak\n" +
+                                            "Completed ${ov?.completedCount ?: 0} days of my ${plan1.durationDays}-day plan \u2022 Day ${ov?.currentDayNumber ?: 1} \u2022 ${mt?.consistencyStreak ?: 0}d streak\n" +
                                             "#QuranNur"
                                         val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
                                             type = "text/plain"
@@ -209,6 +223,21 @@ fun PlannerScreen(
                                 modifier = Modifier.size(32.dp)
                             ) {
                                 Icon(NurIcons.Share2, contentDescription = "Share", tint = hInkMid, modifier = Modifier.size(16.dp))
+                            }
+                            // Web parity (Planner.jsx handleExportCalendar): ICS export via FileProvider share.
+                            IconButton(
+                                onClick = {
+                                    val plan1 = activePlan
+                                    if (plan1 != null) {
+                                        runCatching { sharePlannerIcs(context, plan1) }
+                                            .onFailure {
+                                                Toast.makeText(context, "Calendar export failed", Toast.LENGTH_SHORT).show()
+                                            }
+                                    }
+                                },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(NurIcons.CalendarDays, contentDescription = "Export calendar", tint = hInkMid, modifier = Modifier.size(16.dp))
                             }
                             if (archivedPlans.isNotEmpty()) {
                                 TextButton(onClick = { showArchivesDialog = true }) {
@@ -383,6 +412,31 @@ fun PlannerScreen(
                                         Text("$pct%", fontSize = 40.sp, fontWeight = FontWeight.Bold, color = hInk, fontFamily = fontFamilyMono)
                                         Text("TODAY'S FOCUS", fontSize = 10.sp, color = hInkMuted, fontWeight = FontWeight.Bold, fontFamily = fontFamilyMono)
                                     }
+                                }
+
+                                // Web parity: today session chip (persisted reading seconds).
+                                val todaySeconds = sessionTotals[todayAssignment.dayNumber] ?: 0L
+                                if (todaySeconds > 0) {
+                                    Box(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Surface(
+                                            shape = RoundedCornerShape(100),
+                                            color = hTeal.copy(alpha = 0.1f),
+                                            border = androidx.compose.foundation.BorderStroke(1.dp, hTeal.copy(alpha = 0.25f))
+                                        ) {
+                                            Text(
+                                                formatPlannerSessionLabel(todaySeconds),
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = hTeal,
+                                                fontFamily = fontFamilyMono,
+                                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                                            )
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.height(8.dp))
                                 }
 
                                 // Today's assignment card
@@ -863,6 +917,31 @@ fun PlannerScreen(
                     }
                 }
 
+                // Quote footer (web parity: Planner.jsx prophetic wisdom footer).
+                item {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            "\"The best of deeds are those that are consistent, even if they are few.\"",
+                            fontSize = 13.sp,
+                            color = hInkMid,
+                            textAlign = TextAlign.Center,
+                            lineHeight = 20.sp
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            "PROPHETIC WISDOM",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = hInkMuted,
+                            fontFamily = fontFamilyMono,
+                            letterSpacing = 2.sp
+                        )
+                    }
+                }
+
                 // Footer Delete Button
                 item {
                     Surface(
@@ -920,6 +999,43 @@ fun PlannerScreen(
         )
     }
 
+    // Duplicate-title guard (web parity: Planner.jsx handleBegin confirm replace).
+    pendingDuplicatePlan?.let { pending ->
+        AlertDialog(
+            onDismissRequest = { pendingDuplicatePlan = null },
+            shape = RoundedCornerShape(20.dp),
+            containerColor = hCream,
+            title = { Text("Replace existing plan?", fontSize = 18.sp, fontWeight = FontWeight.Bold, fontFamily = fontFamilyUi) },
+            text = {
+                Text(
+                    "You already have a \"${pending.title}\" plan. Replace it with a new one?",
+                    fontSize = 14.sp,
+                    color = hInkMid
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val existingId = allPlans.find { it.title.isNotBlank() && it.title == pending.title }?.id
+                        if (existingId != null) runCatching { plannerViewModel.deletePlan(existingId) }
+                        runCatching { plannerViewModel.setActivePlan(pending) }
+                        pendingDuplicatePlan = null
+                        viewMode = "dashboard"
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = hTeal),
+                    shape = RoundedCornerShape(30.dp)
+                ) {
+                    Text("Replace", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDuplicatePlan = null }) {
+                    Text("Cancel", color = hInkMuted)
+                }
+            }
+        )
+    }
+
     if (showRebalanceDialog) {
         var customDaysText by remember(activePlan?.id) {
             mutableStateOf((activePlan?.durationDays ?: 30).toString())
@@ -956,7 +1072,11 @@ fun PlannerScreen(
                     }
 
                     // Web parity: adjust pace to a custom total duration.
-                    Text("Or set a custom total duration:", fontSize = 13.sp, color = hInkMid)
+                    // Web (Planner.jsx): min = max(1, min(duration, completed + 1)).
+                    val dialogPlan = activePlan
+                    val dialogCompleted = dialogPlan?.let { PlannerEngine.getPlannerOverview(it)?.completedCount } ?: 0
+                    val minNewDuration = kotlin.math.max(1, kotlin.math.min(dialogPlan?.durationDays ?: 30, dialogCompleted + 1))
+                    Text("Or set a custom total duration (min $minNewDuration days):", fontSize = 13.sp, color = hInkMid)
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -974,11 +1094,9 @@ fun PlannerScreen(
                         )
                         Button(
                             onClick = {
-                                val days = customDaysText.toIntOrNull()
-                                if (days != null && days >= 1) {
-                                    plannerViewModel.rebalancePlan("custom_pace", days)
-                                    showRebalanceDialog = false
-                                }
+                                val days = (customDaysText.toIntOrNull() ?: minNewDuration).coerceAtLeast(minNewDuration)
+                                runCatching { plannerViewModel.rebalancePlan("custom_pace", days) }
+                                showRebalanceDialog = false
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = hTeal),
                             shape = RoundedCornerShape(12.dp)
@@ -1257,6 +1375,8 @@ private fun IntentionView(
     var customTitleText by remember { mutableStateOf("") }
     var startDateText by remember { mutableStateOf(PlannerEngine.formatPlannerDate()) }
     var excludeDaysList by remember { mutableStateOf(listOf<Int>()) }
+    // Web parity (Planner.jsx previewPlan): template tap opens a preview modal, not instant create.
+    var previewPlan by remember { mutableStateOf<ReadingPlan?>(null) }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -1616,44 +1736,68 @@ private fun IntentionView(
             }
         }
 
-        // Quick Start Templates Section
+        // Plan Templates Library (web parity: Planner.jsx grid + preview modal + surah gating).
         item {
-            Text("QUICK START TEMPLATES", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = hInkMuted, fontFamily = fontFamilyMono, letterSpacing = 1.sp, modifier = Modifier.padding(bottom = 12.dp))
+            val chaptersReady = chapters.isNotEmpty()
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("PLAN TEMPLATES", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = hInk, fontFamily = fontFamilyMono, letterSpacing = 1.sp)
+                Text("CURATED PATHS", fontSize = 9.sp, color = hInkMuted, fontFamily = fontFamilyMono)
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                PLAN_TEMPLATES.forEach { tmpl ->
-                    Card(
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = hCream),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, hBoneDark),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                val built = PlannerEngine.buildReadingPlanner(
-                                    unitType = tmpl.unitType,
-                                    durationDays = tmpl.durationDays,
-                                    startDate = startDateText,
-                                    startUnit = tmpl.startUnit,
-                                    endUnit = tmpl.endUnit,
-                                    customTitle = tmpl.title,
-                                    chapters = chapters
-                                )
-                                onBeginPlan(built)
-                            }
+                PLAN_TEMPLATES.chunked(2).forEach { row ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(14.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                Text(tmpl.title, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = hInk, fontFamily = fontFamilyUi)
-                                Text("${tmpl.durationDays} Days • ${tmpl.description}", fontSize = 11.sp, color = hInkMuted)
+                        row.forEach { tmpl ->
+                            // Web parity: surah templates gated until chapters ready.
+                            val needsChapters = tmpl.unitType == "surah" && !chaptersReady
+                            val unitCount = kotlin.math.max(1, tmpl.endUnit - tmpl.startUnit + 1)
+                            val perDay = kotlin.math.max(1, kotlin.math.ceil(unitCount.toDouble() / tmpl.durationDays).toInt())
+                            val unitPlural = PLANNER_UNITS[tmpl.unitType]?.plural ?: "units"
+                            Card(
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = hCream),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, hBoneDark),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .alpha(if (needsChapters) 0.5f else 1f)
+                                    .clickable(enabled = !needsChapters) {
+                                        runCatching {
+                                            PlannerEngine.buildReadingPlanner(
+                                                unitType = tmpl.unitType,
+                                                durationDays = tmpl.durationDays,
+                                                startDate = startDateText,
+                                                startUnit = tmpl.startUnit,
+                                                endUnit = tmpl.endUnit,
+                                                customTitle = tmpl.title,
+                                                chapters = chapters
+                                            )
+                                        }.onSuccess { previewPlan = it }
+                                    }
+                            ) {
+                                Column(modifier = Modifier.padding(14.dp)) {
+                                    Text(tmpl.title, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = hInk, fontFamily = fontFamilyUi)
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(tmpl.description, fontSize = 11.sp, color = hInkMid, lineHeight = 16.sp, maxLines = 2)
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        if (needsChapters) "Loading surahs…" else "$perDay $unitPlural/day • ${tmpl.durationDays}d",
+                                        fontSize = 10.sp,
+                                        color = hInkMuted,
+                                        fontFamily = fontFamilyMono
+                                    )
+                                }
                             }
-                            Icon(imageVector = NurIcons.ArrowRight, contentDescription = null, tint = hGold, modifier = Modifier.size(16.dp))
                         }
+                        if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
                     }
                 }
             }
@@ -1698,6 +1842,76 @@ private fun IntentionView(
                 Spacer(modifier = Modifier.height(80.dp))
             }
         }
+    }
+
+    // Template preview modal (web parity: Planner.jsx Duration/Pace/Starts/Done-by + Create).
+    previewPlan?.let { preview ->
+        val planUnits = preview.assignments.sumOf { it.items.size }
+        val previewPerDay = kotlin.math.max(1, kotlin.math.ceil(planUnits.toDouble() / preview.durationDays.coerceAtLeast(1)).toInt())
+        val previewUnitPlural = PLANNER_UNITS[preview.unitType]?.plural ?: "units"
+        val previewDoneBy = runCatching {
+            val fmt = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+            val cal = java.util.Calendar.getInstance()
+            cal.time = fmt.parse(preview.startDate) ?: java.util.Date()
+            cal.add(java.util.Calendar.DAY_OF_YEAR, preview.durationDays - 1)
+            PlannerEngine.formatPlannerDateLabel(PlannerEngine.formatPlannerDate(cal.time))
+        }.getOrDefault("—")
+        val previewStats = listOf(
+            "Duration" to "${preview.durationDays} days",
+            "Pace" to "$previewPerDay $previewUnitPlural/day",
+            "Starts" to PlannerEngine.formatPlannerDateLabel(preview.startDate),
+            "Done by" to previewDoneBy
+        )
+        AlertDialog(
+            onDismissRequest = { previewPlan = null },
+            shape = RoundedCornerShape(20.dp),
+            containerColor = hCream,
+            title = { Text("Start \"${preview.title}\"?", fontSize = 18.sp, fontWeight = FontWeight.Bold, fontFamily = fontFamilyUi) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    previewStats.chunked(2).forEach { row ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            row.forEach { (label, value) ->
+                                Card(
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = CardDefaults.cardColors(containerColor = hBone),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, hBoneDark),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Column(modifier = Modifier.padding(12.dp)) {
+                                        Text(label.uppercase(), fontSize = 9.sp, color = hInkMuted, fontFamily = fontFamilyMono)
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(value, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = hInk)
+                                    }
+                                }
+                            }
+                            if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val built = preview
+                        previewPlan = null
+                        onBeginPlan(built)
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = hTeal),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Create Plan", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { previewPlan = null }) {
+                    Text("Cancel", color = hInkMuted)
+                }
+            }
+        )
     }
 }
 
@@ -1774,5 +1988,46 @@ private fun PresetPaceCard(
             Text(daysText, fontSize = 10.sp, color = hInkMuted, fontFamily = fontFamilyMono)
             Text("$pagesPerPrayer pg/prayer", fontSize = 8.sp, color = hTeal, fontFamily = fontFamilyMono)
         }
+    }
+}
+
+/** Web parity (Planner.jsx handleExportCalendar): one VEVENT per assignment. */
+private fun buildPlannerIcs(plan: ReadingPlan): String {
+    val unitPlural = PLANNER_UNITS[plan.unitType]?.plural ?: "units"
+    val sb = StringBuilder("BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//QuranNur//Planner//EN\n")
+    plan.assignments.forEach { a ->
+        val dateStr = a.date.replace("-", "")
+        sb.append("BEGIN:VEVENT\nDTSTART;VALUE=DATE:$dateStr\nDTEND;VALUE=DATE:$dateStr\nSUMMARY:Quran Plan - Day ${a.dayNumber}\nDESCRIPTION:Read ${a.items.size} $unitPlural\nEND:VEVENT\n")
+    }
+    sb.append("END:VCALENDAR")
+    return sb.toString()
+}
+
+/**
+ * Writes quran_plan.ics to cache/shared and shares it via the
+ * "${packageName}.fileprovider" authority (verified in AndroidManifest.xml).
+ */
+private fun sharePlannerIcs(context: Context, plan: ReadingPlan) {
+    val dir = File(context.cacheDir, "shared").apply { mkdirs() }
+    val file = File(dir, "quran_plan.ics")
+    file.writeText(buildPlannerIcs(plan))
+    val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+    val intent = Intent(Intent.ACTION_SEND).apply {
+        type = "text/calendar"
+        putExtra(Intent.EXTRA_STREAM, uri)
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    context.startActivity(Intent.createChooser(intent, "Export Calendar"))
+}
+
+/** Web parity (Planner.jsx formatSessionTime): short "Xh Ym today" label. */
+private fun formatPlannerSessionLabel(totalSeconds: Long): String {
+    val h = totalSeconds / 3600
+    val m = (totalSeconds % 3600) / 60
+    val s = totalSeconds % 60
+    return when {
+        h > 0 -> "${h}h ${m}m today"
+        m > 0 -> "${m}m ${s}s today"
+        else -> "${s}s today"
     }
 }

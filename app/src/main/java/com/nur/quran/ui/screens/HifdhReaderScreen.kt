@@ -1042,6 +1042,7 @@ fun HifdhReaderScreen(
                         val wordCached by packVm.wordCachedCount.collectAsState()
                         val wordDownloading by packVm.wordIsDownloading.collectAsState()
                         val wordProgress by packVm.wordProgressByTafsir.collectAsState()
+                val syncState by packVm.syncUiState.collectAsState()
                         SettingsDrawer(
                             viewModel = surahViewModel,
                             onDismiss = { showSettingsDrawer = false },
@@ -1054,6 +1055,7 @@ fun HifdhReaderScreen(
                             wordIsDownloading = wordDownloading,
                             onDownloadAllWords = packVm::downloadAllMissingWordPacks,
                     onCancelAllWords = packVm::cancelAllWordPacks,
+                    syncState = syncState, onBackup = packVm::backupNow, onRestore = packVm::restoreNow,
                             wordProgressByTafsir = wordProgress
                         )
                     }

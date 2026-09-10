@@ -93,10 +93,10 @@ class SurahViewModel @Inject constructor(
     private val _memorizedAyahs = MutableStateFlow<Set<String>>(hifdhPrefs.getStringSet("memorized_ayahs", emptySet()) ?: emptySet())
     val memorizedAyahs: StateFlow<Set<String>> = _memorizedAyahs.asStateFlow()
 
-    private val _arabicFontScale = MutableStateFlow(1.0f)
+    private val _arabicFontScale = MutableStateFlow(hifdhPrefs.getFloat("arabic_scale", 1f))
     val arabicFontScale: StateFlow<Float> = _arabicFontScale.asStateFlow()
 
-    private val _translationFontScale = MutableStateFlow(1.0f)
+    private val _translationFontScale = MutableStateFlow(hifdhPrefs.getFloat("translation_scale", 1f))
     val translationFontScale: StateFlow<Float> = _translationFontScale.asStateFlow()
 
     private val _isSaukaCompleting = MutableStateFlow(false)
@@ -248,7 +248,9 @@ class SurahViewModel @Inject constructor(
 
     private var currentChapterId: Int = 0
     private var currentChapterName: String = ""
-    private var currentTafsirId: Int = 169
+    private var currentTafsirId: Int = hifdhPrefs.getInt("tafsir_id", 169)
+    private val _currentTafsirId = MutableStateFlow(hifdhPrefs.getInt("tafsir_id", 169))
+    val currentTafsirIdFlow: StateFlow<Int> = _currentTafsirId.asStateFlow()
     private val _currentTranslationId = MutableStateFlow(hifdhPrefs.getInt("translation_id", 85))
     val currentTranslationId: StateFlow<Int> = _currentTranslationId.asStateFlow()
     private var cachedTafsirVerses: List<ApiTafsirVerse> = emptyList()
@@ -1559,8 +1561,12 @@ class SurahViewModel @Inject constructor(
 
     fun setTafsirId(tafsirId: Int) {
         currentTafsirId = tafsirId
+        _currentTafsirId.value = tafsirId
+        hifdhPrefs.edit().putInt("tafsir_id", tafsirId).apply()
         cachedTafsirVerses = emptyList()
     }
+
+    fun getCurrentTafsirId(): Int = _currentTafsirId.value
 
     fun setTranslationId(translationId: Int) {
         _currentTranslationId.value = translationId
@@ -1619,10 +1625,12 @@ class SurahViewModel @Inject constructor(
 
     fun updateArabicFontScale(delta: Float) {
         _arabicFontScale.value = (_arabicFontScale.value + delta).coerceIn(0.5f, 3.0f)
+        hifdhPrefs.edit().putFloat("arabic_scale", _arabicFontScale.value).apply()
     }
 
     fun updateTranslationFontScale(delta: Float) {
         _translationFontScale.value = (_translationFontScale.value + delta).coerceIn(0.5f, 3.0f)
+        hifdhPrefs.edit().putFloat("translation_scale", _translationFontScale.value).apply()
     }
 
     fun setSelectedArabicFontName(name: String) {
@@ -1638,6 +1646,27 @@ class SurahViewModel @Inject constructor(
     fun setWordTapBehavior(behavior: String) {
         _wordTapBehavior.value = behavior
         hifdhPrefs.edit().putString("word_tap_behavior", behavior).apply()
+    }
+
+    /**
+     * Plain syncable settings snapshot for the sync engine (web: getSyncableState).
+     * Read-only: no prefs writes here. Bookmarks/planners live in Room already.
+     */
+    fun buildSyncableMap(): Map<String, Any> {
+        val isDark = context.getSharedPreferences("Settings", Context.MODE_PRIVATE)
+            .getBoolean("is_dark_theme", false)
+        return mapOf(
+            "theme" to if (isDark) "dark" else "light",
+            "isDarkTheme" to isDark,
+            "arabicFont" to _selectedArabicFontName.value,
+            "arabicFontScale" to _arabicFontScale.value,
+            "translationFontScale" to _translationFontScale.value,
+            "translationId" to _currentTranslationId.value,
+            "tafsirId" to _currentTafsirId.value,
+            "reciterId" to _currentReciterId.value,
+            "tajweedEnabled" to _isTajweedEnabled.value,
+            "wordTapBehavior" to _wordTapBehavior.value
+        )
     }
 
     fun setMushafPreset(preset: String) {

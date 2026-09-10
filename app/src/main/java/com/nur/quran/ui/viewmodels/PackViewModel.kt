@@ -2,14 +2,19 @@ package com.nur.quran.ui.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nur.quran.data.sync.AppwriteClient
+import com.nur.quran.data.sync.SyncService
 import com.nur.quran.data.tafsir.TafsirPackManager
 import com.nur.quran.data.translation.TranslationPackManager
 import com.nur.quran.data.words.WordPackManager
+import com.nur.quran.ui.components.SyncUiState
 import com.nur.quran.ui.components.audio.PackUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -28,7 +33,9 @@ import javax.inject.Inject
 class PackViewModel @Inject constructor(
     private val tafsirPackManager: TafsirPackManager,
     private val translationPackManager: TranslationPackManager,
-    private val wordPackManager: WordPackManager
+    private val wordPackManager: WordPackManager,
+    private val syncService: SyncService,
+    private val appwriteClient: AppwriteClient
 ) : ViewModel() {
 
     /** Tafsir packs mapped for Settings UI rows (mirrors the former SurahViewModel bridge). */
@@ -157,4 +164,70 @@ class PackViewModel @Inject constructor(
     }
 
     private var activeWordChapter: Int = -1
+
+    // ── Cloud backup & sync status (Settings BACKUP & SYNC section) ────
+    private val _syncUiState = MutableStateFlow(
+        SyncUiState(signedIn = false, email = null, lastSync = null, syncing = false, error = null)
+    )
+    val syncUiState: StateFlow<SyncUiState> = _syncUiState.asStateFlow()
+
+    init {
+        refreshSyncState()
+    }
+
+    fun refreshSyncState() {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val user = runCatching { appwriteClient.account.get() }.getOrNull()
+                _syncUiState.value = SyncUiState(
+                    signedIn = user != null,
+                    email = user?.email,
+                    lastSync = syncService.lastSyncAtPublic().takeIf { it > 0 },
+                    syncing = false,
+                    error = null
+                )
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    fun backupNow() {
+        viewModelScope.launch(Dispatchers.IO) {
+            _syncUiState.value = _syncUiState.value.copy(syncing = true, error = null)
+            try {
+                val ok = syncService.push()
+                _syncUiState.value = _syncUiState.value.copy(
+                    syncing = false,
+                    lastSync = syncService.lastSyncAtPublic().takeIf { it > 0 },
+                    error = if (ok) null else "Backup failed"
+                )
+            } catch (e: Exception) {
+                _syncUiState.value = _syncUiState.value.copy(
+                    syncing = false,
+                    error = e.message ?: "Backup failed"
+                )
+            }
+            refreshSyncState()
+        }
+    }
+
+    fun restoreNow() {
+        viewModelScope.launch(Dispatchers.IO) {
+            _syncUiState.value = _syncUiState.value.copy(syncing = true, error = null)
+            try {
+                val ok = syncService.pull()
+                _syncUiState.value = _syncUiState.value.copy(
+                    syncing = false,
+                    lastSync = syncService.lastSyncAtPublic().takeIf { it > 0 },
+                    error = if (ok) null else "Restore failed"
+                )
+            } catch (e: Exception) {
+                _syncUiState.value = _syncUiState.value.copy(
+                    syncing = false,
+                    error = e.message ?: "Restore failed"
+                )
+            }
+            refreshSyncState()
+        }
+    }
 }

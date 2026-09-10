@@ -89,7 +89,11 @@ fun SettingsDrawer(
     onCancelAllWords: () -> Unit = {},
     wordProgressByTafsir: Map<Int, Pair<Int, Int>> = emptyMap(),
     wifiOnly: Boolean = true,
-    onWifiOnlyChange: (Boolean) -> Unit = {}
+    onWifiOnlyChange: (Boolean) -> Unit = {},
+    syncState: SyncUiState? = null,
+    onBackup: () -> Unit = {},
+    onRestore: () -> Unit = {},
+    onLoginClick: () -> Unit = {}
 ) {
     val arabicFontScale by viewModel.arabicFontScale.collectAsState()
     val translationFontScale by viewModel.translationFontScale.collectAsState()
@@ -622,6 +626,36 @@ fun SettingsDrawer(
                                                 }
                                             }
                                         }
+
+                                        Spacer(modifier = Modifier.height(14.dp))
+
+                                        // Backup & Sync Section (cloud backup, sign-in gated)
+                                        Text(
+                                            text = "BACKUP & SYNC",
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = hInkMuted,
+                                            letterSpacing = 1.sp,
+                                            modifier = Modifier.padding(vertical = 6.dp)
+                                        )
+                                        if (syncState == null) {
+                                            Card(
+                                                shape = RoundedCornerShape(12.dp),
+                                                colors = CardDefaults.cardColors(containerColor = hCream),
+                                                border = androidx.compose.foundation.BorderStroke(1.dp, hBoneDark)
+                                            ) {
+                                                Text(
+                                                    text = "Sign in from Profile to enable cloud backup.",
+                                                    fontSize = 12.sp,
+                                                    color = hInkMuted,
+                                                    lineHeight = 18.sp,
+                                                    modifier = Modifier.padding(16.dp)
+                                                )
+                                            }
+                                        } else {
+                                            SyncStatusCard(syncState, onBackup, onRestore, onLoginClick)
+                                        }
+                                        Spacer(modifier = Modifier.height(8.dp))
                                     }
                                 }
                             }

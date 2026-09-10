@@ -28,6 +28,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.nur.quran.data.audio.Reciters
+import com.nur.quran.data.translation.translationNameOf
 import com.nur.quran.ui.components.NurIcons
 import com.nur.quran.ui.components.SettingsDrawer
 import com.nur.quran.ui.navigation.Screen
@@ -51,12 +53,38 @@ fun ProfileScreen(
     val hifdhPrefs = remember { context.getSharedPreferences("hifdh_settings", Context.MODE_PRIVATE) }
 
     var isDarkTheme by remember { mutableStateOf(isDarkThemeGlobal) }
-    var dailyGoalMins by remember { mutableIntStateOf(prefs.getInt("daily_reading_goal", 30)) }
+    var dailyGoalMins by remember { mutableIntStateOf(prefs.getInt("daily_reading_goal", 20)) }
     var showGoalPicker by remember { mutableStateOf(false) }
     var showSettingsDrawer by remember { mutableStateOf(false) }
 
     val authVm: AuthViewModel = hiltViewModel()
     val authState by authVm.authState.collectAsState()
+
+    // Hoisted so the Backup & Restore card and SettingsDrawer share one instance.
+    val packVm: PackViewModel = hiltViewModel()
+    val syncUi by packVm.syncUiState.collectAsState()
+
+    val reciterId by surahViewModel.currentReciterId.collectAsState()
+    val translationId by surahViewModel.currentTranslationId.collectAsState()
+    val completedTours by homeViewModel.completedTours.collectAsState()
+
+    var syncOp by remember { mutableStateOf<String?>(null) }
+    var showSyncSuccess by remember { mutableStateOf(false) }
+    LaunchedEffect(syncUi.syncing) {
+        if (!syncUi.syncing && syncOp != null) {
+            showSyncSuccess = syncUi.error == null
+            syncOp = null
+        }
+    }
+    LaunchedEffect(showSyncSuccess) {
+        if (showSyncSuccess) {
+            kotlinx.coroutines.delay(3000)
+            showSyncSuccess = false
+        }
+    }
+
+    // Logged-in identity derived from email (AuthState exposes no name field).
+    val signedInEmail = authState.email
 
     val sessions by homeViewModel.readingSessions.collectAsState()
     val todayTotalSeconds = remember(sessions) {
@@ -72,6 +100,15 @@ fun ProfileScreen(
         hour < 17 -> "Good Afternoon"
         else -> "Good Evening"
     }
+    val heroTitle = if (authState.signedIn) {
+        signedInEmail?.substringBefore("@")?.takeIf { it.isNotBlank() }
+            ?.replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.US) else it.toString() }
+            ?: "Quran Student"
+    } else greeting
+    val heroSubtitle = if (authState.signedIn) signedInEmail ?: "" else "Your personal Quran companion"
+    val heroInitials = if (authState.signedIn) {
+        signedInEmail?.substringBefore("@")?.filter { it.isLetterOrDigit() }?.take(2)?.uppercase(java.util.Locale.US)?.takeIf { it.isNotBlank() } ?: "?"
+    } else null
 
     val goalOptions = listOf(10, 15, 20, 30, 45, 60)
 
@@ -106,9 +143,12 @@ fun ProfileScreen(
                     email = authState.email,
                     busy = authState.busy,
                     error = authState.error,
+                    message = authState.message,
                     onLogin = authVm::login,
                     onRegister = authVm::register,
-                    onLogout = authVm::logout
+                    onLogout = authVm::logout,
+                    onForgot = authVm::sendRecovery,
+                    onClearMessage = authVm::clearMessage
                 )
             }
 
@@ -128,11 +168,21 @@ fun ProfileScreen(
                             .border(2.dp, hGold.copy(alpha = 0.4f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        androidx.compose.foundation.Image(
-                            painter = androidx.compose.ui.res.painterResource(id = com.nur.quran.R.drawable.ic_logo),
-                            contentDescription = "Quran Nur Logo",
-                            modifier = Modifier.size(58.dp)
-                        )
+                        if (heroInitials != null) {
+                            Text(
+                                text = heroInitials,
+                                fontSize = 30.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = fontFamilyUi,
+                                color = hInk
+                            )
+                        } else {
+                            androidx.compose.foundation.Image(
+                                painter = androidx.compose.ui.res.painterResource(id = com.nur.quran.R.drawable.ic_logo),
+                                contentDescription = "Quran Nur Logo",
+                                modifier = Modifier.size(58.dp)
+                            )
+                        }
                     }
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
@@ -145,14 +195,14 @@ fun ProfileScreen(
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = greeting,
+                        text = heroTitle,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = fontFamilyUi,
                         color = hInk
                     )
                     Text(
-                        text = "Your personal Quran companion",
+                        text = heroSubtitle,
                         fontSize = 13.sp,
                         color = hInkMuted
                     )
@@ -356,12 +406,14 @@ fun ProfileScreen(
                             ProfileSettingRow(
                                 icon = NurIcons.Volume2,
                                 label = "Reciter Options",
+                                subtitle = Reciters.nameOf(reciterId),
                                 onClick = { showSettingsDrawer = true }
                             )
                             Divider(color = hBoneDark.copy(alpha = 0.6f), thickness = 1.dp)
                             ProfileSettingRow(
                                 icon = NurIcons.BookOpen,
                                 label = "Translation Options",
+                                subtitle = translationNameOf(translationId),
                                 onClick = { showSettingsDrawer = true }
                             )
                             Divider(color = hBoneDark.copy(alpha = 0.6f), thickness = 1.dp)
@@ -448,6 +500,7 @@ fun ProfileScreen(
                             ProfileSettingRow(
                                 icon = NurIcons.RotateCcw,
                                 label = "Replay All Tours & Tips",
+                                subtitle = "${minOf(completedTours.size, 5)}/5 Completed",
                                 onClick = {
                                     hifdhPrefs.edit().remove("has_seen_surah_tour").remove("has_seen_swipe_tip").apply()
                                 }
@@ -468,6 +521,186 @@ fun ProfileScreen(
                                     context.startActivity(Intent.createChooser(sendIntent, "Share App"))
                                 }
                             )
+                        }
+                    }
+                }
+            }
+
+            // Backup & Restore (logged in only)
+            if (authState.signedIn) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = hSurface),
+                        border = BorderStroke(1.dp, hBoneDark)
+                    ) {
+                        Column(modifier = Modifier.padding(18.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(38.dp)
+                                        .clip(CircleShape)
+                                        .background(hGoldLight),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = NurIcons.RefreshCw,
+                                        contentDescription = null,
+                                        tint = hGold,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column {
+                                    Text(
+                                        text = "Backup & Restore",
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = hInk,
+                                        fontFamily = fontFamilyUi
+                                    )
+                                    Text(
+                                        text = "LAST SYNCED: ${relativeTime(syncUi.lastSync)}",
+                                        fontSize = 10.sp,
+                                        fontFamily = fontFamilyMono,
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 1.sp,
+                                        color = hInkMuted
+                                    )
+                                }
+                            }
+
+                            if (syncUi.syncing || syncUi.error != null || showSyncSuccess) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                when {
+                                    syncUi.syncing -> Row(verticalAlignment = Alignment.CenterVertically) {
+                                        CircularProgressIndicator(
+                                            color = hGold,
+                                            strokeWidth = 2.dp,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = if (syncOp == "restore") "Restoring data..." else "Saving data...",
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = hGold
+                                        )
+                                    }
+                                    syncUi.error != null -> Text(
+                                        text = syncUi.error ?: "Sync failed",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = hRed
+                                    )
+                                    showSyncSuccess -> Text(
+                                        text = "✓ Sync complete successfully.",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = hGreen
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                OutlinedButton(
+                                    onClick = { syncOp = "restore"; showSyncSuccess = false; packVm.restoreNow() },
+                                    enabled = !syncUi.syncing,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(
+                                        imageVector = NurIcons.Download,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(15.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Restore", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                }
+                                Button(
+                                    onClick = { syncOp = "backup"; showSyncSuccess = false; packVm.backupNow() },
+                                    enabled = !syncUi.syncing,
+                                    colors = ButtonDefaults.buttonColors(containerColor = hGold),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(
+                                        imageVector = NurIcons.RefreshCw,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(15.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Backup", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Danger Zone (logged in only)
+            if (authState.signedIn) {
+                item {
+                    Column {
+                        Text(
+                            text = "DANGER ZONE",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = fontFamilyMono,
+                            letterSpacing = 1.2.sp,
+                            color = hRed.copy(alpha = 0.7f),
+                            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
+                        )
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(20.dp),
+                            colors = CardDefaults.cardColors(containerColor = hSurface),
+                            border = BorderStroke(1.dp, hRed.copy(alpha = 0.3f))
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable(onClick = { authVm.logout() })
+                                    .padding(16.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .clip(CircleShape)
+                                            .background(hRed.copy(alpha = 0.12f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = NurIcons.X,
+                                            contentDescription = null,
+                                            tint = hRed,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                    Text(
+                                        text = "Sign Out",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = hRed
+                                    )
+                                }
+                                Icon(
+                                    imageVector = NurIcons.ArrowRight,
+                                    contentDescription = null,
+                                    tint = hRed.copy(alpha = 0.5f),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -500,7 +733,6 @@ fun ProfileScreen(
         }
 
         if (showSettingsDrawer) {
-            val packVm: PackViewModel = hiltViewModel()
             val tafsirPackRows by packVm.tafsirPacks.collectAsState()
             val wordCached by packVm.wordCachedCount.collectAsState()
             val wordDownloading by packVm.wordIsDownloading.collectAsState()
@@ -531,9 +763,12 @@ private fun AuthCard(
     email: String?,
     busy: Boolean,
     error: String?,
+    message: String?,
     onLogin: (String, String) -> Unit,
     onRegister: (String, String) -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onForgot: (String) -> Unit,
+    onClearMessage: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -630,6 +865,10 @@ private fun AuthCard(
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(text = error, fontSize = 12.sp, color = hRed)
                 }
+                if (message != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(text = message, fontSize = 12.sp, color = hGreen)
+                }
                 Spacer(modifier = Modifier.height(12.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -659,9 +898,31 @@ private fun AuthCard(
                         )
                     }
                 }
+                TextButton(
+                    onClick = {
+                        onClearMessage()
+                        onForgot(emailInput)
+                    },
+                    enabled = !busy && emailInput.isNotBlank(),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Forgot password?", fontSize = 12.sp, color = hInkMid)
+                }
             }
         }
     }
+}
+
+private fun relativeTime(lastSync: Long?): String {
+    if (lastSync == null) return "Never"
+    val diff = System.currentTimeMillis() - lastSync
+    if (diff < 0) return "Just now"
+    val mins = diff / 60_000L
+    if (mins < 1) return "Just now"
+    if (mins < 60) return "${mins}m ago"
+    val hours = mins / 60
+    if (hours < 24) return "${hours}h ago"
+    return "${hours / 24}d ago"
 }
 
 @Composable

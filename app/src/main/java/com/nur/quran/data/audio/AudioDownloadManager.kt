@@ -59,6 +59,22 @@ class AudioDownloadManager @Inject constructor(
 
     private val jobs = ConcurrentHashMap<String, Job>()
 
+    /**
+     * Keys (`"reciterId:chapterId"`, see [keyFor]) with downloads paused via
+     * [setPaused]. Chunk loops throw [PauseDownload] when their key is present,
+     * leaving partial `.tmp` files in place so a later retry resumes via HTTP
+     * Range in [downloadUrlToFile].
+     */
+    private val pausedKeys = ConcurrentHashMap.newKeySet<String>()
+
+    /**
+     * Cooperative pause signal, thrown by chunk loops when their key is in
+     * [pausedKeys]. Extends [CancellationException] so it unwinds like a
+     * cancel (state `error=null`, `isDownloading=false`, no unmark) and the
+     * caller can restart the same download to resume.
+     */
+    private class PauseDownload : CancellationException("paused")
+
     // ── Downloaded-chapter prefs ──────────────────────────────────────────
 
     /** Legacy (reciter-agnostic) chapters. Kept so old callers keep working. */
@@ -215,6 +231,7 @@ class AudioDownloadManager @Inject constructor(
                 .forEach { chunk ->
                     chunk.forEach { (_, url, file) ->
                         ensureActive()
+                        if (pausedKeys.contains(key)) throw PauseDownload()
                         try {
                             downloadUrlToFile(url, file)
                         } catch (e: CancellationException) {
@@ -265,6 +282,23 @@ class AudioDownloadManager @Inject constructor(
     fun cancelDownload(reciterId: Int, chapterId: Int) {
         jobs[keyFor(reciterId, chapterId)]?.cancel()
     }
+
+    /**
+     * Pauses (`paused=true`) or unpauses a download for the given reciter +
+     * chapter. Takes effect at the next file boundary: chunk loops throw
+     * [PauseDownload], which unwinds with `error=null, isDownloading=false`
+     * (no unmark), keeping partial `.tmp` files so restarting the same
+     * download resumes via HTTP Range. Call with `paused=false` before
+     * restarting; the flag is never cleared automatically.
+     */
+    fun setPaused(reciterId: Int, chapterId: Int, paused: Boolean) {
+        val key = keyFor(reciterId, chapterId)
+        if (paused) pausedKeys.add(key) else pausedKeys.remove(key)
+    }
+
+    /** True when downloads for the given reciter + chapter are paused via [setPaused]. */
+    fun isPaused(reciterId: Int, chapterId: Int): Boolean =
+        pausedKeys.contains(keyFor(reciterId, chapterId))
 
     fun isDownloading(reciterId: Int, chapterId: Int): Boolean =
         _downloadState.value[keyFor(reciterId, chapterId)]?.isDownloading == true
@@ -321,6 +355,7 @@ class AudioDownloadManager @Inject constructor(
             missing.chunked(5).forEach { chunk ->
                 chunk.forEach { (_, url, file) ->
                     ensureActive()
+                    if (pausedKeys.contains(key)) throw PauseDownload()
                     try {
                         downloadUrlToFile(url, file)
                     } catch (e: CancellationException) {
@@ -361,6 +396,109 @@ class AudioDownloadManager @Inject constructor(
                 }
             }
             downloaded
+        } catch (e: CancellationException) {
+            // Cooperative cancel/pause ([PauseDownload]): clean state, no
+            // unmark; partial `.tmp` files are kept so resume continues.
+            _downloadState.update { current ->
+                val prev = current[key]
+                current + (key to (prev?.copy(isDownloading = false, error = null)
+                    ?: DownloadProgress(downloaded, 0, false, null)))
+            }
+            throw e
+        } catch (e: Exception) {
+            _downloadState.update { current ->
+                val prev = current[key]
+                current + (key to (prev?.copy(isDownloading = false)
+                    ?: DownloadProgress(downloaded, 0, false, null)))
+            }
+            downloaded
+        } finally {
+            if (currentJob != null) jobs.remove(key, currentJob) else jobs.remove(key)
+        }
+    }
+
+    /**
+     * Key-based variant of [downloadMissing] for callers that only have verse
+     * keys (`"S:A"`) instead of [VerseEntity] rows. Remote URLs come straight
+     * from [Reciters.buildAudioUrl] (verses with no deterministic URL are
+     * skipped); files land in the reciter dir via `.tmp`+rename, progress is
+     * reported over the missing count, and the chapter is marked downloaded
+     * when every key in [verseKeys] is present afterwards (per-reciter file
+     * or legacy root-level file).
+     *
+     * Returns the count newly downloaded; never throws except for cooperative
+     * [CancellationException] (cancel/pause), which is rethrown like
+     * [downloadMissing] so resume continues.
+     */
+    suspend fun downloadMissingKeys(
+        reciterId: Int,
+        verseKeys: List<String>,
+        chapterId: Int,
+        onProgress: (done: Int, total: Int) -> Unit = { _, _ -> }
+    ): Int = withContext(Dispatchers.IO) {
+        val key = keyFor(reciterId, chapterId)
+        val currentJob = currentCoroutineContext()[Job]
+        if (currentJob != null) jobs[key] = currentJob
+        var downloaded = 0
+        try {
+            val dir = reciterDir(reciterId).apply { mkdirs() }
+            val missing = verseKeys
+                .filter { verseKey -> localFile(reciterId, verseKey) == null }
+                .mapNotNull { verseKey ->
+                    Reciters.buildAudioUrl(reciterId, verseKey)?.let { url ->
+                        Triple(verseKey, url, File(dir, fileNameFor(verseKey)))
+                    }
+                }
+            val total = missing.size
+            var lastError: String? = null
+            _downloadState.update { it + (key to DownloadProgress(downloaded, total, true, null)) }
+            onProgress(downloaded, total)
+
+            missing.chunked(5).forEach { chunk ->
+                chunk.forEach { (_, url, file) ->
+                    ensureActive()
+                    if (pausedKeys.contains(key)) throw PauseDownload()
+                    try {
+                        downloadUrlToFile(url, file)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        lastError = e.message ?: e::class.simpleName
+                    }
+                    if (file.exists() && file.length() > 0) downloaded++
+                    _downloadState.update {
+                        it + (key to DownloadProgress(downloaded, total, true, lastError))
+                    }
+                    onProgress(downloaded, total)
+                }
+            }
+
+            val allPresent = verseKeys.all { verseKey ->
+                val name = fileNameFor(verseKey)
+                val file = File(dir, name)
+                if (file.exists() && file.length() > 0) {
+                    true
+                } else {
+                    val legacy = File(audioDir, name)
+                    legacy.exists() && legacy.length() > 0
+                }
+            }
+            if (allPresent) {
+                markDownloaded(reciterId, chapterId)
+                _downloadState.update { it + (key to DownloadProgress(total, total, false, null)) }
+            } else {
+                _downloadState.update {
+                    it + (key to DownloadProgress(downloaded, total, false, lastError))
+                }
+            }
+            downloaded
+        } catch (e: CancellationException) {
+            _downloadState.update { current ->
+                val prev = current[key]
+                current + (key to (prev?.copy(isDownloading = false, error = null)
+                    ?: DownloadProgress(downloaded, 0, false, null)))
+            }
+            throw e
         } catch (e: Exception) {
             _downloadState.update { current ->
                 val prev = current[key]
@@ -437,24 +575,39 @@ class AudioDownloadManager @Inject constructor(
 
     // ── Network + naming helpers ──────────────────────────────────────────
 
+    /**
+     * Streams [url] into [dest] via `.tmp` + rename (`fd.sync`, tmp cleanup
+     * on genuine errors), with HTTP Range resume: when a partial `.tmp`
+     * exists, the request sends `Range: bytes=<tmpSize>-`; a `206` response
+     * is appended to the tmp, while a `200` (server ignored the range)
+     * restarts the tmp from zero. [CancellationException] (cancel/pause)
+     * keeps the partial tmp so a later retry resumes.
+     */
     @Throws(IOException::class)
     private fun downloadUrlToFile(url: String, dest: File) {
         dest.parentFile?.mkdirs()
         val tmp = File(dest.parent, "${dest.name}.tmp")
+        val resumedBytes = if (tmp.exists()) tmp.length() else 0L
         var connection: HttpURLConnection? = null
         try {
-            connection = (URI(url).toURL().openConnection() as HttpURLConnection).apply {
+            val conn = (URI(url).toURL().openConnection() as HttpURLConnection).apply {
                 connectTimeout = CONNECT_TIMEOUT_MS
                 readTimeout = READ_TIMEOUT_MS
                 instanceFollowRedirects = true
                 setRequestProperty("User-Agent", "QuranApp/1.0")
+                if (resumedBytes > 0) setRequestProperty("Range", "bytes=$resumedBytes-")
                 connect()
                 if (responseCode !in 200..299) {
                     throw IOException("HTTP $responseCode for $url")
                 }
             }
-            connection.inputStream.use { input ->
-                FileOutputStream(tmp).use { output ->
+            connection = conn
+            // 206 = range honored → append; anything else (normally 200) after
+            // a Range request means the server ignored it → restart from zero.
+            val append = resumedBytes > 0 && conn.responseCode == HttpURLConnection.HTTP_PARTIAL
+            if (resumedBytes > 0 && !append) tmp.delete()
+            conn.inputStream.use { input ->
+                FileOutputStream(tmp, append).use { output ->
                     val buffer = ByteArray(BUFFER_SIZE)
                     var read: Int
                     while (input.read(buffer).also { read = it } != -1) {
@@ -468,6 +621,9 @@ class AudioDownloadManager @Inject constructor(
                 tmp.copyTo(dest, overwrite = true)
                 tmp.delete()
             }
+        } catch (e: CancellationException) {
+            // Keep the partial `.tmp` so the next attempt resumes via Range.
+            throw e
         } catch (e: Exception) {
             tmp.delete()
             throw e

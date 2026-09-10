@@ -388,8 +388,11 @@ class SurahViewModel @Inject constructor(
 
     /**
      * Web parity: in-play settings adjust (GlobalAudioPlayer drawer). Applies
-     * speed/repeats/delay/streamOnly live without restarting; a reciter change
-     * rebuilds the current playlist preserving the active verse index.
+     * speed/repeats/delay/streamOnly/range live without restarting; a reciter
+     * change rebuilds the current playlist preserving the active verse.
+     * Pass null range keys to clear the range (Play All); non-null to
+     * re-range (Play Range) — the player seeks into the new range when the
+     * current verse falls outside it.
      */
     fun applyInPlaySettings(
         reciterId: Int,
@@ -397,21 +400,45 @@ class SurahViewModel @Inject constructor(
         rangeRepeat: Int,
         delayMs: Long,
         speed: Float,
-        streamOnly: Boolean
+        streamOnly: Boolean,
+        startKey: String? = null,
+        endKey: String? = null
     ) {
         setAyahRepeat(ayahRepeat)
         setRangeRepeat(rangeRepeat)
         setDelayMs(delayMs)
         setSpeed(speed)
         setStreamOnly(streamOnly)
-        if (reciterId == _currentReciterId.value) return
+        if (startKey != null && endKey != null) {
+            _playbackSettings.value = _playbackSettings.value.copy(
+                rangeStart = startKey,
+                rangeEnd = endKey
+            )
+        } else {
+            _playbackSettings.value = _playbackSettings.value.copy(
+                rangeStart = null,
+                rangeEnd = null
+            )
+        }
+        if (reciterId == _currentReciterId.value) {
+            snapIntoRange()
+            return
+        }
+        val previousReciter = _currentReciterId.value
         setReciterId(reciterId)
         val player = exoPlayer ?: return
         if (playlist.isEmpty()) return
         val currentKey = _playingVerseKey.value
         val wasPlaying = player.isPlaying
         val (playable, items) = buildPlaylistItems(playlist, playlistChapterId)
-        if (playable.isEmpty() || items.size != playable.size) return
+        if (playable.isEmpty() || items.size != playable.size) {
+            // New reciter has no playable audio (e.g. gapless-only reciter
+            // without stored URLs): revert so the old voice keeps playing and
+            // say why instead of failing silently.
+            setReciterId(previousReciter)
+            _downloadError.value = "No streaming audio for ${reciterName(reciterId)}"
+            return
+        }
         val idx = playable.indexOfFirst { it.verseKey == currentKey }.coerceAtLeast(0)
         repeatGeneration++
         repeatDelayJob?.cancel()
@@ -425,6 +452,34 @@ class SurahViewModel @Inject constructor(
         player.prepare()
         _playingVerseKey.value = playable.getOrNull(idx)?.verseKey
         if (wasPlaying) player.play() else player.pause()
+        snapIntoRange()
+    }
+
+    /**
+     * Seeks the player to the range start when the active verse falls outside
+     * the newly applied [PlaybackSettings.rangeStart]/[rangeEnd] (web: range
+     * re-clamp on settings change). No-op when no range is set.
+     */
+    private fun snapIntoRange() {
+        val player = exoPlayer ?: return
+        if (playlist.isEmpty()) return
+        val settings = _playbackSettings.value
+        val from = settings.rangeStart ?: return
+        val to = settings.rangeEnd ?: return
+        val fromIdx = playlist.indexOfFirst { it.verseKey == from }.coerceAtLeast(0)
+        val toIdx = playlist.indexOfFirst { it.verseKey == to }.takeIf { it >= 0 } ?: (playlist.size - 1)
+        val lo = minOf(fromIdx, toIdx)
+        val hi = maxOf(fromIdx, toIdx)
+        val cur = player.currentMediaItemIndex
+        if (cur in lo..hi) return
+        repeatGeneration++
+        repeatDelayJob?.cancel()
+        repeatAyahCount = 0
+        repeatRangeCount = 0
+        repeatSeekPending = false
+        lastMediaIndex = lo
+        player.seekTo(lo, 0L)
+        _playingVerseKey.value = playlist.getOrNull(lo)?.verseKey
     }
 
     /**
@@ -492,18 +547,29 @@ class SurahViewModel @Inject constructor(
         _playbackSettings.value = _playbackSettings.value.copy(ayahRepeat = repeat)
         hifdhPrefs.edit().putInt("pb_ayah_repeat", repeat).apply()
         repeatAyahCount = 0
+        // An active Hifz loop reads its own counters (web: Memorization.jsx
+        // local state), so mirror live changes into it as well.
+        if (hifdhLoopActive) {
+            hifdhAyahRepeat = repeat
+            hifdhAyahPlayCount = 0
+        }
     }
 
     fun setRangeRepeat(repeat: Int) {
         _playbackSettings.value = _playbackSettings.value.copy(rangeRepeat = repeat)
         hifdhPrefs.edit().putInt("pb_range_repeat", repeat).apply()
         repeatRangeCount = 0
+        if (hifdhLoopActive) {
+            hifdhRangeLoop = repeat
+            hifdhRangeCount = 0
+        }
     }
 
     fun setDelayMs(delayMs: Long) {
         val safe = delayMs.coerceAtLeast(0L)
         _playbackSettings.value = _playbackSettings.value.copy(delayMs = safe)
         hifdhPrefs.edit().putLong("pb_delay_ms", safe).apply()
+        if (hifdhLoopActive) hifdhDelayMs = safe
     }
 
     fun setSpeed(speed: Float) {

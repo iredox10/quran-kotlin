@@ -1685,7 +1685,8 @@ fun SurahScreen(
                         if (playingVerseKey != null) {
                             // In-play adjust: apply live without restarting.
                             viewModel.applyInPlaySettings(
-                                reciterId, ayahRepeat, rangeRepeat, delayMs, speed, streamOnly
+                                reciterId, ayahRepeat, rangeRepeat, delayMs, speed, streamOnly,
+                                startKey, endKey
                             )
                         } else {
                             viewModel.setReciterId(reciterId)

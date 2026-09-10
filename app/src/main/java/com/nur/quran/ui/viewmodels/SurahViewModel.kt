@@ -105,7 +105,7 @@ class SurahViewModel @Inject constructor(
     private val _tafsirState = MutableStateFlow<TafsirUiState>(TafsirUiState.Hidden)
     val tafsirState: StateFlow<TafsirUiState> = _tafsirState.asStateFlow()
 
-    private val _selectedArabicFontName = MutableStateFlow(hifdhPrefs.getString("arabic_font", "Scheherazade New") ?: "Scheherazade New")
+    private val _selectedArabicFontName = MutableStateFlow(hifdhPrefs.getString("arabic_font", "KFGQPC Hafs") ?: "KFGQPC Hafs")
     val selectedArabicFontName: StateFlow<String> = _selectedArabicFontName.asStateFlow()
 
     private val _wordTapBehavior = MutableStateFlow(hifdhPrefs.getString("word_tap_behavior", "translation") ?: "translation")
@@ -251,7 +251,7 @@ class SurahViewModel @Inject constructor(
     private var currentTafsirId: Int = hifdhPrefs.getInt("tafsir_id", 169)
     private val _currentTafsirId = MutableStateFlow(hifdhPrefs.getInt("tafsir_id", 169))
     val currentTafsirIdFlow: StateFlow<Int> = _currentTafsirId.asStateFlow()
-    private val _currentTranslationId = MutableStateFlow(hifdhPrefs.getInt("translation_id", 85))
+    private val _currentTranslationId = MutableStateFlow(hifdhPrefs.getInt("translation_id", 20))
     val currentTranslationId: StateFlow<Int> = _currentTranslationId.asStateFlow()
     private var cachedTafsirVerses: List<ApiTafsirVerse> = emptyList()
 

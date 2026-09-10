@@ -37,9 +37,11 @@ import com.nur.quran.data.db.entities.ChapterEntity
 import com.nur.quran.data.db.entities.VerseEntity
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.gestures.scrollBy
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.nur.quran.ui.components.AutoScrollerBar
 import com.nur.quran.ui.components.NurIcons
 import com.nur.quran.ui.components.SettingsDrawer
+import com.nur.quran.ui.viewmodels.PackViewModel
 import com.nur.quran.ui.viewmodels.SurahUiState
 import com.nur.quran.ui.viewmodels.SurahViewModel
 import com.nur.quran.utils.TajweedProcessor
@@ -1035,9 +1037,22 @@ fun HifdhReaderScreen(
                     )
 
                     if (showSettingsDrawer) {
+                        val packVm: PackViewModel = hiltViewModel()
+                        val tafsirPackRows by packVm.tafsirPacks.collectAsState()
+                        val wordCached by packVm.wordCachedCount.collectAsState()
+                        val wordDownloading by packVm.wordIsDownloading.collectAsState()
+                        val wordProgress by packVm.wordProgressByTafsir.collectAsState()
                         SettingsDrawer(
                             viewModel = surahViewModel,
-                            onDismiss = { showSettingsDrawer = false }
+                            onDismiss = { showSettingsDrawer = false },
+                            tafsirPacks = tafsirPackRows,
+                            onDownloadTafsir = packVm::downloadTafsirPack,
+                            onCancelTafsir = packVm::cancelTafsirPack,
+                            onDeleteTafsir = packVm::deleteTafsirPack,
+                            wordCachedCount = wordCached,
+                            wordIsDownloading = wordDownloading,
+                            onDownloadAllWords = packVm::downloadAllMissingWordPacks,
+                            wordProgressByTafsir = wordProgress
                         )
                     }
                 }

@@ -29,11 +29,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.nur.quran.data.db.entities.ChapterEntity
 import com.nur.quran.data.planner.*
 import com.nur.quran.ui.components.NurIcons
 import com.nur.quran.ui.components.SettingsDrawer
 import com.nur.quran.ui.viewmodels.HomeViewModel
+import com.nur.quran.ui.viewmodels.PackViewModel
 import com.nur.quran.ui.viewmodels.PlannerViewModel
 import com.nur.quran.ui.viewmodels.SurahViewModel
 import java.util.Calendar
@@ -1209,9 +1211,22 @@ fun PlannerScreen(
     }
 
     if (showSettingsDrawer) {
+        val packVm: PackViewModel = hiltViewModel()
+        val tafsirPackRows by packVm.tafsirPacks.collectAsState()
+        val wordCached by packVm.wordCachedCount.collectAsState()
+        val wordDownloading by packVm.wordIsDownloading.collectAsState()
+        val wordProgress by packVm.wordProgressByTafsir.collectAsState()
         SettingsDrawer(
             viewModel = surahViewModel,
-            onDismiss = { showSettingsDrawer = false }
+            onDismiss = { showSettingsDrawer = false },
+            tafsirPacks = tafsirPackRows,
+            onDownloadTafsir = packVm::downloadTafsirPack,
+            onCancelTafsir = packVm::cancelTafsirPack,
+            onDeleteTafsir = packVm::deleteTafsirPack,
+            wordCachedCount = wordCached,
+            wordIsDownloading = wordDownloading,
+            onDownloadAllWords = packVm::downloadAllMissingWordPacks,
+            wordProgressByTafsir = wordProgress
         )
     }
 }

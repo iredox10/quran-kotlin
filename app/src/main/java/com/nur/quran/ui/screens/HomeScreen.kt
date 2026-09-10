@@ -41,6 +41,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.nur.quran.R
 import com.nur.quran.data.HIZB_STARTS
 import com.nur.quran.data.JUZ_STARTS
@@ -59,6 +60,7 @@ import com.nur.quran.ui.viewmodels.HomeUiState
 import com.nur.quran.ui.viewmodels.HomeViewModel
 import com.nur.quran.ui.viewmodels.OnboardingState
 import com.nur.quran.ui.viewmodels.OnboardingTours
+import com.nur.quran.ui.viewmodels.PackViewModel
 import com.nur.quran.ui.viewmodels.SaukaGoal
 import com.nur.quran.ui.viewmodels.SurahViewModel
 import androidx.compose.runtime.getValue
@@ -757,9 +759,22 @@ fun HomeScreen(
 }
 
     if (showSettingsDrawer && surahViewModel != null) {
+        val packVm: PackViewModel = hiltViewModel()
+        val tafsirPackRows by packVm.tafsirPacks.collectAsState()
+        val wordCached by packVm.wordCachedCount.collectAsState()
+        val wordDownloading by packVm.wordIsDownloading.collectAsState()
+        val wordProgress by packVm.wordProgressByTafsir.collectAsState()
         com.nur.quran.ui.components.SettingsDrawer(
             viewModel = surahViewModel,
-            onDismiss = { showSettingsDrawer = false }
+            onDismiss = { showSettingsDrawer = false },
+            tafsirPacks = tafsirPackRows,
+            onDownloadTafsir = packVm::downloadTafsirPack,
+            onCancelTafsir = packVm::cancelTafsirPack,
+            onDeleteTafsir = packVm::deleteTafsirPack,
+            wordCachedCount = wordCached,
+            wordIsDownloading = wordDownloading,
+            onDownloadAllWords = packVm::downloadAllMissingWordPacks,
+            wordProgressByTafsir = wordProgress
         )
     }
 

@@ -28,7 +28,6 @@ import androidx.compose.ui.window.DialogProperties
 import com.nur.quran.ui.components.audio.DEFAULT_TAFSIR_PACKS
 import com.nur.quran.ui.components.audio.PackDownloadRow
 import com.nur.quran.ui.components.audio.PackUiState
-import com.nur.quran.ui.components.audio.WordPackSummaryRow
 import com.nur.quran.ui.screens.*
 import com.nur.quran.ui.viewmodels.SurahViewModel
 
@@ -87,6 +86,7 @@ fun SettingsDrawer(
     wordTotal: Int = 114,
     wordIsDownloading: Boolean = false,
     onDownloadAllWords: () -> Unit = {},
+    onCancelAllWords: () -> Unit = {},
     wordProgressByTafsir: Map<Int, Pair<Int, Int>> = emptyMap()
 ) {
     val arabicFontScale by viewModel.arabicFontScale.collectAsState()
@@ -384,8 +384,7 @@ fun SettingsDrawer(
                                                 Divider(color = hBoneDark)
 
                                                 // Word Hover/Tap Action Selector matching web app
-                                                Column(modifier = Modifier.padding(14.dp)) {
-                                                    Text(
+                                                Column(modifier = Modifier.padding(14.dp)) {                                                    Text(
                                                         text = "Word Hover Action",
                                                         fontSize = 13.sp,
                                                         fontWeight = FontWeight.Medium,
@@ -420,6 +419,15 @@ fun SettingsDrawer(
                                                         }
                                                     }
                                                 }
+                                                Divider(color = hBoneDark)
+                                                // Word-by-word translations for offline tap (moved from Data tab).
+                                                WordTranslationsRow(
+                                                    cachedCount = wordCachedCount,
+                                                    totalCount = wordTotal,
+                                                    isDownloading = wordIsDownloading,
+                                                    onDownloadClick = onDownloadAllWords,
+                                                    onCancelClick = onCancelAllWords
+                                                )
                                             }
                                         }
 
@@ -514,40 +522,6 @@ fun SettingsDrawer(
                                                 Spacer(modifier = Modifier.height(6.dp))
                                                 Text(
                                                     text = "All Quran texts, translations, and audio files are stored locally for fast offline access.",
-                                                    fontSize = 12.sp,
-                                                    color = hInkMid,
-                                                    lineHeight = 18.sp
-                                                )
-                                            }
-                                        }
-
-                                        Spacer(modifier = Modifier.height(14.dp))
-
-                                        // Offline packs: word-by-word translations live here.
-                                        // Tafsir downloads moved next to each tafsir in Reading → Tafsir.
-                                        Text(
-                                            text = "OFFLINE PACKS",
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = hInkMuted,
-                                            letterSpacing = 1.sp,
-                                            modifier = Modifier.padding(vertical = 6.dp)
-                                        )
-                                        Card(
-                                            shape = RoundedCornerShape(12.dp),
-                                            colors = CardDefaults.cardColors(containerColor = hCream),
-                                            border = androidx.compose.foundation.BorderStroke(1.dp, hBoneDark)
-                                        ) {
-                                            Column(modifier = Modifier.padding(12.dp)) {
-                                                WordPackSummaryRow(
-                                                    cachedCount = wordCachedCount,
-                                                    totalCount = wordTotal,
-                                                    isDownloading = wordIsDownloading,
-                                                    onDownloadAllClick = onDownloadAllWords
-                                                )
-                                                Spacer(modifier = Modifier.height(8.dp))
-                                                Text(
-                                                    text = "Tafsir downloads are next to each tafsir in Reading → Tafsir (they include word-by-word). Everything works fully offline once downloaded.",
                                                     fontSize = 12.sp,
                                                     color = hInkMid,
                                                     lineHeight = 18.sp
@@ -847,6 +821,67 @@ private fun PickerItemRow(
         }
     }
     Divider(color = hBoneDark)
+}
+
+/**
+ * Word-by-word translations row (Reading → Text Preferences). Same icon
+ * language as [TafsirPickerRow]: download arrow when idle, determinate
+ * spinner + cancel while fetching, green check once all 114 chapters are
+ * offline for tap-to-translate.
+ */
+@Composable
+private fun WordTranslationsRow(
+    cachedCount: Int,
+    totalCount: Int,
+    isDownloading: Boolean,
+    onDownloadClick: () -> Unit,
+    onCancelClick: () -> Unit
+) {
+    val isComplete = totalCount > 0 && cachedCount >= totalCount
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = "Word Translations", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = hInk)
+            Text(
+                text = if (isComplete) "Downloaded • $cachedCount/$totalCount chapters"
+                else "$cachedCount/$totalCount chapters for offline tap",
+                fontSize = 11.sp,
+                color = hInkMuted
+            )
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            when {
+                isDownloading -> {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = hGold)
+                    IconButton(onClick = onCancelClick, modifier = Modifier.size(28.dp)) {
+                        Icon(imageVector = NurIcons.X, contentDescription = "Cancel download", tint = hInkMuted, modifier = Modifier.size(16.dp))
+                    }
+                }
+                isComplete -> {
+                    Icon(imageVector = NurIcons.CheckCircle2, contentDescription = "Downloaded for offline", tint = hGreen, modifier = Modifier.size(18.dp))
+                }
+                else -> {
+                    IconButton(onClick = onDownloadClick, modifier = Modifier.size(28.dp)) {
+                        Icon(imageVector = NurIcons.Download, contentDescription = "Download for offline", tint = hGold, modifier = Modifier.size(18.dp))
+                    }
+                }
+            }
+        }
+    }
+    if (isDownloading && totalCount > 0) {
+        LinearProgressIndicator(
+            progress = (cachedCount.toFloat() / totalCount).coerceIn(0f, 1f),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp).height(3.dp).clip(RoundedCornerShape(2.dp)),
+            color = hGold,
+            trackColor = hBoneDark
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+    }
 }
 
 /**

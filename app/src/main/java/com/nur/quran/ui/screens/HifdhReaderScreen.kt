@@ -1052,6 +1052,7 @@ fun HifdhReaderScreen(
                             wordCachedCount = wordCached,
                             wordIsDownloading = wordDownloading,
                             onDownloadAllWords = packVm::downloadAllMissingWordPacks,
+                    onCancelAllWords = packVm::cancelAllWordPacks,
                             wordProgressByTafsir = wordProgress
                         )
                     }

@@ -102,9 +102,19 @@ class PackViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             runCatching {
                 (1..114).filter { !wordPackManager.isChapterCached(it) }.forEach { id ->
+                    activeWordChapter = id
                     runCatching { wordPackManager.downloadChapterWords(id) }
                 }
             }
+            activeWordChapter = -1
         }
     }
+
+    /** Cancels an in-flight word-pack run. */
+    fun cancelAllWordPacks() {
+        val id = activeWordChapter
+        if (id > 0) runCatching { wordPackManager.cancelDownload(id) }
+    }
+
+    private var activeWordChapter: Int = -1
 }

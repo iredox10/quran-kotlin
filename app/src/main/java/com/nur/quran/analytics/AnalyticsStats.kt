@@ -55,6 +55,8 @@ object AnalyticsStats {
             if (ds in uniqueDates) count++ else break
             cursor.add(Calendar.DATE, -1)
         }
+        return count
+    }
 
     fun todayMinutes(sessions: List<Session>, todayStr: String = DAY_FMT.format(Date())): Int =
         dayMinutes(sessions, todayStr)
@@ -73,6 +75,7 @@ object AnalyticsStats {
         Math.round(last7.sumOf { d -> sessions.filter { it.date == d }.sumOf { it.durationSec } } / 60.0f).toInt()
 
     fun weeklyGoalPercent(weeklyMins: Int, goalMins: Int = 180): Int =
+        ((weeklyMins.toFloat() / goalMins.toFloat()) * 100f).coerceAtMost(100f).toInt()
 
     /** Best weekday by session count — mirrors web smartInsight text. */
     fun smartInsight(sessions: List<Session>): String {
@@ -114,10 +117,5 @@ object AnalyticsStats {
             mins < 30 -> 2
             else -> 3
         }
-    }
-
-        ((weeklyMins.toFloat() / goalMins.toFloat()) * 100f).coerceAtMost(100f).toInt()
-
-        return count
     }
 }

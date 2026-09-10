@@ -162,19 +162,22 @@ fun AnalyticsScreen(
         }
     }
 
-    // Dynamic Achievements / Badges
-    val achievements = remember(streak, allTimeTotalMins, recentlyRead) {
+    // Dynamic Achievements / Badges (web parity: union sessions+recentlyRead, newest first)
+    val achievements = remember(streak, allTimeTotalMins, sessions, recentlyRead) {
         val badges = mutableListOf<BadgeItem>()
         if (streak >= 3) badges.add(BadgeItem("🔥", "3-Day Streak", "Consistency is key."))
         if (streak >= 7) badges.add(BadgeItem("🔥", "7-Day Streak", "A whole week!"))
         if (streak >= 30) badges.add(BadgeItem("🔥", "30-Day Streak", "Unstoppable!"))
         if (allTimeTotalMins >= 100) badges.add(BadgeItem("⏱️", "100 Minutes", "First big milestone."))
         if (allTimeTotalMins >= 500) badges.add(BadgeItem("⏱️", "500 Minutes", "Dedicated reader."))
-        val surahCount = recentlyRead.map { it.chapterId }.distinct().size
+        // Web parity (Progress.jsx uniqueSurahsRead): sessions' chapterIds + recentlyRead
+        val surahIds = recentlyRead.map { it.chapterId }.toMutableSet()
+        sessions.mapNotNullTo(surahIds) { it.chapterId }
+        val surahCount = surahIds.size
         if (surahCount >= 5) badges.add(BadgeItem("🗺️", "Explorer", "Read 5 Surahs."))
         if (surahCount >= 30) badges.add(BadgeItem("🗺️", "Traveler", "Read 30 Surahs."))
         if (surahCount >= 114) badges.add(BadgeItem("👑", "Khatm", "Read all 114 Surahs!"))
-        badges.take(3)
+        badges.takeLast(3).reversed()
     }
 
     // Heatmap data (35 days = 5 weeks)

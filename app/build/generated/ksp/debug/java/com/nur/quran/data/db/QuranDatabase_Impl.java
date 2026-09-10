@@ -34,7 +34,7 @@ public final class QuranDatabase_Impl extends QuranDatabase {
   @Override
   @NonNull
   protected SupportSQLiteOpenHelper createOpenHelper(@NonNull final DatabaseConfiguration config) {
-    final SupportSQLiteOpenHelper.Callback _openCallback = new RoomOpenHelper(config, new RoomOpenHelper.Delegate(6) {
+    final SupportSQLiteOpenHelper.Callback _openCallback = new RoomOpenHelper(config, new RoomOpenHelper.Delegate(7) {
       @Override
       public void createAllTables(@NonNull final SupportSQLiteDatabase db) {
         db.execSQL("CREATE TABLE IF NOT EXISTS `chapters` (`id` INTEGER NOT NULL, `nameSimple` TEXT NOT NULL, `nameArabic` TEXT NOT NULL, `nameComplex` TEXT NOT NULL, `translatedName` TEXT NOT NULL, `revelationPlace` TEXT NOT NULL, `revelationOrder` INTEGER NOT NULL, `versesCount` INTEGER NOT NULL, `pagesStart` INTEGER NOT NULL, `pagesEnd` INTEGER NOT NULL, PRIMARY KEY(`id`))");
@@ -51,8 +51,9 @@ public final class QuranDatabase_Impl extends QuranDatabase {
         db.execSQL("CREATE TABLE IF NOT EXISTS `reading_sessions` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `date` TEXT NOT NULL, `duration` INTEGER NOT NULL, `type` TEXT NOT NULL, `chapterId` INTEGER, `timestamp` INTEGER NOT NULL)");
         db.execSQL("CREATE TABLE IF NOT EXISTS `recently_read` (`chapterId` INTEGER NOT NULL, `chapterName` TEXT NOT NULL, `verseKey` TEXT, `timestamp` INTEGER NOT NULL, PRIMARY KEY(`chapterId`))");
         db.execSQL("CREATE TABLE IF NOT EXISTS `linked_timings` (`reciterId` INTEGER NOT NULL, `sura` INTEGER NOT NULL, `ayah` INTEGER NOT NULL, `startMs` INTEGER NOT NULL, PRIMARY KEY(`reciterId`, `sura`, `ayah`))");
+        db.execSQL("CREATE TABLE IF NOT EXISTS `translation_texts` (`translationId` INTEGER NOT NULL, `verseKey` TEXT NOT NULL, `text` TEXT NOT NULL, PRIMARY KEY(`translationId`, `verseKey`))");
         db.execSQL("CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)");
-        db.execSQL("INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '796cf7da4b2769f2ce5c063decfcb371')");
+        db.execSQL("INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '0f743a9248a864da6e0b3076e96bf2ba')");
       }
 
       @Override
@@ -67,6 +68,7 @@ public final class QuranDatabase_Impl extends QuranDatabase {
         db.execSQL("DROP TABLE IF EXISTS `reading_sessions`");
         db.execSQL("DROP TABLE IF EXISTS `recently_read`");
         db.execSQL("DROP TABLE IF EXISTS `linked_timings`");
+        db.execSQL("DROP TABLE IF EXISTS `translation_texts`");
         final List<? extends RoomDatabase.Callback> _callbacks = mCallbacks;
         if (_callbacks != null) {
           for (RoomDatabase.Callback _callback : _callbacks) {
@@ -280,9 +282,22 @@ public final class QuranDatabase_Impl extends QuranDatabase {
                   + " Expected:\n" + _infoLinkedTimings + "\n"
                   + " Found:\n" + _existingLinkedTimings);
         }
+        final HashMap<String, TableInfo.Column> _columnsTranslationTexts = new HashMap<String, TableInfo.Column>(3);
+        _columnsTranslationTexts.put("translationId", new TableInfo.Column("translationId", "INTEGER", true, 1, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsTranslationTexts.put("verseKey", new TableInfo.Column("verseKey", "TEXT", true, 2, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsTranslationTexts.put("text", new TableInfo.Column("text", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        final HashSet<TableInfo.ForeignKey> _foreignKeysTranslationTexts = new HashSet<TableInfo.ForeignKey>(0);
+        final HashSet<TableInfo.Index> _indicesTranslationTexts = new HashSet<TableInfo.Index>(0);
+        final TableInfo _infoTranslationTexts = new TableInfo("translation_texts", _columnsTranslationTexts, _foreignKeysTranslationTexts, _indicesTranslationTexts);
+        final TableInfo _existingTranslationTexts = TableInfo.read(db, "translation_texts");
+        if (!_infoTranslationTexts.equals(_existingTranslationTexts)) {
+          return new RoomOpenHelper.ValidationResult(false, "translation_texts(com.nur.quran.data.db.entities.TranslationTextEntity).\n"
+                  + " Expected:\n" + _infoTranslationTexts + "\n"
+                  + " Found:\n" + _existingTranslationTexts);
+        }
         return new RoomOpenHelper.ValidationResult(true, null);
       }
-    }, "796cf7da4b2769f2ce5c063decfcb371", "1226ebec39439fbc4c1db82da66bffb2");
+    }, "0f743a9248a864da6e0b3076e96bf2ba", "c225cb0494a7e10b351df01e9b57d6b9");
     final SupportSQLiteOpenHelper.Configuration _sqliteConfig = SupportSQLiteOpenHelper.Configuration.builder(config.context).name(config.name).callback(_openCallback).build();
     final SupportSQLiteOpenHelper _helper = config.sqliteOpenHelperFactory.create(_sqliteConfig);
     return _helper;
@@ -293,7 +308,7 @@ public final class QuranDatabase_Impl extends QuranDatabase {
   protected InvalidationTracker createInvalidationTracker() {
     final HashMap<String, String> _shadowTablesMap = new HashMap<String, String>(0);
     final HashMap<String, Set<String>> _viewTables = new HashMap<String, Set<String>>(0);
-    return new InvalidationTracker(this, _shadowTablesMap, _viewTables, "chapters","verses","words","bookmarks","collections","collection_items","api_responses","reading_sessions","recently_read","linked_timings");
+    return new InvalidationTracker(this, _shadowTablesMap, _viewTables, "chapters","verses","words","bookmarks","collections","collection_items","api_responses","reading_sessions","recently_read","linked_timings","translation_texts");
   }
 
   @Override
@@ -319,6 +334,7 @@ public final class QuranDatabase_Impl extends QuranDatabase {
       _db.execSQL("DELETE FROM `reading_sessions`");
       _db.execSQL("DELETE FROM `recently_read`");
       _db.execSQL("DELETE FROM `linked_timings`");
+      _db.execSQL("DELETE FROM `translation_texts`");
       super.setTransactionSuccessful();
     } finally {
       super.endTransaction();

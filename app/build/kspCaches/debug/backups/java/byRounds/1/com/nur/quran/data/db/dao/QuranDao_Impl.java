@@ -22,6 +22,7 @@ import com.nur.quran.data.db.entities.CollectionItemEntity;
 import com.nur.quran.data.db.entities.LinkedTimingEntity;
 import com.nur.quran.data.db.entities.ReadingSessionEntity;
 import com.nur.quran.data.db.entities.RecentlyReadEntity;
+import com.nur.quran.data.db.entities.TranslationTextEntity;
 import com.nur.quran.data.db.entities.VerseEntity;
 import com.nur.quran.data.db.entities.WordEntity;
 import java.lang.Class;
@@ -66,6 +67,8 @@ public final class QuranDao_Impl implements QuranDao {
 
   private final EntityInsertionAdapter<LinkedTimingEntity> __insertionAdapterOfLinkedTimingEntity;
 
+  private final EntityInsertionAdapter<TranslationTextEntity> __insertionAdapterOfTranslationTextEntity;
+
   private final SharedSQLiteStatement __preparedStmtOfDeleteBookmark;
 
   private final SharedSQLiteStatement __preparedStmtOfDeleteAllBookmarks;
@@ -81,6 +84,8 @@ public final class QuranDao_Impl implements QuranDao {
   private final SharedSQLiteStatement __preparedStmtOfPruneRecentlyRead;
 
   private final SharedSQLiteStatement __preparedStmtOfClearTimings;
+
+  private final SharedSQLiteStatement __preparedStmtOfDeleteTranslationPack;
 
   public QuranDao_Impl(@NonNull final RoomDatabase __db) {
     this.__db = __db;
@@ -318,6 +323,21 @@ public final class QuranDao_Impl implements QuranDao {
         statement.bindLong(4, entity.getStartMs());
       }
     };
+    this.__insertionAdapterOfTranslationTextEntity = new EntityInsertionAdapter<TranslationTextEntity>(__db) {
+      @Override
+      @NonNull
+      protected String createQuery() {
+        return "INSERT OR REPLACE INTO `translation_texts` (`translationId`,`verseKey`,`text`) VALUES (?,?,?)";
+      }
+
+      @Override
+      protected void bind(@NonNull final SupportSQLiteStatement statement,
+          @NonNull final TranslationTextEntity entity) {
+        statement.bindLong(1, entity.getTranslationId());
+        statement.bindString(2, entity.getVerseKey());
+        statement.bindString(3, entity.getText());
+      }
+    };
     this.__preparedStmtOfDeleteBookmark = new SharedSQLiteStatement(__db) {
       @Override
       @NonNull
@@ -379,6 +399,14 @@ public final class QuranDao_Impl implements QuranDao {
       @NonNull
       public String createQuery() {
         final String _query = "DELETE FROM linked_timings WHERE reciterId = ?";
+        return _query;
+      }
+    };
+    this.__preparedStmtOfDeleteTranslationPack = new SharedSQLiteStatement(__db) {
+      @Override
+      @NonNull
+      public String createQuery() {
+        final String _query = "DELETE FROM translation_texts WHERE translationId = ?";
         return _query;
       }
     };
@@ -565,6 +593,25 @@ public final class QuranDao_Impl implements QuranDao {
         __db.beginTransaction();
         try {
           __insertionAdapterOfLinkedTimingEntity.insert(rows);
+          __db.setTransactionSuccessful();
+          return Unit.INSTANCE;
+        } finally {
+          __db.endTransaction();
+        }
+      }
+    }, $completion);
+  }
+
+  @Override
+  public Object upsertTranslationTexts(final List<TranslationTextEntity> rows,
+      final Continuation<? super Unit> $completion) {
+    return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
+      @Override
+      @NonNull
+      public Unit call() throws Exception {
+        __db.beginTransaction();
+        try {
+          __insertionAdapterOfTranslationTextEntity.insert(rows);
           __db.setTransactionSuccessful();
           return Unit.INSTANCE;
         } finally {
@@ -781,6 +828,31 @@ public final class QuranDao_Impl implements QuranDao {
           }
         } finally {
           __preparedStmtOfClearTimings.release(_stmt);
+        }
+      }
+    }, $completion);
+  }
+
+  @Override
+  public Object deleteTranslationPack(final int tid, final Continuation<? super Unit> $completion) {
+    return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
+      @Override
+      @NonNull
+      public Unit call() throws Exception {
+        final SupportSQLiteStatement _stmt = __preparedStmtOfDeleteTranslationPack.acquire();
+        int _argIndex = 1;
+        _stmt.bindLong(_argIndex, tid);
+        try {
+          __db.beginTransaction();
+          try {
+            _stmt.executeUpdateDelete();
+            __db.setTransactionSuccessful();
+            return Unit.INSTANCE;
+          } finally {
+            __db.endTransaction();
+          }
+        } finally {
+          __preparedStmtOfDeleteTranslationPack.release(_stmt);
         }
       }
     }, $completion);
@@ -2004,6 +2076,72 @@ public final class QuranDao_Impl implements QuranDao {
     _statement.bindLong(_argIndex, r);
     _argIndex = 2;
     _statement.bindLong(_argIndex, s);
+    final CancellationSignal _cancellationSignal = DBUtil.createCancellationSignal();
+    return CoroutinesRoom.execute(__db, false, _cancellationSignal, new Callable<Integer>() {
+      @Override
+      @NonNull
+      public Integer call() throws Exception {
+        final Cursor _cursor = DBUtil.query(__db, _statement, false, null);
+        try {
+          final Integer _result;
+          if (_cursor.moveToFirst()) {
+            final int _tmp;
+            _tmp = _cursor.getInt(0);
+            _result = _tmp;
+          } else {
+            _result = 0;
+          }
+          return _result;
+        } finally {
+          _cursor.close();
+          _statement.release();
+        }
+      }
+    }, $completion);
+  }
+
+  @Override
+  public Object getTranslationText(final int tid, final String key,
+      final Continuation<? super String> $completion) {
+    final String _sql = "SELECT text FROM translation_texts WHERE translationId = ? AND verseKey = ? LIMIT 1";
+    final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 2);
+    int _argIndex = 1;
+    _statement.bindLong(_argIndex, tid);
+    _argIndex = 2;
+    _statement.bindString(_argIndex, key);
+    final CancellationSignal _cancellationSignal = DBUtil.createCancellationSignal();
+    return CoroutinesRoom.execute(__db, false, _cancellationSignal, new Callable<String>() {
+      @Override
+      @Nullable
+      public String call() throws Exception {
+        final Cursor _cursor = DBUtil.query(__db, _statement, false, null);
+        try {
+          final String _result;
+          if (_cursor.moveToFirst()) {
+            if (_cursor.isNull(0)) {
+              _result = null;
+            } else {
+              _result = _cursor.getString(0);
+            }
+          } else {
+            _result = null;
+          }
+          return _result;
+        } finally {
+          _cursor.close();
+          _statement.release();
+        }
+      }
+    }, $completion);
+  }
+
+  @Override
+  public Object countTranslationPack(final int tid,
+      final Continuation<? super Integer> $completion) {
+    final String _sql = "SELECT COUNT(*) FROM translation_texts WHERE translationId = ?";
+    final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 1);
+    int _argIndex = 1;
+    _statement.bindLong(_argIndex, tid);
     final CancellationSignal _cancellationSignal = DBUtil.createCancellationSignal();
     return CoroutinesRoom.execute(__db, false, _cancellationSignal, new Callable<Integer>() {
       @Override

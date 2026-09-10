@@ -229,6 +229,19 @@ class SurahViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Chapter-level quick pack: caches tafsir for the current tafsir id plus
+     * word translations for [chapterId]. Fire-and-forget, never throws.
+     */
+    fun downloadChapterPack(chapterId: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                runCatching { repository.getTafsirForChapter(currentTafsirId, chapterId) }
+                runCatching { wordPackManager.downloadChapterWords(chapterId) }
+            } catch (_: Exception) {}
+        }
+    }
+
     private val _isDownloading = MutableStateFlow(false)
     val isDownloading: StateFlow<Boolean> = _isDownloading.asStateFlow()
 
@@ -1150,6 +1163,11 @@ class SurahViewModel @Inject constructor(
 
             val chapter = localChapter
             if (chapter != null && cachedVerses.isNotEmpty()) {
+                // Auto word-fill: backfill missing word translations in the
+                // background so word tooltips work offline. No UI impact.
+                viewModelScope.launch(Dispatchers.IO) {
+                    runCatching { repository.ensureChapterWordsCached(chapterId) }
+                }
                 currentChapterName = chapter.nameSimple
                 repository.addRecentlyRead(chapter.id, chapter.nameSimple)
                 val wordsMap = repository.getWordsForVerses(cachedVerses.map { it.id })

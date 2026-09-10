@@ -17,6 +17,8 @@ import com.nur.quran.data.db.entities.ReadingSessionEntity
 import com.nur.quran.data.db.entities.RecentlyReadEntity
 import com.nur.quran.data.db.entities.VerseEntity
 import com.nur.quran.data.db.entities.WordEntity
+import com.nur.quran.data.words.WordPackManager
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
@@ -33,7 +35,8 @@ class QuranRepository @Inject constructor(
     @dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context,
     private val quranDao: QuranDao,
     private val quranApi: QuranApi,
-    private val gson: Gson
+    private val gson: Gson,
+    private val wordPackManager: WordPackManager
 ) {
 
     // Helper to cache API responses in key-value table (offline-first: cache wins)
@@ -574,6 +577,23 @@ class QuranRepository @Inject constructor(
 
     // Words
     suspend fun getWordsForVerse(verseId: Int): List<WordEntity> = quranDao.getWordsForVerse(verseId)
+
+    /**
+     * Offline-first word cache ensure: returns true when the chapter's words
+     * carry translations (cached or freshly downloaded). Never throws except
+     * [CancellationException].
+     */
+    suspend fun ensureChapterWordsCached(chapterId: Int): Boolean = withContext(Dispatchers.IO) {
+        try {
+            if (wordPackManager.isChapterCached(chapterId)) return@withContext true
+            wordPackManager.downloadChapterWords(chapterId)
+            wordPackManager.isChapterCached(chapterId)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            false
+        }
+    }
 
     suspend fun getWordsForVerses(verseIds: List<Int>): Map<Int, List<WordEntity>> {
         if (verseIds.isEmpty()) return emptyMap()

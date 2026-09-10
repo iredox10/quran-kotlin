@@ -38,6 +38,7 @@ import com.nur.quran.ui.viewmodels.TafsirUiState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+import kotlin.math.ceil
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -155,10 +156,13 @@ fun PlannerReaderScreen(
 
     // ── Session timer (web parity: persisted per plan/day) ──────────
     // Display ticks locally; deltas are flushed to the store every 30s + on exit.
+    // Web PlannerReader.jsx:280-345 — tick 1s while running, pause/resume toggle,
+    // MM:SS display of persisted base + session.
+    var isTimerRunning by remember(dayNumber) { mutableStateOf(true) }
     var timerTick by remember(dayNumber) { mutableIntStateOf(0) }
     var savedTick by remember(dayNumber) { mutableIntStateOf(0) }
-    LaunchedEffect(dayNumber) {
-        while (true) {
+    LaunchedEffect(dayNumber, isTimerRunning) {
+        while (isTimerRunning) {
             delay(1000)
             timerTick++
             if (timerTick - savedTick >= 30) {
@@ -177,6 +181,11 @@ fun PlannerReaderScreen(
     // so only the unflushed remainder is added — otherwise time counts double.
     val displayedSeconds = ((sessionTotals[dayNumber] ?: 0L).toInt() + (timerTick - savedTick).coerceAtLeast(0))
 
+    // ── Last-read verse position (web parity: IntersectionObserver :215-268) ──
+    // Tracks the top-visible verse (debounced) and auto-scrolls to it on load.
+    val lastReadVerseKey = activePlan?.lastReadVerseKey
+    var hasAutoScrolledToLastRead by remember(dayNumber, currentPage) { mutableStateOf(false) }
+
     // Fetch verses for page
     LaunchedEffect(currentPage) {
         surahViewModel.loadPageVerses(currentPage)
@@ -194,6 +203,8 @@ fun PlannerReaderScreen(
     val totalPages = (pageEnd - pageStart + 1)
     val readPages = activePlan?.assignmentReadPages?.get(dayNumber)?.size ?: 0
     val progressPct = if (totalPages > 0) (readPages * 100 / totalPages) else 0
+    // Web parity (PlannerReader.jsx:578): estimated reading time label.
+    val estimatedMins = ceil(totalPages * 2.5).toInt()
 
     // ── Takeaway verse for celebration ──────────────────────────────
     var takeawayVerse by remember { mutableStateOf<VerseEntity?>(null) }
@@ -302,14 +313,35 @@ fun PlannerReaderScreen(
                                         fontFamily = fontFamilyMono
                                     )
                                 }
-                                // Session timer
+                                // Web parity: estimated time label + session timer with pause/resume toggle (MM:SS)
                                 Text(
-                                    text = formatSessionTime(displayedSeconds),
+                                    text = "≈$estimatedMins min",
                                     fontSize = 9.sp,
                                     color = hInkMuted,
                                     fontFamily = fontFamilyMono,
                                     modifier = Modifier.padding(top = 2.dp, end = 4.dp)
                                 )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .padding(top = 2.dp, end = 4.dp)
+                                        .clip(RoundedCornerShape(100))
+                                        .clickable { isTimerRunning = !isTimerRunning }
+                                ) {
+                                    Icon(
+                                        imageVector = if (isTimerRunning) NurIcons.PauseFilled else NurIcons.PlayFilled,
+                                        contentDescription = if (isTimerRunning) "Pause session timer" else "Resume session timer",
+                                        tint = hTeal,
+                                        modifier = Modifier.size(12.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = formatSessionTime(displayedSeconds),
+                                        fontSize = 9.sp,
+                                        color = hInkMuted,
+                                        fontFamily = fontFamilyMono
+                                    )
+                                }
                             }
                         }
                     }
@@ -350,6 +382,37 @@ fun PlannerReaderScreen(
                         }
                         if (verses.isNotEmpty() && takeawayVerse == null) {
                             takeawayVerse = verses.random()
+                        }
+                    }
+
+                    // Web parity (PlannerReader.jsx:215-268): non-verse header items
+                    // (intention banner + swipe hint) shift LazyColumn indices.
+                    val verseHeaderOffset =
+                        (if (showIntentionPrompt) 1 else 0) + (if (currentPage == pageStart) 1 else 0)
+
+                    // Auto-scroll to the last-read verse on initial load.
+                    LaunchedEffect(verses, currentPage, lastReadVerseKey) {
+                        if (hasAutoScrolledToLastRead || verses.isEmpty()) return@LaunchedEffect
+                        val targetKey = lastReadVerseKey ?: run {
+                            hasAutoScrolledToLastRead = true
+                            return@LaunchedEffect
+                        }
+                        val verseIndex = verses.indexOfFirst { it.verseKey == targetKey }
+                        if (verseIndex >= 0) {
+                            lazyListState.scrollToItem(verseIndex + verseHeaderOffset)
+                        }
+                        // Mark done even when not found (web parity) to prevent looping.
+                        hasAutoScrolledToLastRead = true
+                    }
+
+                    // Track the top-visible verse (debounced) as the last-read position.
+                    LaunchedEffect(lazyListState.firstVisibleItemIndex, verses.size, currentPage) {
+                        if (verses.isEmpty() || !hasAutoScrolledToLastRead) return@LaunchedEffect
+                        delay(1000)
+                        val verseIndex = lazyListState.firstVisibleItemIndex - verseHeaderOffset
+                        val visibleVerse = verses.getOrNull(verseIndex) ?: return@LaunchedEffect
+                        if (activePlan?.lastReadVerseKey != visibleVerse.verseKey) {
+                            plannerViewModel.setLastReadPosition(currentPage, visibleVerse.verseKey)
                         }
                     }
 
@@ -756,7 +819,7 @@ fun PlannerReaderScreen(
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Save & Return", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text(if (reflectionNote.isNotBlank()) "Save & Return" else "Return to Planner", color = Color.White, fontWeight = FontWeight.Bold)
                 }
             }
         )
@@ -789,11 +852,11 @@ fun PlannerReaderScreen(
     }
 }
 
-// ── Helper: Format session time ──────────────────────────────────────────
+// ── Helper: Format session time (web parity: MM:SS) ─────────────────────
 private fun formatSessionTime(seconds: Int): String {
     val mins = seconds / 60
     val secs = seconds % 60
-    return if (mins > 0) "${mins}m ${secs}s" else "${secs}s"
+    return "%02d:%02d".format(mins, secs)
 }
 
 @Composable

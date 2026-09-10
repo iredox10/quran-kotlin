@@ -2,8 +2,13 @@ package com.nur.quran.ui.components
 
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -22,8 +27,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.core.content.FileProvider
 import com.nur.quran.data.db.entities.VerseEntity
 import com.nur.quran.ui.screens.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
 
 @Composable
 fun ShareVerseDialog(
@@ -33,6 +43,59 @@ fun ShareVerseDialog(
 ) {
     val context = LocalContext.current
     var copied by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    var isImageBusy by remember { mutableStateOf(false) }
+    var imageError by remember { mutableStateOf<String?>(null) }
+
+    // Card inputs derived from the dialog's existing verse props,
+    // matching the existing share-text format ("— chapterName verseKey").
+    val cardArabic = verse.textUthmani ?: verse.textIndopak ?: ""
+    val cardTranslation = verse.translation?.replace(Regex("<[^>]*>"), "")?.takeIf { it.isNotBlank() }
+    val cardReference = "$chapterName ${verse.verseKey}"
+    val imageFileName = "Quran_${verse.verseKey.replace(Regex("[^A-Za-z0-9]+"), "_")}.png"
+
+    fun onSaveImage() {
+        if (isImageBusy) return
+        scope.launch {
+            isImageBusy = true
+            imageError = null
+            runCatching {
+                val file = withContext(Dispatchers.IO) {
+                    renderVerseCardToFile(context, verse.verseKey, cardArabic, cardTranslation, cardReference)
+                } ?: throw IllegalStateException("render failed")
+                saveVerseCardToGallery(context, file, imageFileName).getOrThrow()
+            }.onSuccess { location ->
+                Toast.makeText(context, "Saved to $location", Toast.LENGTH_LONG).show()
+            }.onFailure {
+                imageError = "Couldn't render image"
+                Toast.makeText(context, "Couldn't save image", Toast.LENGTH_SHORT).show()
+            }
+            isImageBusy = false
+        }
+    }
+
+    fun onShareImage() {
+        if (isImageBusy) return
+        scope.launch {
+            isImageBusy = true
+            imageError = null
+            runCatching {
+                val file = withContext(Dispatchers.IO) {
+                    renderVerseCardToFile(context, verse.verseKey, cardArabic, cardTranslation, cardReference)
+                } ?: throw IllegalStateException("render failed")
+                val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "image/png"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(Intent.createChooser(shareIntent, "Share Ayah image"))
+            }.onFailure {
+                imageError = "Couldn't render image"
+            }
+            isImageBusy = false
+        }
+    }
 
     LaunchedEffect(copied) {
         if (copied) {
@@ -217,7 +280,122 @@ fun ShareVerseDialog(
                         )
                     }
                 }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Image Export Buttons (PNG card via ShareImageRenderer)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    // Save Image Button
+                    OutlinedButton(
+                        onClick = { onSaveImage() },
+                        enabled = !isImageBusy,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(14.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.5.dp, hBoneDark)
+                    ) {
+                        if (isImageBusy) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = hInkMid
+                            )
+                        } else {
+                            Icon(
+                                imageVector = NurIcons.Download,
+                                contentDescription = null,
+                                tint = hInkMid,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Save Image",
+                            color = hInkMid,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+
+                    // Share Image Button
+                    Button(
+                        onClick = { onShareImage() },
+                        enabled = !isImageBusy,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = hTeal)
+                    ) {
+                        if (isImageBusy) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = Color.White
+                            )
+                        } else {
+                            Icon(
+                                imageVector = NurIcons.Share2,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Share Image",
+                            color = Color.White,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+
+                if (imageError != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = imageError!!,
+                        color = hRed,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
+        }
+    }
+}
+
+/**
+ * Copies a rendered verse-card PNG into the public gallery (MediaStore on Q+,
+ * app-external Pictures dir on pre-Q). Returns the user-facing location string.
+ */
+private suspend fun saveVerseCardToGallery(
+    context: Context,
+    source: File,
+    displayName: String
+): Result<String> = runCatching {
+    withContext(Dispatchers.IO) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val values = ContentValues().apply {
+                put(MediaStore.Images.Media.DISPLAY_NAME, displayName)
+                put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+                put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/QuranNur")
+            }
+            val resolver = context.contentResolver
+            val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+                ?: throw IllegalStateException("MediaStore insert failed")
+            resolver.openOutputStream(uri)?.use { out ->
+                source.inputStream().use { input -> input.copyTo(out) }
+            } ?: throw IllegalStateException("MediaStore write failed")
+            "Pictures/QuranNur/$displayName"
+        } else {
+            val dir = File(context.getExternalFilesDir(Environment.DIRECTORY_PICTURES), "QuranNur")
+            if (!dir.exists()) dir.mkdirs()
+            val dest = File(dir, displayName)
+            source.copyTo(dest, overwrite = true)
+            dest.absolutePath
         }
     }
 }

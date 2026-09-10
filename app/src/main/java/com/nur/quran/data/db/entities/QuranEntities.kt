@@ -140,3 +140,17 @@ data class RecentlyReadEntity(
     val verseKey: String? = null,
     val timestamp: Long = System.currentTimeMillis()
 )
+
+/**
+ * Offline translation pack row: one cached translation text per verse per
+ * translation edition. The `verses` table holds only ONE translation, so
+ * multi-edition offline packs live here instead.
+ *
+ * PK(translationId, verseKey), mirroring [LinkedTimingEntity]'s composite-key style.
+ */
+@Entity(tableName = "translation_texts", primaryKeys = ["translationId", "verseKey"])
+data class TranslationTextEntity(
+    val translationId: Int,
+    val verseKey: String,
+    val text: String
+)

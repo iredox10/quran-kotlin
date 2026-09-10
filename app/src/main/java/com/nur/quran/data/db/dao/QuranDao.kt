@@ -165,4 +165,17 @@ interface QuranDao {
 
     @Query("SELECT COUNT(*) FROM linked_timings WHERE reciterId = :r AND sura = :s")
     suspend fun timingCount(r: Int, s: Int): Int
+
+    // Translation offline packs (one row per verse per translation edition)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertTranslationTexts(rows: List<TranslationTextEntity>)
+
+    @Query("SELECT text FROM translation_texts WHERE translationId = :tid AND verseKey = :key LIMIT 1")
+    suspend fun getTranslationText(tid: Int, key: String): String?
+
+    @Query("SELECT COUNT(*) FROM translation_texts WHERE translationId = :tid")
+    suspend fun countTranslationPack(tid: Int): Int
+
+    @Query("DELETE FROM translation_texts WHERE translationId = :tid")
+    suspend fun deleteTranslationPack(tid: Int)
 }

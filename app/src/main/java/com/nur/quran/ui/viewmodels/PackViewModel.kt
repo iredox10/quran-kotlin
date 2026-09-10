@@ -3,6 +3,7 @@ package com.nur.quran.ui.viewmodels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nur.quran.data.tafsir.TafsirPackManager
+import com.nur.quran.data.translation.TranslationPackManager
 import com.nur.quran.data.words.WordPackManager
 import com.nur.quran.ui.components.audio.PackUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -17,7 +18,8 @@ import javax.inject.Inject
 /**
  * Shared offline-packs ViewModel wired to every [SettingsDrawer] host.
  *
- * Single source of truth for tafsir packs ([TafsirPackManager]) and
+ * Single source of truth for tafsir packs ([TafsirPackManager]),
+ * translation packs ([TranslationPackManager]) and
  * word-translation packs ([WordPackManager]). All work launches in
  * [viewModelScope] on IO and never throws (failures land in the managers'
  * status flows, which are mapped here for the UI).
@@ -25,6 +27,7 @@ import javax.inject.Inject
 @HiltViewModel
 class PackViewModel @Inject constructor(
     private val tafsirPackManager: TafsirPackManager,
+    private val translationPackManager: TranslationPackManager,
     private val wordPackManager: WordPackManager
 ) : ViewModel() {
 
@@ -33,6 +36,24 @@ class PackViewModel @Inject constructor(
         tafsirPackManager.packStates
             .map { states ->
                 tafsirPackManager.supported.map { (id, title) ->
+                    val s = states[id]
+                    PackUiState(
+                        id = id,
+                        title = title,
+                        downloaded = s?.downloaded ?: 0,
+                        total = s?.total ?: 114,
+                        isDownloading = s?.isDownloading == true,
+                        error = s?.error
+                    )
+                }
+            }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** Translation packs mapped for Settings UI rows (mirrors the tafsir bridge). */
+    val translationPacks: StateFlow<List<PackUiState>> =
+        translationPackManager.packStates
+            .map { states ->
+                translationPackManager.supported.map { (id, title) ->
                     val s = states[id]
                     PackUiState(
                         id = id,
@@ -94,6 +115,25 @@ class PackViewModel @Inject constructor(
     fun deleteTafsirPack(tafsirId: Int) {
         viewModelScope.launch(Dispatchers.IO) {
             runCatching { tafsirPackManager.deletePack(tafsirId) }
+        }
+    }
+
+    /** Downloads a whole-translation offline pack (all 114 chapters). */
+    fun downloadTranslationPack(translationId: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching { translationPackManager.downloadPack(translationId) }
+        }
+    }
+
+    fun cancelTranslationPack(translationId: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching { translationPackManager.cancelPack(translationId) }
+        }
+    }
+
+    fun deleteTranslationPack(translationId: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching { translationPackManager.deletePack(translationId) }
         }
     }
 

@@ -23,6 +23,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -33,6 +34,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -213,9 +216,9 @@ fun AudioSetupSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp, vertical = 8.dp)
-                .padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(horizontal = 20.dp, vertical = 8.dp)
+                .padding(bottom = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // Header
             Row(
@@ -394,114 +397,93 @@ fun AudioSetupSheet(
                 }
             }
 
-            // ── Start / End ayah sliders ──
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                SheetSectionLabel("AYAH RANGE  •  $chapterId:$startAyah – $chapterId:$endAyah")
+            // ── Ayah range: compact dual sliders in one row ──
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Start", fontSize = 12.sp, color = hInkMuted, fontFamily = fontFamilyBody)
-                        Slider(
-                            value = startAyah.toFloat(),
-                            onValueChange = {
-                                startAyah = it.toInt().coerceIn(1, safeCount)
-                                if (endAyah < startAyah) endAyah = startAyah
-                            },
-                            valueRange = 1f..safeCount.toFloat(),
-                            steps = (safeCount - 2).coerceAtLeast(0),
-                            colors = SliderDefaults.colors(thumbColor = hGold, activeTrackColor = hGold)
-                        )
-                        Text(
-                            text = "Ayah $startAyah",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp,
-                            color = hInk,
-                            fontFamily = fontFamilyMono,
-                            modifier = Modifier.align(Alignment.CenterHorizontally)
-                        )
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("End", fontSize = 12.sp, color = hInkMuted, fontFamily = fontFamilyBody)
-                        Slider(
-                            value = endAyah.toFloat(),
-                            onValueChange = {
-                                endAyah = it.toInt().coerceIn(startAyah, safeCount)
-                            },
-                            valueRange = startAyah.toFloat()..safeCount.toFloat(),
-                            steps = ((safeCount - startAyah) - 1).coerceAtLeast(0),
-                            colors = SliderDefaults.colors(thumbColor = hGold, activeTrackColor = hGold)
-                        )
-                        Text(
-                            text = "Ayah $endAyah",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp,
-                            color = hInk,
-                            fontFamily = fontFamilyMono,
-                            modifier = Modifier.align(Alignment.CenterHorizontally)
-                        )
-                    }
+                    SheetSectionLabel("AYAH RANGE")
+                    Text(
+                        text = if (startAyah == 1 && endAyah == safeCount) "Full surah"
+                        else "$chapterId:$startAyah – $chapterId:$endAyah",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        color = hGold,
+                        fontFamily = fontFamilyMono
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("From", fontSize = 11.sp, color = hInkMuted, fontFamily = fontFamilyBody)
+                    Slider(
+                        value = startAyah.toFloat(),
+                        onValueChange = {
+                            startAyah = it.toInt().coerceIn(1, safeCount)
+                            if (endAyah < startAyah) endAyah = startAyah
+                        },
+                        valueRange = 1f..safeCount.toFloat(),
+                        steps = (safeCount - 2).coerceAtLeast(0),
+                        colors = SliderDefaults.colors(thumbColor = hGold, activeTrackColor = hGold),
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text("To", fontSize = 11.sp, color = hInkMuted, fontFamily = fontFamilyBody)
+                    Slider(
+                        value = endAyah.toFloat(),
+                        onValueChange = { endAyah = it.toInt().coerceIn(startAyah, safeCount) },
+                        valueRange = startAyah.toFloat()..safeCount.toFloat(),
+                        steps = ((safeCount - startAyah) - 1).coerceAtLeast(0),
+                        colors = SliderDefaults.colors(thumbColor = hGold, activeTrackColor = hGold),
+                        modifier = Modifier.weight(1f)
+                    )
                 }
             }
 
-            // ── Ayah repeat chips ──
+            // ── Repeat card: ayah × selection + delay chips ──
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SheetSectionLabel("AYAH REPEAT")
+                SheetSectionLabel("REPEAT")
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     AyahRepeatOptions.forEach { option ->
                         RepeatChip(
-                            label = repeatLabel(option),
+                            label = "Ayah ${repeatLabel(option)}",
                             selected = ayahRepeat == option,
                             onClick = { ayahRepeat = option }
                         )
                     }
                 }
-            }
-
-            // ── Range repeat chips ──
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SheetSectionLabel("RANGE REPEAT")
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     RangeRepeatOptions.forEach { option ->
                         RepeatChip(
-                            label = repeatLabel(option),
+                            label = "All ${repeatLabel(option)}",
                             selected = rangeRepeat == option,
                             onClick = { rangeRepeat = option }
                         )
                     }
                 }
-            }
-
-            // ── Delay slider 0–10s ──
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    SheetSectionLabel("DELAY BETWEEN AYAHS")
-                    Text(
-                        text = "${delaySec.toInt()}s",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = hInk,
-                        fontFamily = fontFamilyMono
-                    )
+                    Text("Pause", fontSize = 12.sp, color = hInkMuted, fontFamily = fontFamilyBody,
+                        modifier = Modifier.align(Alignment.CenterVertically))
+                    listOf(0, 1, 2, 3, 5, 10).forEach { secs ->
+                        RepeatChip(
+                            label = if (secs == 0) "Off" else "${secs}s",
+                            selected = delaySec.toInt() == secs,
+                            onClick = { delaySec = secs.toFloat() }
+                        )
+                    }
                 }
-                Slider(
-                    value = delaySec,
-                    onValueChange = { delaySec = it.coerceIn(0f, 10f) },
-                    valueRange = 0f..10f,
-                    steps = 9,
-                    colors = SliderDefaults.colors(thumbColor = hGold, activeTrackColor = hGold)
-                )
             }
 
             // ── Speed chips ──
@@ -521,73 +503,34 @@ fun AudioSetupSheet(
                 }
             }
 
-            // ── Playback mode ──
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SheetSectionLabel("PLAYBACK MODE")
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    PlaybackModeChip(
-                        title = "Download for offline",
-                        subtitle = "Save, play offline next time",
-                        selected = !streamOnly,
-                        onClick = { streamOnly = false }
-                    )
-                    PlaybackModeChip(
-                        title = "Stream only",
-                        subtitle = "No storage used",
-                        selected = streamOnly,
-                        onClick = { streamOnly = true }
-                    )
-                }
+            // ── Toggles: offline save + follow (standard Switch rows) ──
+            Column {
+                SettingSwitchRow(
+                    title = "Save for offline",
+                    subtitle = "Keep audio for offline listening",
+                    checked = !streamOnly,
+                    onCheckedChange = { streamOnly = !it }
+                )
+                Divider(color = hBoneDark)
+                SettingSwitchRow(
+                    title = "Follow ayahs",
+                    subtitle = "Highlight and scroll while playing",
+                    checked = scrollWhilePlaying,
+                    onCheckedChange = {
+                        scrollWhilePlaying = it
+                        onScrollWhilePlayingChange(it)
+                    }
+                )
             }
 
-            // ── Auto-scroll ──
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SheetSectionLabel("AUTO-SCROLL")
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    PlaybackModeChip(
-                        title = "Follow ayahs",
-                        subtitle = "Highlight and scroll to each ayah",
-                        selected = scrollWhilePlaying,
-                        onClick = {
-                            scrollWhilePlaying = true
-                            onScrollWhilePlayingChange(true)
-                        }
-                    )
-                    PlaybackModeChip(
-                        title = "Stay put",
-                        subtitle = "Audio plays, list stays",
-                        selected = !scrollWhilePlaying,
-                        onClick = {
-                            scrollWhilePlaying = false
-                            onScrollWhilePlayingChange(false)
-                        }
-                    )
-                }
-            }
-
-            // ── Actions ──
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                TextButton(
-                    onClick = {
-                        stopPreview()
+            // ── Single primary action (standard one-CTA sheet) ──
+            val isFullRange = startAyah == 1 && endAyah == safeCount
+            Button(
+                onClick = {
+                    stopPreview()
+                    if (isFullRange) {
                         onPlayAll(reciterId, ayahRepeat, rangeRepeat, (delaySec.toInt() * 1000).toLong(), speed, streamOnly)
-                    },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Play All", color = hInkMid, fontWeight = FontWeight.Bold, fontFamily = fontFamilyUi)
-                }
-                Button(
-                    onClick = {
-                        stopPreview()
+                    } else {
                         onConfirm(
                             reciterId,
                             "$chapterId:$startAyah",
@@ -598,12 +541,26 @@ fun AudioSetupSheet(
                             speed,
                             streamOnly
                         )
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = hGold),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Play Range", color = Color.White, fontWeight = FontWeight.Bold, fontFamily = fontFamilyUi)
-                }
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = hGold),
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp)
+            ) {
+                Icon(
+                    imageVector = NurIcons.PlayFilled,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(18.dp)
+                )
+                Text(
+                    text = if (isFullRange) "  Play full surah"
+                    else "  Play ayahs $startAyah–$endAyah",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = fontFamilyUi,
+                    fontSize = 15.sp
+                )
             }
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -621,6 +578,47 @@ private fun SheetSectionLabel(text: String) {
         letterSpacing = 1.sp,
         fontFamily = fontFamilyMono
     )
+}
+
+@Composable
+private fun SettingSwitchRow(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onCheckedChange(!checked) }
+            .padding(vertical = 6.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = hInk,
+                fontFamily = fontFamilyUi
+            )
+            Text(
+                text = subtitle,
+                fontSize = 12.sp,
+                color = hInkMuted,
+                fontFamily = fontFamilyBody
+            )
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color.White,
+                checkedTrackColor = hGold
+            )
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

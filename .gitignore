@@ -1,0 +1,21 @@
+# Gradle / Android build outputs — never track these
+.gradle/
+build/
+app/build/
+*/build/
+captures/
+
+# Local SDK / signing config
+local.properties
+*.jks
+*.keystore
+
+# IDE
+.idea/
+*.iml
+*.iws
+*.ipr
+.DS_Store
+
+# Logs
+*.log

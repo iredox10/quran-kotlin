@@ -5,6 +5,8 @@ import com.nur.quran.data.audio.AudioDownloadManager;
 import com.nur.quran.data.audio.LinkedAudioStore;
 import com.nur.quran.data.audio.TimingImporter;
 import com.nur.quran.data.repository.QuranRepository;
+import com.nur.quran.data.tafsir.TafsirPackManager;
+import com.nur.quran.data.words.WordPackManager;
 import dagger.internal.DaggerGenerated;
 import dagger.internal.Factory;
 import dagger.internal.QualifierMetadata;
@@ -36,32 +38,43 @@ public final class SurahViewModel_Factory implements Factory<SurahViewModel> {
 
   private final Provider<TimingImporter> timingImporterProvider;
 
+  private final Provider<TafsirPackManager> tafsirPackManagerProvider;
+
+  private final Provider<WordPackManager> wordPackManagerProvider;
+
   public SurahViewModel_Factory(Provider<QuranRepository> repositoryProvider,
       Provider<AudioDownloadManager> audioDownloadManagerProvider,
       Provider<Context> contextProvider, Provider<LinkedAudioStore> linkedAudioStoreProvider,
-      Provider<TimingImporter> timingImporterProvider) {
+      Provider<TimingImporter> timingImporterProvider,
+      Provider<TafsirPackManager> tafsirPackManagerProvider,
+      Provider<WordPackManager> wordPackManagerProvider) {
     this.repositoryProvider = repositoryProvider;
     this.audioDownloadManagerProvider = audioDownloadManagerProvider;
     this.contextProvider = contextProvider;
     this.linkedAudioStoreProvider = linkedAudioStoreProvider;
     this.timingImporterProvider = timingImporterProvider;
+    this.tafsirPackManagerProvider = tafsirPackManagerProvider;
+    this.wordPackManagerProvider = wordPackManagerProvider;
   }
 
   @Override
   public SurahViewModel get() {
-    return newInstance(repositoryProvider.get(), audioDownloadManagerProvider.get(), contextProvider.get(), linkedAudioStoreProvider.get(), timingImporterProvider.get());
+    return newInstance(repositoryProvider.get(), audioDownloadManagerProvider.get(), contextProvider.get(), linkedAudioStoreProvider.get(), timingImporterProvider.get(), tafsirPackManagerProvider.get(), wordPackManagerProvider.get());
   }
 
   public static SurahViewModel_Factory create(Provider<QuranRepository> repositoryProvider,
       Provider<AudioDownloadManager> audioDownloadManagerProvider,
       Provider<Context> contextProvider, Provider<LinkedAudioStore> linkedAudioStoreProvider,
-      Provider<TimingImporter> timingImporterProvider) {
-    return new SurahViewModel_Factory(repositoryProvider, audioDownloadManagerProvider, contextProvider, linkedAudioStoreProvider, timingImporterProvider);
+      Provider<TimingImporter> timingImporterProvider,
+      Provider<TafsirPackManager> tafsirPackManagerProvider,
+      Provider<WordPackManager> wordPackManagerProvider) {
+    return new SurahViewModel_Factory(repositoryProvider, audioDownloadManagerProvider, contextProvider, linkedAudioStoreProvider, timingImporterProvider, tafsirPackManagerProvider, wordPackManagerProvider);
   }
 
   public static SurahViewModel newInstance(QuranRepository repository,
       AudioDownloadManager audioDownloadManager, Context context, LinkedAudioStore linkedAudioStore,
-      TimingImporter timingImporter) {
-    return new SurahViewModel(repository, audioDownloadManager, context, linkedAudioStore, timingImporter);
+      TimingImporter timingImporter, TafsirPackManager tafsirPackManager,
+      WordPackManager wordPackManager) {
+    return new SurahViewModel(repository, audioDownloadManager, context, linkedAudioStore, timingImporter, tafsirPackManager, wordPackManager);
   }
 }

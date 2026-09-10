@@ -5,6 +5,7 @@ import com.google.gson.Gson
 import com.nur.quran.data.api.QuranApi
 import com.nur.quran.data.db.dao.QuranDao
 import com.nur.quran.data.db.entities.ApiResponseCacheEntity
+import com.nur.quran.data.words.WordPackManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -49,7 +50,8 @@ class TafsirPackManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val quranDao: QuranDao,
     private val quranApi: QuranApi,
-    private val gson: Gson
+    private val gson: Gson,
+    private val wordPackManager: WordPackManager
 ) {
     val supported: List<Pair<Int, String>> = SUPPORTED_TAFSIRS
 
@@ -67,6 +69,8 @@ class TafsirPackManager @Inject constructor(
 
     private val jobs = mutableMapOf<Int, Job>()
     private val lock = Any()
+    /** Tafsir id -> word chapter currently downloading in [downloadPackWithWords]. */
+    private val activeWordChapters = mutableMapOf<Int, Int>()
 
     fun isDownloaded(tafsirId: Int): Boolean =
         prefs.getStringSet(PREFS_KEY, emptySet())?.contains(tafsirId.toString()) == true
@@ -124,8 +128,84 @@ class TafsirPackManager @Inject constructor(
         }
     }
 
-    /** Cancels an in-flight [downloadPack]. No-op when idle. */
+    /**
+     * Downloads the whole tafsir pack for [tafsirId] and then the word-by-word
+     * translations for chapters 1..114.
+     *
+     * Runs [downloadPack] first; only when the tafsir part completes without
+     * error do the word chapters follow, sequentially via
+     * [WordPackManager.downloadChapterWords] with per-chapter `runCatching`
+     * (a failed chapter is recorded in [WordPackManager.packStates] and
+     * skipped, never aborting the run). Tafsir progress is reported in
+     * [packStates] exactly as [downloadPack] does; word progress is visible in
+     * [WordPackManager.packStates] (UI reads both).
+     *
+     * Cooperative cancellation: the combined job is registered under the same
+     * tafsir key in the jobs map during the word phase, with
+     * [ensureActive] checked each chapter, so [cancelPack] stops both parts.
+     * Network/IO errors land in [packStates]; only coroutine
+     * [CancellationException] from [cancelPack] propagates.
+     */
+    suspend fun downloadPackWithWords(tafsirId: Int) {
+        synchronized(lock) {
+            jobs[tafsirId]?.takeIf { it.isActive }?.let { return }
+        }
+        // NB: the combined job is deliberately NOT registered before
+        // downloadPack — it registers this same Job itself, and pre-registering
+        // would trip its already-in-flight guard. It is (re-)registered below
+        // for the word phase after downloadPack's finally block removes it.
+        try {
+            downloadPack(tafsirId)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            _packStates.update { current ->
+                val done = current[tafsirId]?.downloaded ?: 0
+                current + (tafsirId to TafsirPackStatus(done, TOTAL, false, e.message ?: "Download failed"))
+            }
+            return
+        }
+        // Tafsir part must have completed without error; otherwise stop here.
+        if (_packStates.value[tafsirId]?.error != null) return
+        val job = currentCoroutineContext()[Job]
+        if (job != null) synchronized(lock) { jobs[tafsirId] = job }
+        try {
+            for (c in 1..TOTAL) {
+                currentCoroutineContext().ensureActive()
+                synchronized(lock) { activeWordChapters[tafsirId] = c }
+                try {
+                    runCatching { wordPackManager.downloadChapterWords(c) }
+                        .onFailure { e -> if (e is CancellationException) throw e }
+                } finally {
+                    synchronized(lock) {
+                        if (activeWordChapters[tafsirId] == c) activeWordChapters.remove(tafsirId)
+                    }
+                }
+            }
+        } catch (e: CancellationException) {
+            _packStates.update { current ->
+                val done = current[tafsirId]?.downloaded ?: 0
+                current + (tafsirId to TafsirPackStatus(done, TOTAL, false, null))
+            }
+            throw e
+        } catch (e: Exception) {
+            _packStates.update { current ->
+                val done = current[tafsirId]?.downloaded ?: 0
+                current + (tafsirId to TafsirPackStatus(done, TOTAL, false, e.message ?: "Download failed"))
+            }
+        } finally {
+            synchronized(lock) {
+                if (jobs[tafsirId] === job) jobs.remove(tafsirId)
+                activeWordChapters.remove(tafsirId)
+            }
+        }
+    }
+
+    /** Cancels an in-flight [downloadPack] or [downloadPackWithWords]. No-op when idle. */
     fun cancelPack(tafsirId: Int) {
+        synchronized(lock) { activeWordChapters[tafsirId] }?.let { chapterId ->
+            runCatching { wordPackManager.cancelDownload(chapterId) }
+        }
         synchronized(lock) { jobs[tafsirId] }?.cancel()
     }
 

@@ -19,12 +19,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.nur.quran.data.audio.NetworkPolicy
 import com.nur.quran.ui.components.audio.DEFAULT_TAFSIR_PACKS
 import com.nur.quran.ui.components.audio.PackDownloadRow
 import com.nur.quran.ui.components.audio.PackUiState
@@ -87,7 +89,9 @@ fun SettingsDrawer(
     wordIsDownloading: Boolean = false,
     onDownloadAllWords: () -> Unit = {},
     onCancelAllWords: () -> Unit = {},
-    wordProgressByTafsir: Map<Int, Pair<Int, Int>> = emptyMap()
+    wordProgressByTafsir: Map<Int, Pair<Int, Int>> = emptyMap(),
+    wifiOnly: Boolean = true,
+    onWifiOnlyChange: (Boolean) -> Unit = {}
 ) {
     val arabicFontScale by viewModel.arabicFontScale.collectAsState()
     val translationFontScale by viewModel.translationFontScale.collectAsState()
@@ -104,6 +108,11 @@ fun SettingsDrawer(
     var activeSubView by remember { mutableStateOf<String?>(null) }
     var previewingReciterId by remember { mutableStateOf<Int?>(null) }
     var isVisible by remember { mutableStateOf(false) }
+
+    // WiFi-only policy is owned here via NetworkPolicy so every host gets
+    // live state without extra wiring; hosts are still notified via callback.
+    val policyContext = LocalContext.current
+    var wifiPolicy by remember { mutableStateOf(NetworkPolicy.isWifiOnly(policyContext)) }
 
     // Link-in-place folder picker (GreenTech/quran_android layout).
     // Registered unconditionally so composition stays stable; the Link
@@ -531,6 +540,27 @@ fun SettingsDrawer(
 
                                         Spacer(modifier = Modifier.height(14.dp))
 
+                                        // Download policy: auto-cache/packs wait for WiFi.
+                                        Card(
+                                            shape = RoundedCornerShape(12.dp),
+                                            colors = CardDefaults.cardColors(containerColor = hCream),
+                                            border = androidx.compose.foundation.BorderStroke(1.dp, hBoneDark)
+                                        ) {
+                                            SettingsToggleItem(
+                                                label = "WiFi-only downloads",
+                                                subtitle = "Auto-cache and packs wait for unmetered WiFi; streaming unaffected",
+                                                checked = wifiPolicy,
+                                                onToggle = {
+                                                    val next = !wifiPolicy
+                                                    NetworkPolicy.setWifiOnly(policyContext, next)
+                                                    wifiPolicy = next
+                                                    onWifiOnlyChange(next)
+                                                }
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.height(14.dp))
+
                                         // Linked Audio Section (link-in-place, no re-download)
                                         Text(
                                             text = "LINKED AUDIO",
@@ -770,7 +800,8 @@ private fun SettingsToggleItem(
     label: String,
     checked: Boolean,
     onToggle: () -> Unit,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    subtitle: String? = null
 ) {
     Row(
         modifier = Modifier
@@ -780,12 +811,23 @@ private fun SettingsToggleItem(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = label,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Medium,
-            color = if (enabled) hInk else hInkMuted
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = label,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                color = if (enabled) hInk else hInkMuted
+            )
+            if (subtitle != null) {
+                Text(
+                    text = subtitle,
+                    fontSize = 11.sp,
+                    color = hInkMuted,
+                    lineHeight = 15.sp
+                )
+            }
+        }
+        Spacer(modifier = Modifier.width(8.dp))
         Switch(
             checked = checked,
             enabled = enabled,

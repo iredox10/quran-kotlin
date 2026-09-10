@@ -63,7 +63,7 @@ fun HifdhReaderScreen(
     val bookmarkedVerses by surahViewModel.bookmarkedVerses.collectAsState()
     val arabicFontScale by surahViewModel.arabicFontScale.collectAsState()
     val isTajweedEnabled by surahViewModel.isTajweedEnabled.collectAsState()
-    val selectedArabicFontName by surahViewModel.selectedArabicFontName.collectAsState(initial = "Scheherazade New")
+    val selectedArabicFontName by surahViewModel.selectedArabicFontName.collectAsState(initial = "KFGQPC Hafs")
 
     val fontFamilyArabic = remember(selectedArabicFontName) {
         getArabicFontFamily(selectedArabicFontName)

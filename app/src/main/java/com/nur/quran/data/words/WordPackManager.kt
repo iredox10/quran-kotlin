@@ -38,7 +38,7 @@ data class WordPackStatus(
  * WITH translations and persists them into Room, so
  * `WordTranslationTooltipDrawer` can read Room first and work offline.
  *
- * API used: `GET verses/by_chapter/{chapterId}` with `translations="85"`,
+ * API used: `GET verses/by_chapter/{chapterId}` with `translations="20"`,
  * `words=true`, `mushaf=null` (API default) and explicit
  * [WORD_FIELDS] ([WORD_FIELDS] value below). The explicit list is required
  * because [com.nur.quran.data.mushaf.Mushaf.wordFields] omits
@@ -258,8 +258,8 @@ class WordPackManager @Inject constructor(
         private const val PREFS_NAME = "word_packs"
         private const val KEY_CACHED = "cached_chapters"
 
-        /** Verse-level translation resource, same as QuranRepository ("85"). */
-        private const val TRANSLATION_ID = "85"
+        /** Verse-level translation resource, same as QuranRepository ("20"). */
+        private const val TRANSLATION_ID = "20"
 
         /**
          * Explicit word fields: Mushaf.wordFields() lacks `transliteration`

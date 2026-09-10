@@ -103,7 +103,7 @@ class SnapshotBuilder @Inject constructor(
             arabicFont = hifdh.getString("arabic_font", null),
             arabicScale = if (hifdh.contains("arabic_scale")) hifdh.getFloat("arabic_scale", 1f) else null,
             translationScale = if (hifdh.contains("translation_scale")) hifdh.getFloat("translation_scale", 1f) else null,
-            translationId = if (hifdh.contains("translation_id")) hifdh.getInt("translation_id", 85) else null,
+            translationId = if (hifdh.contains("translation_id")) hifdh.getInt("translation_id", 20) else null,
             tafsirId = if (hifdh.contains("tafsir_id")) hifdh.getInt("tafsir_id", 169) else null,
             reciterId = if (hifdh.contains("reciter_id")) hifdh.getInt("reciter_id", 7) else null,
             tajweedEnabled = if (hifdh.contains("is_tajweed_enabled")) hifdh.getBoolean("is_tajweed_enabled", false) else null,

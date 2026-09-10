@@ -265,7 +265,7 @@ class SyncService @Inject constructor(
         if (hifdh.contains("translation_scale")) {
             out["translationScale"] = hifdh.getFloat("translation_scale", 1f)
         }
-        if (hifdh.contains("translation_id")) out["translationId"] = hifdh.getInt("translation_id", 85)
+        if (hifdh.contains("translation_id")) out["translationId"] = hifdh.getInt("translation_id", 20)
         if (hifdh.contains("tafsir_id")) out["tafsirId"] = hifdh.getInt("tafsir_id", 169)
         if (hifdh.contains("reciter_id")) out["reciterId"] = hifdh.getInt("reciter_id", 7)
         if (hifdh.contains("is_tajweed_enabled")) {

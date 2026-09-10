@@ -83,7 +83,7 @@ fun PlannerReaderScreen(
     var reflectionNote by remember(existingReflection) { mutableStateOf(existingReflection) }
     var showCelebrationDialog by remember { mutableStateOf(false) }
 
-    val selectedArabicFontName by surahViewModel.selectedArabicFontName.collectAsState(initial = "Scheherazade New")
+    val selectedArabicFontName by surahViewModel.selectedArabicFontName.collectAsState(initial = "KFGQPC Hafs")
     val fontFamilyArabic = remember(selectedArabicFontName) {
         getArabicFontFamily(selectedArabicFontName)
     }

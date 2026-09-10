@@ -21,11 +21,11 @@ package com.nur.quran.data.translation
 data class TranslationEdition(val id: Int, val name: String, val language: String)
 
 val TRANSLATION_EDITIONS: List<TranslationEdition> = listOf(
-    // English first (default 85 first), then Hausa, Urdu,
+    // English first (default 20 first), then Hausa, Urdu,
     // then the rest alphabetically by language.
+    TranslationEdition(20, "Saheeh International", "English"),
     TranslationEdition(85, "M.A.S. Abdel Haleem", "English"),
     TranslationEdition(131, "Dr. Mustafa Khattab", "English"),
-    TranslationEdition(20, "Saheeh International", "English"),
     TranslationEdition(22, "A. Yusuf Ali", "English"),
     TranslationEdition(84, "Mufti Taqi Usmani", "English"),
     TranslationEdition(32, "Abubakar Mahmoud Gumi", "Hausa"),

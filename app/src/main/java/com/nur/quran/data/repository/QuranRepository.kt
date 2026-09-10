@@ -177,7 +177,7 @@ class QuranRepository @Inject constructor(
             try {
                 val response = quranApi.getVersesByPage(
                     pageNumber = pageNumber,
-                    translations = "85",
+                    translations = "20",
                     fields = com.nur.quran.data.mushaf.Mushaf.verseFields(mushaf),
                     wordFields = com.nur.quran.data.mushaf.Mushaf.wordFields(mushaf),
                     mushaf = mushaf.apiMushafId,

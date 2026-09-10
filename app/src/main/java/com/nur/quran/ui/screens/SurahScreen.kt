@@ -150,13 +150,13 @@ fun usesEmbeddedEndMarker(fontName: String): Boolean {
     return name == "kfgqpc-hafs" || name == "kfgqpc hafs"
 }
 
-fun formatArabicVerseEndMarker(verseNumber: Int, fontName: String = "Scheherazade New"): String {
+fun formatArabicVerseEndMarker(verseNumber: Int, fontName: String = "KFGQPC Hafs"): String {
     val digits = formatArabicDigits(verseNumber)
     val mark = if (usesEmbeddedEndMarker(fontName)) digits else "\u06dd$digits"
     return " <tajweed class='end'>$mark</tajweed>"
 }
 
-fun formatCleanEndMarker(endWord: WordEntity?, verseNumber: Int, fontName: String = "Scheherazade New"): String {
+fun formatCleanEndMarker(endWord: WordEntity?, verseNumber: Int, fontName: String = "KFGQPC Hafs"): String {
     val digits = if (endWord != null) {
         val raw = endWord.textUthmani ?: endWord.textQpcHafs ?: ""
         val cleaned = raw.replace("﴿", "").replace("﴾", "").replace("{", "").replace("}", "").replace("\u06dd", "").trim()
@@ -173,7 +173,7 @@ fun formatCleanEndMarker(endWord: WordEntity?, verseNumber: Int, fontName: Strin
     return " <tajweed class='end'>$mark</tajweed>"
 }
 
-fun buildCleanVerseTajweedHtml(fullVerseHtml: String?, words: List<WordEntity>, verseNumber: Int, fontName: String = "Scheherazade New"): String {
+fun buildCleanVerseTajweedHtml(fullVerseHtml: String?, words: List<WordEntity>, verseNumber: Int, fontName: String = "KFGQPC Hafs"): String {
     val endWord = words.firstOrNull { it.charTypeName == "end" }
     val cleanEndMarker = formatCleanEndMarker(endWord, verseNumber, fontName)
 
@@ -318,7 +318,7 @@ fun SurahScreen(
     val isSaukaCompleting by viewModel.isSaukaCompleting.collectAsState()
     val activeTranslationId by viewModel.currentTranslationId.collectAsState()
     val wordTapBehavior by viewModel.wordTapBehavior.collectAsState()
-    val selectedArabicFontName by viewModel.selectedArabicFontName.collectAsState(initial = "Scheherazade New")
+    val selectedArabicFontName by viewModel.selectedArabicFontName.collectAsState(initial = "KFGQPC Hafs")
     val fontFamilyArabic = remember(selectedArabicFontName) {
         getArabicFontFamily(selectedArabicFontName)
     }
@@ -2113,7 +2113,7 @@ fun VerseItem(
     arabicFontScale: Float = 1.0f,
     translationFontScale: Float = 1.0f,
     fontFamilyArabic: FontFamily = fontScheherazade,
-    selectedArabicFontName: String = "Scheherazade New"
+    selectedArabicFontName: String = "KFGQPC Hafs"
 ) {
     var activeFootnoteId by remember { mutableStateOf<String?>(null) }
     var footnoteText by remember { mutableStateOf("") }
@@ -2941,7 +2941,7 @@ fun ContinuousReadingPageItem(
     onTajweedClick: (TajweedRule) -> Unit = {},
     arabicFontScale: Float = 1.0f,
     fontFamilyArabic: FontFamily = fontScheherazade,
-    selectedArabicFontName: String = "Scheherazade New"
+    selectedArabicFontName: String = "KFGQPC Hafs"
 ) {
     Column(
         modifier = Modifier

@@ -1,9 +1,13 @@
 package com.nur.quran.ui.components
 
 import android.content.Context
+import android.content.ContextWrapper
+import android.app.Activity
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.util.Log
 import android.view.View
+import android.view.ViewGroup
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -21,6 +25,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.platform.AndroidUiDispatcher
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -179,12 +185,24 @@ fun VerseShareCard(
  * Renders [VerseShareCard] off-screen to a PNG under
  * `<cacheDir>/shared/verse-<verseKey>.png` (':' sanitized to '-').
  *
- * Measure/layout run on Dispatchers.Main, PNG compression on Dispatchers.IO.
- * Never throws: returns null on any failure.
+ * Measure/layout run on Dispatchers.Main AFTER awaiting composed frames:
+ * [ComposeView.setContent] schedules composition asynchronously, so measuring
+ * immediately would capture a blank (often 1px) frame — the #1 cause of
+ * broken share images. We await 3 frames, then validate the measured height.
+ * PNG compression runs on Dispatchers.IO.
+ * Never throws: returns null on any failure (logged under "ShareDebug").
  *
  * Serve the returned file via FileProvider authority
  * `"${context.packageName}.fileprovider"` (see AndroidManifest + xml/file_paths).
  */
+private const val ShareDebugTag = "ShareDebug"
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}
+
 suspend fun renderVerseCardToFile(
     context: Context,
     verseKey: String,
@@ -193,34 +211,67 @@ suspend fun renderVerseCardToFile(
     reference: String
 ): File? = withContext(Dispatchers.IO) {
     runCatching {
-        val bitmap = withContext(Dispatchers.Main) {
-            val composeView = ComposeView(context)
-            composeView.setContent {
-                VerseShareCard(
-                    verseKey = verseKey,
-                    arabic = arabic,
-                    translation = translation,
-                    reference = reference
+        // Off-screen ComposeViews have no window and therefore no recomposer
+        // ("Cannot locate windowRecomposer") — composition never runs and the
+        // capture is blank. Attach invisibly to the Activity decor so the
+        // window recomposer drives composition, then detach after draw.
+        val activity = context.findActivity()
+            ?: throw IllegalStateException("share render needs an Activity context")
+        val bitmap = withContext(AndroidUiDispatcher.Main) {
+            val composeView = ComposeView(activity)
+            composeView.visibility = View.INVISIBLE
+            val decor = activity.window.decorView as? ViewGroup
+                ?: throw IllegalStateException("no decor view")
+            decor.addView(
+                composeView,
+                ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
                 )
+            )
+            try {
+                composeView.setContent {
+                    VerseShareCard(
+                        verseKey = verseKey,
+                        arabic = arabic,
+                        translation = translation,
+                        reference = reference
+                    )
+                }
+                // Let composition settle before measuring (see KDoc). Frame
+                // callbacks need AndroidUiDispatcher — plain Dispatchers.Main
+                // carries no MonotonicFrameClock.
+                repeat(3) { withFrameNanos { } }
+                val widthSpec = View.MeasureSpec.makeMeasureSpec(1080, View.MeasureSpec.EXACTLY)
+                val heightSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+                composeView.measure(widthSpec, heightSpec)
+                val height = composeView.measuredHeight
+                Log.d(ShareDebugTag, "render $verseKey measured=${1080}x$height")
+                require(height > 100) { "composed height too small: $height" }
+                val capped = height.coerceAtMost(1920)
+                composeView.layout(0, 0, 1080, capped)
+                // One more frame so layout changes settle before draw.
+                withFrameNanos { }
+                val bmp = Bitmap.createBitmap(1080, capped, Bitmap.Config.ARGB_8888)
+                val canvas = Canvas(bmp)
+                composeView.draw(canvas)
+                bmp
+            } finally {
+                runCatching { decor.removeView(composeView) }
             }
-            val widthSpec = View.MeasureSpec.makeMeasureSpec(1080, View.MeasureSpec.EXACTLY)
-            val heightSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-            composeView.measure(widthSpec, heightSpec)
-            val height = composeView.measuredHeight.coerceIn(1, 1920)
-            composeView.layout(0, 0, 1080, height)
-            val bmp = Bitmap.createBitmap(1080, height, Bitmap.Config.ARGB_8888)
-            val canvas = Canvas(bmp)
-            composeView.draw(canvas)
-            bmp
         }
         val safeKey = verseKey.replace(":", "-")
         val dir = File(context.cacheDir, "shared")
         dir.mkdirs()
         val outFile = File(dir, "verse-$safeKey.png")
         FileOutputStream(outFile).use { fos ->
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos)
+            val ok = bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos)
             fos.flush()
+            require(ok) { "PNG compress failed" }
         }
+        Log.d(ShareDebugTag, "render $verseKey saved ${outFile.length()} bytes")
         outFile
+    }.onFailure {
+        Log.e(ShareDebugTag, "render $verseKey failed", it)
     }.getOrNull()
 }

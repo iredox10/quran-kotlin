@@ -74,6 +74,30 @@ fun ShareVerseDialog(
         }
     }
 
+    fun shareTextMessage(message: String) {
+        // Tier 1: system share sheet. Tier 2: clipboard + toast (web parity:
+        // text-only share -> download+clipboard fallback). Never throws.
+        runCatching {
+            val sendIntent = Intent().apply {
+                action = Intent.ACTION_SEND
+                putExtra(Intent.EXTRA_TEXT, message)
+                setType("text/plain")
+            }
+            val chooser = Intent.createChooser(sendIntent, "Share Ayah")
+            if (context !is android.app.Activity) {
+                chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(chooser)
+            onDismiss()
+        }.onFailure {
+            runCatching {
+                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                clipboard.setPrimaryClip(ClipData.newPlainText("QuranNurVerse", message))
+            }
+            Toast.makeText(context, "Sharing unavailable — verse copied instead", Toast.LENGTH_LONG).show()
+        }
+    }
+
     fun onShareImage() {
         if (isImageBusy) return
         scope.launch {
@@ -84,12 +108,25 @@ fun ShareVerseDialog(
                     renderVerseCardToFile(context, verse.verseKey, cardArabic, cardTranslation, cardReference)
                 } ?: throw IllegalStateException("render failed")
                 val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                val cleanTranslation = verse.translation?.replace(Regex("<[^>]*>"), "") ?: ""
+                val shareMessage = "${verse.textUthmani ?: ""}\n\n$cleanTranslation\n— $chapterName ${verse.verseKey}\n\nRead & study via Quran Nur: https://quran-nur.appwrite.network"
                 val shareIntent = Intent(Intent.ACTION_SEND).apply {
                     type = "image/png"
                     putExtra(Intent.EXTRA_STREAM, uri)
+                    putExtra(Intent.EXTRA_TEXT, shareMessage)
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
-                context.startActivity(Intent.createChooser(shareIntent, "Share Ayah image"))
+                val chooser = Intent.createChooser(shareIntent, "Share Ayah image")
+                if (context !is android.app.Activity) {
+                    chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                // Web parity: file share if a handler exists, else text share.
+                val handlesFile = shareIntent.resolveActivity(context.packageManager) != null
+                if (handlesFile) {
+                    context.startActivity(chooser)
+                } else {
+                    shareTextMessage(shareMessage)
+                }
             }.onFailure {
                 imageError = "Couldn't render image"
             }
@@ -253,13 +290,7 @@ fun ShareVerseDialog(
                         onClick = {
                             val cleanTranslation = verse.translation?.replace(Regex("<[^>]*>"), "") ?: ""
                             val shareMessage = "${verse.textUthmani ?: ""}\n\n$cleanTranslation\n— $chapterName ${verse.verseKey}\n\nRead & study via Quran Nur: https://quran-nur.appwrite.network"
-                            val sendIntent = Intent().apply {
-                                action = Intent.ACTION_SEND
-                                putExtra(Intent.EXTRA_TEXT, shareMessage)
-                                setType("text/plain")
-                            }
-                            context.startActivity(Intent.createChooser(sendIntent, "Share Ayah"))
-                            onDismiss()
+                            shareTextMessage(shareMessage)
                         },
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(14.dp),

@@ -163,6 +163,11 @@ class MainActivity : ComponentActivity() {
                                 onNavigateToScreen = { route -> navController.navigate(route) }
                             )
                         }
+                        composable(Screen.Downloads.route) {
+                            val audioPacksVm: com.nur.quran.ui.viewmodels.AudioPacksViewModel =
+                                androidx.hilt.navigation.compose.hiltViewModel()
+                            DownloadsScreen(packVm = audioPacksVm, onBack = { navController.popBackStack() })
+                        }
                         composable(
                             route = Screen.SurahDetail.route,
                             arguments = listOf(

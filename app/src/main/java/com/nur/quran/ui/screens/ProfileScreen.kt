@@ -346,6 +346,13 @@ fun ProfileScreen(
                                 label = "Translation Options",
                                 onClick = { showSettingsDrawer = true }
                             )
+                            Divider(color = hBoneDark.copy(alpha = 0.6f), thickness = 1.dp)
+                            ProfileSettingRow(
+                                icon = NurIcons.Download,
+                                label = "Downloads",
+                                subtitle = "Offline audio manager",
+                                onClick = { onNavigateToScreen(Screen.Downloads.route) }
+                            )
                         }
                     }
                 }
@@ -501,6 +508,7 @@ fun ProfileScreen(
 private fun ProfileSettingRow(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
+    subtitle: String? = null,
     onClick: () -> Unit
 ) {
     Row(
@@ -529,12 +537,21 @@ private fun ProfileSettingRow(
                     modifier = Modifier.size(18.dp)
                 )
             }
-            Text(
-                text = label,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = hInk
-            )
+            Column {
+                Text(
+                    text = label,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = hInk
+                )
+                if (subtitle != null) {
+                    Text(
+                        text = subtitle,
+                        fontSize = 12.sp,
+                        color = hInkMuted
+                    )
+                }
+            }
         }
         Icon(
             imageVector = NurIcons.ArrowRight,

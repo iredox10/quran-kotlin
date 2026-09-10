@@ -11,8 +11,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
@@ -182,25 +180,24 @@ fun ReciterLibraryPanel(
             shape = RoundedCornerShape(12.dp),
         )
 
-        LazyColumn(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth(),
+        // Plain Column (not LazyColumn): the drawer subview host is itself a
+        // vertically scrollable Column, in which a LazyColumn collapses to
+        // zero height. 20 reciters render fine without virtualization.
+        Column(
+            modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             orderedStyles.forEach { style ->
-                item(key = "header-$style") {
-                    Text(
-                        text = style.uppercase(),
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = hInkMuted,
-                        letterSpacing = 1.sp,
-                        fontFamily = fontFamilyMono,
-                        modifier = Modifier.padding(top = 4.dp, bottom = 2.dp),
-                    )
-                }
-                items(grouped[style].orEmpty(), key = { "reciter-${it.id}" }) { reciter ->
+                Text(
+                    text = style.uppercase(),
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = hInkMuted,
+                    letterSpacing = 1.sp,
+                    fontFamily = fontFamilyMono,
+                    modifier = Modifier.padding(top = 4.dp, bottom = 2.dp),
+                )
+                (grouped[style].orEmpty()).forEach { reciter ->
                     val dl = stateByReciter[reciter.id]
                     val downloaded = dl?.downloadedSurahs ?: 0
                     val fullyOffline = downloaded >= 114

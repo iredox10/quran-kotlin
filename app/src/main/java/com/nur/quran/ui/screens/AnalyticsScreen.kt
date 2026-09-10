@@ -49,7 +49,9 @@ data class BadgeItem(
 fun AnalyticsScreen(
     homeViewModel: HomeViewModel,
     surahViewModel: SurahViewModel,
-    onOpenQuranClick: () -> Unit
+    onOpenQuranClick: () -> Unit,
+    onOpenLibraryClick: () -> Unit = onOpenQuranClick,
+    onOpenCollectionsClick: () -> Unit = onOpenQuranClick
 ) {
     val context = LocalContext.current
     val sessions by homeViewModel.readingSessions.collectAsState()
@@ -72,7 +74,7 @@ fun AnalyticsScreen(
         else -> "Good Evening"
     }
 
-    // 7 Days Labels and Totals
+    // 7 Days Labels and Totals (web parity: Math.round like Progress.jsx dailyActivity)
     val last7DaysData = remember(sessions) {
         val days = mutableListOf<Pair<String, Int>>()
         val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
@@ -82,7 +84,7 @@ fun AnalyticsScreen(
             cal.add(Calendar.DATE, -i)
             val dStr = sdf.format(cal.time)
             val dayLabel = labelSdf.format(cal.time)
-            val dayMins = (sessions.filter { it.date == dStr }.sumOf { it.duration } / 60.0).toInt()
+            val dayMins = Math.round(sessions.filter { it.date == dStr }.sumOf { it.duration } / 60.0f).toInt()
             days.add(Pair(dayLabel, dayMins))
         }
         days
@@ -107,11 +109,11 @@ fun AnalyticsScreen(
     }
 
     val todayTotalMins = remember(sessions, todayStr) {
-        (sessions.filter { it.date == todayStr }.sumOf { it.duration } / 60.0).toInt()
+        Math.round(sessions.filter { it.date == todayStr }.sumOf { it.duration } / 60.0f).toInt()
     }
 
     val allTimeTotalMins = remember(sessions) {
-        (sessions.sumOf { it.duration } / 60.0).toInt()
+        Math.round(sessions.sumOf { it.duration } / 60.0f).toInt()
     }
 
     val weeklyGoalMins = 180
@@ -124,10 +126,10 @@ fun AnalyticsScreen(
 
     // Activity breakdown mix (Reading, Memorizing, Focus, Listening)
     val activityMix = remember(sessions) {
-        val readingMins = (sessions.filter { it.type == "reading" || it.type.isEmpty() }.sumOf { it.duration } / 60.0).toInt()
-        val memorizingMins = (sessions.filter { it.type == "memorizing" }.sumOf { it.duration } / 60.0).toInt()
-        val focusMins = (sessions.filter { it.type == "pomodoro" || it.type == "focus" }.sumOf { it.duration } / 60.0).toInt()
-        val listeningMins = (sessions.filter { it.type == "listening" }.sumOf { it.duration } / 60.0).toInt()
+        val readingMins = Math.round(sessions.filter { it.type == "reading" || it.type.isEmpty() }.sumOf { it.duration } / 60.0f).toInt()
+        val memorizingMins = Math.round(sessions.filter { it.type == "memorizing" }.sumOf { it.duration } / 60.0f).toInt()
+        val focusMins = Math.round(sessions.filter { it.type == "pomodoro" || it.type == "focus" }.sumOf { it.duration } / 60.0f).toInt()
+        val listeningMins = Math.round(sessions.filter { it.type == "listening" }.sumOf { it.duration } / 60.0f).toInt()
         listOf(
             Triple("Reading", readingMins, Color(0xFF10B981)),
             Triple("Memorizing", memorizingMins, Color(0xFF3B82F6)),
@@ -162,29 +164,32 @@ fun AnalyticsScreen(
         }
     }
 
-    // Dynamic Achievements / Badges
-    val achievements = remember(streak, allTimeTotalMins, recentlyRead) {
+    // Dynamic Achievements / Badges (web parity: union sessions+recentlyRead, newest first)
+    val achievements = remember(streak, allTimeTotalMins, sessions, recentlyRead) {
         val badges = mutableListOf<BadgeItem>()
         if (streak >= 3) badges.add(BadgeItem("🔥", "3-Day Streak", "Consistency is key."))
         if (streak >= 7) badges.add(BadgeItem("🔥", "7-Day Streak", "A whole week!"))
         if (streak >= 30) badges.add(BadgeItem("🔥", "30-Day Streak", "Unstoppable!"))
         if (allTimeTotalMins >= 100) badges.add(BadgeItem("⏱️", "100 Minutes", "First big milestone."))
         if (allTimeTotalMins >= 500) badges.add(BadgeItem("⏱️", "500 Minutes", "Dedicated reader."))
-        val surahCount = recentlyRead.map { it.chapterId }.distinct().size
+        // Web parity (Progress.jsx uniqueSurahsRead): sessions' chapterIds + recentlyRead
+        val surahIds = recentlyRead.map { it.chapterId }.toMutableSet()
+        sessions.mapNotNullTo(surahIds) { it.chapterId }
+        val surahCount = surahIds.size
         if (surahCount >= 5) badges.add(BadgeItem("🗺️", "Explorer", "Read 5 Surahs."))
         if (surahCount >= 30) badges.add(BadgeItem("🗺️", "Traveler", "Read 30 Surahs."))
         if (surahCount >= 114) badges.add(BadgeItem("👑", "Khatm", "Read all 114 Surahs!"))
-        badges.take(3)
+        badges.takeLast(3).reversed()
     }
 
-    // Heatmap data (35 days = 5 weeks)
+    // Heatmap data (35 days = 5 weeks, web parity: Math.round like heatmapData)
     val heatmap35Days = remember(sessions) {
         val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
         (34 downTo 0).map { i ->
             val cal = Calendar.getInstance()
             cal.add(Calendar.DATE, -i)
             val dStr = sdf.format(cal.time)
-            val dayMins = (sessions.filter { it.date == dStr }.sumOf { it.duration } / 60.0).toInt()
+            val dayMins = Math.round(sessions.filter { it.date == dStr }.sumOf { it.duration } / 60.0f).toInt()
             Pair(dStr, dayMins)
         }
     }
@@ -886,7 +891,8 @@ fun AnalyticsScreen(
                     )
                 }
 
-                items(sessions.take(5)) { session ->
+                // Web parity (Progress.jsx recentActivity): newest first, max 5
+                items(sessions.sortedByDescending { it.timestamp }.take(5)) { session ->
                     val surahName = remember(session.chapterId, chapters) {
                         if (session.chapterId != null) {
                             chapters.find { c -> c.id == session.chapterId }?.nameSimple ?: "Surah ${session.chapterId}"
@@ -979,8 +985,9 @@ fun AnalyticsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    // Bookmarks Card
+                    // Bookmarks Card (web parity: Link to /bookmarks)
                     Card(
+                        onClick = onOpenLibraryClick,
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(20.dp),
                         colors = CardDefaults.cardColors(containerColor = hSurface),
@@ -1013,8 +1020,9 @@ fun AnalyticsScreen(
                         }
                     }
 
-                    // Collections Card
+                    // Collections Card (web parity: Link to /collections)
                     Card(
+                        onClick = onOpenCollectionsClick,
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(20.dp),
                         colors = CardDefaults.cardColors(containerColor = hSurface),
@@ -1047,8 +1055,9 @@ fun AnalyticsScreen(
                         }
                     }
 
-                    // Recent Surahs Card
+                    // Recent Surahs Card (web parity: Link to /)
                     Card(
+                        onClick = onOpenQuranClick,
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(20.dp),
                         colors = CardDefaults.cardColors(containerColor = hSurface),

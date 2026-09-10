@@ -1,27 +1,10 @@
 {
     "logs": [
         {
-            "outputFile": "com.nur.quran.app-mergeDebugResources-61:/values-zh-rCN/values-zh-rCN.xml",
+            "outputFile": "com.nur.quran.app-mergeDebugResources-63:/values-zh-rCN/values-zh-rCN.xml",
             "map": [
                 {
-                    "source": "/home/iredox/.gradle/caches/transforms-3/759008449773fe72d1d6b65bf40a64f1/transformed/media3-exoplayer-1.2.1/res/values-zh-rCN/values-zh-rCN.xml",
-                    "from": {
-                        "startLines": "2,3,4,5,6,7,8,9,10",
-                        "startColumns": "4,4,4,4,4,4,4,4,4",
-                        "startOffsets": "55,111,167,225,278,350,404,479,557",
-                        "endColumns": "55,55,57,52,71,53,74,77,58",
-                        "endOffsets": "106,162,220,273,345,399,474,552,611"
-                    },
-                    "to": {
-                        "startLines": "53,54,55,56,57,58,59,60,61",
-                        "startColumns": "4,4,4,4,4,4,4,4,4",
-                        "startOffsets": "4856,4912,4968,5026,5079,5151,5205,5280,5358",
-                        "endColumns": "55,55,57,52,71,53,74,77,58",
-                        "endOffsets": "4907,4963,5021,5074,5146,5200,5275,5353,5412"
-                    }
-                },
-                {
-                    "source": "/home/iredox/.gradle/caches/transforms-3/9c7a4d19529cd8e6c29a7c7d70b3a2b5/transformed/core-1.12.0/res/values-zh-rCN/values-zh-rCN.xml",
+                    "source": "/home/iredox/.gradle/caches/transforms-3/225e69206346b4ef4bd1d9b1e32000de/transformed/core-1.12.0/res/values-zh-rCN/values-zh-rCN.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,9",
                         "startColumns": "4,4,4,4,4,4,4,4",
@@ -38,7 +21,24 @@
                     }
                 },
                 {
-                    "source": "/home/iredox/.gradle/caches/transforms-3/6a56fcaaefab89f3e1cb2b951f18a7fa/transformed/ui-release/res/values-zh-rCN/values-zh-rCN.xml",
+                    "source": "/home/iredox/.gradle/caches/transforms-3/ba34ce7d9fb005d359bf7db83744849e/transformed/media3-session-1.2.1/res/values-zh-rCN/values-zh-rCN.xml",
+                    "from": {
+                        "startLines": "2,3,4,5,6,7,8,9",
+                        "startColumns": "4,4,4,4,4,4,4,4",
+                        "startOffsets": "55,116,183,248,312,381,453,529",
+                        "endColumns": "60,66,64,63,68,71,75,79",
+                        "endOffsets": "111,178,243,307,376,448,524,604"
+                    },
+                    "to": {
+                        "startLines": "2,49,65,66,67,68,69,70",
+                        "startColumns": "4,4,4,4,4,4,4,4",
+                        "startOffsets": "105,4552,5639,5704,5768,5837,5909,5985",
+                        "endColumns": "60,66,64,63,68,71,75,79",
+                        "endOffsets": "161,4614,5699,5763,5832,5904,5980,6060"
+                    }
+                },
+                {
+                    "source": "/home/iredox/.gradle/caches/transforms-3/c76188f4567440b28cd442550d41c813/transformed/ui-release/res/values-zh-rCN/values-zh-rCN.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18",
                         "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
@@ -55,7 +55,24 @@
                     }
                 },
                 {
-                    "source": "/home/iredox/.gradle/caches/transforms-3/7a536b48a8bcd27104d6ed66d456bf9a/transformed/material3-1.1.2/res/values-zh-rCN/values-zh-rCN.xml",
+                    "source": "/home/iredox/.gradle/caches/transforms-3/b27cba85b4a6a1c24f4eecd108b8fc12/transformed/media3-exoplayer-1.2.1/res/values-zh-rCN/values-zh-rCN.xml",
+                    "from": {
+                        "startLines": "2,3,4,5,6,7,8,9,10",
+                        "startColumns": "4,4,4,4,4,4,4,4,4",
+                        "startOffsets": "55,111,167,225,278,350,404,479,557",
+                        "endColumns": "55,55,57,52,71,53,74,77,58",
+                        "endOffsets": "106,162,220,273,345,399,474,552,611"
+                    },
+                    "to": {
+                        "startLines": "53,54,55,56,57,58,59,60,61",
+                        "startColumns": "4,4,4,4,4,4,4,4,4",
+                        "startOffsets": "4856,4912,4968,5026,5079,5151,5205,5280,5358",
+                        "endColumns": "55,55,57,52,71,53,74,77,58",
+                        "endOffsets": "4907,4963,5021,5074,5146,5200,5275,5353,5412"
+                    }
+                },
+                {
+                    "source": "/home/iredox/.gradle/caches/transforms-3/07d60a8d4fada91114dfa4c8b5e530cc/transformed/material3-1.1.2/res/values-zh-rCN/values-zh-rCN.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56",
                         "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
@@ -69,23 +86,6 @@
                         "startOffsets": "166,266,365,465,1380,1452,1535,1635,1739,1840,1951,2029,2121,2201,2286,2388,2498,2595,2699,2801,2905,3017,3120,3217,3318,3421,3502,3593,3694,3799,3885,3979,4073,4176,4285,4381,4710,5417,6496,6643,6822,7165,7241,7318,7412,7502,7591,7682,7761,7853,7945,8037,8141,8217,8305",
                         "endColumns": "99,98,99,97,71,82,99,103,100,110,77,91,79,84,101,109,96,103,101,103,111,102,96,100,102,80,90,100,104,85,93,93,102,108,95,85,68,70,78,77,87,75,76,93,89,88,90,78,91,91,91,103,75,87,85",
                         "endOffsets": "261,360,460,558,1447,1530,1630,1734,1835,1946,2024,2116,2196,2281,2383,2493,2590,2694,2796,2900,3012,3115,3212,3313,3416,3497,3588,3689,3794,3880,3974,4068,4171,4280,4376,4462,4774,5483,6570,6716,6905,7236,7313,7407,7497,7586,7677,7756,7848,7940,8032,8136,8212,8300,8386"
-                    }
-                },
-                {
-                    "source": "/home/iredox/.gradle/caches/transforms-3/56a32ed71d4c7a82412df2d92c65c50f/transformed/media3-session-1.2.1/res/values-zh-rCN/values-zh-rCN.xml",
-                    "from": {
-                        "startLines": "2,3,4,5,6,7,8,9",
-                        "startColumns": "4,4,4,4,4,4,4,4",
-                        "startOffsets": "55,116,183,248,312,381,453,529",
-                        "endColumns": "60,66,64,63,68,71,75,79",
-                        "endOffsets": "111,178,243,307,376,448,524,604"
-                    },
-                    "to": {
-                        "startLines": "2,49,65,66,67,68,69,70",
-                        "startColumns": "4,4,4,4,4,4,4,4",
-                        "startOffsets": "105,4552,5639,5704,5768,5837,5909,5985",
-                        "endColumns": "60,66,64,63,68,71,75,79",
-                        "endOffsets": "161,4614,5699,5763,5832,5904,5980,6060"
                     }
                 }
             ]

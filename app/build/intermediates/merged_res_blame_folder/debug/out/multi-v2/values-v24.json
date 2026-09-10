@@ -1,10 +1,10 @@
 {
     "logs": [
         {
-            "outputFile": "com.nur.quran.app-mergeDebugResources-61:/values-v24/values-v24.xml",
+            "outputFile": "com.nur.quran.app-mergeDebugResources-63:/values-v24/values-v24.xml",
             "map": [
                 {
-                    "source": "/home/iredox/.gradle/caches/transforms-3/4a9f2a02ca1dc95d2d1d3e282abc011a/transformed/media-1.6.0/res/values-v24/values-v24.xml",
+                    "source": "/home/iredox/.gradle/caches/transforms-3/4b68a9274bf22c0a675219fabeeb84fa/transformed/media-1.6.0/res/values-v24/values-v24.xml",
                     "from": {
                         "startLines": "2,3,4,5",
                         "startColumns": "4,4,4,4",

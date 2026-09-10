@@ -28,6 +28,8 @@ import com.nur.quran.services.QuranAudioService;
 import com.nur.quran.services.QuranAudioService_MembersInjector;
 import com.nur.quran.ui.viewmodels.HomeViewModel;
 import com.nur.quran.ui.viewmodels.HomeViewModel_HiltModules_KeyModule_ProvideFactory;
+import com.nur.quran.ui.viewmodels.PackViewModel;
+import com.nur.quran.ui.viewmodels.PackViewModel_HiltModules_KeyModule_ProvideFactory;
 import com.nur.quran.ui.viewmodels.PlannerViewModel;
 import com.nur.quran.ui.viewmodels.PlannerViewModel_HiltModules_KeyModule_ProvideFactory;
 import com.nur.quran.ui.viewmodels.SurahViewModel;
@@ -387,7 +389,7 @@ public final class DaggerQuranApplication_HiltComponents_SingletonC {
 
     @Override
     public Set<String> getViewModelKeys() {
-      return ImmutableSet.<String>of(HomeViewModel_HiltModules_KeyModule_ProvideFactory.provide(), PlannerViewModel_HiltModules_KeyModule_ProvideFactory.provide(), SurahViewModel_HiltModules_KeyModule_ProvideFactory.provide());
+      return ImmutableSet.<String>of(HomeViewModel_HiltModules_KeyModule_ProvideFactory.provide(), PackViewModel_HiltModules_KeyModule_ProvideFactory.provide(), PlannerViewModel_HiltModules_KeyModule_ProvideFactory.provide(), SurahViewModel_HiltModules_KeyModule_ProvideFactory.provide());
     }
 
     @Override
@@ -415,6 +417,8 @@ public final class DaggerQuranApplication_HiltComponents_SingletonC {
 
     private Provider<HomeViewModel> homeViewModelProvider;
 
+    private Provider<PackViewModel> packViewModelProvider;
+
     private Provider<PlannerViewModel> plannerViewModelProvider;
 
     private Provider<SurahViewModel> surahViewModelProvider;
@@ -433,13 +437,14 @@ public final class DaggerQuranApplication_HiltComponents_SingletonC {
     private void initialize(final SavedStateHandle savedStateHandleParam,
         final ViewModelLifecycle viewModelLifecycleParam) {
       this.homeViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 0);
-      this.plannerViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 1);
-      this.surahViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 2);
+      this.packViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 1);
+      this.plannerViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 2);
+      this.surahViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 3);
     }
 
     @Override
     public Map<String, javax.inject.Provider<ViewModel>> getHiltViewModelMap() {
-      return ImmutableMap.<String, javax.inject.Provider<ViewModel>>of("com.nur.quran.ui.viewmodels.HomeViewModel", ((Provider) homeViewModelProvider), "com.nur.quran.ui.viewmodels.PlannerViewModel", ((Provider) plannerViewModelProvider), "com.nur.quran.ui.viewmodels.SurahViewModel", ((Provider) surahViewModelProvider));
+      return ImmutableMap.<String, javax.inject.Provider<ViewModel>>of("com.nur.quran.ui.viewmodels.HomeViewModel", ((Provider) homeViewModelProvider), "com.nur.quran.ui.viewmodels.PackViewModel", ((Provider) packViewModelProvider), "com.nur.quran.ui.viewmodels.PlannerViewModel", ((Provider) plannerViewModelProvider), "com.nur.quran.ui.viewmodels.SurahViewModel", ((Provider) surahViewModelProvider));
     }
 
     @Override
@@ -471,10 +476,13 @@ public final class DaggerQuranApplication_HiltComponents_SingletonC {
           case 0: // com.nur.quran.ui.viewmodels.HomeViewModel 
           return (T) new HomeViewModel(singletonCImpl.quranRepositoryProvider.get(), ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
 
-          case 1: // com.nur.quran.ui.viewmodels.PlannerViewModel 
+          case 1: // com.nur.quran.ui.viewmodels.PackViewModel 
+          return (T) new PackViewModel(singletonCImpl.tafsirPackManagerProvider.get(), singletonCImpl.wordPackManagerProvider.get());
+
+          case 2: // com.nur.quran.ui.viewmodels.PlannerViewModel 
           return (T) new PlannerViewModel(singletonCImpl.quranRepositoryProvider.get(), ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
 
-          case 2: // com.nur.quran.ui.viewmodels.SurahViewModel 
+          case 3: // com.nur.quran.ui.viewmodels.SurahViewModel 
           return (T) new SurahViewModel(singletonCImpl.quranRepositoryProvider.get(), singletonCImpl.audioDownloadManagerProvider.get(), ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule), singletonCImpl.linkedAudioStoreProvider.get(), singletonCImpl.timingImporterProvider.get(), singletonCImpl.tafsirPackManagerProvider.get(), singletonCImpl.wordPackManagerProvider.get());
 
           default: throw new AssertionError(id);
@@ -577,17 +585,17 @@ public final class DaggerQuranApplication_HiltComponents_SingletonC {
 
     private Provider<Gson> provideGsonProvider;
 
+    private Provider<WordPackManager> wordPackManagerProvider;
+
     private Provider<QuranRepository> quranRepositoryProvider;
+
+    private Provider<TafsirPackManager> tafsirPackManagerProvider;
 
     private Provider<AudioDownloadManager> audioDownloadManagerProvider;
 
     private Provider<LinkedAudioStore> linkedAudioStoreProvider;
 
     private Provider<TimingImporter> timingImporterProvider;
-
-    private Provider<TafsirPackManager> tafsirPackManagerProvider;
-
-    private Provider<WordPackManager> wordPackManagerProvider;
 
     private Provider<AudioPlayerHolder> audioPlayerHolderProvider;
 
@@ -604,12 +612,12 @@ public final class DaggerQuranApplication_HiltComponents_SingletonC {
       this.provideOkHttpClientProvider = DoubleCheck.provider(new SwitchingProvider<OkHttpClient>(singletonCImpl, 4));
       this.provideQuranApiProvider = DoubleCheck.provider(new SwitchingProvider<QuranApi>(singletonCImpl, 3));
       this.provideGsonProvider = DoubleCheck.provider(new SwitchingProvider<Gson>(singletonCImpl, 5));
+      this.wordPackManagerProvider = DoubleCheck.provider(new SwitchingProvider<WordPackManager>(singletonCImpl, 6));
       this.quranRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<QuranRepository>(singletonCImpl, 0));
-      this.audioDownloadManagerProvider = DoubleCheck.provider(new SwitchingProvider<AudioDownloadManager>(singletonCImpl, 6));
-      this.linkedAudioStoreProvider = DoubleCheck.provider(new SwitchingProvider<LinkedAudioStore>(singletonCImpl, 7));
-      this.timingImporterProvider = DoubleCheck.provider(new SwitchingProvider<TimingImporter>(singletonCImpl, 8));
-      this.tafsirPackManagerProvider = DoubleCheck.provider(new SwitchingProvider<TafsirPackManager>(singletonCImpl, 9));
-      this.wordPackManagerProvider = DoubleCheck.provider(new SwitchingProvider<WordPackManager>(singletonCImpl, 10));
+      this.tafsirPackManagerProvider = DoubleCheck.provider(new SwitchingProvider<TafsirPackManager>(singletonCImpl, 7));
+      this.audioDownloadManagerProvider = DoubleCheck.provider(new SwitchingProvider<AudioDownloadManager>(singletonCImpl, 8));
+      this.linkedAudioStoreProvider = DoubleCheck.provider(new SwitchingProvider<LinkedAudioStore>(singletonCImpl, 9));
+      this.timingImporterProvider = DoubleCheck.provider(new SwitchingProvider<TimingImporter>(singletonCImpl, 10));
       this.audioPlayerHolderProvider = DoubleCheck.provider(new SwitchingProvider<AudioPlayerHolder>(singletonCImpl, 11));
     }
 
@@ -647,7 +655,7 @@ public final class DaggerQuranApplication_HiltComponents_SingletonC {
       public T get() {
         switch (id) {
           case 0: // com.nur.quran.data.repository.QuranRepository 
-          return (T) new QuranRepository(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule), singletonCImpl.provideQuranDaoProvider.get(), singletonCImpl.provideQuranApiProvider.get(), singletonCImpl.provideGsonProvider.get());
+          return (T) new QuranRepository(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule), singletonCImpl.provideQuranDaoProvider.get(), singletonCImpl.provideQuranApiProvider.get(), singletonCImpl.provideGsonProvider.get(), singletonCImpl.wordPackManagerProvider.get());
 
           case 1: // com.nur.quran.data.db.dao.QuranDao 
           return (T) AppModule_ProvideQuranDaoFactory.provideQuranDao(singletonCImpl.provideQuranDatabaseProvider.get());
@@ -664,20 +672,20 @@ public final class DaggerQuranApplication_HiltComponents_SingletonC {
           case 5: // com.google.gson.Gson 
           return (T) AppModule_ProvideGsonFactory.provideGson();
 
-          case 6: // com.nur.quran.data.audio.AudioDownloadManager 
+          case 6: // com.nur.quran.data.words.WordPackManager 
+          return (T) new WordPackManager(singletonCImpl.provideQuranApiProvider.get(), singletonCImpl.provideQuranDaoProvider.get(), singletonCImpl.provideGsonProvider.get(), ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
+
+          case 7: // com.nur.quran.data.tafsir.TafsirPackManager 
+          return (T) new TafsirPackManager(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule), singletonCImpl.provideQuranDaoProvider.get(), singletonCImpl.provideQuranApiProvider.get(), singletonCImpl.provideGsonProvider.get(), singletonCImpl.wordPackManagerProvider.get());
+
+          case 8: // com.nur.quran.data.audio.AudioDownloadManager 
           return (T) new AudioDownloadManager(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
 
-          case 7: // com.nur.quran.data.audio.LinkedAudioStore 
+          case 9: // com.nur.quran.data.audio.LinkedAudioStore 
           return (T) new LinkedAudioStore(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
 
-          case 8: // com.nur.quran.data.audio.TimingImporter 
+          case 10: // com.nur.quran.data.audio.TimingImporter 
           return (T) new TimingImporter(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule), singletonCImpl.provideQuranDaoProvider.get());
-
-          case 9: // com.nur.quran.data.tafsir.TafsirPackManager 
-          return (T) new TafsirPackManager(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule), singletonCImpl.provideQuranDaoProvider.get(), singletonCImpl.provideQuranApiProvider.get(), singletonCImpl.provideGsonProvider.get());
-
-          case 10: // com.nur.quran.data.words.WordPackManager 
-          return (T) new WordPackManager(singletonCImpl.provideQuranApiProvider.get(), singletonCImpl.provideQuranDaoProvider.get(), singletonCImpl.provideGsonProvider.get(), ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
 
           case 11: // com.nur.quran.data.audio.AudioPlayerHolder 
           return (T) new AudioPlayerHolder(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));

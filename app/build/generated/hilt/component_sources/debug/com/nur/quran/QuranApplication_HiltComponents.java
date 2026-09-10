@@ -3,6 +3,7 @@ package com.nur.quran;
 import com.nur.quran.di.AppModule;
 import com.nur.quran.services.QuranAudioService_GeneratedInjector;
 import com.nur.quran.ui.viewmodels.HomeViewModel_HiltModules;
+import com.nur.quran.ui.viewmodels.PackViewModel_HiltModules;
 import com.nur.quran.ui.viewmodels.PlannerViewModel_HiltModules;
 import com.nur.quran.ui.viewmodels.SurahViewModel_HiltModules;
 import dagger.Binds;
@@ -160,6 +161,7 @@ public final class QuranApplication_HiltComponents {
           HiltWrapper_ActivityRetainedComponentManager_LifecycleModule.class,
           HiltWrapper_SavedStateHandleModule.class,
           HomeViewModel_HiltModules.KeyModule.class,
+          PackViewModel_HiltModules.KeyModule.class,
           PlannerViewModel_HiltModules.KeyModule.class,
           ActivityCBuilderModule.class,
           ViewModelCBuilderModule.class,
@@ -201,6 +203,7 @@ public final class QuranApplication_HiltComponents {
       modules = {
           HiltWrapper_HiltViewModelFactory_ViewModelModule.class,
           HomeViewModel_HiltModules.BindsModule.class,
+          PackViewModel_HiltModules.BindsModule.class,
           PlannerViewModel_HiltModules.BindsModule.class,
           SurahViewModel_HiltModules.BindsModule.class
       }

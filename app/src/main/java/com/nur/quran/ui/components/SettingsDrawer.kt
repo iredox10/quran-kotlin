@@ -28,6 +28,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.nur.quran.data.audio.NetworkPolicy
 import com.nur.quran.ui.components.audio.DEFAULT_TAFSIR_PACKS
+import com.nur.quran.ui.components.audio.ReciterLibraryPanel
 import com.nur.quran.ui.components.audio.PackDownloadRow
 import com.nur.quran.ui.components.audio.PackUiState
 import com.nur.quran.ui.screens.*
@@ -97,6 +98,7 @@ fun SettingsDrawer(
     val translationFontScale by viewModel.translationFontScale.collectAsState()
     val selectedArabicFontName by viewModel.selectedArabicFontName.collectAsState()
     val activeTranslationId by viewModel.currentTranslationId.collectAsState()
+    val currentReciterId by viewModel.currentReciterId.collectAsState()
     val wordTapBehavior by viewModel.wordTapBehavior.collectAsState()
     val mushafPreset by viewModel.mushafPreset.collectAsState()
     val currentMushaf = remember(mushafPreset) {
@@ -106,7 +108,6 @@ fun SettingsDrawer(
 
     var activeTab by remember { mutableStateOf("general") }
     var activeSubView by remember { mutableStateOf<String?>(null) }
-    var previewingReciterId by remember { mutableStateOf<Int?>(null) }
     var isVisible by remember { mutableStateOf(false) }
 
     // WiFi-only policy is owned here via NetworkPolicy so every host gets
@@ -194,7 +195,7 @@ fun SettingsDrawer(
                                         text = when (activeSubView) {
                                             "mushaf" -> "Choose Mushaf"
                                             "translation" -> "Choose Translation"
-                                            "reciter" -> "Choose Reciter"
+                                            "reciters" -> "Reciters"
                                             "font" -> "Choose Arabic Font"
                                             "tafsir" -> "Choose Tafsir"
                                             else -> "Settings"
@@ -348,8 +349,8 @@ fun SettingsDrawer(
                                                 Divider(color = hBoneDark)
                                                 SettingsRowItem(
                                                     label = "Reciter",
-                                                    value = "Mishari Rashid al-Afasy",
-                                                    onClick = { activeSubView = "reciter" }
+                                                    value = RECITERS_LIST.find { it.first == currentReciterId }?.second ?: "Mishari Rashid al-Afasy",
+                                                    onClick = { activeSubView = "reciters" }
                                                 )
                                             }
                                         }
@@ -660,37 +661,14 @@ fun SettingsDrawer(
                                             )
                                         }
                                     }
-                                    "reciter" -> {
-                                        RECITERS_LIST.forEach { (reciterId, name) ->
-                                            Row(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .clip(RoundedCornerShape(10.dp))
-                                                    .clickable {
-                                                        viewModel.setReciterId(reciterId)
-                                                        activeSubView = null
-                                                    }
-                                                    .padding(horizontal = 12.dp, vertical = 12.dp),
-                                                horizontalArrangement = Arrangement.SpaceBetween,
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Text(text = name, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = hInk)
-                                                IconButton(
-                                                    onClick = {
-                                                        previewingReciterId = if (previewingReciterId == reciterId) null else reciterId
-                                                    },
-                                                    modifier = Modifier.size(32.dp)
-                                                ) {
-                                                    Icon(
-                                                        imageVector = NurIcons.Volume2,
-                                                        contentDescription = "Sample Audio",
-                                                        tint = if (previewingReciterId == reciterId) hGold else hInkMuted,
-                                                        modifier = Modifier.size(18.dp)
-                                                    )
-                                                }
+                                    "reciters" -> {
+                                        ReciterLibraryPanel(
+                                            selectedReciterId = currentReciterId,
+                                            onSelectReciter = {
+                                                viewModel.setReciterId(it)
+                                                activeSubView = null
                                             }
-                                            Divider(color = hBoneDark)
-                                        }
+                                        )
                                     }
                                     "font" -> {
                                         ARABIC_FONT_OPTIONS.forEach { font ->

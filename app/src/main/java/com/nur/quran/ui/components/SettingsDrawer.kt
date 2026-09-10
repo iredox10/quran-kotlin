@@ -86,7 +86,8 @@ fun SettingsDrawer(
     wordCachedCount: Int = 0,
     wordTotal: Int = 114,
     wordIsDownloading: Boolean = false,
-    onDownloadAllWords: () -> Unit = {}
+    onDownloadAllWords: () -> Unit = {},
+    wordProgressByTafsir: Map<Int, Pair<Int, Int>> = emptyMap()
 ) {
     val arabicFontScale by viewModel.arabicFontScale.collectAsState()
     val translationFontScale by viewModel.translationFontScale.collectAsState()
@@ -549,7 +550,9 @@ fun SettingsDrawer(
                                                         pack = pack,
                                                         onDownloadClick = onDownloadTafsir,
                                                         onCancelClick = onCancelTafsir,
-                                                        onDeleteClick = onDeleteTafsir
+                                                        onDeleteClick = onDeleteTafsir,
+                                                        subtitle = "Includes word-by-word translations",
+                                                        secondaryProgress = wordProgressByTafsir[pack.id]
                                                     )
                                                     if (index < effectiveTafsirPacks.lastIndex) {
                                                         Spacer(modifier = Modifier.height(8.dp))
@@ -566,7 +569,7 @@ fun SettingsDrawer(
                                                 )
                                                 Spacer(modifier = Modifier.height(8.dp))
                                                 Text(
-                                                    text = "Packs work fully offline once downloaded.",
+                                                    text = "Tafsir packs include word-by-word translations. Everything works fully offline once downloaded.",
                                                     fontSize = 12.sp,
                                                     color = hInkMid,
                                                     lineHeight = 18.sp

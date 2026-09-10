@@ -93,7 +93,9 @@ fun PackDownloadRow(
     onDownloadClick: (Int) -> Unit = {},
     onCancelClick: (Int) -> Unit = {},
     onDeleteClick: (Int) -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    subtitle: String? = null,
+    secondaryProgress: Pair<Int, Int>? = null
 ) {
     val total = pack.total.coerceAtLeast(0)
     val downloaded = pack.downloaded.coerceIn(0, total.coerceAtLeast(1))
@@ -147,6 +149,15 @@ fun PackDownloadRow(
                         }
                     }
                     Spacer(modifier = Modifier.height(2.dp))
+                    if (!subtitle.isNullOrBlank()) {
+                        Text(
+                            text = subtitle,
+                            fontSize = 11.sp,
+                            color = hInkMuted,
+                            fontFamily = fontFamilyBody
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                    }
                     Text(
                         text = statusText,
                         fontSize = 12.sp,
@@ -174,6 +185,31 @@ fun PackDownloadRow(
                         .height(8.dp)
                         .clip(RoundedCornerShape(100)),
                     color = hGold,
+                    trackColor = hBoneDark.copy(alpha = 0.4f)
+                )
+            }
+
+            if (secondaryProgress != null) {
+                val wordsTotal = secondaryProgress.second.coerceAtLeast(0)
+                val wordsDownloaded =
+                    secondaryProgress.first.coerceIn(0, wordsTotal.coerceAtLeast(1))
+                val wordsProgress =
+                    if (wordsTotal > 0) (wordsDownloaded.toFloat() / wordsTotal).coerceIn(0f, 1f) else 0f
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "Words $wordsDownloaded/$wordsTotal",
+                    fontSize = 11.sp,
+                    color = hInkMuted,
+                    fontFamily = fontFamilyBody
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                LinearProgressIndicator(
+                    progress = wordsProgress,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(100)),
+                    color = hGreen,
                     trackColor = hBoneDark.copy(alpha = 0.4f)
                 )
             }

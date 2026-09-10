@@ -26,10 +26,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.nur.quran.ui.components.NurIcons
 import com.nur.quran.ui.components.SettingsDrawer
 import com.nur.quran.ui.navigation.Screen
+import com.nur.quran.ui.viewmodels.AuthViewModel
 import com.nur.quran.ui.viewmodels.HomeViewModel
 import com.nur.quran.ui.viewmodels.PackViewModel
 import com.nur.quran.ui.viewmodels.PlannerViewModel
@@ -52,6 +54,9 @@ fun ProfileScreen(
     var dailyGoalMins by remember { mutableIntStateOf(prefs.getInt("daily_reading_goal", 30)) }
     var showGoalPicker by remember { mutableStateOf(false) }
     var showSettingsDrawer by remember { mutableStateOf(false) }
+
+    val authVm: AuthViewModel = hiltViewModel()
+    val authState by authVm.authState.collectAsState()
 
     val sessions by homeViewModel.readingSessions.collectAsState()
     val todayTotalSeconds = remember(sessions) {
@@ -94,6 +99,19 @@ fun ProfileScreen(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Auth Card
+            item {
+                AuthCard(
+                    signedIn = authState.signedIn,
+                    email = authState.email,
+                    busy = authState.busy,
+                    error = authState.error,
+                    onLogin = authVm::login,
+                    onRegister = authVm::register,
+                    onLogout = authVm::logout
+                )
+            }
+
             // Hero Avatar Section
             item {
                 Column(
@@ -487,6 +505,7 @@ fun ProfileScreen(
             val wordCached by packVm.wordCachedCount.collectAsState()
             val wordDownloading by packVm.wordIsDownloading.collectAsState()
             val wordProgress by packVm.wordProgressByTafsir.collectAsState()
+                val syncState by packVm.syncUiState.collectAsState()
             SettingsDrawer(
                 viewModel = surahViewModel,
                 onDismiss = { showSettingsDrawer = false },
@@ -499,8 +518,148 @@ fun ProfileScreen(
                 wordIsDownloading = wordDownloading,
                 onDownloadAllWords = packVm::downloadAllMissingWordPacks,
                     onCancelAllWords = packVm::cancelAllWordPacks,
+                    syncState = syncState, onBackup = packVm::backupNow, onRestore = packVm::restoreNow,
                 wordProgressByTafsir = wordProgress
             )
+        }
+    }
+}
+
+@Composable
+private fun AuthCard(
+    signedIn: Boolean,
+    email: String?,
+    busy: Boolean,
+    error: String?,
+    onLogin: (String, String) -> Unit,
+    onRegister: (String, String) -> Unit,
+    onLogout: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = hSurface),
+        border = BorderStroke(1.dp, hBoneDark)
+    ) {
+        Column(modifier = Modifier.padding(18.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .background(hGoldLight),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = NurIcons.User,
+                        contentDescription = null,
+                        tint = hGold,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = "Account",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = hInk,
+                        fontFamily = fontFamilyUi
+                    )
+                    Text(
+                        text = if (signedIn) "Signed in" else "Sign in to sync",
+                        fontSize = 12.sp,
+                        color = hInkMuted
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            if (signedIn) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = email ?: "",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = hInk,
+                        modifier = Modifier.weight(1f)
+                    )
+                    if (busy) {
+                        CircularProgressIndicator(
+                            color = hGold,
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                    }
+                    Button(
+                        onClick = onLogout,
+                        enabled = !busy,
+                        colors = ButtonDefaults.buttonColors(containerColor = hGold)
+                    ) {
+                        Text("Logout", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            } else {
+                var emailInput by remember { mutableStateOf("") }
+                var passwordInput by remember { mutableStateOf("") }
+                OutlinedTextField(
+                    value = emailInput,
+                    onValueChange = { emailInput = it },
+                    label = { Text("Email", fontSize = 12.sp) },
+                    singleLine = true,
+                    enabled = !busy,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = passwordInput,
+                    onValueChange = { passwordInput = it },
+                    label = { Text("Password", fontSize = 12.sp) },
+                    singleLine = true,
+                    enabled = !busy,
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (error != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(text = error, fontSize = 12.sp, color = hRed)
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Button(
+                        onClick = { onLogin(emailInput, passwordInput) },
+                        enabled = !busy && emailInput.isNotBlank() && passwordInput.isNotBlank(),
+                        colors = ButtonDefaults.buttonColors(containerColor = hGold),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Login", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    }
+                    OutlinedButton(
+                        onClick = { onRegister(emailInput, passwordInput) },
+                        enabled = !busy && emailInput.isNotBlank() && passwordInput.isNotBlank(),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Register", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    }
+                    if (busy) {
+                        CircularProgressIndicator(
+                            color = hGold,
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            }
         }
     }
 }

@@ -13,6 +13,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import com.nur.quran.data.api.ApiTafsirVerse
 import com.nur.quran.data.audio.AudioDownloadManager
 import com.nur.quran.data.audio.LinkedAudioStore
+import com.nur.quran.data.audio.NetworkPolicy
 import com.nur.quran.data.audio.PlaybackSettings
 import com.nur.quran.data.audio.Reciters
 import com.nur.quran.data.audio.TimingImporter
@@ -426,25 +427,26 @@ class SurahViewModel @Inject constructor(
         if (wasPlaying) player.play() else player.pause()
     }
 
-    /** In-flight auto-cache guards keyed `"$reciterId:$chapterId"` (fire-and-forget dedupe). */
-    private val autoCacheInFlight = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
-
     /**
      * Auto-download-on-play: after streaming starts, cache the chapter in the
      * background for offline next time. Skipped when stream-only mode is on,
-     * the chapter is linked (gapless file), already fully downloaded, or a
-     * download for the same key is already running. Never throws.
+     * [NetworkPolicy.canAutoDownload] denies (e.g. metered data with WiFi-only
+     * on), the chapter is linked (gapless file), already fully downloaded, or a
+     * download for the same key is already running (manual or auto — the
+     * shared per-key [downloadKeys] set allows parallel chapters). Manual
+     * downloads bypass the network gate. Never throws, never surfaces errors.
      */
     private fun autoCacheChapter(reciterId: Int, chapterId: Int, verses: List<VerseEntity>) {
         if (verses.isEmpty()) return
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 if (_streamOnly.value) return@launch
+                if (!NetworkPolicy.canAutoDownload(context)) return@launch
                 if (runCatching { linkedAudioStore.isLinked(reciterId, chapterId) }.getOrDefault(false)) return@launch
-                val key = "$reciterId:$chapterId"
-                if (!autoCacheInFlight.add(key)) return@launch
+                val key = downloadKey(reciterId, chapterId)
+                if (!downloadKeys.add(key)) return@launch
+                syncDownloadAggregate()
                 try {
-                    if (_isDownloading.value) return@launch
                     if (audioDownloadManager.isDownloading(reciterId, chapterId)) return@launch
                     if (runCatching { audioDownloadManager.isFullyDownloaded(reciterId, chapterId, verses) }.getOrDefault(false)) return@launch
                     val onProgress: (Int, Int) -> Unit = { done, total ->
@@ -469,7 +471,8 @@ class SurahViewModel @Inject constructor(
                         }
                     }
                 } finally {
-                    autoCacheInFlight.remove(key)
+                    downloadKeys.remove(key)
+                    syncDownloadAggregate()
                 }
             } catch (_: Exception) {
                 // Fire-and-forget: playback already started, never surface errors.
@@ -1062,46 +1065,101 @@ class SurahViewModel @Inject constructor(
     private val _downloadProgress = MutableStateFlow(0f)
     val downloadProgress: StateFlow<Float> = _downloadProgress.asStateFlow()
 
+    /**
+     * Per-chapter in-flight guards keyed `"$reciterId:$chapterId"`.
+     * Replaces the old global lock so parallel chapter downloads can run;
+     * [_isDownloading] is kept as the aggregate (keys non-empty) so existing
+     * UI keeps compiling.
+     */
+    private val downloadKeys = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+    private val _downloadingKeys = MutableStateFlow<Set<String>>(emptySet())
+    val downloadingKeys: StateFlow<Set<String>> = _downloadingKeys.asStateFlow()
+
+    private val _downloadError = MutableStateFlow<String?>(null)
+    val downloadError: StateFlow<String?> = _downloadError.asStateFlow()
+
+    fun clearDownloadError() {
+        _downloadError.value = null
+    }
+
+    private fun downloadKey(reciterId: Int, chapterId: Int) = "$reciterId:$chapterId"
+
+    /** Recomputes [_downloadingKeys]/[_isDownloading] from [downloadKeys]. */
+    private fun syncDownloadAggregate() {
+        val snapshot = downloadKeys.toSet()
+        _downloadingKeys.value = snapshot
+        _isDownloading.value = snapshot.isNotEmpty()
+    }
+
+    /** Last manager-reported error for [key], or a generic fallback. */
+    private fun managerErrorFor(key: String): String =
+        audioDownloadManager.downloadState.value[key]?.error ?: "download_failed"
+
     fun downloadChapterAudio(chapterId: Int, verses: List<VerseEntity>) {
-        if (_isDownloading.value) return
-        viewModelScope.launch {
-            _isDownloading.value = true
-            _downloadProgress.value = 0f
-            try {
-                val ok = audioDownloadManager.downloadChapter(chapterId, verses) { done, total ->
-                    _downloadProgress.value = if (total > 0) done.toFloat() / total else 1f
-                }
-                if (ok) {
-                    _downloadedChapters.value = audioDownloadManager.getDownloadedChapters()
-                    _downloadProgress.value = 1f
-                }
-            } finally {
-                _isDownloading.value = false
-            }
-        }
+        startChapterDownload(Reciters.DEFAULT_ID, chapterId) { verses }
     }
 
     /**
      * Reciter-aware entry point: resolves the chapter verses locally, then
      * downloads into that reciter's folder (web: per-reciter pack).
+     *
+     * Manual (user-tapped) download: bypasses the [NetworkPolicy]
+     * auto-download gate. Parallel-safe per key; failures surface via
+     * [downloadError] for the active key.
      */
     fun downloadChapterAudio(reciterId: Int, chapterId: Int) {
-        if (_isDownloading.value) return
+        startChapterDownload(reciterId, chapterId) { repository.getVersesByChapterDirect(chapterId) }
+    }
+
+    /** Shared manual-download worker: per-key guard, progress, error flow. */
+    private fun startChapterDownload(
+        reciterId: Int,
+        chapterId: Int,
+        resolveVerses: suspend () -> List<VerseEntity>
+    ) {
+        val key = downloadKey(reciterId, chapterId)
+        if (!downloadKeys.add(key)) return
+        syncDownloadAggregate()
+        _downloadError.value = null
+        _downloadProgress.value = 0f
         viewModelScope.launch {
-            _isDownloading.value = true
-            _downloadProgress.value = 0f
             try {
-                val verses = repository.getVersesByChapterDirect(chapterId)
-                val ok = audioDownloadManager.downloadChapter(reciterId, chapterId, verses) { done, total ->
+                val targets = resolveVerses()
+                val ok = audioDownloadManager.downloadChapter(reciterId, chapterId, targets) { done, total ->
                     _downloadProgress.value = if (total > 0) done.toFloat() / total else 1f
                 }
                 if (ok) {
                     _downloadedChapters.value = audioDownloadManager.getDownloadedChapters()
                     _downloadProgress.value = 1f
+                } else {
+                    _downloadError.value = managerErrorFor(key)
                 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _downloadError.value = e.message ?: e::class.simpleName ?: "download_failed"
             } finally {
-                _isDownloading.value = false
+                downloadKeys.remove(key)
+                syncDownloadAggregate()
             }
+        }
+    }
+
+    /** Cancels an in-flight chapter download and cleans up its key. */
+    fun cancelChapterDownload(reciterId: Int, chapterId: Int) {
+        audioDownloadManager.cancelDownload(reciterId, chapterId)
+        downloadKeys.remove(downloadKey(reciterId, chapterId))
+        syncDownloadAggregate()
+    }
+
+    /** Deletes a chapter's cached audio, then refreshes [downloadedChapters]. */
+    fun deleteChapterAudio(reciterId: Int, chapterId: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching { audioDownloadManager.cancelDownload(reciterId, chapterId) }
+            runCatching { audioDownloadManager.deleteChapter(reciterId, chapterId) }
+            _downloadedChapters.value = audioDownloadManager.getDownloadedChapters()
+            downloadKeys.remove(downloadKey(reciterId, chapterId))
+            syncDownloadAggregate()
         }
     }
 

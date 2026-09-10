@@ -889,7 +889,8 @@ fun AnalyticsScreen(
                     )
                 }
 
-                items(sessions.take(5)) { session ->
+                // Web parity (Progress.jsx recentActivity): newest first, max 5
+                items(sessions.sortedByDescending { it.timestamp }.take(5)) { session ->
                     val surahName = remember(session.chapterId, chapters) {
                         if (session.chapterId != null) {
                             chapters.find { c -> c.id == session.chapterId }?.nameSimple ?: "Surah ${session.chapterId}"

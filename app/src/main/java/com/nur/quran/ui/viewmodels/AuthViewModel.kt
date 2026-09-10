@@ -16,7 +16,8 @@ data class AuthState(
     val signedIn: Boolean = false,
     val email: String? = null,
     val busy: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val message: String? = null
 )
 
 @HiltViewModel
@@ -31,9 +32,19 @@ class AuthViewModel @Inject constructor(
         refresh()
     }
 
+    fun isPasswordValid(pw: String) = pw.length >= 8
+
     fun login(email: String, password: String) {
+        if (!isPasswordValid(password)) {
+            _authState.value = _authState.value.copy(
+                busy = false,
+                error = "Password must be at least 8 characters",
+                message = null
+            )
+            return
+        }
         viewModelScope.launch(Dispatchers.IO) {
-            _authState.value = _authState.value.copy(busy = true, error = null)
+            _authState.value = _authState.value.copy(busy = true, error = null, message = null)
             runCatching {
                 appwrite.account.createSession(email.trim(), password)
                 appwrite.account.get()
@@ -46,8 +57,16 @@ class AuthViewModel @Inject constructor(
     }
 
     fun register(email: String, password: String) {
+        if (!isPasswordValid(password)) {
+            _authState.value = _authState.value.copy(
+                busy = false,
+                error = "Password must be at least 8 characters",
+                message = null
+            )
+            return
+        }
         viewModelScope.launch(Dispatchers.IO) {
-            _authState.value = _authState.value.copy(busy = true, error = null)
+            _authState.value = _authState.value.copy(busy = true, error = null, message = null)
             runCatching {
                 appwrite.account.create(ID.unique(), email.trim(), password)
                 appwrite.account.createSession(email.trim(), password)
@@ -60,9 +79,36 @@ class AuthViewModel @Inject constructor(
         }
     }
 
+    fun sendRecovery(email: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            _authState.value = _authState.value.copy(busy = true, error = null, message = null)
+            runCatching {
+                appwrite.account.createRecovery(
+                    email.trim(),
+                    "https://quran-nur.appwrite.network/profile"
+                )
+            }.onSuccess {
+                _authState.value = _authState.value.copy(
+                    busy = false,
+                    error = null,
+                    message = "Recovery email sent — check your inbox"
+                )
+            }.onFailure { e ->
+                _authState.value = _authState.value.copy(
+                    busy = false,
+                    error = e.message ?: "Recovery failed"
+                )
+            }
+        }
+    }
+
+    fun clearMessage() {
+        _authState.value = _authState.value.copy(message = null)
+    }
+
     fun logout() {
         viewModelScope.launch(Dispatchers.IO) {
-            _authState.value = _authState.value.copy(busy = true, error = null)
+            _authState.value = _authState.value.copy(busy = true, error = null, message = null)
             runCatching {
                 appwrite.account.deleteSession("current")
             }.onSuccess {

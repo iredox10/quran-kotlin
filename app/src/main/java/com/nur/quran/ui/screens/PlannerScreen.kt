@@ -1223,6 +1223,7 @@ fun PlannerScreen(
             onDownloadTafsir = packVm::downloadTafsirPack,
             onCancelTafsir = packVm::cancelTafsirPack,
             onDeleteTafsir = packVm::deleteTafsirPack,
+                    translationPacks = packVm.translationPacks.collectAsState().value, onDownloadTranslation = packVm::downloadTranslationPack, onCancelTranslation = packVm::cancelTranslationPack, onDeleteTranslation = packVm::deleteTranslationPack,
             wordCachedCount = wordCached,
             wordIsDownloading = wordDownloading,
             onDownloadAllWords = packVm::downloadAllMissingWordPacks,

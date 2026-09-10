@@ -27,7 +27,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.nur.quran.data.audio.NetworkPolicy
+import com.nur.quran.data.translation.TRANSLATION_EDITIONS
+import com.nur.quran.data.translation.translationNameOf
 import com.nur.quran.ui.components.audio.DEFAULT_TAFSIR_PACKS
+import com.nur.quran.ui.components.audio.TranslationPickerRow
 import com.nur.quran.ui.components.audio.ReciterLibraryPanel
 import com.nur.quran.ui.components.audio.PackDownloadRow
 import com.nur.quran.ui.components.audio.PackUiState
@@ -37,16 +40,6 @@ import com.nur.quran.ui.viewmodels.SurahViewModel
 private val MUSHAF_PRESETS = com.nur.quran.data.mushaf.Mushaf.ALL.map {
     it.id to "${it.name} (${if (it.id == "indopak") "16 lines" else "15 lines"})"
 }
-
-private val TRANSLATIONS_LIST = listOf(
-    85 to "English · M.A.S. Abdel Haleem",
-    131 to "English · Dr. Mustafa Khattab",
-    20 to "English · Saheeh International",
-    22 to "English · A. Yusuf Ali",
-    84 to "English · Mufti Taqi Usmani",
-    32 to "Hausa · Abubakar Mahmoud Gumi",
-    234 to "Urdu · Fatah Muhammad Jalandhari"
-)
 
 private val RECITERS_LIST = listOf(
     7 to "Mishari Rashid al-`Afasy",
@@ -85,6 +78,10 @@ fun SettingsDrawer(
     onDownloadTafsir: (Int) -> Unit = {},
     onCancelTafsir: (Int) -> Unit = {},
     onDeleteTafsir: (Int) -> Unit = {},
+    translationPacks: List<PackUiState> = emptyList(),
+    onDownloadTranslation: (Int) -> Unit = {},
+    onCancelTranslation: (Int) -> Unit = {},
+    onDeleteTranslation: (Int) -> Unit = {},
     wordCachedCount: Int = 0,
     wordTotal: Int = 114,
     wordIsDownloading: Boolean = false,
@@ -343,7 +340,7 @@ fun SettingsDrawer(
                                                 Divider(color = hBoneDark)
                                                 SettingsRowItem(
                                                     label = "Translation",
-                                                    value = TRANSLATIONS_LIST.find { it.first == activeTranslationId }?.second ?: "Abdel Haleem",
+                                                    value = translationNameOf(activeTranslationId),
                                                     onClick = { activeSubView = "translation" }
                                                 )
                                                 Divider(color = hBoneDark)
@@ -650,15 +647,57 @@ fun SettingsDrawer(
                                         }
                                     }
                                     "translation" -> {
-                                        TRANSLATIONS_LIST.forEach { (transId, title) ->
-                                            PickerItemRow(
-                                                title = title,
-                                                selected = activeTranslationId == transId,
-                                                onSelect = {
-                                                    viewModel.setTranslationId(transId)
-                                                    activeSubView = null
-                                                }
+                                        var translationQuery by remember { mutableStateOf("") }
+                                        OutlinedTextField(
+                                            value = translationQuery,
+                                            onValueChange = { translationQuery = it },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            placeholder = {
+                                                Text(
+                                                    text = "Search translations…",
+                                                    color = hInkMuted,
+                                                    fontFamily = fontFamilyBody,
+                                                    fontSize = 14.sp
+                                                )
+                                            },
+                                            singleLine = true,
+                                            shape = RoundedCornerShape(12.dp)
+                                        )
+                                        val translationFilter = translationQuery.trim().lowercase()
+                                        val filteredEditions = if (translationFilter.isEmpty()) {
+                                            TRANSLATION_EDITIONS
+                                        } else {
+                                            TRANSLATION_EDITIONS.filter {
+                                                it.name.lowercase().contains(translationFilter) ||
+                                                    it.language.lowercase().contains(translationFilter)
+                                            }
+                                        }
+                                        val packByTranslationId = translationPacks.associateBy { it.id }
+                                        filteredEditions.groupBy { it.language }.toSortedMap().forEach { (language, editions) ->
+                                            Text(
+                                                text = language.uppercase(),
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = hInkMuted,
+                                                letterSpacing = 1.sp,
+                                                fontFamily = fontFamilyMono,
+                                                modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
                                             )
+                                            editions.sortedBy { it.name }.forEach { edition ->
+                                                TranslationPickerRow(
+                                                    title = edition.name,
+                                                    subtitle = edition.language,
+                                                    selected = activeTranslationId == edition.id,
+                                                    pack = packByTranslationId[edition.id],
+                                                    onSelect = {
+                                                        viewModel.setTranslationId(edition.id)
+                                                        activeSubView = null
+                                                    },
+                                                    onDownload = { onDownloadTranslation(edition.id) },
+                                                    onCancel = { onCancelTranslation(edition.id) },
+                                                    onDelete = { onDeleteTranslation(edition.id) }
+                                                )
+                                            }
                                         }
                                     }
                                     "reciters" -> {

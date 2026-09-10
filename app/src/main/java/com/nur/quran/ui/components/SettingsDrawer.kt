@@ -523,9 +523,8 @@ fun SettingsDrawer(
 
                                         Spacer(modifier = Modifier.height(14.dp))
 
-                                        // Offline packs (tafsir + word translations).
-                                        // Host maps manager flows to PackUiState; until wired,
-                                        // the fallback catalogue below renders idle rows.
+                                        // Offline packs: word-by-word translations live here.
+                                        // Tafsir downloads moved next to each tafsir in Reading → Tafsir.
                                         Text(
                                             text = "OFFLINE PACKS",
                                             fontSize = 10.sp,
@@ -540,27 +539,6 @@ fun SettingsDrawer(
                                             border = androidx.compose.foundation.BorderStroke(1.dp, hBoneDark)
                                         ) {
                                             Column(modifier = Modifier.padding(12.dp)) {
-                                                val effectiveTafsirPacks = if (tafsirPacks.isEmpty()) {
-                                                    DEFAULT_TAFSIR_PACKS.map { (id, title) ->
-                                                        PackUiState(id = id, title = title)
-                                                    }
-                                                } else tafsirPacks
-                                                effectiveTafsirPacks.forEachIndexed { index, pack ->
-                                                    PackDownloadRow(
-                                                        pack = pack,
-                                                        onDownloadClick = onDownloadTafsir,
-                                                        onCancelClick = onCancelTafsir,
-                                                        onDeleteClick = onDeleteTafsir,
-                                                        subtitle = "Includes word-by-word translations",
-                                                        secondaryProgress = wordProgressByTafsir[pack.id]
-                                                    )
-                                                    if (index < effectiveTafsirPacks.lastIndex) {
-                                                        Spacer(modifier = Modifier.height(8.dp))
-                                                    }
-                                                }
-                                                Spacer(modifier = Modifier.height(8.dp))
-                                                Divider(color = hBoneDark)
-                                                Spacer(modifier = Modifier.height(8.dp))
                                                 WordPackSummaryRow(
                                                     cachedCount = wordCachedCount,
                                                     totalCount = wordTotal,
@@ -569,7 +547,7 @@ fun SettingsDrawer(
                                                 )
                                                 Spacer(modifier = Modifier.height(8.dp))
                                                 Text(
-                                                    text = "Tafsir packs include word-by-word translations. Everything works fully offline once downloaded.",
+                                                    text = "Tafsir downloads are next to each tafsir in Reading → Tafsir (they include word-by-word). Everything works fully offline once downloaded.",
                                                     fontSize = 12.sp,
                                                     color = hInkMid,
                                                     lineHeight = 18.sp
@@ -764,14 +742,19 @@ fun SettingsDrawer(
                                         }
                                     }
                                     "tafsir" -> {
+                                        val packById = tafsirPacks.associateBy { it.id }
                                         TAFSIRS_LIST.forEach { (tId, title) ->
-                                            PickerItemRow(
+                                            TafsirPickerRow(
                                                 title = title,
                                                 selected = tId == 169,
+                                                pack = packById[tId],
                                                 onSelect = {
                                                     viewModel.setTafsirId(tId)
                                                     activeSubView = null
-                                                }
+                                                },
+                                                onDownload = { onDownloadTafsir(tId) },
+                                                onCancel = { onCancelTafsir(tId) },
+                                                onDelete = { onDeleteTafsir(tId) }
                                             )
                                         }
                                     }
@@ -843,8 +826,7 @@ private fun PickerItemRow(
     title: String,
     selected: Boolean,
     onSelect: () -> Unit
-) {
-    Row(
+) {    Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(10.dp))
@@ -862,6 +844,97 @@ private fun PickerItemRow(
         )
         if (selected) {
             Icon(imageVector = NurIcons.Check, contentDescription = null, tint = hGold, modifier = Modifier.size(16.dp))
+        }
+    }
+    Divider(color = hBoneDark)
+}
+
+/**
+ * Tafsir picker row with inline offline-download controls (web: Reading →
+ * Tafsir list). Icon states follow platform convention: download arrow when
+ * idle, determinate spinner + cancel while fetching, green check + delete
+ * once fully offline (pack includes word-by-word translations).
+ */
+@Composable
+private fun TafsirPickerRow(
+    title: String,
+    selected: Boolean,
+    pack: PackUiState?,
+    onSelect: () -> Unit,
+    onDownload: () -> Unit,
+    onCancel: () -> Unit,
+    onDelete: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(if (selected) hGoldSoft else Color.Transparent)
+            .clickable { onSelect() }
+            .padding(horizontal = 12.dp, vertical = 10.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = title,
+                fontSize = 13.sp,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                color = if (selected) hGold else hInk,
+                modifier = Modifier.weight(1f)
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (selected) {
+                    Icon(imageVector = NurIcons.Check, contentDescription = null, tint = hGold, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                }
+                val downloaded = pack?.downloaded ?: 0
+                val total = pack?.total ?: 114
+                val isDownloaded = pack != null && total > 0 && downloaded >= total
+                when {
+                    pack?.isDownloading == true -> {
+                        if (total > 0) {
+                            Text(
+                                text = "$downloaded/$total",
+                                fontSize = 11.sp,
+                                color = hInkMuted,
+                                fontFamily = fontFamilyMono
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                        }
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = hGold
+                        )
+                        IconButton(onClick = onCancel, modifier = Modifier.size(28.dp)) {
+                            Icon(imageVector = NurIcons.X, contentDescription = "Cancel download", tint = hInkMuted, modifier = Modifier.size(16.dp))
+                        }
+                    }
+                    isDownloaded -> {
+                        Icon(imageVector = NurIcons.CheckCircle2, contentDescription = "Downloaded for offline", tint = hGreen, modifier = Modifier.size(18.dp))
+                        IconButton(onClick = onDelete, modifier = Modifier.size(28.dp)) {
+                            Icon(imageVector = NurIcons.X, contentDescription = "Delete download", tint = hInkMuted, modifier = Modifier.size(16.dp))
+                        }
+                    }
+                    else -> {
+                        IconButton(onClick = onDownload, modifier = Modifier.size(28.dp)) {
+                            Icon(imageVector = NurIcons.Download, contentDescription = "Download for offline", tint = hGold, modifier = Modifier.size(18.dp))
+                        }
+                    }
+                }
+            }
+        }
+        if (pack?.isDownloading == true && (pack.total) > 0) {
+            Spacer(modifier = Modifier.height(6.dp))
+            LinearProgressIndicator(
+                progress = (pack.downloaded.toFloat() / pack.total).coerceIn(0f, 1f),
+                modifier = Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(2.dp)),
+                color = hGold,
+                trackColor = hBoneDark
+            )
         }
     }
     Divider(color = hBoneDark)

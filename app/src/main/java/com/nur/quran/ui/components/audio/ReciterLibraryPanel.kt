@@ -7,13 +7,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -31,9 +32,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -47,6 +48,7 @@ import com.nur.quran.ui.screens.fontFamilyUi
 import com.nur.quran.ui.screens.hBorderColor
 import com.nur.quran.ui.screens.hCream
 import com.nur.quran.ui.screens.hGold
+import com.nur.quran.ui.screens.hGoldSoft
 import com.nur.quran.ui.screens.hGreen
 import com.nur.quran.ui.screens.hInk
 import com.nur.quran.ui.screens.hInkMid
@@ -137,12 +139,22 @@ fun ReciterLibraryPanel(
         }.onFailure { stopPreview() }
     }
 
+    // Reciter id whose surah list is open (per-qari download screen), else null.
+    var surahListFor by remember { mutableStateOf<Int?>(null) }
+
     DisposableEffect(Unit) {
         onDispose { stopPreview() }
     }
 
-    // Reciter id whose "download one surah" dialog is open, else null.
-    var surahDialogFor by remember { mutableStateOf<Int?>(null) }
+    val openSurahs = surahListFor
+    if (openSurahs != null) {
+        ReciterSurahsView(
+            reciterId = openSurahs,
+            onBack = { surahListFor = null },
+            onSelectReciter = onSelectReciter,
+        )
+        return
+    }
 
     val filtered = remember(query) {
         val q = query.trim().lowercase()
@@ -228,83 +240,13 @@ fun ReciterLibraryPanel(
                         }.getOrDefault(false),
                         onSelect = { onSelectReciter(reciter.id) },
                         onPreview = { startPreview(reciter.id) },
-                        onSurahDownload = { surahDialogFor = reciter.id },
+                        onSurahDownload = { surahListFor = reciter.id },
                         onDownloadAll = { packVm.downloadMushaf(reciter.id) },
                         onDeleteAll = { packVm.deleteReciter(reciter.id) },
                     )
                 }
             }
         }
-    }
-
-    // ── Per-surah download dialog ──
-    val dialogReciterId = surahDialogFor
-    if (dialogReciterId != null) {
-        var surahText by remember(dialogReciterId) { mutableStateOf("") }
-        var surahError by remember(dialogReciterId) { mutableStateOf<String?>(null) }
-        val dialogName = runCatching { Reciters.nameOf(dialogReciterId) }
-            .getOrDefault("Reciter $dialogReciterId")
-        AlertDialog(
-            onDismissRequest = { surahDialogFor = null },
-            title = {
-                Text(
-                    text = "Download surah",
-                    fontFamily = fontFamilyUi,
-                    fontWeight = FontWeight.Bold,
-                    color = hInk,
-                    fontSize = 16.sp,
-                )
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = dialogName,
-                        fontFamily = fontFamilyBody,
-                        fontSize = 13.sp,
-                        color = hInkMid,
-                    )
-                    OutlinedTextField(
-                        value = surahText,
-                        onValueChange = {
-                            surahText = it.filter { c -> c.isDigit() }.take(3)
-                            surahError = null
-                        },
-                        label = { Text("Surah number (1–114)", fontSize = 12.sp) },
-                        singleLine = true,
-                        isError = surahError != null,
-                        supportingText = surahError?.let { msg ->
-                            { Text(msg, color = hRed, fontSize = 12.sp) }
-                        },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        shape = RoundedCornerShape(12.dp),
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        val surah = runCatching { surahText.toInt() }.getOrNull()
-                        if (surah == null || surah !in 1..114) {
-                            surahError = "Enter a number from 1 to 114"
-                            return@TextButton
-                        }
-                        val keys = runCatching { packVm.verseKeysFor(surah) }
-                            .getOrDefault(emptyList())
-                        runCatching {
-                            packVm.downloadSurah(dialogReciterId, surah, keys, wifiOnly)
-                        }
-                        surahDialogFor = null
-                    },
-                ) {
-                    Text("Download", color = hGold, fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { surahDialogFor = null }) {
-                    Text("Cancel", color = hInkMid)
-                }
-            },
-        )
     }
 }
 
@@ -507,6 +449,182 @@ private fun ReciterLibraryRow(
                         fontSize = 13.sp,
                         fontFamily = fontFamilyUi,
                     )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Per-qari surah list: every surah by NAME (never bare numbers) with
+ * single-surah download and a Download-all header. Opened from a reciter
+ * row's Surah action; back returns to the library.
+ */
+@Composable
+private fun ReciterSurahsView(
+    reciterId: Int,
+    onBack: () -> Unit,
+    onSelectReciter: (Int) -> Unit,
+) {
+    val packVm: AudioPacksViewModel = hiltViewModel()
+    val context = LocalContext.current
+    val wifiOnly = runCatching { NetworkPolicy.isWifiOnly(context) }.getOrDefault(true)
+    val chapters by packVm.chapters.collectAsState()
+    val downloadState by packVm.downloadState.collectAsState()
+
+    var query by remember { mutableStateOf("") }
+    val filtered = remember(query, chapters) {
+        val q = query.trim().lowercase()
+        if (q.isEmpty()) chapters
+        else chapters.filter {
+            it.nameSimple.lowercase().contains(q) ||
+                it.nameArabic.contains(query.trim()) ||
+                it.id.toString() == q
+        }
+    }
+    val downloadedCount = remember(downloadState, chapters) {
+        chapters.count { runCatching { packVm.isSurahDownloaded(reciterId, it.id) }.getOrDefault(false) }
+    }
+    val busy = remember(downloadState) {
+        downloadState.any { (key, p) -> p.isDownloading && key.startsWith("$reciterId:") }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onBack, modifier = Modifier.size(32.dp)) {
+                Icon(imageVector = NurIcons.ChevronLeft, contentDescription = "Back to reciters", tint = hInk, modifier = Modifier.size(20.dp))
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = runCatching { Reciters.nameOf(reciterId) }.getOrDefault("Reciter $reciterId"),
+                    fontFamily = fontFamilyUi,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,
+                    color = hInk,
+                )
+                Text(
+                    text = "$downloadedCount/${chapters.size.coerceAtLeast(114)} surahs offline",
+                    fontFamily = fontFamilyMono,
+                    fontSize = 11.sp,
+                    color = hInkMuted,
+                )
+            }
+            TextButton(onClick = { onSelectReciter(reciterId) }) {
+                Text("Select", color = hGold, fontWeight = FontWeight.Bold, fontSize = 13.sp, fontFamily = fontFamilyUi)
+            }
+        }
+
+        Button(
+            onClick = { runCatching { packVm.downloadMushaf(reciterId) } },
+            colors = ButtonDefaults.buttonColors(containerColor = hGold),
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+        ) {
+            Icon(imageVector = NurIcons.Download, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+            Text(" Download all surahs", color = Color.White, fontWeight = FontWeight.Bold, fontFamily = fontFamilyUi, fontSize = 14.sp)
+        }
+
+        OutlinedTextField(
+            value = query,
+            onValueChange = { query = it },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text(text = "Search surahs…", color = hInkMuted, fontFamily = fontFamilyBody, fontSize = 14.sp) },
+            singleLine = true,
+            shape = RoundedCornerShape(12.dp),
+        )
+
+        if (busy) {
+            Text(
+                text = "Downloading…",
+                fontFamily = fontFamilyMono,
+                fontSize = 11.sp,
+                color = hGold,
+            )
+        }
+
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            filtered.forEach { chapter ->
+                val key = "$reciterId:${chapter.id}"
+                val progress = downloadState[key]
+                val downloading = progress?.isDownloading == true
+                val done = remember(downloadState, chapter.id) {
+                    runCatching { packVm.isSurahDownloaded(reciterId, chapter.id) }.getOrDefault(false)
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(hSurface)
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(hGoldSoft)
+                            .padding(0.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = chapter.id.toString(),
+                            fontFamily = fontFamilyMono,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            color = hGold,
+                        )
+                    }
+                    Spacer(modifier = Modifier.size(10.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = chapter.nameSimple,
+                            fontFamily = fontFamilyUi,
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 14.sp,
+                            color = hInk,
+                        )
+                        Text(
+                            text = "${chapter.nameArabic} • ${chapter.versesCount} ayahs" +
+                                if (downloading && progress != null && progress.total > 0)
+                                    " • ${progress.downloaded}/${progress.total}" else "",
+                            fontFamily = fontFamilyBody,
+                            fontSize = 11.sp,
+                            color = hInkMuted,
+                        )
+                    }
+                    when {
+                        downloading -> {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = hGold)
+                            IconButton(onClick = { runCatching { packVm.cancelSurah(reciterId, chapter.id) } }, modifier = Modifier.size(30.dp)) {
+                                Icon(imageVector = NurIcons.X, contentDescription = "Cancel", tint = hInkMuted, modifier = Modifier.size(16.dp))
+                            }
+                        }
+                        done -> {
+                            Icon(imageVector = NurIcons.CheckCircle2, contentDescription = "Downloaded", tint = hGreen, modifier = Modifier.size(20.dp))
+                            IconButton(onClick = { runCatching { packVm.deleteSurah(reciterId, chapter.id) } }, modifier = Modifier.size(30.dp)) {
+                                Icon(imageVector = NurIcons.X, contentDescription = "Delete", tint = hInkMuted, modifier = Modifier.size(16.dp))
+                            }
+                        }
+                        else -> {
+                            IconButton(
+                                onClick = {
+                                    val keys = runCatching { packVm.verseKeysFor(chapter.id) }.getOrDefault(emptyList())
+                                    runCatching { packVm.downloadSurah(reciterId, chapter.id, keys, wifiOnly) }
+                                },
+                                modifier = Modifier.size(32.dp),
+                            ) {
+                                Icon(imageVector = NurIcons.Download, contentDescription = "Download ${chapter.nameSimple}", tint = hGold, modifier = Modifier.size(20.dp))
+                            }
+                        }
+                    }
                 }
             }
         }

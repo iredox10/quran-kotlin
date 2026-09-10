@@ -7,14 +7,18 @@ import com.nur.quran.data.audio.AudioDownloadManager
 import com.nur.quran.data.audio.AudioDownloadWorker
 import com.nur.quran.data.audio.DownloadProgress
 import com.nur.quran.data.audio.Reciters
+import com.nur.quran.data.db.entities.ChapterEntity
 import com.nur.quran.data.repository.QuranRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -67,6 +71,12 @@ class AudioPacksViewModel @Inject constructor(
 
     private val _totalBytes = MutableStateFlow(0L)
     val totalBytes: StateFlow<Long> = _totalBytes.asStateFlow()
+
+    /** All 114 chapters (names + ayah counts) for the per-qari surah screen. */
+    val chapters: StateFlow<List<ChapterEntity>> =
+        repository.getChaptersFlow()
+            .map { list -> list.sortedBy { it.id } }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /** chapterId -> versesCount, from the chapters flow. Never hardcoded. */
     @Volatile
@@ -130,6 +140,11 @@ class AudioPacksViewModel @Inject constructor(
         if (count <= 0) return emptyList()
         return (1..count).map { "$chapterId:$it" }
     }
+
+    /** True when the surah file set is fully downloaded for the reciter. */
+    fun isSurahDownloaded(reciterId: Int, chapterId: Int): Boolean =
+        runCatching { audioDownloadManager.getDownloadedChapters(reciterId).contains(chapterId) }
+            .getOrDefault(false)
 
     private suspend fun ensureVerseCounts() {
         if (versesCountByChapter.isNotEmpty()) return

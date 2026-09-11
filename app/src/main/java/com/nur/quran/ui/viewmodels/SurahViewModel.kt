@@ -43,6 +43,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/** Set true for local perf timing logs (first paint / background upgrade). */
+private const val SurahPerfLog = false
+
 sealed interface SurahUiState {
     object Loading : SurahUiState
     data class Success(
@@ -1301,7 +1304,7 @@ class SurahViewModel @Inject constructor(
                 val successState = SurahUiState.Success(chapter, cachedVerses, wordsMap, existingTajweed)
                 chapterMemoryCache[chapterId] = successState
                 if (currentChapterId == chapterId) _uiState.value = successState
-                android.util.Log.d("SurahPerf", "surah $chapterId first paint in ${System.currentTimeMillis() - t0}ms (offline)")
+                if (SurahPerfLog) android.util.Log.d("SurahPerf", "surah $chapterId first paint in ${System.currentTimeMillis() - t0}ms (offline)")
                 // Background upgrade: selected translation + line numbers + tajweed cache.
                 // Verse ids/order never change, so scroll position is preserved.
                 // Child of loadChapterJob: a fast chapter switch cancels it.
@@ -1326,7 +1329,7 @@ class SurahViewModel @Inject constructor(
                 } catch (e: Exception) {
                     if (e is kotlinx.coroutines.CancellationException) throw e
                 }
-                android.util.Log.d("SurahPerf", "surah $chapterId background upgrade done in ${System.currentTimeMillis() - t0}ms total")
+                if (SurahPerfLog) android.util.Log.d("SurahPerf", "surah $chapterId background upgrade done in ${System.currentTimeMillis() - t0}ms total")
             } else {
                 _uiState.value = SurahUiState.Error("Chapter $chapterId not found")
             }

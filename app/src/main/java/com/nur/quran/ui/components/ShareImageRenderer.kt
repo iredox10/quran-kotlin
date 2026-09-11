@@ -196,6 +196,7 @@ fun VerseShareCard(
  * `"${context.packageName}.fileprovider"` (see AndroidManifest + xml/file_paths).
  */
 private const val ShareDebugTag = "ShareDebug"
+private const val SHARE_DEBUG = false
 
 private tailrec fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this
@@ -246,7 +247,7 @@ suspend fun renderVerseCardToFile(
                 val heightSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
                 composeView.measure(widthSpec, heightSpec)
                 val height = composeView.measuredHeight
-                Log.d(ShareDebugTag, "render $verseKey measured=${1080}x$height")
+                if (SHARE_DEBUG) Log.d(ShareDebugTag, "render $verseKey measured=${1080}x$height")
                 require(height > 100) { "composed height too small: $height" }
                 val capped = height.coerceAtMost(1920)
                 composeView.layout(0, 0, 1080, capped)
@@ -269,9 +270,9 @@ suspend fun renderVerseCardToFile(
             fos.flush()
             require(ok) { "PNG compress failed" }
         }
-        Log.d(ShareDebugTag, "render $verseKey saved ${outFile.length()} bytes")
+        if (SHARE_DEBUG) Log.d(ShareDebugTag, "render $verseKey saved ${outFile.length()} bytes")
         outFile
     }.onFailure {
-        Log.e(ShareDebugTag, "render $verseKey failed", it)
+        if (SHARE_DEBUG) Log.e(ShareDebugTag, "render $verseKey failed", it)
     }.getOrNull()
 }

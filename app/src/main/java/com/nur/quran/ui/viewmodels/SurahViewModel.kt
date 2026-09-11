@@ -172,6 +172,14 @@ class SurahViewModel @Inject constructor(
     private val _downloadedChapters = MutableStateFlow(audioDownloadManager.getDownloadedChapters())
     val downloadedChapters: StateFlow<Set<Int>> = _downloadedChapters.asStateFlow()
 
+    /**
+     * Per-chapter download state for the header, keyed "$reciterId:$chapterId".
+     * Passthrough of [AudioDownloadManager.downloadState]; error/cancel paths
+     * already update it via the manager.
+     */
+    val chapterDownloadState: StateFlow<Map<String, com.nur.quran.data.audio.DownloadProgress>> =
+        audioDownloadManager.downloadState
+
     /** Linked GreenTech/quran_android surahs: reciterId → linked surah numbers. */
     val linkedState: StateFlow<Map<Int, Set<Int>>> = linkedAudioStore.linkedState
 

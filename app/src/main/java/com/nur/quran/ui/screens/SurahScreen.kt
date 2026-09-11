@@ -330,6 +330,12 @@ fun SurahScreen(
     var showSettingsDrawer by remember { mutableStateOf(false) }
     var showFontSettingsDialog by remember { mutableStateOf(false) }
     var showAudioSetupDialog by remember { mutableStateOf(false) }
+    // MiniPlayer hide-vs-stop: X hides the pill but playback continues in the
+    // background; ■ stops playback entirely (viewModel.stopPlaying()).
+    var playerHiddenByUser by remember { mutableStateOf(false) }
+    LaunchedEffect(playingVerseKey) {
+        if (playingVerseKey != null) playerHiddenByUser = false
+    }
     var showNavigationDialog by remember { mutableStateOf(false) }
     var isAutoScrollActive by remember { mutableStateOf(false) }
     var settingsSubView by remember { mutableStateOf(SettingsSubView.ROOT) }
@@ -1177,7 +1183,7 @@ fun SurahScreen(
             MiniPlayer(
                 verseKey = playingVerseKey ?: "",
                 isPlaying = isPlaying,
-                visible = playingVerseKey != null,
+                visible = playingVerseKey != null && !playerHiddenByUser,
                 onPlayPause = {
                     if (playerVerses.isNotEmpty()) viewModel.playPauseChapter(playerVerses, chapterId)
                 },
@@ -1204,7 +1210,8 @@ fun SurahScreen(
                         viewModel.playVerse(playerVerses, chapterId, playerVerses[idx + 1])
                     }
                 },
-                onClose = { viewModel.stopPlaying() },
+                onClose = { playerHiddenByUser = true },
+                onStop = { viewModel.stopPlaying() },
                 onSettings = { showAudioSetupDialog = true }
             )
 

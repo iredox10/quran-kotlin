@@ -57,6 +57,7 @@ fun MiniPlayer(
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
     onSettings: (() -> Unit)? = null,
+    onStop: (() -> Unit)? = null,
 ) {
     val pillBg = if (isDarkThemeGlobal) Color(0xF22D2D2A) else Color(0xF2EFECE4)
     val pillBorder = if (isDarkThemeGlobal) Color(0xFF4A4A45) else Color(0x66FFFFFF)
@@ -175,6 +176,27 @@ fun MiniPlayer(
                             Icon(
                                 imageVector = NurIcons.Settings,
                                 contentDescription = "Audio settings",
+                                tint = hInk,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+
+                    // Stop (■) — dedicated stop: resets to range start + hides.
+                    // Distinct from Close (X) which only hides the pill and keeps
+                    // playing in the background. Only when the host passes onStop.
+                    if (onStop != null) {
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(btnSecondaryBg)
+                                .clickable { onStop() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = NurIcons.Square,
+                                contentDescription = "Stop playback",
                                 tint = hInk,
                                 modifier = Modifier.size(16.dp)
                             )

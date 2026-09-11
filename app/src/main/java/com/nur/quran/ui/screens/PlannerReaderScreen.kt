@@ -154,13 +154,28 @@ fun PlannerReaderScreen(
         }
     }
 
+    // ── Bridge: planner time → reading_sessions ─────────────────────
+    // No page→chapter resolver exists in this file; best-known chapter is the
+    // first loaded verse (exact current-page content), falling back to the
+    // ChapterEntity page range (SurahScreen.kt:1641 pattern), else null.
+    // rememberUpdatedState so DisposableEffect.onDispose reads the latest value.
+    val bridgeChapterId by rememberUpdatedState(
+        (uiState as? SurahUiState.Success)?.verses?.firstOrNull()?.chapterId
+            ?: chapters.find { currentPage in it.pagesStart..it.pagesEnd }?.id
+    )
+
     // ── Session timer (web parity: persisted per plan/day) ──────────
     // Display ticks locally; deltas are flushed to the store every 30s + on exit.
     // Web PlannerReader.jsx:280-345 — tick 1s while running, pause/resume toggle,
     // MM:SS display of persisted base + session.
+    // Each flush is also bridged into reading_sessions via
+    // logPlannerDayToSessions (checkpoint: totals reset to 0 after logging).
+    // Flush-then-bridge ordering matters: stopPlannerTimer updates
+    // sessionTotals synchronously, so the bridge reads the just-flushed total.
     var isTimerRunning by remember(dayNumber) { mutableStateOf(true) }
     var timerTick by remember(dayNumber) { mutableIntStateOf(0) }
     var savedTick by remember(dayNumber) { mutableIntStateOf(0) }
+    var lastBridgedTick by remember(dayNumber) { mutableIntStateOf(0) }
     LaunchedEffect(dayNumber, isTimerRunning) {
         while (isTimerRunning) {
             delay(1000)
@@ -168,6 +183,10 @@ fun PlannerReaderScreen(
             if (timerTick - savedTick >= 30) {
                 plannerViewModel.stopPlannerTimer(dayNumber, (timerTick - savedTick).toLong())
                 savedTick = timerTick
+                if (timerTick != lastBridgedTick) {
+                    plannerViewModel.logPlannerDayToSessions(dayNumber, bridgeChapterId)
+                    lastBridgedTick = timerTick
+                }
             }
         }
     }
@@ -175,6 +194,9 @@ fun PlannerReaderScreen(
         onDispose {
             val delta = timerTick - savedTick
             if (delta > 0) plannerViewModel.stopPlannerTimer(dayNumber, delta.toLong())
+            if (timerTick != lastBridgedTick) {
+                plannerViewModel.logPlannerDayToSessions(dayNumber, bridgeChapterId)
+            }
         }
     }
     // NB: totals already include everything flushed this session (savedTick),

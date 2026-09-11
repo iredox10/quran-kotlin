@@ -26,6 +26,9 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -51,8 +54,22 @@ class MainActivity : ComponentActivity() {
     private val surahViewModel: SurahViewModel by viewModels()
     private val plannerViewModel: PlannerViewModel by viewModels()
 
+    private val appLifecycleObserver = object : DefaultLifecycleObserver {
+        override fun onStop(owner: LifecycleOwner) {
+            // App backgrounded: checkpoint-flush the active reading session.
+            // flushReadingSession() resets start=now, so resume continues cleanly
+            // (timer restarts naturally, no double-count on return).
+            runCatching { surahViewModel.flushReadingSession() }
+        }
+
+        override fun onStart(owner: LifecycleOwner) {
+            // Nothing: timer restarts naturally via checkpoint start=now.
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        ProcessLifecycleOwner.get().lifecycle.addObserver(appLifecycleObserver)
         
         // Initialize global dark theme preference before composing
         val prefs = getSharedPreferences("Settings", android.content.Context.MODE_PRIVATE)
@@ -236,6 +253,11 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onDestroy() {
+        ProcessLifecycleOwner.get().lifecycle.removeObserver(appLifecycleObserver)
+        super.onDestroy()
     }
 }
 

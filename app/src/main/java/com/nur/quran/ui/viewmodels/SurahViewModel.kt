@@ -1,5 +1,6 @@
 package com.nur.quran.ui.viewmodels
 
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -9,7 +10,12 @@ import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
-import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.session.MediaController
+import androidx.media3.session.SessionToken
+import com.google.common.util.concurrent.FutureCallback
+import com.google.common.util.concurrent.Futures
+import com.google.common.util.concurrent.ListenableFuture
+import com.google.common.util.concurrent.MoreExecutors
 import com.nur.quran.data.api.ApiTafsirVerse
 import com.nur.quran.data.audio.AudioDownloadManager
 import com.nur.quran.data.audio.LinkedAudioStore
@@ -339,10 +345,58 @@ class SurahViewModel @Inject constructor(
     // Per-surah scroll positions (mirrors the web's surahScrollPositions map)
     val scrollPositions = mutableMapOf<Int, Pair<Int, Int>>()
 
-    // ── Audio playback (ExoPlayer) ──────────────────────────────────────
-    private var exoPlayer: ExoPlayer? = null
+    // ── Audio playback (MediaController → QuranAudioService) ──────────────
+    private var mediaController: MediaController? = null
+    private var controllerFuture: ListenableFuture<MediaController>? = null
     private var playlist: List<VerseEntity> = emptyList()
     private var playlistChapterId: Int = 0
+
+    init {
+        ensureController()
+    }
+
+    /**
+     * Builds the service [MediaController] once and caches it. Connection is
+     * async: returns null until the service binds, so all transport call
+     * sites must null-check (first tap just warms the connection).
+     */
+    private fun ensureController(): MediaController? {
+        mediaController?.let { return it }
+        if (controllerFuture == null) {
+            val sessionToken = SessionToken(
+                context,
+                ComponentName(context, "com.nur.quran.services.QuranAudioService")
+            )
+            val future = MediaController.Builder(context, sessionToken).buildAsync()
+            controllerFuture = future
+            Futures.addCallback(
+                future,
+                object : FutureCallback<MediaController> {
+                    override fun onSuccess(result: MediaController?) {
+                        result ?: return
+                        result.removeListener(playerListener)
+                        result.addListener(playerListener)
+                        result.setPlaybackSpeed(_playbackSettings.value.speed)
+                        mediaController = result
+                    }
+
+                    override fun onFailure(t: Throwable) {
+                        controllerFuture = null
+                    }
+                },
+                MoreExecutors.directExecutor()
+            )
+        }
+        return mediaController
+    }
+
+    /** Service player, or null while the controller is still connecting. */
+    private fun player(): MediaController? {
+        return mediaController ?: run {
+            ensureController()
+            mediaController
+        }
+    }
 
     // Hifdh chunk loop (web: Memorization.jsx handleAudioEnded / toggleAudio)
     private var hifdhLoopActive = false
@@ -432,7 +486,7 @@ class SurahViewModel @Inject constructor(
         }
         val previousReciter = _currentReciterId.value
         setReciterId(reciterId)
-        val player = exoPlayer ?: return
+        val player = player() ?: return
         if (playlist.isEmpty()) return
         val currentKey = _playingVerseKey.value
         val wasPlaying = player.isPlaying
@@ -467,7 +521,7 @@ class SurahViewModel @Inject constructor(
      * re-clamp on settings change). No-op when no range is set.
      */
     private fun snapIntoRange() {
-        val player = exoPlayer ?: return
+        val player = player() ?: return
         if (playlist.isEmpty()) return
         val settings = _playbackSettings.value
         val from = settings.rangeStart ?: return
@@ -582,7 +636,7 @@ class SurahViewModel @Inject constructor(
         val safe = speed.coerceIn(0.25f, 3f)
         _playbackSettings.value = _playbackSettings.value.copy(speed = safe)
         hifdhPrefs.edit().putFloat("pb_speed", safe).apply()
-        exoPlayer?.setPlaybackSpeed(safe)
+        mediaController?.setPlaybackSpeed(safe)
     }
 
     private fun reciterName(reciterId: Int): String = Reciters.nameOf(reciterId)
@@ -673,7 +727,7 @@ class SurahViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val ms = timingImporter.getStartMs(_currentReciterId.value, surah, ayah)
-                exoPlayer?.seekTo(ms ?: 0L)
+                player()?.seekTo(ms ?: 0L)
             } catch (_: Exception) {
             }
         }
@@ -699,7 +753,7 @@ class SurahViewModel @Inject constructor(
             try {
                 while (_isPlaying.value) {
                     try {
-                        val pos = exoPlayer?.currentPosition ?: 0L
+                        val pos = player()?.currentPosition ?: 0L
                         getAyahAtPosition(surah, pos)?.let { onAyah(it) }
                     } catch (_: Exception) {
                     }
@@ -737,7 +791,7 @@ class SurahViewModel @Inject constructor(
         return playlist.indexOfFirst { it.verseKey == key }.coerceAtLeast(0)
     }
 
-    private fun resetPlaybackState(player: ExoPlayer? = exoPlayer) {
+    private fun resetPlaybackState(player: Player? = player()) {
         _isPlaying.value = false
         _playingVerseKey.value = null
         player?.seekTo(0, 0L)
@@ -750,7 +804,7 @@ class SurahViewModel @Inject constructor(
         }
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-            val player = exoPlayer ?: return
+            val player = mediaController ?: return
             val index = player.currentMediaItemIndex
             val list = if (hifdhLoopActive) hifdhPlaylist else playlist
             _playingVerseKey.value = list.getOrNull(index)?.verseKey
@@ -777,7 +831,7 @@ class SurahViewModel @Inject constructor(
      * replay the finished ayah until [PlaybackSettings.ayahRepeat] is reached
      * (-1 = infinite), honouring [PlaybackSettings.delayMs] between plays.
      */
-    private fun handlePlaylistTransition(player: ExoPlayer, index: Int, reason: Int) {
+    private fun handlePlaylistTransition(player: Player, index: Int, reason: Int) {
         if (repeatSeekPending) {
             repeatSeekPending = false
             lastMediaIndex = index
@@ -819,7 +873,7 @@ class SurahViewModel @Inject constructor(
      * allows (-1 = infinite). With 1/1 settings this is the plain stop.
      */
     private fun handlePlaylistEnded() {
-        val player = exoPlayer ?: return
+        val player = player() ?: return
         if (playlist.isEmpty()) {
             resetPlaybackState(player)
             return
@@ -859,13 +913,10 @@ class SurahViewModel @Inject constructor(
         resetPlaybackState(player)
     }
 
-    private fun getOrCreatePlayer(): ExoPlayer {
-        return exoPlayer ?: ExoPlayer.Builder(context).build().also { player ->
-            player.addListener(playerListener)
-            player.setPlaybackSpeed(_playbackSettings.value.speed)
-            exoPlayer = player
-        }
-    }
+    // NOTE: controller connects async — [player] returns null until bound.
+    // There is intentionally no local ExoPlayer fallback (dual players
+    // would fight over audio focus). Callers null-check and return early;
+    // the first tap warms the connection, the next one plays.
 
     /** True when the loaded playlist belongs to the given chapter (web: isCurrentSurahPlaying). */
     private fun isCurrentChapterPlaylist(chapterId: Int) =
@@ -874,7 +925,7 @@ class SurahViewModel @Inject constructor(
     /** Web: handlePlayClick — toggle when this surah is loaded, else start from verse 1. */
     fun playPauseChapter(verses: List<VerseEntity>, chapterId: Int) {
         if (isCurrentChapterPlaylist(chapterId)) {
-            val wasPlaying = exoPlayer?.isPlaying == true
+            val wasPlaying = player()?.isPlaying == true
             togglePlayPause()
             // Fire-and-forget background cache on resume; never on pause.
             if (!wasPlaying) autoCacheChapter(_currentReciterId.value, chapterId, verses.ifEmpty { playlist })
@@ -893,8 +944,9 @@ class SurahViewModel @Inject constructor(
         if (isCurrentChapterPlaylist(chapterId)) {
             val index = playlist.indexOfFirst { it.verseKey == verse.verseKey }
             if (index >= 0) {
-                getOrCreatePlayer().seekTo(index, 0L)
-                getOrCreatePlayer().play()
+                val player = player() ?: return
+                player.seekTo(index, 0L)
+                player.play()
                 _playingVerseKey.value = verse.verseKey
                 _isPlaying.value = true
                 autoCacheChapter(_currentReciterId.value, chapterId, verses.ifEmpty { playlist })
@@ -907,7 +959,7 @@ class SurahViewModel @Inject constructor(
     }
 
     private fun togglePlayPause() {
-        val player = getOrCreatePlayer()
+        val player = player() ?: return
         if (player.isPlaying) {
             hifdhDelayJob?.cancel()
             repeatDelayJob?.cancel()
@@ -924,7 +976,7 @@ class SurahViewModel @Inject constructor(
     fun playPauseHifdhChunk(verses: List<VerseEntity>, chapterId: Int, ayahRepeat: Int, delaySec: Int, rangeLoop: Int) {
         val (playable, items) = buildPlaylistItems(verses, chapterId)
         if (playable.isEmpty()) return
-        val player = getOrCreatePlayer()
+        val player = player() ?: return
         val sameChunk = hifdhLoopActive && playlistChapterId == chapterId &&
             hifdhPlaylist.map { it.verseKey } == playable.map { it.verseKey }
         if (sameChunk) {
@@ -968,7 +1020,7 @@ class SurahViewModel @Inject constructor(
         val (playable, items) = buildPlaylistItems(verses, chapterId)
         if (playable.isEmpty()) return
         if (hifdhPlaylist.map { it.verseKey } == playable.map { it.verseKey }) return
-        val player = getOrCreatePlayer()
+        val player = player() ?: return
         hifdhPlaylist = playable
         playlistChapterId = chapterId
         hifdhAyahRepeat = ayahRepeat
@@ -995,7 +1047,7 @@ class SurahViewModel @Inject constructor(
 
     /** Web: Memorization.jsx handleAudioEnded — ayah repeat, then next ayah, then range loop. */
     private fun handleHifdhChunkEnded() {
-        val player = exoPlayer ?: return
+        val player = player() ?: return
         val currentIdx = player.currentMediaItemIndex
         if (currentIdx < 0 || currentIdx >= hifdhPlaylist.size) {
             hifdhLoopActive = false
@@ -1051,7 +1103,7 @@ class SurahViewModel @Inject constructor(
         repeatSeekPending = false
         playlist = playable
         playlistChapterId = chapterId
-        val player = getOrCreatePlayer()
+        val player = player() ?: return
         player.setPlaybackSpeed(_playbackSettings.value.speed)
         player.setMediaItems(items)
         val idx = startIndex.coerceIn(0, playable.size - 1)
@@ -1125,8 +1177,8 @@ class SurahViewModel @Inject constructor(
         repeatRangeCount = 0
         repeatSeekPending = false
         lastMediaIndex = -1
-        exoPlayer?.stop()
-        exoPlayer?.clearMediaItems()
+        mediaController?.stop()
+        mediaController?.clearMediaItems()
         playlist = emptyList()
         playlistChapterId = 0
         _isPlaying.value = false
@@ -1762,9 +1814,10 @@ class SurahViewModel @Inject constructor(
                 }
             }
         }
-        exoPlayer?.removeListener(playerListener)
-        exoPlayer?.release()
-        exoPlayer = null
+        mediaController?.removeListener(playerListener)
+        controllerFuture?.let { MediaController.releaseFuture(it) }
+        controllerFuture = null
+        mediaController = null
         super.onCleared()
     }
 }

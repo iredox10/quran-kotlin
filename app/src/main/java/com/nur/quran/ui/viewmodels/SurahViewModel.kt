@@ -261,6 +261,7 @@ class SurahViewModel @Inject constructor(
     // Reading-session tracking (mirrors the web Surah page's start/unmount timer)
     private var readingSessionStart: Long = 0L
     private var readingSessionChapterId: Int = 0
+    private var sessionCheckpointJob: Job? = null
 
     // ── Hifdh (memorization) tracking ──────────────────────────────────
     private val hifdhStore = HifdhStore(context)
@@ -1436,6 +1437,39 @@ class SurahViewModel @Inject constructor(
         readingSessionChapterId = chapterId
         currentSessionType = sessionType
         readingSessionStart = System.currentTimeMillis()
+        sessionCheckpointJob?.cancel()
+        sessionCheckpointJob = viewModelScope.launch {
+            while (true) {
+                delay(30_000)
+                flushReadingSession()
+            }
+        }
+    }
+
+    /**
+     * Checkpoint the in-progress session without ending it: logs elapsed time
+     * (>=10s threshold, same as endReadingSession) and resets the start clock
+     * so later flushes/end only count new time (no double-count). Bounds loss
+     * on process kill to the 30s checkpoint window. Never throws.
+     */
+    fun flushReadingSession() {
+        try {
+            if (readingSessionStart == 0L) return
+            val now = System.currentTimeMillis()
+            val duration = (now - readingSessionStart) / 1000
+            if (duration >= 10) {
+                val chapterId = if (readingSessionChapterId > 0) readingSessionChapterId else null
+                val type = currentSessionType
+                readingSessionStart = now
+                viewModelScope.launch {
+                    try {
+                        repository.logReadingSession(duration, type, chapterId)
+                    } catch (_: Exception) {
+                    }
+                }
+            }
+        } catch (_: Exception) {
+        }
     }
 
     /**
@@ -1443,6 +1477,8 @@ class SurahViewModel @Inject constructor(
      * stayed at least 10 seconds (same threshold as the web app).
      */
     fun endReadingSession(sessionType: String = currentSessionType) {
+        sessionCheckpointJob?.cancel()
+        sessionCheckpointJob = null
         if (readingSessionStart == 0L) return
         val duration = (System.currentTimeMillis() - readingSessionStart) / 1000
         readingSessionStart = 0L
@@ -1713,6 +1749,8 @@ class SurahViewModel @Inject constructor(
     }
 
     override fun onCleared() {
+        sessionCheckpointJob?.cancel()
+        sessionCheckpointJob = null
         // Flush the reading session synchronously (viewModelScope is cancelled here)
         if (readingSessionStart != 0L) {
             val duration = (System.currentTimeMillis() - readingSessionStart) / 1000
@@ -1720,7 +1758,7 @@ class SurahViewModel @Inject constructor(
             if (duration >= 10) {
                 val chapterId = if (readingSessionChapterId > 0) readingSessionChapterId else null
                 kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
-                    repository.logReadingSession(duration, "reading", chapterId)
+                    repository.logReadingSession(duration, currentSessionType, chapterId)
                 }
             }
         }

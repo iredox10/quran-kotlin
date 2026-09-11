@@ -1001,6 +1001,9 @@ private fun TafsirPickerRow(
             .clickable { onSelect() }
             .padding(horizontal = 12.dp, vertical = 10.dp)
     ) {
+        val downloaded = pack?.downloaded ?: 0
+        val total = pack?.total ?: 114
+        val isDownloaded = pack != null && total > 0 && downloaded >= total
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -1018,9 +1021,6 @@ private fun TafsirPickerRow(
                     Icon(imageVector = NurIcons.Check, contentDescription = null, tint = hGold, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
                 }
-                val downloaded = pack?.downloaded ?: 0
-                val total = pack?.total ?: 114
-                val isDownloaded = pack != null && total > 0 && downloaded >= total
                 when {
                     pack?.isDownloading == true -> {
                         if (total > 0) {
@@ -1063,6 +1063,30 @@ private fun TafsirPickerRow(
                 color = hGold,
                 trackColor = hBoneDark
             )
+        }
+        val packError = pack?.error
+        if (!packError.isNullOrBlank() && pack?.isDownloading != true && !isDownloaded) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = packError,
+                    fontSize = 11.sp,
+                    color = hRed,
+                    modifier = Modifier.weight(1f)
+                )
+                TextButton(onClick = onDownload) {
+                    Text(
+                        text = "Retry",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = hGold
+                    )
+                }
+            }
         }
     }
     Divider(color = hBoneDark)

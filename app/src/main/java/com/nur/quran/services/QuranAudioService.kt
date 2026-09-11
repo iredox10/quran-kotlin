@@ -14,6 +14,7 @@ import androidx.media3.session.MediaSession
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
+import com.google.common.util.concurrent.MoreExecutors
 import com.nur.quran.MainActivity
 
 /**
@@ -53,7 +54,7 @@ class QuranAudioService : MediaLibraryService() {
             Intent(this, MainActivity::class.java).apply { action = Intent.ACTION_MAIN },
             PendingIntent.FLAG_IMMUTABLE,
         )
-        mediaSession = MediaLibrarySession.Builder(this, exoPlayer, LibraryCallback)
+        mediaSession = MediaLibrarySession.Builder(this, exoPlayer, LibraryCallback())
             .setId("quran-audio")
             .setSessionActivity(sessionActivity)
             .build()
@@ -78,10 +79,12 @@ class QuranAudioService : MediaLibraryService() {
         mediaSession = null
         player?.release()
         player = null
+        runCatching { libraryDb.close() }
+        libraryIo.shutdown()
         super.onDestroy()
     }
 
-    private object LibraryCallback : MediaLibrarySession.Callback {
+    private inner class LibraryCallback : MediaLibrarySession.Callback {
         override fun onGetLibraryRoot(
             session: MediaLibrarySession,
             browser: MediaSession.ControllerInfo,
@@ -111,5 +114,57 @@ class QuranAudioService : MediaLibraryService() {
                 LibraryResult.ofItemList(ImmutableList.copyOf(items), params),
             )
         }
+
+        override fun onAddMediaItems(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            mediaItems: List<MediaItem>,
+        ): ListenableFuture<List<MediaItem>> {
+            // Auto tap on a surah arrives with mediaId only ("auto:r:s").
+            // Resolve it to the full per-ayah playlist here so playback works.
+            return libraryIo.submit<List<MediaItem>> {
+                mediaItems.flatMap { item ->
+                    BrowseTree.parseSurahItem(item.mediaId)?.let { (reciterId, surah) ->
+                        resolveSurahItems(reciterId, surah)
+                    } ?: listOf(item)
+                }
+            }
+        }
+    }
+
+    private val libraryIo =
+        MoreExecutors.listeningDecorator(java.util.concurrent.Executors.newSingleThreadExecutor())
+
+    private val libraryDb by lazy {
+        androidx.room.Room.databaseBuilder(
+            this,
+            com.nur.quran.data.db.QuranDatabase::class.java,
+            "quran_database",
+        ).fallbackToDestructiveMigration().build()
+    }
+
+    private fun resolveSurahItems(reciterId: Int, surah: Int): List<MediaItem> {
+        return runCatching {
+            val manager = com.nur.quran.data.audio.AudioDownloadManager(this)
+            val verses = kotlinx.coroutines.runBlocking {
+                libraryDb.quranDao().getVersesByChapterDirect(surah)
+            }
+            verses.mapNotNull { verse ->
+                val uri = manager.localFile(reciterId, verse.verseKey)?.let {
+                    android.net.Uri.fromFile(it).toString()
+                } ?: com.nur.quran.data.audio.Reciters.buildAudioUrl(reciterId, verse.verseKey)
+                    ?: return@mapNotNull null
+                MediaItem.Builder()
+                    .setUri(uri)
+                    .setMediaId(verse.verseKey)
+                    .setMediaMetadata(
+                        androidx.media3.common.MediaMetadata.Builder()
+                            .setTitle("Surah $surah Ayah ${verse.verseNumber}")
+                            .setArtist(com.nur.quran.data.audio.Reciters.nameOf(reciterId))
+                            .build(),
+                    )
+                    .build()
+            }
+        }.getOrDefault(emptyList())
     }
 }

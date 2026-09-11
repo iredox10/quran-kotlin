@@ -97,7 +97,7 @@ fun PlannerScreen(
 
     Column(modifier = Modifier.fillMaxSize().background(hWhite)) {
         // Top Navbar
-        WebTopNavbar(
+        TopNavbar(
             title = "Quran Nur",
             subTitle = "Planner",
             onThemeToggle = {

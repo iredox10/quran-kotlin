@@ -466,7 +466,7 @@ fun PlannerReaderScreen(
 
                             Column(modifier = Modifier.fillMaxWidth()) {
                                 if (showPageDivider) {
-                                    WebPageDivider(pageNumber = verse.pageNumber)
+                                    PageDivider(pageNumber = verse.pageNumber)
                                 }
 
                                 if (verse.verseNumber == 1) {
@@ -498,7 +498,7 @@ fun PlannerReaderScreen(
                                     }
                                 }
 
-                                WebVerseDivider()
+                                VerseDivider()
 
                                 val verseWords = wordsMap[verse.id] ?: emptyList()
                                 val verseChapter = chapters.find { it.id == verse.chapterId }

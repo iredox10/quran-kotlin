@@ -979,9 +979,9 @@ fun SurahScreen(
                                     (prevVerse == null || prevVerse.pageNumber != verse.pageNumber)
 
                                 if (showPageDivider) {
-                                    WebPageDivider(pageNumber = verse.pageNumber)
+                                    PageDivider(pageNumber = verse.pageNumber)
                                 }
-                                WebVerseDivider()
+                                VerseDivider()
 
                                 val words = wordsMap[verse.id] ?: emptyList()
                                 VerseItem(
@@ -1070,7 +1070,7 @@ fun SurahScreen(
                                     .background(hBorderColor)
                             )
                             Spacer(modifier = Modifier.height(24.dp))
-                            WebSurahNavButtons(
+                            SurahNavButtons(
                                 chapter = chapter,
                                 allChapters = allChapters,
                                 onNavigateToSurah = onNavigateToSurah
@@ -2010,7 +2010,7 @@ fun SurahHeader(
 
 // ── Web-style gradient verse divider ────────────────────────────────────
 @Composable
-fun WebVerseDivider() {
+fun VerseDivider() {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -2049,7 +2049,7 @@ fun WebVerseDivider() {
 
 // ── Web-style Page Divider ──────────────────────────────────────────────
 @Composable
-fun WebPageDivider(pageNumber: Int) {
+fun PageDivider(pageNumber: Int) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -2759,7 +2759,7 @@ fun CollectionModal(
 
 // ── Web-style Prev/Next Surah Navigation ────────────────────────────────
 @Composable
-fun WebSurahNavButtons(
+fun SurahNavButtons(
     chapter: ChapterEntity,
     allChapters: List<ChapterEntity>,
     onNavigateToSurah: (Int, String?) -> Unit
@@ -2948,7 +2948,7 @@ fun ContinuousReadingPageItem(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        WebPageDivider(pageNumber = page)
+        PageDivider(pageNumber = page)
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                 // Build all page words as a single AnnotatedString
                 val allPageWords = remember(pageVerses, wordsMap) {

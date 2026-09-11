@@ -250,7 +250,7 @@ fun HomeScreen(
 
     Column(modifier = Modifier.fillMaxSize().background(hWhite)) {
         // Top Header matching Web App Layout.jsx header
-        WebTopNavbar(
+        TopNavbar(
             title = "Quran Nur",
             onThemeToggle = {
                 isDarkThemeGlobal = !isDarkThemeGlobal
@@ -818,7 +818,7 @@ fun HomeScreen(
 
 // ── Web Top Navbar (matching Web App Layout.jsx header) ──────────────────
 @Composable
-fun WebTopNavbar(
+fun TopNavbar(
     title: String = "Quran Nur",
     subTitle: String? = null,
     onThemeToggle: () -> Unit,

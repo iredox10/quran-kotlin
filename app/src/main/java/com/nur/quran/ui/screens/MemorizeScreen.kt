@@ -106,7 +106,7 @@ fun MemorizeScreen(
 
     Column(modifier = Modifier.fillMaxSize().background(hWhite)) {
         // Web Top Navbar
-        WebTopNavbar(
+        TopNavbar(
             title = "Quran Nur",
             subTitle = "Hifdh",
             onThemeToggle = {
@@ -360,7 +360,7 @@ fun MemorizeScreen(
                         .horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    WebRevisionQueueCard(
+                    RevisionQueueCard(
                         title = "Sabaq (New)",
                         totalCount = queueData.sabaqAll.size,
                         dueCount = queueData.sabaqDue.size,
@@ -372,7 +372,7 @@ fun MemorizeScreen(
                             if (queue.isNotEmpty()) activeTestQueue = "Sabaq" to queue
                         }
                     )
-                    WebRevisionQueueCard(
+                    RevisionQueueCard(
                         title = "Sabqi (Recent)",
                         totalCount = queueData.sabqiAll.size,
                         dueCount = queueData.sabqiDue.size,
@@ -384,7 +384,7 @@ fun MemorizeScreen(
                             if (queue.isNotEmpty()) activeTestQueue = "Sabqi" to queue
                         }
                     )
-                    WebRevisionQueueCard(
+                    RevisionQueueCard(
                         title = "Manzil (Old)",
                         totalCount = queueData.manzilAll.size,
                         dueCount = queueData.manzilDue.size,
@@ -897,7 +897,7 @@ private fun MetricStatCard(
 }
 
 @Composable
-private fun WebRevisionQueueCard(
+private fun RevisionQueueCard(
     title: String,
     totalCount: Int,
     dueCount: Int,

@@ -2,8 +2,6 @@ package com.nur.quran.data.audio
 
 import android.app.Notification
 import android.content.Context
-import android.content.pm.ServiceInfo
-import android.os.Build
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
@@ -96,15 +94,11 @@ class AudioDownloadWorker(
     }
 
     private fun toForegroundInfo(notifId: Int, notification: Notification): ForegroundInfo {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            ForegroundInfo(
-                notifId,
-                notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
-            )
-        } else {
-            ForegroundInfo(notifId, notification)
-        }
+        // No explicit foreground-service type: WorkManager's internal
+        // SystemForegroundService declares its own types; passing
+        // DATA_SYNC here trips lintVitalRelease (SpecifyForegroundServiceType)
+        // with no runtime benefit.
+        return ForegroundInfo(notifId, notification)
     }
 
     companion object {

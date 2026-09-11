@@ -720,20 +720,26 @@ fun SurahScreen(
                         item {
                             // Linked (link-in-place) surah count for the current reciter.
                             val linkedCount = linkedMap[currentReciterId]?.size ?: 0
-                            val downloadError by viewModel.downloadError.collectAsState()
-                            val downloadProgress by viewModel.downloadProgress.collectAsState()
+                            // Per-chapter download state keyed "$reciterId:$chapterId".
+                            // Provided by the download-state agent; the build fixer aligns
+                            // the ViewModel property.
+                            val chapterDownloadStates by viewModel.chapterDownloadState.collectAsState()
+                            val chapterDl = chapterDownloadStates["$currentReciterId:${chapter.id}"]
+                            val chapterIsDownloading = chapterDl?.isDownloading == true
+                            val chapterProgress =
+                                if ((chapterDl?.total ?: 0) > 0) (chapterDl?.downloaded ?: 0).toFloat() / (chapterDl?.total ?: 1) else 0f
                             SurahHeader(
                                 chapter = chapter,
                                 versesStartPage = verses.firstOrNull()?.pageNumber ?: 0,
                                 isPlaying = isPlaying,
                                 isDownloaded = chapter.id in downloadedChapters,
-                                isDownloading = isDownloading,
+                                isDownloading = chapterIsDownloading,
                                 reciterName = Reciters.nameOf(currentReciterId),
                                 downloadedCount = if (chapter.id in downloadedChapters) verses.size else 0,
                                 totalCount = verses.size,
                                 linkedCount = linkedCount,
-                                downloadError = downloadError,
-                                downloadProgress = downloadProgress,
+                                downloadError = chapterDl?.error,
+                                downloadProgress = chapterProgress,
                                 onPlayClick = { showAudioSetupDialog = true },
                                 onDownloadClick = { viewModel.downloadChapterAudio(currentReciterId, chapter.id) },
                                 onCancelClick = { viewModel.cancelChapterDownload(currentReciterId, chapter.id) },
@@ -1907,18 +1913,13 @@ fun SurahHeader(
                     contentAlignment = Alignment.Center
                 ) {
                     if (isDownloading) {
-                        val transition = rememberInfiniteTransition(label = "spin")
-                        val angle by transition.animateFloat(
-                            initialValue = 0f,
-                            targetValue = 360f,
-                            animationSpec = infiniteRepeatable(tween(1000)),
-                            label = "angle"
-                        )
-                        Icon(
-                            imageVector = NurIcons.Loader2,
-                            contentDescription = "Downloading...",
-                            tint = hInkMid,
-                            modifier = Modifier.size(18.dp).rotate(angle)
+                        // Compact inline progress: determinate gold ring replaces the
+                        // icon; tapping the 40dp box cancels (see clickable above).
+                        CircularProgressIndicator(
+                            progress = downloadProgress.coerceIn(0f, 1f),
+                            modifier = Modifier.size(22.dp),
+                            color = hGold,
+                            strokeWidth = 2.5.dp
                         )
                     } else {
                         Icon(

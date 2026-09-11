@@ -4,6 +4,7 @@ import android.app.Notification
 import android.content.Context
 import android.content.pm.ServiceInfo
 import android.os.Build
+import android.os.SystemClock
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
@@ -51,16 +52,31 @@ class AudioDownloadWorker(
                 DownloadNotif.showProgress(applicationContext, notifId, title, 0, verseKeys.size)
             setForeground(toForegroundInfo(notifId, initial))
 
+            var lastPostMs = 0L
+            var lastBucket = -1
             val downloaded = manager.downloadMissingKeys(
                 reciterId,
                 verseKeys,
                 chapterId
             ) { done, total ->
-                val notification: Notification =
-                    DownloadNotif.showProgress(applicationContext, notifId, title, done, total)
-                // onProgress is not suspend: use the async variants.
-                setForegroundAsync(toForegroundInfo(notifId, notification))
-                setProgressAsync(workDataOf(KEY_DONE to done, KEY_TOTAL to total))
+                // Throttle foreground re-posts: every ~10% or 1s, plus first
+                // and last. Unthrottled setForegroundAsync is one IPC +
+                // notification re-post per ayah (~286/chapter) — jank and
+                // dropped updates on some OEMs. setProgressAsync alone does
+                // NOT update the notification, so the re-post is required.
+                val now = SystemClock.elapsedRealtime()
+                val bucket = if (total > 0) (done * 10 / total) else 0
+                val isEdge = done <= 1 || done >= total
+                if (isEdge || bucket != lastBucket || now - lastPostMs >= 1_000) {
+                    lastBucket = bucket
+                    lastPostMs = now
+                    val notification: Notification =
+                        DownloadNotif.showProgress(applicationContext, notifId, title, done, total)
+                    // onProgress is not suspend: use the async variants.
+                    // Guard: a foreground failure must never crash the download.
+                    runCatching { setForegroundAsync(toForegroundInfo(notifId, notification)) }
+                    setProgressAsync(workDataOf(KEY_DONE to done, KEY_TOTAL to total))
+                }
             }
 
             setProgress(workDataOf(KEY_DONE to downloaded, KEY_TOTAL to verseKeys.size))

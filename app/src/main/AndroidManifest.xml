@@ -29,6 +29,11 @@
             </intent-filter>
         </activity>
         
+        <!-- Android Auto / Automotive: declare media browse support. -->
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
+
         <!-- Media3 Audio Session Service -->
         <service
             android:name=".services.QuranAudioService"

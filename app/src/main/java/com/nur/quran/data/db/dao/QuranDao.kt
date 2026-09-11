@@ -173,6 +173,9 @@ interface QuranDao {
     @Query("SELECT text FROM translation_texts WHERE translationId = :tid AND verseKey = :key LIMIT 1")
     suspend fun getTranslationText(tid: Int, key: String): String?
 
+    @Query("SELECT * FROM translation_texts WHERE translationId = :tid AND verseKey IN (:keys)")
+    suspend fun getTranslationTexts(tid: Int, keys: List<String>): List<TranslationTextEntity>
+
     @Query("SELECT COUNT(*) FROM translation_texts WHERE translationId = :tid")
     suspend fun countTranslationPack(tid: Int): Int
 

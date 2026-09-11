@@ -168,6 +168,38 @@ class QuranRepository @Inject constructor(
         }
     }
 
+    /**
+     * Apply packed `translation_texts` for [translationId], overriding stale row
+     * text. Offline asset rows carry baked-in Haleem text (non-blank), so a
+     * blank-only backfill would never apply the pack — the pack is the source
+     * of truth for its own edition. Falls back to blank-fill when the pack has
+     * no rows for this chapter. Never throws.
+     */
+    private suspend fun applyPackedTranslation(
+        verses: List<VerseEntity>,
+        translationId: Int
+    ): List<VerseEntity> {
+        if (verses.isEmpty()) return verses
+        return try {
+            val keys = verses.map { it.verseKey }
+            val packed = quranDao.getTranslationTexts(translationId, keys)
+                .associateBy({ it.verseKey }, { it.text })
+            if (packed.isEmpty()) {
+                backfillBlankTranslations(verses, translationId)
+            } else {
+                verses.map { verse ->
+                    val text = packed[verse.verseKey]
+                    if (!text.isNullOrBlank()) verse.copy(translation = text) else verse
+                }
+            }
+        } catch (_: Exception) {
+            verses
+        }
+    }
+
+    /** Last translationId successfully fetched per chapter (session memory). */
+    private val translationByChapter = java.util.concurrent.ConcurrentHashMap<Int, Int>()
+
     fun getVersesByPageFlow(pageNumber: Int): Flow<List<VerseEntity>> = quranDao.getVersesByPage(pageNumber)
 
     suspend fun getVersesByPage(pageNumber: Int, mushafId: String? = null): List<VerseEntity> = withContext(Dispatchers.IO) {
@@ -517,8 +549,11 @@ class QuranRepository @Inject constructor(
         // force a refetch so page-accurate layout matches the printed edition.
         val storedMushaf = quranDao.getCacheEntry("verses_mushaf_$chapterId")?.dataJson
         val mushafMismatch = storedMushaf != null && storedMushaf.isNotBlank() && storedMushaf != mushaf.id
+        // Cached rows may hold a DIFFERENT translation than requested (single
+        // translation column) — only skip the network when they match it.
         if (!mushafMismatch && !existing.isNullOrEmpty() && existing.none { it.textUthmani.isNullOrBlank() }
-            && existing.any { !it.translation.isNullOrBlank() }) {
+            && existing.any { !it.translation.isNullOrBlank() }
+            && translationByChapter[chapterId] == translationId) {
             // Still backfill missing line numbers if words lack them and we are online-capable.
             val wordSample = existing.take(3).flatMap {
                 try { quranDao.getWordsForVerse(it.id) } catch (_: Exception) { emptyList() }
@@ -599,13 +634,14 @@ class QuranRepository @Inject constructor(
 
             quranDao.replaceVersesAndWords(backfillBlankTranslations(verseEntities, translationId), wordEntities)
             quranDao.insertCacheEntry(ApiResponseCacheEntity("verses_mushaf_$chapterId", mushaf.id))
+            translationByChapter[chapterId] = translationId
         } catch (e: Exception) {
-            // Offline fallback: load from bundled asset with WordEntity generation,
-            // then backfill blank translations from packed translation_texts so
-            // offline reads show packed text for the requested translationId.
+            // Offline fallback: bundled asset rows carry baked-in default text,
+            // so override (not just blank-fill) from the packed edition when
+            // the user downloaded it — otherwise activation never applies.
             val (offlineVerses, offlineWords) = loadOfflineVersesFromAssets(chapterId)
             if (offlineVerses.isNotEmpty()) {
-                quranDao.insertVersesAndWords(backfillBlankTranslations(offlineVerses, translationId), offlineWords)
+                quranDao.insertVersesAndWords(applyPackedTranslation(offlineVerses, translationId), offlineWords)
             }
         }
     }

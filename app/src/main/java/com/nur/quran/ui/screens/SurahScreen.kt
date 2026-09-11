@@ -42,6 +42,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -332,9 +333,14 @@ fun SurahScreen(
     var showAudioSetupDialog by remember { mutableStateOf(false) }
     // MiniPlayer hide-vs-stop: X hides the pill but playback continues in the
     // background; ■ stops playback entirely (viewModel.stopPlaying()).
-    var playerHiddenByUser by remember { mutableStateOf(false) }
+    var playerHiddenByUser by rememberSaveable { mutableStateOf(false) }
+    // Reset the hide flag only on playback start (null → non-null), NOT on
+    // every verse advance — otherwise X-hide is undone by the next ayah.
+    var hadPlayback by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(playingVerseKey) {
-        if (playingVerseKey != null) playerHiddenByUser = false
+        val hasPlayback = playingVerseKey != null
+        if (hasPlayback && !hadPlayback) playerHiddenByUser = false
+        hadPlayback = hasPlayback
     }
     var showNavigationDialog by remember { mutableStateOf(false) }
     var isAutoScrollActive by remember { mutableStateOf(false) }

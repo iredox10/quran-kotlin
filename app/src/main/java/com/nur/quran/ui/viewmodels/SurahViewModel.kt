@@ -39,6 +39,7 @@ import com.nur.quran.data.hifdh.HifdhGoal
 import com.nur.quran.data.hifdh.HifdhHistoryEntry
 import com.nur.quran.data.hifdh.HifdhStore
 import com.nur.quran.data.repository.QuranRepository
+import com.nur.quran.services.QuranAudioService
 import com.nur.quran.utils.TajweedProcessor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -365,7 +366,7 @@ class SurahViewModel @Inject constructor(
         if (controllerFuture == null) {
             val sessionToken = SessionToken(
                 context,
-                ComponentName(context, "com.nur.quran.services.QuranAudioService")
+                ComponentName(context, QuranAudioService::class.java)
             )
             val future = MediaController.Builder(context, sessionToken).buildAsync()
             controllerFuture = future
@@ -746,15 +747,19 @@ class SurahViewModel @Inject constructor(
     // Position-poll hook for gapless follow mode. Existing repeat/delay handlers untouched.
     private var followJob: Job? = null
 
-    /** Poll ExoPlayer position and emit the current ayah until stopped. */
+    /** Poll player position and emit the current ayah until stopped.
+     * Survives pause/resume: polls while the job lives, emitting only while
+     * playing, so a pause no longer kills follow permanently. */
     fun startFollowAyah(surah: Int, onAyah: (Int) -> Unit) {
         followJob?.cancel()
         followJob = viewModelScope.launch {
             try {
-                while (_isPlaying.value) {
+                while (true) {
                     try {
-                        val pos = player()?.currentPosition ?: 0L
-                        getAyahAtPosition(surah, pos)?.let { onAyah(it) }
+                        if (_isPlaying.value) {
+                            val pos = player()?.currentPosition ?: 0L
+                            getAyahAtPosition(surah, pos)?.let { onAyah(it) }
+                        }
                     } catch (_: Exception) {
                     }
                     delay(100)

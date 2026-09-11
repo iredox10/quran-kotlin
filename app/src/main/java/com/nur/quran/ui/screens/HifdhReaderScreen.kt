@@ -1055,6 +1055,7 @@ fun HifdhReaderScreen(
                             wordIsDownloading = wordDownloading,
                             onDownloadAllWords = packVm::downloadAllMissingWordPacks,
                     onCancelAllWords = packVm::cancelAllWordPacks,
+                    completedEvents = packVm.completedEvents,
                     syncState = syncState, onBackup = packVm::backupNow, onRestore = packVm::restoreNow,
                             wordProgressByTafsir = wordProgress
                         )

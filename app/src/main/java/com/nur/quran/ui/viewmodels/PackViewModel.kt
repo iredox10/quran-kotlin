@@ -11,9 +11,12 @@ import com.nur.quran.ui.components.SyncUiState
 import com.nur.quran.ui.components.audio.PackUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -106,10 +109,19 @@ class PackViewModel @Inject constructor(
                 tafsirPackManager.supported.associate { (id, _) -> id to (initialWordCached to 114) }
             )
 
+    /** One-shot "ready for offline use" notices for completed pack downloads. */
+    private val _completedEvents = MutableSharedFlow<String>(extraBufferCapacity = 4)
+    val completedEvents: SharedFlow<String> = _completedEvents.asSharedFlow()
+
     /** Combined pack: full tafsir + word-by-word translations for all chapters. */
     fun downloadTafsirPack(tafsirId: Int) {
         viewModelScope.launch(Dispatchers.IO) {
             runCatching { tafsirPackManager.downloadPackWithWords(tafsirId) }
+            val title = tafsirPackManager.supported.firstOrNull { it.first == tafsirId }?.second
+                ?: "Tafsir pack"
+            if (runCatching { tafsirPackManager.isDownloaded(tafsirId) }.getOrDefault(false)) {
+                _completedEvents.tryEmit("$title ready for offline use")
+            }
         }
     }
 
@@ -129,6 +141,11 @@ class PackViewModel @Inject constructor(
     fun downloadTranslationPack(translationId: Int) {
         viewModelScope.launch(Dispatchers.IO) {
             runCatching { translationPackManager.downloadPack(translationId) }
+            val title = translationPackManager.supported.firstOrNull { it.first == translationId }?.second
+                ?: "Translation pack"
+            if (runCatching { translationPackManager.isDownloaded(translationId) }.getOrDefault(false)) {
+                _completedEvents.tryEmit("$title ready for offline use")
+            }
         }
     }
 
@@ -154,6 +171,9 @@ class PackViewModel @Inject constructor(
                 }
             }
             activeWordChapter = -1
+            if ((1..114).all { runCatching { wordPackManager.isChapterCached(it) }.getOrDefault(false) }) {
+                _completedEvents.tryEmit("Word translations ready for offline use")
+            }
         }
     }
 

@@ -93,7 +93,8 @@ fun SettingsDrawer(
     syncState: SyncUiState? = null,
     onBackup: () -> Unit = {},
     onRestore: () -> Unit = {},
-    onLoginClick: () -> Unit = {}
+    onLoginClick: () -> Unit = {},
+    completedEvents: kotlinx.coroutines.flow.SharedFlow<String>? = null
 ) {
     val arabicFontScale by viewModel.arabicFontScale.collectAsState()
     val translationFontScale by viewModel.translationFontScale.collectAsState()
@@ -115,6 +116,13 @@ fun SettingsDrawer(
     // live state without extra wiring; hosts are still notified via callback.
     val policyContext = LocalContext.current
     var wifiPolicy by remember { mutableStateOf(NetworkPolicy.isWifiOnly(policyContext)) }
+
+    // Pack completion toasts ("ready for offline use" — offline UX standard).
+    LaunchedEffect(completedEvents) {
+        completedEvents?.collect { message ->
+            android.widget.Toast.makeText(policyContext, message, android.widget.Toast.LENGTH_LONG).show()
+        }
+    }
 
     // Link-in-place folder picker (GreenTech/quran_android layout).
     // Registered unconditionally so composition stays stable; the Link

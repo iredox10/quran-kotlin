@@ -50,6 +50,11 @@ object AnalyticsStats {
         }
         var count = 0
         val cursor = Calendar.getInstance().apply { time = today }
+        if (DAY_FMT.format(cursor.time) !in uniqueDates) {
+            // Today missing but yesterday present (validated above): start at yesterday,
+            // mirroring HomeViewModel.computeStreak's i==0 tolerance.
+            cursor.add(Calendar.DATE, -1)
+        }
         while (count <= 366) {
             val ds = DAY_FMT.format(cursor.time)
             if (ds in uniqueDates) count++ else break

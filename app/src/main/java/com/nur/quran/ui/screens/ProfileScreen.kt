@@ -91,7 +91,7 @@ fun ProfileScreen(
         val todayStr = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date())
         sessions.filter { it.date == todayStr }.sumOf { it.duration }
     }
-    val todayTotalMins = (todayTotalSeconds / 60.0).toInt()
+    val todayTotalMins = Math.round(todayTotalSeconds / 60.0).toInt()
     val goalPct = if (dailyGoalMins > 0) ((todayTotalMins.toFloat() / dailyGoalMins.toFloat()) * 100f).coerceAtMost(100f).toInt() else 0
 
     val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)

@@ -53,9 +53,10 @@ class AnalyticsStatsTest {
             recentlyReadIds = recentIds
         )
         assertEquals(3, badges.size)
-        // newest/highest tier first (web reverse().slice(0,3))
+        // newest/highest tier first (web reverse().slice(0,3)):
+        // [Explorer, 500 Minutes, 100 Minutes] — older tiers fall off.
         assertEquals("Explorer", badges[0].title)
-        assertTrue(badges.any { it.title == "7-Day Streak" })
+        assertTrue(badges.any { it.title == "500 Minutes" })
     }
 
     @Test

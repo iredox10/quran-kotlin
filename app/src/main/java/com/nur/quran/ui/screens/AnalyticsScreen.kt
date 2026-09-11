@@ -31,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nur.quran.analytics.AnalyticsStats
 import com.nur.quran.data.db.entities.ReadingSessionEntity
 import com.nur.quran.ui.components.NurIcons
 import com.nur.quran.ui.viewmodels.HomeViewModel
@@ -74,112 +75,70 @@ fun AnalyticsScreen(
         else -> "Good Evening"
     }
 
+    // Single-source stats input for AnalyticsStats delegation (web parity).
+    val statsSessions = remember(sessions) {
+        sessions.map { AnalyticsStats.Session(it.date, it.duration, it.type, it.chapterId, it.timestamp) }
+    }
+
     // 7 Days Labels and Totals (web parity: Math.round like Progress.jsx dailyActivity)
-    val last7DaysData = remember(sessions) {
-        val days = mutableListOf<Pair<String, Int>>()
+    val last7DaysData = remember(statsSessions) {
+        AnalyticsStats.last7Days(statsSessions)
+    }
+
+    // Last-7 yyyy-MM-dd keys for the web-parity weekly total (round AFTER summing raw secs).
+    val last7Keys = remember {
         val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-        val labelSdf = SimpleDateFormat("EEE", Locale.US)
-        for (i in 6 downTo 0) {
+        (6 downTo 0).map { i ->
             val cal = Calendar.getInstance()
             cal.add(Calendar.DATE, -i)
-            val dStr = sdf.format(cal.time)
-            val dayLabel = labelSdf.format(cal.time)
-            val dayMins = Math.round(sessions.filter { it.date == dStr }.sumOf { it.duration } / 60.0f).toInt()
-            days.add(Pair(dayLabel, dayMins))
-        }
-        days
-    }
-
-    val streak = remember(sessions) {
-        if (sessions.isEmpty()) 0
-        else {
-            val uniqueDatesSet = sessions.map { it.date }.toSet()
-            val sortedDates = uniqueDatesSet.sortedDescending()
-            val cal = Calendar.getInstance()
-            val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-            val today = fmt.format(cal.time)
-            if (sortedDates.firstOrNull() != today) {
-                cal.add(Calendar.DATE, -1)
-                if (sortedDates.firstOrNull() != fmt.format(cal.time)) 0
-                else computeStreak(uniqueDatesSet, fmt)
-            } else {
-                computeStreak(uniqueDatesSet, fmt)
-            }
+            sdf.format(cal.time)
         }
     }
 
-    val todayTotalMins = remember(sessions, todayStr) {
-        Math.round(sessions.filter { it.date == todayStr }.sumOf { it.duration } / 60.0f).toInt()
+    val streak = remember(statsSessions) {
+        AnalyticsStats.streak(statsSessions.map { it.date }.toSet())
     }
 
-    val allTimeTotalMins = remember(sessions) {
-        Math.round(sessions.sumOf { it.duration } / 60.0f).toInt()
+    val todayTotalMins = remember(statsSessions, todayStr) {
+        AnalyticsStats.todayMinutes(statsSessions, todayStr)
+    }
+
+    val allTimeTotalMins = remember(statsSessions) {
+        AnalyticsStats.allTimeMinutes(statsSessions)
     }
 
     val weeklyGoalMins = 180
-    val weeklyTotalMins = remember(last7DaysData) {
-        last7DaysData.sumOf { it.second }
+    val weeklyTotalMins = remember(statsSessions, last7Keys) {
+        AnalyticsStats.weeklyTotalMinutes(statsSessions, last7Keys)
     }
     val weeklyGoalPercent = remember(weeklyTotalMins) {
-        ((weeklyTotalMins.toFloat() / weeklyGoalMins.toFloat()) * 100f).coerceAtMost(100f).toInt()
+        AnalyticsStats.weeklyGoalPercent(weeklyTotalMins, weeklyGoalMins)
     }
 
     // Activity breakdown mix (Reading, Memorizing, Focus, Listening)
-    val activityMix = remember(sessions) {
-        val readingMins = Math.round(sessions.filter { it.type == "reading" || it.type.isEmpty() }.sumOf { it.duration } / 60.0f).toInt()
-        val memorizingMins = Math.round(sessions.filter { it.type == "memorizing" }.sumOf { it.duration } / 60.0f).toInt()
-        val focusMins = Math.round(sessions.filter { it.type == "pomodoro" || it.type == "focus" }.sumOf { it.duration } / 60.0f).toInt()
-        val listeningMins = Math.round(sessions.filter { it.type == "listening" }.sumOf { it.duration } / 60.0f).toInt()
+    val activityMix = remember(statsSessions) {
+        val byType = AnalyticsStats.minutesByType(statsSessions)
         listOf(
-            Triple("Reading", readingMins, Color(0xFF10B981)),
-            Triple("Memorizing", memorizingMins, Color(0xFF3B82F6)),
-            Triple("Focus", focusMins, Color(0xFF8B5CF6)),
-            Triple("Listening", listeningMins, Color(0xFFF59E0B))
+            Triple("Reading", byType["reading"] ?: 0, Color(0xFF10B981)),
+            Triple("Memorizing", byType["memorizing"] ?: 0, Color(0xFF3B82F6)),
+            Triple("Focus", byType["focus"] ?: 0, Color(0xFF8B5CF6)),
+            Triple("Listening", byType["listening"] ?: 0, Color(0xFFF59E0B))
         ).filter { it.second > 0 }
     }
 
-    // Smart Insight
-    val smartInsight = remember(sessions) {
-        if (sessions.isEmpty()) "Start reading to unlock insights!"
-        else {
-            val dayCounts = mutableMapOf("Sun" to 0L, "Mon" to 0L, "Tue" to 0L, "Wed" to 0L, "Thu" to 0L, "Fri" to 0L, "Sat" to 0L)
-            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-            val labelSdf = SimpleDateFormat("EEE", Locale.US)
-            sessions.forEach { s ->
-                try {
-                    val dateObj = sdf.parse(s.date)
-                    if (dateObj != null) {
-                        val day = labelSdf.format(dateObj)
-                        dayCounts[day] = (dayCounts[day] ?: 0L) + s.duration
-                    }
-                } catch (_: Exception) {}
-            }
-            val bestDay = dayCounts.maxByOrNull { it.value }?.key
-            if (bestDay != null && (dayCounts[bestDay] ?: 0) > 0) {
-                val fullDays = mapOf("Sun" to "Sundays", "Mon" to "Mondays", "Tue" to "Tuesdays", "Wed" to "Wednesdays", "Thu" to "Thursdays", "Fri" to "Fridays", "Sat" to "Saturdays")
-                "You usually read best on ${fullDays[bestDay] ?: bestDay}. Keep up the great momentum!"
-            } else {
-                "Start reading to unlock insights!"
-            }
-        }
+    // Smart Insight (single source: session-COUNT per weekday, web parity)
+    val smartInsight = remember(statsSessions) {
+        AnalyticsStats.smartInsight(statsSessions)
     }
 
-    // Dynamic Achievements / Badges (web parity: union sessions+recentlyRead, newest first)
+    // Dynamic Achievements / Badges (single source: union sessions+recentlyRead, newest first)
     val achievements = remember(streak, allTimeTotalMins, sessions, recentlyRead) {
-        val badges = mutableListOf<BadgeItem>()
-        if (streak >= 3) badges.add(BadgeItem("🔥", "3-Day Streak", "Consistency is key."))
-        if (streak >= 7) badges.add(BadgeItem("🔥", "7-Day Streak", "A whole week!"))
-        if (streak >= 30) badges.add(BadgeItem("🔥", "30-Day Streak", "Unstoppable!"))
-        if (allTimeTotalMins >= 100) badges.add(BadgeItem("⏱️", "100 Minutes", "First big milestone."))
-        if (allTimeTotalMins >= 500) badges.add(BadgeItem("⏱️", "500 Minutes", "Dedicated reader."))
-        // Web parity (Progress.jsx uniqueSurahsRead): sessions' chapterIds + recentlyRead
-        val surahIds = recentlyRead.map { it.chapterId }.toMutableSet()
-        sessions.mapNotNullTo(surahIds) { it.chapterId }
-        val surahCount = surahIds.size
-        if (surahCount >= 5) badges.add(BadgeItem("🗺️", "Explorer", "Read 5 Surahs."))
-        if (surahCount >= 30) badges.add(BadgeItem("🗺️", "Traveler", "Read 30 Surahs."))
-        if (surahCount >= 114) badges.add(BadgeItem("👑", "Khatm", "Read all 114 Surahs!"))
-        badges.takeLast(3).reversed()
+        AnalyticsStats.achievements(
+            streakDays = streak,
+            allTimeMins = allTimeTotalMins,
+            sessionChapterIds = sessions.map { it.chapterId },
+            recentlyReadIds = recentlyRead.map { it.chapterId }
+        ).map { BadgeItem(it.icon, it.title, it.desc) }
     }
 
     // Heatmap data (35 days = 5 weeks, web parity: Math.round like heatmapData)
@@ -1093,17 +1052,4 @@ fun AnalyticsScreen(
             }
         }
     }
-}
-
-private fun computeStreak(uniqueDates: Set<String>, fmt: SimpleDateFormat): Int {
-    if (uniqueDates.isEmpty()) return 0
-    var count = 0
-    for (i in 0 until 365) {
-        val check = Calendar.getInstance()
-        check.add(Calendar.DATE, -i)
-        val ds = fmt.format(check.time)
-        if (ds in uniqueDates) count++
-        else if (i > 0) break
-    }
-    return count
 }

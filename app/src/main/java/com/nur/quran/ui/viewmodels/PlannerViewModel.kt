@@ -242,12 +242,23 @@ class PlannerViewModel @Inject constructor(
 
     fun archiveActivePlan() {
         val current = _activePlan.value ?: return
+        archivePlanner(current.id)
+    }
+
+    /**
+     * Web parity: archivePlanner(planId) archives an arbitrary plan by id
+     * (web useAppStore.js:792 — targetId = planId || activePlannerId).
+     * archiveActivePlan() keeps its signature and delegates here.
+     */
+    fun archivePlanner(planId: String? = null) {
+        val targetId = planId ?: _activePlannerId.value ?: return
+        val target = _allPlans.value.find { it.id == targetId } ?: _activePlan.value?.takeIf { it.id == targetId } ?: return
         viewModelScope.launch {
-            val updatedArchives = _archivedPlans.value + current
+            val updatedArchives = _archivedPlans.value + target
             _archivedPlans.value = updatedArchives
             repository.saveArchivedPlans(updatedArchives)
-            
-            deletePlan(current.id)
+
+            deletePlan(targetId)
         }
     }
 

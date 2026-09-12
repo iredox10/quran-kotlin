@@ -504,6 +504,39 @@ object PlannerEngine {
         )
     }
 
+    // Web parity: planner.js splitAssignmentReadPages — per-item page split into
+    // flat read/unread page lists. String-vs-Number safe: both sides normalized
+    // via toString() (web chunk items use numeric rangeValue).
+    fun splitAssignmentReadPages(
+        plan: ReadingPlan,
+        assignment: PlannerAssignment
+    ): Pair<List<Int>, List<Int>> {
+        val prog = getAssignmentProgress(plan, assignment)
+        val explicitReadPages = plan.assignmentReadPages[assignment.dayNumber] ?: emptyList()
+        val completedSet = prog.completedRangeValues.map { it.toString() }.toSet()
+        val readPages = mutableListOf<Int>()
+        val unreadPages = mutableListOf<Int>()
+
+        assignment.items.forEach { item ->
+            val pStart = item.pageStart.takeIf { it > 0 } ?: assignment.pageStart.takeIf { it > 0 } ?: 1
+            val pEnd = item.pageEnd.takeIf { it > 0 } ?: pStart
+            for (p in pStart..pEnd) {
+                if (explicitReadPages.contains(p) || completedSet.contains(item.rangeValue.toString())) {
+                    readPages.add(p)
+                } else {
+                    unreadPages.add(p)
+                }
+            }
+        }
+
+        return readPages to unreadPages
+    }
+
+    private fun dayOfWeekIdx(dateStr: String): Int {
+        val cal = Calendar.getInstance().apply { time = parsePlannerDate(dateStr) }
+        return cal.get(Calendar.DAY_OF_WEEK) - 1 // Sunday=0 .. Saturday=6
+    }
+
     fun rebalancePlanner(
         planner: ReadingPlan,
         strategy: String, // "spread", "extend", "custom_pace"
@@ -512,82 +545,217 @@ object PlannerEngine {
         val today = formatPlannerDate()
         val excludeDays = planner.excludeDays
 
+        // Web parity: split each incomplete assignment into read/unread pages.
+        // Completed days carry over untouched; partially-read days keep only the
+        // read portions (grouped contiguous) as preserved assignments; unread
+        // pages pool item-by-item (fixes surah/juz over-pooling from expanding
+        // assignment.pageStart..pageEnd which spans whole chapters).
         val preservedAssignments = mutableListOf<PlannerAssignment>()
-        val unreadPagesPool = mutableListOf<Int>()
+        val unreadPagePool = mutableListOf<Int>()
 
         planner.assignments.forEach { a ->
             val prog = getAssignmentProgress(planner, a)
             if (prog.isComplete) {
                 preservedAssignments.add(a)
-            } else {
-                val readPages = planner.assignmentReadPages[a.dayNumber] ?: emptyList()
-                for (p in a.pageStart..a.pageEnd) {
-                    if (!readPages.contains(p)) {
-                        unreadPagesPool.add(p)
-                    }
+                return@forEach
+            }
+
+            val (readPages, unreadPages) = splitAssignmentReadPages(planner, a)
+
+            if (readPages.isNotEmpty() && unreadPages.isNotEmpty()) {
+                val readGroups = groupContiguousPages(readPages)
+                val preservedItems = readGroups.map { grp ->
+                    PlannerItem(
+                        id = "${grp.pStart}-${grp.pEnd}".hashCode(),
+                        title = "Pages ${grp.pStart}-${grp.pEnd}",
+                        subtitle = "${grp.pEnd - grp.pStart + 1} pages",
+                        route = "/planner/read/${a.dayNumber}",
+                        rangeValue = "${grp.pStart}-${grp.pEnd}",
+                        pageStart = grp.pStart,
+                        pageEnd = grp.pEnd
+                    )
                 }
-            }
-        }
-
-        if (unreadPagesPool.isEmpty()) return planner
-
-        val remainingDays = when (strategy) {
-            "custom_pace" -> max(1, (customDurationDays ?: 30) - preservedAssignments.size)
-            "extend" -> max(1, ceil(unreadPagesPool.size.toDouble() / 10.0).toInt())
-            else -> { // "spread"
-                val elapsed = diffDays(planner.startDate, today)
-                max(1, planner.durationDays - elapsed)
-            }
-        }
-
-        val pagesPerDay = max(1, ceil(unreadPagesPool.size.toDouble() / remainingDays).toInt())
-        val newAssignments = mutableListOf<PlannerAssignment>()
-
-        var cursor = 0
-        var nextDayNum = preservedAssignments.size + 1
-        var dayIndex = 0
-
-        while (cursor < unreadPagesPool.size) {
-            val chunk = unreadPagesPool.subList(cursor, min(cursor + pagesPerDay, unreadPagesPool.size))
-            val pStart = chunk.first()
-            val pEnd = chunk.last()
-            val dateStr = getReadingDate(today, dayIndex, excludeDays)
-
-            newAssignments.add(
-                PlannerAssignment(
-                    dayNumber = nextDayNum,
-                    date = dateStr,
-                    unitType = "page",
-                    title = "Pages $pStart-$pEnd",
-                    subtitle = "${chunk.size} pages",
-                    startUnit = pStart,
-                    endUnit = pEnd,
-                    primaryRoute = "/planner/read/$nextDayNum",
-                    pageStart = pStart,
-                    pageEnd = pEnd,
-                    items = listOf(
-                        PlannerItem(
-                            id = pStart,
-                            title = "Pages $pStart-$pEnd",
-                            subtitle = "${chunk.size} pages",
-                            route = "/planner/read/$nextDayNum",
-                            rangeValue = "$pStart-$pEnd",
-                            pageStart = pStart,
-                            pageEnd = pEnd
-                        )
+                val aStart = readGroups.first().pStart
+                val aEnd = readGroups.last().pEnd
+                preservedAssignments.add(
+                    a.copy(
+                        unitType = "page",
+                        title = "Pages $aStart-$aEnd",
+                        subtitle = "${readPages.size} pages (Read)",
+                        startUnit = aStart,
+                        endUnit = aEnd,
+                        pageStart = aStart,
+                        pageEnd = aEnd,
+                        items = preservedItems
                     )
                 )
-            )
-
-            cursor += pagesPerDay
-            nextDayNum++
-            dayIndex++
+                unreadPagePool.addAll(unreadPages)
+            } else if (readPages.isNotEmpty()) {
+                preservedAssignments.add(a)
+            } else {
+                unreadPagePool.addAll(unreadPages)
+            }
         }
 
-        val allAssignments = preservedAssignments + newAssignments
+        if (unreadPagePool.isEmpty()) return planner
+
+        // Web parity guard: a custom total shorter than already-completed days
+        // is impossible — refuse rather than dump the pool into one day.
+        if (strategy == "custom_pace" && customDurationDays != null &&
+            customDurationDays < preservedAssignments.size + 1
+        ) {
+            return planner
+        }
+
+        fun chunkToAssignment(chunk: List<Int>): PlannerAssignment {
+            val pStart = chunk.first()
+            val pEnd = chunk.last()
+            return PlannerAssignment(
+                dayNumber = 0,
+                date = "",
+                unitType = "page",
+                title = "Pages $pStart-$pEnd",
+                subtitle = "${chunk.size} pages",
+                startUnit = pStart,
+                endUnit = pEnd,
+                primaryRoute = "",
+                pageStart = pStart,
+                pageEnd = pEnd,
+                items = chunk.map { p ->
+                    PlannerItem(
+                        id = p,
+                        title = "Page $p",
+                        subtitle = "1 page",
+                        route = "",
+                        rangeValue = p.toString(),
+                        pageStart = p,
+                        pageEnd = p
+                    )
+                }
+            )
+        }
+
+        val newChunkAssignments = mutableListOf<PlannerAssignment>()
+
+        if (strategy == "extend" || strategy == "custom_pace") {
+            val chunkSize = if (strategy == "custom_pace" && customDurationDays != null) {
+                val remainingNewDays = customDurationDays - preservedAssignments.size
+                ceil(unreadPagePool.size.toDouble() / remainingNewDays).toInt()
+            } else {
+                val totalDayPages = planner.assignments.sumOf { a ->
+                    a.items.sumOf { (it.pageEnd - it.pageStart) + 1 }
+                }
+                max(ceil(totalDayPages.toDouble() / planner.assignments.size).toInt(), 1)
+            }
+            var i = 0
+            while (i < unreadPagePool.size) {
+                val chunk = unreadPagePool.subList(i, min(i + chunkSize, unreadPagePool.size))
+                newChunkAssignments.add(chunkToAssignment(chunk.toList()))
+                i += chunkSize
+            }
+        } else if (strategy == "spread") {
+            if (planner.assignments.isEmpty()) return planner
+            val originalEndDate = planner.assignments.last().date
+            if (today > originalEndDate) {
+                return rebalancePlanner(planner, "extend")
+            }
+            var remainingDays = 0
+            var curr = today
+            while (curr <= originalEndDate) {
+                if (!excludeDays.contains(dayOfWeekIdx(curr))) remainingDays++
+                curr = addDays(curr, 1)
+            }
+            if (remainingDays <= 0) remainingDays = 1
+            val pagesPerDay = ceil(unreadPagePool.size.toDouble() / remainingDays).toInt()
+            for (idx in 0 until remainingDays) {
+                val chunk = unreadPagePool.subList(
+                    idx * pagesPerDay, min((idx + 1) * pagesPerDay, unreadPagePool.size)
+                )
+                if (chunk.isEmpty()) break
+                newChunkAssignments.add(chunkToAssignment(chunk.toList()))
+            }
+        } else {
+            return planner
+        }
+
+        val mergedRaw = preservedAssignments + newChunkAssignments
+        var lastPreservedDate: String? = null
+        preservedAssignments.forEach { a ->
+            if (lastPreservedDate == null || a.date > lastPreservedDate!!) {
+                lastPreservedDate = a.date
+            }
+        }
+
+        var hasPartialToday = false
+        planner.assignments.forEach { a ->
+            val prog = getAssignmentProgress(planner, a)
+            if (prog.isComplete) return@forEach
+            val (readPages, unreadPages) = splitAssignmentReadPages(planner, a)
+            if (readPages.isNotEmpty() && unreadPages.isNotEmpty() && a.date == today) {
+                hasPartialToday = true
+            }
+        }
+
+        var newStartDate = today
+        if (strategy == "extend" || strategy == "custom_pace") {
+            if (lastPreservedDate != null) {
+                newStartDate = addDays(lastPreservedDate!!, 1)
+                if (hasPartialToday) newStartDate = today
+                if (newStartDate < today) newStartDate = today
+            }
+        }
+
+        val newAssignmentProgress = mutableMapOf<Int, Int>()
+        val newAssignmentReadPages = mutableMapOf<Int, List<Int>>()
+        val newAssignmentCompletedItems = mutableMapOf<Int, List<String>>()
+        val newAssignmentCompletedAt = mutableMapOf<Int, String>()
+        val newCompletedDays = mutableListOf<Int>()
+
+        var nextDayNumber = 1
+        var newDayIndex = 0
+        val preservedCount = preservedAssignments.size
+
+        val finalAssignments = mergedRaw.mapIndexed { index, a ->
+            val dn = nextDayNumber
+            val oldDayNumber = a.dayNumber.takeIf { it > 0 }
+            val isPreserved = index < preservedCount
+            var mapped = a.copy(
+                dayNumber = dn,
+                primaryRoute = "/planner/read/$dn",
+                items = a.items.map { it.copy(route = "/planner/read/$dn") }
+            )
+            if (isPreserved && oldDayNumber != null) {
+                planner.assignmentProgress[oldDayNumber]?.let { newAssignmentProgress[dn] = it }
+                planner.assignmentReadPages[oldDayNumber]?.let { newAssignmentReadPages[dn] = it }
+                planner.assignmentCompletedItems[oldDayNumber]?.let {
+                    newAssignmentCompletedItems[dn] = it
+                }
+                planner.assignmentCompletedAt[oldDayNumber]?.let { newAssignmentCompletedAt[dn] = it }
+                if (planner.completedDays.contains(oldDayNumber)) {
+                    newCompletedDays.add(dn)
+                }
+                if (!planner.completedDays.contains(oldDayNumber)) {
+                    newAssignmentProgress[dn] = mapped.items.size
+                    newAssignmentCompletedItems[dn] = mapped.items.map { it.rangeValue }
+                    newAssignmentCompletedAt[dn] = today
+                    newCompletedDays.add(dn)
+                }
+            } else {
+                mapped = mapped.copy(date = getReadingDate(newStartDate, newDayIndex, excludeDays))
+                newDayIndex++
+            }
+            nextDayNumber++
+            mapped
+        }
+
         return planner.copy(
-            durationDays = allAssignments.size,
-            assignments = allAssignments
+            durationDays = finalAssignments.size,
+            assignments = finalAssignments,
+            assignmentProgress = newAssignmentProgress,
+            assignmentReadPages = newAssignmentReadPages,
+            assignmentCompletedItems = newAssignmentCompletedItems,
+            assignmentCompletedAt = newAssignmentCompletedAt,
+            completedDays = newCompletedDays
         )
     }
 

@@ -22,6 +22,9 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -211,6 +214,23 @@ fun PlannerReaderScreen(
                 plannerViewModel.logPlannerDayToSessions(dayNumber, bridgeChapterId)
             }
         }
+    }
+    // Web parity (PlannerReader.jsx pagehide/visibilitychange): auto-flush the
+    // timer when the app backgrounds so a killed process loses ~0s. Compose has
+    // no pagehide; ON_PAUSE/ON_STOP is the equivalent lifecycle hook.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, dayNumber) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_PAUSE || event == Lifecycle.Event.ON_STOP) {
+                val delta = timerTick - savedTick
+                if (delta > 0) {
+                    plannerViewModel.stopPlannerTimer(dayNumber, delta.toLong())
+                    savedTick = timerTick
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
     // NB: totals already include everything flushed this session (savedTick),
     // so only the unflushed remainder is added — otherwise time counts double.

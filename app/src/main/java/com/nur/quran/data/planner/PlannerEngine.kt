@@ -830,18 +830,32 @@ object PlannerEngine {
         )
     }
 
+    // Web parity: planner.js getDifficultyIndicators returns { level, pages }
+    // per dayNumber — callers need the page count, not just the label.
+    data class DifficultyIndicator(val level: String, val pages: Int)
+
     // ── Difficulty Indicators ───────────────────────────────────────────
-    fun getDifficultyIndicators(assignments: List<PlannerAssignment>): Map<Int, String> {
+    fun getDifficultyIndicators(assignments: List<PlannerAssignment>): Map<Int, DifficultyIndicator> {
         if (assignments.isEmpty()) return emptyMap()
-        val avgPages = assignments.sumOf { it.pageEnd - it.pageStart + 1 }.toFloat() / assignments.size
-        val result = mutableMapOf<Int, String>()
-        assignments.forEach { a ->
-            val pages = a.pageEnd - a.pageStart + 1
-            result[a.dayNumber] = when {
+        val pageCounts = assignments.map { a ->
+            var pages = 0
+            a.items.forEach { item ->
+                if (item.pageStart > 0 && item.pageEnd > 0) {
+                    pages += (item.pageEnd - item.pageStart + 1)
+                }
+            }
+            a.dayNumber to pages
+        }
+        val totalPages = pageCounts.sumOf { it.second }
+        val avgPages = totalPages.toFloat() / pageCounts.size
+        val result = mutableMapOf<Int, DifficultyIndicator>()
+        pageCounts.forEach { (dayNumber, pages) ->
+            val level = when {
                 pages > avgPages * 1.3f -> "heavy"
                 pages < avgPages * 0.7f -> "light"
                 else -> "moderate"
             }
+            result[dayNumber] = DifficultyIndicator(level, pages)
         }
         return result
     }

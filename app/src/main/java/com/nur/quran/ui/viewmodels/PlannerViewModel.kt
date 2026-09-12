@@ -181,6 +181,15 @@ class PlannerViewModel @Inject constructor(
             _activePlannerId.value = actId
             _activePlan.value = all.find { it.id == actId }
             _archivedPlans.value = repository.getArchivedPlans()
+            // Migration (item 3): seed the planId-keyed reflections map from each
+            // plan's embedded assignmentReflections (source before this change),
+            // so current active-plan data appears in the new maps on first run.
+            val seededReflections = all
+                .filter { it.assignmentReflections.isNotEmpty() }
+                .associate { it.id to it.assignmentReflections.toMap() }
+            if (seededReflections.isNotEmpty()) {
+                _plannerReflectionsByPlan.value = seededReflections
+            }
             loadPlanExtras(actId)
 
             repository.getAllBookmarksFlow().collect { bmList ->
@@ -449,7 +458,13 @@ class PlannerViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Web: addPlannerReflection — active-plan overload (signature unchanged).
+     * Writes the embedded map as before AND mirrors into the planId-keyed
+     * plannerReflections map so reflections survive plan switches.
+     */
     fun saveReflection(dayNumber: Int, note: String) {
+        val planId = _activePlannerId.value
         val current = _activePlan.value ?: return
         val updatedMap = current.assignmentReflections.toMutableMap()
         if (note.isNotBlank()) {
@@ -459,6 +474,41 @@ class PlannerViewModel @Inject constructor(
         }
         val updatedPlan = current.copy(assignmentReflections = updatedMap)
         setActivePlan(updatedPlan)
+        if (planId != null) {
+            _plannerReflectionsByPlan.value = _plannerReflectionsByPlan.value + (planId to updatedMap.toMap())
+        }
+    }
+
+    /**
+     * Web parity: addPlannerReflection(plannerId, dayNumber, text) — write a
+     * reflection for an arbitrary plan; blank text clears the day entry.
+     * For the active plan this delegates to [saveReflection] so the embedded
+     * map (which the reader screen reads) stays in sync.
+     */
+    fun saveReflectionForPlan(planId: String, dayNumber: Int, note: String) {
+        if (planId == _activePlannerId.value) {
+            saveReflection(dayNumber, note)
+            return
+        }
+        val plan = _allPlans.value.find { it.id == planId } ?: return
+        val updatedEmbedded = plan.assignmentReflections.toMutableMap()
+        if (note.isNotBlank()) {
+            updatedEmbedded[dayNumber] = note
+        } else {
+            updatedEmbedded.remove(dayNumber)
+        }
+        _plannerReflectionsByPlan.value = _plannerReflectionsByPlan.value + (planId to updatedEmbedded.toMap())
+        val updatedAll = _allPlans.value.map { if (it.id == planId) plan.copy(assignmentReflections = updatedEmbedded) else it }
+        _allPlans.value = updatedAll
+        viewModelScope.launch {
+            repository.saveAllPlans(updatedAll)
+        }
+    }
+
+    /** Web parity read: plannerReflections[plannerId][dayNumber]?.text */
+    fun getReflectionForPlan(planId: String, dayNumber: Int): String {
+        _plannerReflectionsByPlan.value[planId]?.get(dayNumber)?.let { return it }
+        return _allPlans.value.find { it.id == planId }?.assignmentReflections?.get(dayNumber) ?: ""
     }
 
     fun buildRevisionPlan() {

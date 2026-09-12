@@ -1887,6 +1887,23 @@ private fun IntentionView(
                                     }
                             ) {
                                 Column(modifier = Modifier.padding(14.dp)) {
+                                    // Web parity (Planner.jsx:378): template tag chip.
+                                    if (tmpl.tags.isNotEmpty()) {
+                                        Surface(
+                                            shape = RoundedCornerShape(6.dp),
+                                            color = hTeal.copy(alpha = 0.08f)
+                                        ) {
+                                            Text(
+                                                tmpl.tags[0],
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.Medium,
+                                                color = hTeal,
+                                                fontFamily = fontFamilyMono,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                    }
                                     Text(tmpl.title, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = hInk, fontFamily = fontFamilyUi)
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(tmpl.description, fontSize = 11.sp, color = hInkMid, lineHeight = 16.sp, maxLines = 2)

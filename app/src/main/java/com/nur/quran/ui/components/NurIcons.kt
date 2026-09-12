@@ -381,6 +381,51 @@ object NurIcons {
         "M10 11v6",
         "M14 11v6")
     }
+
+    val Mic: ImageVector by lazy {
+        lucideIcon("Mic",
+        "M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z",
+        "M19 10v2a7 7 0 0 1-14 0v-2",
+        "M12 19v4")
+    }
+
+    val Languages: ImageVector by lazy {
+        lucideIcon("Languages",
+        "m5 8 6 6",
+        "m4 14 6-6 2-3",
+        "M2 5h12",
+        "M7 2h1",
+        "m22 22-5-10-5 10",
+        "M14 18h6")
+    }
+
+    val HardDrive: ImageVector by lazy {
+        lucideIcon("HardDrive",
+        "M12 18h.01",
+        "M4 14h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2Z",
+        "M6 14v-4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v4")
+    }
+
+    val CloudUpload: ImageVector by lazy {
+        lucideIcon("CloudUpload",
+        "M4 14.9A7 7 0 1 1 15.7 8h1.8a4.5 4.5 0 0 1 2.5 8.2",
+        "M12 12v9",
+        "m16 16-4-4-4 4")
+    }
+
+    val CloudDownload: ImageVector by lazy {
+        lucideIcon("CloudDownload",
+        "M4 14.9A7 7 0 1 1 15.7 8h1.8a4.5 4.5 0 0 1 2.5 8.2",
+        "M12 12v9",
+        "m8 17 4 4 4-4")
+    }
+
+    val LogOut: ImageVector by lazy {
+        lucideIcon("LogOut",
+        "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4",
+        "m16 17 5-5-5-5",
+        "M21 12H9")
+    }
 }
 
 private fun lucideIcon(name: String, vararg pathData: String): ImageVector {

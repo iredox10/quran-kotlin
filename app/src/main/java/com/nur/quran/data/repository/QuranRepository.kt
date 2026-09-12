@@ -21,6 +21,7 @@ import com.nur.quran.data.words.WordPackManager
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
@@ -710,21 +711,24 @@ class QuranRepository @Inject constructor(
 
     fun getBookmarkedVerseKeysFlow(): Flow<List<String>> = quranDao.getBookmarkedVerseKeys()
 
-    suspend fun insertBookmark(bookmark: BookmarkEntity) {
+    suspend fun addBookmark(bookmark: BookmarkEntity) = withContext(Dispatchers.IO) {
+        quranDao.insertBookmark(bookmark)
+    }
+
+    suspend fun insertBookmark(bookmark: BookmarkEntity) = withContext(Dispatchers.IO) {
+        quranDao.insertBookmark(bookmark)
+    }
+
+    suspend fun setSingleBookmark(bookmark: BookmarkEntity) = withContext(Dispatchers.IO) {
         quranDao.deleteAllBookmarks()
         quranDao.insertBookmark(bookmark)
     }
 
-    suspend fun setSingleBookmark(bookmark: BookmarkEntity) {
-        quranDao.deleteAllBookmarks()
-        quranDao.insertBookmark(bookmark)
-    }
-
-    suspend fun clearBookmarks() {
+    suspend fun clearBookmarks() = withContext(Dispatchers.IO) {
         quranDao.deleteAllBookmarks()
     }
 
-    suspend fun deleteBookmark(verseKey: String) {
+    suspend fun deleteBookmark(verseKey: String) = withContext(Dispatchers.IO) {
         quranDao.deleteBookmark(verseKey)
     }
 
@@ -770,9 +774,24 @@ class QuranRepository @Inject constructor(
     }
 
     // Collections
+    data class CollectionWithItems(
+        val collection: CollectionEntity,
+        val items: List<CollectionItemEntity>
+    )
+
     fun getCollectionsFlow(): Flow<List<CollectionEntity>> = quranDao.getAllCollections()
 
     fun getAllCollectionItemsFlow(): Flow<List<CollectionItemEntity>> = quranDao.getAllCollectionItems()
+
+    fun getCollectionsWithItemsFlow(): Flow<List<CollectionWithItems>> =
+        combine(getCollectionsFlow(), getAllCollectionItemsFlow()) { collections, items ->
+            collections.map { col ->
+                CollectionWithItems(
+                    collection = col,
+                    items = items.filter { it.collectionId == col.id }
+                )
+            }
+        }
 
     suspend fun addCollection(name: String): Long = withContext(Dispatchers.IO) {
         val id = System.currentTimeMillis()
@@ -780,7 +799,11 @@ class QuranRepository @Inject constructor(
         id
     }
 
-    suspend fun addToCollection(collectionId: Long, verseKey: String, chapterId: Int, surahName: String) {
+    suspend fun deleteCollection(collectionId: Long) = withContext(Dispatchers.IO) {
+        quranDao.deleteCollection(collectionId)
+    }
+
+    suspend fun addToCollection(collectionId: Long, verseKey: String, chapterId: Int, surahName: String) =
         withContext(Dispatchers.IO) {
             quranDao.insertCollectionItem(
                 CollectionItemEntity(
@@ -791,6 +814,9 @@ class QuranRepository @Inject constructor(
                 )
             )
         }
+
+    suspend fun removeFromCollection(collectionId: Long, verseKey: String) = withContext(Dispatchers.IO) {
+        quranDao.deleteCollectionItem(collectionId, verseKey)
     }
 
     // ── Planner ────────────────────────────────────────────────────────

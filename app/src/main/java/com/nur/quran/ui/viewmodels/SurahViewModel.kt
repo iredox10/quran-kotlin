@@ -1572,10 +1572,11 @@ class SurahViewModel @Inject constructor(
         viewModelScope.launch {
             val isCurrentlyBookmarked = verseKey in bookmarkedVerses.value
             if (isCurrentlyBookmarked) {
-                repository.clearBookmarks()
+                repository.deleteBookmark(verseKey)
             } else {
-                repository.setSingleBookmark(
+                repository.addBookmark(
                     BookmarkEntity(
+                        id = verseKey.hashCode(),
                         verseKey = verseKey,
                         chapterId = chapterId,
                         surahName = surahName,

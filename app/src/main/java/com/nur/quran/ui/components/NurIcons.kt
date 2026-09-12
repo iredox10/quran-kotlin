@@ -367,6 +367,20 @@ object NurIcons {
         "M9 18h6",
         "M10 22h4")
     }
+
+    val Folder: ImageVector by lazy {
+        lucideIcon("Folder",
+        "M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 8 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z")
+    }
+
+    val Trash2: ImageVector by lazy {
+        lucideIcon("Trash2",
+        "M3 6h18",
+        "M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6",
+        "M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2",
+        "M10 11v6",
+        "M14 11v6")
+    }
 }
 
 private fun lucideIcon(name: String, vararg pathData: String): ImageVector {

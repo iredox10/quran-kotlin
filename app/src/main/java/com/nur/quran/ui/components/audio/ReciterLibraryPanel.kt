@@ -472,6 +472,11 @@ private fun ReciterSurahsView(
     val chapters by packVm.chapters.collectAsState()
     val downloadState by packVm.downloadState.collectAsState()
     val enqueuedKeys by packVm.enqueuedKeys.collectAsState()
+    // Re-evaluated on every state change so the waiting reason stays fresh.
+    val unmetered = remember(downloadState, enqueuedKeys) {
+        runCatching { NetworkPolicy.isUnmetered(context) }.getOrDefault(true)
+    }
+    val waitingForWifi = wifiOnly && !unmetered
 
     var query by remember { mutableStateOf("") }
     val filtered = remember(query, chapters) {
@@ -547,6 +552,15 @@ private fun ReciterSurahsView(
                 color = hGold,
             )
         }
+        val anyQueued = remember(enqueuedKeys) { enqueuedKeys.any { it.startsWith("$reciterId:") } }
+        if (!busy && anyQueued && waitingForWifi) {
+            Text(
+                text = "Waiting for WiFi — downloads resume automatically. Turn off WiFi-only in Settings → Data to use mobile data.",
+                fontFamily = fontFamilyBody,
+                fontSize = 11.sp,
+                color = hInkMuted,
+            )
+        }
 
         Column(
             modifier = Modifier.fillMaxWidth(),
@@ -599,6 +613,7 @@ private fun ReciterSurahsView(
                             text = "${chapter.nameArabic} • ${chapter.versesCount} ayahs" +
                                 if (downloading && progress != null && progress.total > 0)
                                     " • ${progress.downloaded}/${progress.total}"
+                                else if (queued && waitingForWifi) " • Waiting for WiFi…"
                                 else if (queued) " • Queued…" else "",
                             fontFamily = fontFamilyBody,
                             fontSize = 11.sp,
@@ -607,7 +622,20 @@ private fun ReciterSurahsView(
                     }
                     when {
                         downloading -> {
-                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = hGold)
+                            val fraction = if (progress != null && progress.total > 0)
+                                (progress.downloaded.toFloat() / progress.total).coerceIn(0f, 1f)
+                            else null
+                            if (fraction != null) {
+                                CircularProgressIndicator(
+                                    progress = fraction,
+                                    modifier = Modifier.size(22.dp),
+                                    strokeWidth = 2.5.dp,
+                                    color = hGold,
+                                    trackColor = hBorderColor,
+                                )
+                            } else {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = hGold)
+                            }
                             IconButton(onClick = { runCatching { packVm.cancelSurah(reciterId, chapter.id) } }, modifier = Modifier.size(30.dp)) {
                                 Icon(imageVector = NurIcons.X, contentDescription = "Cancel", tint = hInkMuted, modifier = Modifier.size(16.dp))
                             }

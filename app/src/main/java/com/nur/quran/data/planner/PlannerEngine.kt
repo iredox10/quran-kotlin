@@ -27,16 +27,17 @@ data class PlanTemplate(
     val unitType: String,
     val startUnit: Int,
     val endUnit: Int,
-    val description: String
+    val description: String,
+    val tags: List<String> = emptyList()
 )
 
 val PLAN_TEMPLATES = listOf(
-    PlanTemplate("ramadan-last-10", "Ramadan Last 10", 10, "page", 542, 604, "Complete the last 3 Ajza in the last 10 days"),
-    PlanTemplate("juz-amma", "Juz Amma Focus", 15, "page", 582, 604, "Take 15 days to master the 30th Juz"),
-    PlanTemplate("al-kahf", "Surah Al-Kahf Weekly", 1, "surah", 18, 18, "The recommended Friday reading"),
-    PlanTemplate("tafsir-deep-dive", "Tafsir Deep Dive", 114, "surah", 1, 114, "One Surah per week (requires manually setting days off)"),
-    PlanTemplate("monthly-juz", "Monthly Juz", 30, "juz", 1, 30, "One Juz per month (set custom duration when creating)"),
-    PlanTemplate("quick-revision", "Quick Revision", 10, "juz", 1, 30, "Full Quran in 10 days for intense revision")
+    PlanTemplate("ramadan-last-10", "Ramadan Last 10", 10, "page", 542, 604, "Complete the last 3 Ajza in the last 10 days", listOf("Ramadan")),
+    PlanTemplate("juz-amma", "Juz Amma Focus", 15, "page", 582, 604, "Take 15 days to master the 30th Juz", listOf("Juz 30")),
+    PlanTemplate("al-kahf", "Surah Al-Kahf", 1, "surah", 18, 18, "The recommended Friday reading — a single-day focus", listOf("Friday")),
+    PlanTemplate("tafsir-deep-dive", "Tafsir Deep Dive", 114, "surah", 1, 114, "One Surah per day — a 114-day deep dive through the Quran", listOf("Study")),
+    PlanTemplate("daily-juz", "Daily Juz", 30, "juz", 1, 30, "One Juz per day — complete the Quran in a month", listOf("Juz")),
+    PlanTemplate("quick-revision", "Quick Revision", 10, "juz", 1, 30, "Full Quran in 10 days for intense revision", listOf("Review"))
 )
 
 data class PlannerItem(

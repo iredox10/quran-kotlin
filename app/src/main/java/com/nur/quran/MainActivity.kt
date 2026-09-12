@@ -46,6 +46,7 @@ import com.nur.quran.ui.screens.SurahScreen
 import com.nur.quran.ui.viewmodels.HomeViewModel
 import com.nur.quran.ui.viewmodels.SurahViewModel
 import com.nur.quran.ui.viewmodels.PlannerViewModel
+import com.nur.quran.ui.viewmodels.LibraryViewModel
 import com.nur.quran.ui.components.NurIcons
 import dagger.hilt.android.AndroidEntryPoint
 import com.nur.quran.ui.screens.*
@@ -58,6 +59,7 @@ class MainActivity : ComponentActivity() {
     private val homeViewModel: HomeViewModel by viewModels()
     private val surahViewModel: SurahViewModel by viewModels()
     private val plannerViewModel: PlannerViewModel by viewModels()
+    private val libraryViewModel: LibraryViewModel by viewModels()
 
     private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
@@ -201,6 +203,7 @@ class MainActivity : ComponentActivity() {
                         }
                         composable(Screen.Library.route) {
                             LibraryScreen(
+                                viewModel = libraryViewModel,
                                 onBackClick = { navController.popBackStack() },
                                 onNavigateToVerse = { chapterId, verseKey ->
                                     navController.navigate(Screen.SurahDetail.createRoute(chapterId, verseKey))

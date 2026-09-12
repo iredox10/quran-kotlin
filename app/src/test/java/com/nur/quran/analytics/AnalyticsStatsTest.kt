@@ -80,4 +80,46 @@ class AnalyticsStatsTest {
             AnalyticsStats.smartInsight(emptyList())
         )
     }
+
+    @Test
+    fun `smart insight weights by duration not session count`() {
+        // Monday (2026-09-07): 3 sessions of 60s each = 180s total
+        // Friday (2026-09-11): 1 session of 600s = 600s total
+        val sessions = listOf(
+            AnalyticsStats.Session(date = "2026-09-07", durationSec = 60L),
+            AnalyticsStats.Session(date = "2026-09-07", durationSec = 60L),
+            AnalyticsStats.Session(date = "2026-09-07", durationSec = 60L),
+            AnalyticsStats.Session(date = "2026-09-11", durationSec = 600L)
+        )
+        // Session count would favor Monday (3 vs 1), but duration favors Friday (600s vs 180s)
+        val insight = AnalyticsStats.smartInsight(sessions)
+        assertEquals(
+            "You usually read best on Fridays. Keep up the great momentum!",
+            insight
+        )
+    }
+
+    @Test
+    fun `smart insight zero duration returns default text`() {
+        val sessions = listOf(
+            AnalyticsStats.Session(date = "2026-09-07", durationSec = 0L)
+        )
+        assertEquals(
+            "Start reading to unlock insights!",
+            AnalyticsStats.smartInsight(sessions)
+        )
+    }
+
+    @Test
+    fun `formatMinutes formats minutes and hours matching web parity`() {
+        assertEquals("0m", AnalyticsStats.formatMinutes(0L))
+        assertEquals("1m", AnalyticsStats.formatMinutes(45L))
+        assertEquals("25m", AnalyticsStats.formatMinutes(25 * 60L))
+        assertEquals("59m", AnalyticsStats.formatMinutes(59 * 60L))
+        assertEquals("1h", AnalyticsStats.formatMinutes(60 * 60L))
+        assertEquals("1h 1m", AnalyticsStats.formatMinutes(61 * 60L))
+        assertEquals("1h 30m", AnalyticsStats.formatMinutes(90 * 60L))
+        assertEquals("2h", AnalyticsStats.formatMinutes(120 * 60L))
+        assertEquals("2h 5m", AnalyticsStats.formatMinutes(125 * 60L))
+    }
 }

@@ -82,7 +82,15 @@ object AnalyticsStats {
     fun weeklyGoalPercent(weeklyMins: Int, goalMins: Int = 180): Int =
         ((weeklyMins.toFloat() / goalMins.toFloat()) * 100f).coerceAtMost(100f).toInt()
 
-    /** Best weekday by session count — mirrors web smartInsight text. */
+    fun formatMinutes(seconds: Long): String {
+        val mins = Math.round(seconds / 60.0f).toInt()
+        if (mins < 60) return "${mins}m"
+        val hrs = mins / 60
+        val rem = mins % 60
+        return if (rem > 0) "${hrs}h ${rem}m" else "${hrs}h"
+    }
+
+    /** Best weekday by duration seconds — mirrors web smartInsight text. */
     fun smartInsight(sessions: List<Session>): String {
         if (sessions.isEmpty()) return "Start reading to unlock insights!"
         val dayCounts = mutableMapOf("Sun" to 0L, "Mon" to 0L, "Tue" to 0L, "Wed" to 0L, "Thu" to 0L, "Fri" to 0L, "Sat" to 0L)
@@ -90,13 +98,13 @@ object AnalyticsStats {
         val label = SimpleDateFormat("EEE", Locale.US)
         sessions.forEach { s ->
             runCatching { label.format(sdf.parse(s.date)!!) }.getOrNull()?.let { d ->
-                dayCounts[d] = (dayCounts[d] ?: 0L) + 1
+                dayCounts[d] = (dayCounts[d] ?: 0L) + s.durationSec
             }
         }
         val best = dayCounts.maxByOrNull { it.value }?.key ?: return "Start reading to unlock insights!"
         if ((dayCounts[best] ?: 0L) == 0L) return "Start reading to unlock insights!"
         val full = mapOf("Sun" to "Sundays", "Mon" to "Mondays", "Tue" to "Tuesdays", "Wed" to "Wednesdays", "Thu" to "Thursdays", "Fri" to "Fridays", "Sat" to "Saturdays")
-        return "You're most consistent on ${full[best]}. Keep it up!"
+        return "You usually read best on ${full[best]}. Keep up the great momentum!"
     }
 
     /** Web parity: union of session chapterIds + recentlyRead, newest tier first. */

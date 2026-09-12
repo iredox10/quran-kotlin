@@ -57,7 +57,7 @@ object ProfileUtils {
     /**
      * Time-of-day greeting matching web greeting.
      */
-    fun getGreeting(hour: Int): String = when {
+    fun getGreeting(hour: Int = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)): String = when {
         hour < 12 -> "Good Morning"
         hour < 17 -> "Good Afternoon"
         else -> "Good Evening"

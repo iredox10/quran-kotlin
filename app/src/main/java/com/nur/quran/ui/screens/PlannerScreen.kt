@@ -65,6 +65,10 @@ fun PlannerScreen(
     var viewMode by remember { mutableStateOf(if (activePlan != null) "dashboard" else "intention") }
     var currentTab by remember { mutableStateOf("Today") }
     var showRebalanceDialog by remember { mutableStateOf(false) }
+    // Web parity (Planner.jsx #adjust-pace-btn): Adjust Pace is a separate modal
+    // from the Rebalance dialog — it re-calculates daily assignments for the
+    // remaining plan via adjustActivePlannerPace (custom_pace).
+    var showAdjustPaceDialog by remember { mutableStateOf(false) }
     var showArchivesDialog by remember { mutableStateOf(false) }
     var showPlannerSettings by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
@@ -246,6 +250,9 @@ fun PlannerScreen(
                             }
                             TextButton(onClick = { showRebalanceDialog = true }) {
                                 Text("Rebalance", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = hGold)
+                            }
+                            TextButton(onClick = { showAdjustPaceDialog = true }) {
+                                Text("Adjust", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = hTeal)
                             }
                             TextButton(onClick = { viewMode = "intention" }) {
                                 Text("+ New", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = hTeal)
@@ -1037,9 +1044,6 @@ fun PlannerScreen(
     }
 
     if (showRebalanceDialog) {
-        var customDaysText by remember(activePlan?.id) {
-            mutableStateOf((activePlan?.durationDays ?: 30).toString())
-        }
         AlertDialog(
             onDismissRequest = { showRebalanceDialog = false },
             title = { Text("Smart Pace Rebalance", fontSize = 18.sp, fontWeight = FontWeight.Bold, fontFamily = fontFamilyUi) },
@@ -1070,45 +1074,67 @@ fun PlannerScreen(
                     ) {
                         Text("Extend Target End Date", fontSize = 13.sp, color = Color.White)
                     }
-
-                    // Web parity: adjust pace to a custom total duration.
-                    // Web (Planner.jsx): min = max(1, min(duration, completed + 1)).
-                    val dialogPlan = activePlan
-                    val dialogCompleted = dialogPlan?.let { PlannerEngine.getPlannerOverview(it)?.completedCount } ?: 0
-                    val minNewDuration = kotlin.math.max(1, kotlin.math.min(dialogPlan?.durationDays ?: 30, dialogCompleted + 1))
-                    Text("Or set a custom total duration (min $minNewDuration days):", fontSize = 13.sp, color = hInkMid)
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        OutlinedTextField(
-                            value = customDaysText,
-                            onValueChange = { v -> customDaysText = v.filter { it.isDigit() }.take(4) },
-                            label = { Text("Total days", fontSize = 11.sp) },
-                            singleLine = true,
-                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                                keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
-                            ),
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                        Button(
-                            onClick = {
-                                val days = (customDaysText.toIntOrNull() ?: minNewDuration).coerceAtLeast(minNewDuration)
-                                runCatching { plannerViewModel.rebalancePlan("custom_pace", days) }
-                                showRebalanceDialog = false
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = hTeal),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Text("Apply", fontSize = 13.sp, color = Color.White)
-                        }
-                    }
                 }
             },
             confirmButton = {},
             dismissButton = {
                 TextButton(onClick = { showRebalanceDialog = false }) {
+                    Text("Cancel", color = hInkMuted)
+                }
+            }
+        )
+    }
+
+    // Web parity (Planner.jsx showAdjustPace modal): standalone Adjust Pace
+    // dialog — new total duration for remaining plan, min =
+    // max(1, min(duration, completed + 1)), applied via adjustActivePlannerPace.
+    if (showAdjustPaceDialog) {
+        var adjustDaysText by remember(activePlan?.id) {
+            mutableStateOf((activePlan?.durationDays ?: 30).toString())
+        }
+        val adjustPlan = activePlan
+        val adjustCompleted = adjustPlan?.let { PlannerEngine.getPlannerOverview(it)?.completedCount } ?: 0
+        val minAdjustDuration = kotlin.math.max(1, kotlin.math.min(adjustPlan?.durationDays ?: 30, adjustCompleted + 1))
+        AlertDialog(
+            onDismissRequest = { showAdjustPaceDialog = false },
+            title = { Text("Adjust Pace", fontSize = 18.sp, fontWeight = FontWeight.Bold, fontFamily = fontFamilyUi) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        "Change how many days you want to complete your remaining plan in. This will re-calculate your daily assignments.",
+                        fontSize = 13.sp,
+                        color = hInkMid
+                    )
+                    Text("New Total Days (min $minAdjustDuration days):", fontSize = 13.sp, color = hInkMid)
+                    OutlinedTextField(
+                        value = adjustDaysText,
+                        onValueChange = { v -> adjustDaysText = v.filter { it.isDigit() }.take(4) },
+                        label = { Text("Total days", fontSize = 11.sp) },
+                        suffix = { Text("DAYS", fontSize = 11.sp, color = hInkMuted) },
+                        singleLine = true,
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val days = (adjustDaysText.toIntOrNull() ?: minAdjustDuration).coerceAtLeast(minAdjustDuration)
+                        runCatching { plannerViewModel.adjustActivePlannerPace(days) }
+                        showAdjustPaceDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = hTeal),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Apply", fontSize = 13.sp, color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAdjustPaceDialog = false }) {
                     Text("Cancel", color = hInkMuted)
                 }
             }

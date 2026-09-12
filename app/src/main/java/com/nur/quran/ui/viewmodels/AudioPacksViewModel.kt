@@ -69,6 +69,32 @@ class AudioPacksViewModel @Inject constructor(
     val downloadState: StateFlow<Map<String, DownloadProgress>> =
         audioDownloadManager.downloadState
 
+    /** Keys "$reciterId:$chapterId" tapped for download but not yet terminal.
+     * Gives INSTANT row feedback ("Queued…") even while the worker waits on
+     * constraints (e.g. WiFi-only on mobile data). Pruned on done/error. */
+    private val _enqueuedKeys = MutableStateFlow<Set<String>>(emptySet())
+    val enqueuedKeys: StateFlow<Set<String>> = _enqueuedKeys.asStateFlow()
+
+    private fun markEnqueued(reciterId: Int, chapterId: Int) {
+        _enqueuedKeys.value = _enqueuedKeys.value + "$reciterId:$chapterId"
+    }
+
+    private fun unmarkEnqueued(reciterId: Int, chapterId: Int) {
+        _enqueuedKeys.value = _enqueuedKeys.value - "$reciterId:$chapterId"
+    }
+
+    /** Drop queued keys that reached a terminal state (done or failed). */
+    private fun pruneEnqueued() {
+        val live = audioDownloadManager.downloadState.value
+        _enqueuedKeys.value = _enqueuedKeys.value.filter { key ->
+            val parts = key.split(":").mapNotNull { it.toIntOrNull() }
+            if (parts.size != 2) return@filter false
+            val (r, c) = parts
+            val st = live[key]
+            !isSurahDownloaded(r, c) && st?.error.isNullOrBlank()
+        }.toSet()
+    }
+
     private val _totalBytes = MutableStateFlow(0L)
     val totalBytes: StateFlow<Long> = _totalBytes.asStateFlow()
 
@@ -108,6 +134,7 @@ class AudioPacksViewModel @Inject constructor(
     }
 
     private fun refreshInternal() {
+        pruneEnqueued()
         val live = audioDownloadManager.downloadState.value
         val states = Reciters.ALL.map { r ->
             val downloaded = runCatching {
@@ -161,8 +188,10 @@ class AudioPacksViewModel @Inject constructor(
     ) {
         viewModelScope.launch(Dispatchers.IO) {
             runCatching {
+                ensureVerseCounts()
                 val keys = verseKeys.ifEmpty { verseKeysFor(chapterId) }
                 if (keys.isEmpty()) return@runCatching
+                markEnqueued(reciterId, chapterId)
                 AudioDownloadWorker.enqueue(context, reciterId, chapterId, keys, wifiOnly)
                 refreshInternal()
             }
@@ -224,6 +253,7 @@ class AudioPacksViewModel @Inject constructor(
     }
 
     fun cancelSurah(reciterId: Int, chapterId: Int) {
+        unmarkEnqueued(reciterId, chapterId)
         viewModelScope.launch(Dispatchers.IO) {
             runCatching {
                 audioDownloadManager.cancelDownload(reciterId, chapterId)
@@ -236,6 +266,7 @@ class AudioPacksViewModel @Inject constructor(
     }
 
     fun deleteSurah(reciterId: Int, chapterId: Int) {
+        unmarkEnqueued(reciterId, chapterId)
         viewModelScope.launch(Dispatchers.IO) {
             runCatching {
                 runCatching {

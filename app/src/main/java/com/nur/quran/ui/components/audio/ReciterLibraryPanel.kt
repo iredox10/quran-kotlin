@@ -471,6 +471,7 @@ private fun ReciterSurahsView(
     val wifiOnly = runCatching { NetworkPolicy.isWifiOnly(context) }.getOrDefault(true)
     val chapters by packVm.chapters.collectAsState()
     val downloadState by packVm.downloadState.collectAsState()
+    val enqueuedKeys by packVm.enqueuedKeys.collectAsState()
 
     var query by remember { mutableStateOf("") }
     val filtered = remember(query, chapters) {
@@ -558,6 +559,9 @@ private fun ReciterSurahsView(
                 val done = remember(downloadState, chapter.id) {
                     runCatching { packVm.isSurahDownloaded(reciterId, chapter.id) }.getOrDefault(false)
                 }
+                val queued = remember(enqueuedKeys, chapter.id) {
+                    enqueuedKeys.contains(key) && !downloading && !done
+                }
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -594,15 +598,22 @@ private fun ReciterSurahsView(
                         Text(
                             text = "${chapter.nameArabic} • ${chapter.versesCount} ayahs" +
                                 if (downloading && progress != null && progress.total > 0)
-                                    " • ${progress.downloaded}/${progress.total}" else "",
+                                    " • ${progress.downloaded}/${progress.total}"
+                                else if (queued) " • Queued…" else "",
                             fontFamily = fontFamilyBody,
                             fontSize = 11.sp,
-                            color = hInkMuted,
+                            color = if (queued) hGold else hInkMuted,
                         )
                     }
                     when {
                         downloading -> {
                             CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = hGold)
+                            IconButton(onClick = { runCatching { packVm.cancelSurah(reciterId, chapter.id) } }, modifier = Modifier.size(30.dp)) {
+                                Icon(imageVector = NurIcons.X, contentDescription = "Cancel", tint = hInkMuted, modifier = Modifier.size(16.dp))
+                            }
+                        }
+                        queued -> {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = hInkMuted)
                             IconButton(onClick = { runCatching { packVm.cancelSurah(reciterId, chapter.id) } }, modifier = Modifier.size(30.dp)) {
                                 Icon(imageVector = NurIcons.X, contentDescription = "Cancel", tint = hInkMuted, modifier = Modifier.size(16.dp))
                             }

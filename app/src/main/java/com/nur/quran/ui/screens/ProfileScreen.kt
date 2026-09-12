@@ -341,6 +341,7 @@ fun ProfileScreen(
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     val quickLinks = listOf(
+                        Triple(Screen.Library.route, "Library", NurIcons.Bookmark),
                         Triple(Screen.Analytics.route, "Analytics", NurIcons.BookOpen),
                         Triple(Screen.Planner.route, "Planner", NurIcons.CalendarDays),
                         Triple(Screen.Memorize.route, "Memorize", NurIcons.Brain)

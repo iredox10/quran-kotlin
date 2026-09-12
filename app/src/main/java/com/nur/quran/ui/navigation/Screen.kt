@@ -9,6 +9,7 @@ sealed class Screen(val route: String, val label: String) {
     
     // Immersive detail screens (no bottom nav)
     object Downloads : Screen("downloads", "Downloads")
+    object Library : Screen("library", "Library")
     object SurahDetail : Screen("surah/{chapterId}?verseKey={verseKey}", "Surah") {
         fun createRoute(chapterId: Int, verseKey: String? = null) =
             if (!verseKey.isNullOrBlank()) "surah/$chapterId?verseKey=$verseKey" else "surah/$chapterId"

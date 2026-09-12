@@ -121,14 +121,14 @@ class MainActivity : ComponentActivity() {
                                     navController.navigate(Screen.Planner.route)
                                 },
                                 onNavigateToBookmarks = {
-                                    navController.navigate(Screen.Analytics.route)
+                                    navController.navigate(Screen.Library.route)
                                 },
                                 onNavigateToRoute = { route ->
                                     when (route) {
                                         "planner" -> navController.navigate(Screen.Planner.route)
                                         "memorize" -> navController.navigate(Screen.Memorize.route)
                                         "surah" -> navController.navigate(Screen.SurahDetail.createRoute(1))
-                                        "library" -> navController.navigate(Screen.Analytics.route)
+                                        "library" -> navController.navigate(Screen.Library.route)
                                     }
                                 }
                             )
@@ -177,6 +177,12 @@ class MainActivity : ComponentActivity() {
                                     navController.navigate(Screen.Quran.route) {
                                         popUpTo(Screen.Quran.route) { inclusive = true }
                                     }
+                                },
+                                onOpenLibraryClick = {
+                                    navController.navigate(Screen.Library.route)
+                                },
+                                onOpenCollectionsClick = {
+                                    navController.navigate(Screen.Library.route)
                                 }
                             )
                         }
@@ -192,6 +198,17 @@ class MainActivity : ComponentActivity() {
                             val audioPacksVm: com.nur.quran.ui.viewmodels.AudioPacksViewModel =
                                 androidx.hilt.navigation.compose.hiltViewModel()
                             DownloadsScreen(packVm = audioPacksVm, onBack = { navController.popBackStack() })
+                        }
+                        composable(Screen.Library.route) {
+                            LibraryScreen(
+                                onBackClick = { navController.popBackStack() },
+                                onNavigateToVerse = { chapterId, verseKey ->
+                                    navController.navigate(Screen.SurahDetail.createRoute(chapterId, verseKey))
+                                },
+                                onLaunchHifdh = { chapterId ->
+                                    navController.navigate(Screen.MemorizeDetail.createRoute(chapterId))
+                                }
+                            )
                         }
                         composable(
                             route = Screen.SurahDetail.route,

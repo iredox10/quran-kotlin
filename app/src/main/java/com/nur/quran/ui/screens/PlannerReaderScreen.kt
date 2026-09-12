@@ -106,6 +106,10 @@ fun PlannerReaderScreen(
     val appPrefs = LocalContext.current.getSharedPreferences("PlannerSettings", Context.MODE_PRIVATE)
     val showIntentionPrompt = appPrefs.getBoolean("show_intention_prompt", true)
 
+    // ── Focus mode (web parity: PlannerReader.jsx isFocusMode immersive
+    // hide-chrome): explicit user toggle that hides the header + bottom bar.
+    // Separate from the existing scroll-driven headerVisible auto-hide.
+    var isFocusMode by remember { mutableStateOf(false) }
     // ── Focus mode: auto-hide header during scroll ───────────────────
     val lazyListState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
@@ -255,9 +259,9 @@ fun PlannerReaderScreen(
                 )
             }
     ) {
-        // ── Header Bar (auto-hides on scroll) ────────────────────────
+        // ── Header Bar (auto-hides on scroll; fully hidden in focus mode) ──
         AnimatedVisibility(
-            visible = headerVisible,
+            visible = headerVisible && !isFocusMode,
             enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
             exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut()
         ) {
@@ -288,6 +292,18 @@ fun PlannerReaderScreen(
                         }
 
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            // Focus mode toggle (web parity: isFocusMode immersive hide-chrome)
+                            IconButton(
+                                onClick = { isFocusMode = !isFocusMode },
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (isFocusMode) NurIcons.EyeOff else NurIcons.Eye,
+                                    contentDescription = if (isFocusMode) "Exit focus mode" else "Enter focus mode",
+                                    tint = if (isFocusMode) hGold else hInk
+                                )
+                            }
+
                             // Auto-scroll toggle button
                             IconButton(
                                 onClick = {
@@ -626,7 +642,8 @@ fun PlannerReaderScreen(
             }
         }
 
-        // Bottom Dock Bar: Navigation between pages
+        // Bottom Dock Bar: Navigation between pages (hidden in focus mode)
+        if (!isFocusMode) {
         Surface(
             color = hWhite,
             tonalElevation = 6.dp,
@@ -679,6 +696,30 @@ fun PlannerReaderScreen(
                         Spacer(modifier = Modifier.width(6.dp))
                         Text("Finish Day Assignment", fontSize = 13.sp, color = Color.White, fontWeight = FontWeight.Bold)
                     }
+                }
+            }
+        }
+        }
+    }
+
+    // Floating exit-focus chip while chrome is hidden (web: toggle back out).
+    if (isFocusMode) {
+        Box(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            contentAlignment = Alignment.TopEnd
+        ) {
+            Surface(
+                onClick = { isFocusMode = false },
+                shape = RoundedCornerShape(100),
+                color = hInk.copy(alpha = 0.7f)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    Icon(imageVector = NurIcons.Eye, contentDescription = "Exit focus mode", tint = Color.White, modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Exit Focus", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
                 }
             }
         }

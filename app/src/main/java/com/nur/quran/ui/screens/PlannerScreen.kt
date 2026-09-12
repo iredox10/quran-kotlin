@@ -37,7 +37,12 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.nur.quran.data.db.entities.ChapterEntity
 import com.nur.quran.data.planner.*
+import androidx.compose.foundation.lazy.rememberLazyListState
+import com.nur.quran.ui.components.Coachmark
 import com.nur.quran.ui.components.NurIcons
+import com.nur.quran.ui.components.PageTourModal
+import com.nur.quran.ui.components.TourStep
+import com.nur.quran.utils.TourPrefs
 import com.nur.quran.ui.components.SettingsDrawer
 import com.nur.quran.ui.viewmodels.HomeViewModel
 import com.nur.quran.ui.viewmodels.PackViewModel
@@ -86,6 +91,20 @@ fun PlannerScreen(
     }
 
     var hasCheckedRebalance by remember { mutableStateOf(false) }
+    // Web parity (Planner.jsx tours): planner-tour (threshold 1) + advanced
+    // tour (threshold 3). Visit counting via TourPrefs("planner") so thresholds
+    // actually advance across revisits like the web pageVisits counter.
+    val tourPrefs = remember(context) { TourPrefs(context) }
+    var plannerVisits by remember { mutableStateOf(tourPrefs.pageVisits("planner")) }
+    var completedTours by remember { mutableStateOf(setOf<String>().let { s ->
+        listOf("planner-tour", "planner-tour-advanced").filter { tourPrefs.isTourCompleted(it) }.toSet()
+    }) }
+    val plannerListState = rememberLazyListState()
+    val tourTargetRects = remember { mutableStateMapOf<String, androidx.compose.ui.geometry.Rect>() }
+    LaunchedEffect(Unit) {
+        tourPrefs.incrementPageVisit("planner")
+        plannerVisits = tourPrefs.pageVisits("planner")
+    }
     LaunchedEffect(activePlan, hasCheckedRebalance) {
         if (activePlan != null && !hasCheckedRebalance) {
             val overview = PlannerEngine.getPlannerOverview(activePlan)
@@ -158,6 +177,7 @@ fun PlannerScreen(
 
             LazyColumn(
                 modifier = Modifier.weight(1f),
+                state = plannerListState,
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 20.dp)
             ) {
                 // Dashboard Header & Mode Switcher Button
@@ -254,6 +274,15 @@ fun PlannerScreen(
                             TextButton(onClick = { showAdjustPaceDialog = true }) {
                                 Text("Adjust", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = hTeal)
                             }
+                            Coachmark(
+                                id = "planner-adjust-pace",
+                                label = "Tune pace here",
+                                isDismissed = tourPrefs.isCoachmarkDismissed("planner-adjust-pace"),
+                                onDismiss = {
+                                    tourPrefs.dismissCoachmark("planner-adjust-pace")
+                                },
+                                content = { Spacer(modifier = Modifier.width(0.dp)) }
+                            )
                             TextButton(onClick = { viewMode = "intention" }) {
                                 Text("+ New", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = hTeal)
                             }
@@ -448,7 +477,7 @@ fun PlannerScreen(
 
                                 // Today's assignment card
                                 val difficultyMap = remember(plan) { PlannerEngine.getDifficultyIndicators(plan.assignments) }
-                                val difficulty = difficultyMap[todayAssignment.dayNumber] ?: "moderate"
+                                val difficulty = difficultyMap[todayAssignment.dayNumber]?.level ?: "moderate"
                                 val difficultyLabel = difficulty.replaceFirstChar { it.uppercase() }
 
                                 Card(
@@ -709,7 +738,7 @@ fun PlannerScreen(
                             ) {
                                 plan.assignments.forEach { a ->
                                     val status = PlannerEngine.getAssignmentStatus(plan, a)
-                                    val diff = difficultyMap[a.dayNumber] ?: "moderate"
+                                    val diff = difficultyMap[a.dayNumber]?.level ?: "moderate"
                                     
                                     val bgColor = when (status) {
                                         "completed" -> hGold
@@ -1378,6 +1407,53 @@ fun PlannerScreen(
             wordProgressByTafsir = wordProgress
         )
     }
+
+    // ── Guided tours (web parity: Planner.jsx planner-tour + advanced) ───
+    // visitThreshold=3 for the advanced tour, matching the web PageTourModal.
+    val dashboardReady = activePlan != null && viewMode == "dashboard"
+    PageTourModal(
+        tourId = "planner-tour",
+        pageId = "planner",
+        visitThreshold = 1,
+        enabled = dashboardReady,
+        steps = listOf(
+            TourStep(title = "Your Planner", description = "Create a reading or memorization plan tailored to your pace.", icon = NurIcons.CalendarDays),
+            TourStep(title = "Daily Assignments", description = "Your plan is broken down into daily tasks. Check them off as you complete them.", icon = NurIcons.CheckCircle2, target = "#daily-assignments"),
+            TourStep(title = "Adjust Pace", description = "Falling behind or going too fast? Use the options to adjust your pace or rebalance your plan.", icon = NurIcons.Settings, target = "#adjust-pace-btn")
+        ),
+        completedTours = completedTours,
+        pageVisits = plannerVisits,
+        isDark = isDarkThemeGlobal,
+        sectionIndices = mapOf("#daily-assignments" to 1, "#adjust-pace-btn" to 0),
+        lazyListState = plannerListState,
+        targetRects = tourTargetRects,
+        onCompleteTour = { id ->
+            tourPrefs.completeTour(id)
+            completedTours = completedTours + id
+        },
+        onNavigateToRoute = {}
+    )
+    PageTourModal(
+        tourId = "planner-tour-advanced",
+        pageId = "planner",
+        visitThreshold = 3,
+        enabled = dashboardReady,
+        steps = listOf(
+            TourStep(title = "Smart Rebalancing", description = "If you miss a few days, the app can automatically redistribute your remaining reading to keep your end date.", icon = NurIcons.RefreshCw),
+            TourStep(title = "Progress Visualization", description = "Your heatmap and progress bar show how far you've come. Keep the streak alive!", icon = NurIcons.TrendingUp)
+        ),
+        completedTours = completedTours,
+        pageVisits = plannerVisits,
+        isDark = isDarkThemeGlobal,
+        sectionIndices = emptyMap(),
+        lazyListState = plannerListState,
+        targetRects = tourTargetRects,
+        onCompleteTour = { id ->
+            tourPrefs.completeTour(id)
+            completedTours = completedTours + id
+        },
+        onNavigateToRoute = {}
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

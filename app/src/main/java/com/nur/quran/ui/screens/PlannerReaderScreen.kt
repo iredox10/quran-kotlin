@@ -31,6 +31,7 @@ import com.nur.quran.data.planner.PlannerEngine
 import com.nur.quran.ui.components.AutoScrollerBar
 import androidx.compose.foundation.gestures.scrollBy
 import com.nur.quran.ui.components.NurIcons
+import com.nur.quran.ui.components.audio.AudioSetupSheet
 import com.nur.quran.ui.viewmodels.PlannerViewModel
 import com.nur.quran.ui.viewmodels.SurahUiState
 import com.nur.quran.ui.viewmodels.SurahViewModel
@@ -94,6 +95,14 @@ fun PlannerReaderScreen(
     val playingVerseKey by surahViewModel.playingVerseKey.collectAsState()
     val isPlaying by surahViewModel.isPlaying.collectAsState()
     var verseToShare by remember { mutableStateOf<VerseEntity?>(null) }
+    // Web parity (PlannerReader.jsx showAudioSetup modal): in-reader audio setup
+    // with day-scoped playlist wiring — the sheet plays the current page's
+    // verses (the day's loaded content) via playRange on confirm.
+    var showReaderAudioSetup by remember { mutableStateOf(false) }
+    val currentReciterId by surahViewModel.currentReciterId.collectAsState()
+    val playbackSettings by surahViewModel.playbackSettings.collectAsState()
+    val readerStreamOnly by surahViewModel.streamOnly.collectAsState()
+    val readerScrollWhilePlaying by surahViewModel.scrollWhilePlaying.collectAsState()
 
     // Mushaf-aware rendering (web parity: script/tajweed follow the mushaf)
     val isTajweedEffective by surahViewModel.isTajweedEffective.collectAsState()
@@ -319,7 +328,8 @@ fun PlannerReaderScreen(
                                 )
                             }
 
-                            // Audio Play/Pause Button
+                            // Audio Play/Pause Button (tap toggles, setup opens via the
+                            // settings row below so playback stays day-scoped)
                             IconButton(
                                 onClick = {
                                     val state = uiState
@@ -334,6 +344,19 @@ fun PlannerReaderScreen(
                                     imageVector = if (isPlaying) NurIcons.PauseFilled else NurIcons.PlayFilled,
                                     contentDescription = if (isPlaying) "Pause Audio" else "Play Audio",
                                     tint = hTeal
+                                )
+                            }
+
+                            // In-reader audio setup entry (web parity: AudioSetupModal in
+                            // PlannerReader.jsx) — day-scoped playlist wiring.
+                            IconButton(
+                                onClick = { showReaderAudioSetup = true },
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(
+                                    imageVector = NurIcons.Settings,
+                                    contentDescription = "Audio setup",
+                                    tint = hInk
                                 )
                             }
 
@@ -884,6 +907,64 @@ fun PlannerReaderScreen(
                 ) {
                     Text(if (reflectionNote.isNotBlank()) "Save & Return" else "Return to Planner", color = Color.White, fontWeight = FontWeight.Bold)
                 }
+            }
+        )
+    }
+
+    // ── In-reader AudioSetupSheet (web parity: AudioSetupModal, day-scoped) ──
+    // Plays the currently loaded page verses as the day's playlist slice.
+    val readerVerses = (uiState as? SurahUiState.Success)?.verses ?: emptyList()
+    if (showReaderAudioSetup && readerVerses.isNotEmpty()) {
+        val firstVerse = readerVerses.first()
+        AudioSetupSheet(
+            chapterId = firstVerse.chapterId,
+            versesCount = readerVerses.size,
+            initialReciterId = currentReciterId,
+            initialStartAyah = 1,
+            initialEndAyah = readerVerses.size,
+            initialAyahRepeat = playbackSettings.ayahRepeat,
+            initialRangeRepeat = playbackSettings.rangeRepeat,
+            initialDelayMs = playbackSettings.delayMs,
+            initialSpeed = playbackSettings.speed,
+            initialStreamOnly = readerStreamOnly,
+            initialScrollWhilePlaying = readerScrollWhilePlaying,
+            onScrollWhilePlayingChange = surahViewModel::setScrollWhilePlaying,
+            onDismiss = { showReaderAudioSetup = false },
+            onPlayRange = { reciterId, startKey, endKey, ayahRepeat, rangeRepeat, delayMs, speed, streamOnly ->
+                if (playingVerseKey != null) {
+                    surahViewModel.applyInPlaySettings(
+                        reciterId, ayahRepeat, rangeRepeat, delayMs, speed, streamOnly,
+                        startKey, endKey
+                    )
+                } else {
+                    surahViewModel.setReciterId(reciterId)
+                    surahViewModel.setAyahRepeat(ayahRepeat)
+                    surahViewModel.setRangeRepeat(rangeRepeat)
+                    surahViewModel.setDelayMs(delayMs)
+                    surahViewModel.setSpeed(speed)
+                    surahViewModel.setStreamOnly(streamOnly)
+                    surahViewModel.playRange(readerVerses, firstVerse.chapterId, startKey, endKey)
+                }
+                showReaderAudioSetup = false
+            },
+            onPlayAll = { reciterId, ayahRepeat, rangeRepeat, delayMs, speed, streamOnly ->
+                if (playingVerseKey != null) {
+                    surahViewModel.applyInPlaySettings(
+                        reciterId, ayahRepeat, rangeRepeat, delayMs, speed, streamOnly
+                    )
+                } else {
+                    surahViewModel.setReciterId(reciterId)
+                    surahViewModel.setAyahRepeat(ayahRepeat)
+                    surahViewModel.setRangeRepeat(rangeRepeat)
+                    surahViewModel.setDelayMs(delayMs)
+                    surahViewModel.setSpeed(speed)
+                    surahViewModel.setStreamOnly(streamOnly)
+                    surahViewModel.playRange(
+                        readerVerses, firstVerse.chapterId,
+                        readerVerses.first().verseKey, readerVerses.last().verseKey
+                    )
+                }
+                showReaderAudioSetup = false
             }
         )
     }

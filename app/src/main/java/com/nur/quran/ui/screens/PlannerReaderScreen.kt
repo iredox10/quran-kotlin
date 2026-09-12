@@ -22,6 +22,9 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -31,6 +34,7 @@ import com.nur.quran.data.planner.PlannerEngine
 import com.nur.quran.ui.components.AutoScrollerBar
 import androidx.compose.foundation.gestures.scrollBy
 import com.nur.quran.ui.components.NurIcons
+import com.nur.quran.ui.components.audio.AudioSetupSheet
 import com.nur.quran.ui.viewmodels.PlannerViewModel
 import com.nur.quran.ui.viewmodels.SurahUiState
 import com.nur.quran.ui.viewmodels.SurahViewModel
@@ -94,6 +98,14 @@ fun PlannerReaderScreen(
     val playingVerseKey by surahViewModel.playingVerseKey.collectAsState()
     val isPlaying by surahViewModel.isPlaying.collectAsState()
     var verseToShare by remember { mutableStateOf<VerseEntity?>(null) }
+    // Web parity (PlannerReader.jsx showAudioSetup modal): in-reader audio setup
+    // with day-scoped playlist wiring — the sheet plays the current page's
+    // verses (the day's loaded content) via playRange on confirm.
+    var showReaderAudioSetup by remember { mutableStateOf(false) }
+    val currentReciterId by surahViewModel.currentReciterId.collectAsState()
+    val playbackSettings by surahViewModel.playbackSettings.collectAsState()
+    val readerStreamOnly by surahViewModel.streamOnly.collectAsState()
+    val readerScrollWhilePlaying by surahViewModel.scrollWhilePlaying.collectAsState()
 
     // Mushaf-aware rendering (web parity: script/tajweed follow the mushaf)
     val isTajweedEffective by surahViewModel.isTajweedEffective.collectAsState()
@@ -106,6 +118,10 @@ fun PlannerReaderScreen(
     val appPrefs = LocalContext.current.getSharedPreferences("PlannerSettings", Context.MODE_PRIVATE)
     val showIntentionPrompt = appPrefs.getBoolean("show_intention_prompt", true)
 
+    // ── Focus mode (web parity: PlannerReader.jsx isFocusMode immersive
+    // hide-chrome): explicit user toggle that hides the header + bottom bar.
+    // Separate from the existing scroll-driven headerVisible auto-hide.
+    var isFocusMode by remember { mutableStateOf(false) }
     // ── Focus mode: auto-hide header during scroll ───────────────────
     val lazyListState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
@@ -199,6 +215,23 @@ fun PlannerReaderScreen(
             }
         }
     }
+    // Web parity (PlannerReader.jsx pagehide/visibilitychange): auto-flush the
+    // timer when the app backgrounds so a killed process loses ~0s. Compose has
+    // no pagehide; ON_PAUSE/ON_STOP is the equivalent lifecycle hook.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, dayNumber) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_PAUSE || event == Lifecycle.Event.ON_STOP) {
+                val delta = timerTick - savedTick
+                if (delta > 0) {
+                    plannerViewModel.stopPlannerTimer(dayNumber, delta.toLong())
+                    savedTick = timerTick
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     // NB: totals already include everything flushed this session (savedTick),
     // so only the unflushed remainder is added — otherwise time counts double.
     val displayedSeconds = ((sessionTotals[dayNumber] ?: 0L).toInt() + (timerTick - savedTick).coerceAtLeast(0))
@@ -255,9 +288,9 @@ fun PlannerReaderScreen(
                 )
             }
     ) {
-        // ── Header Bar (auto-hides on scroll) ────────────────────────
+        // ── Header Bar (auto-hides on scroll; fully hidden in focus mode) ──
         AnimatedVisibility(
-            visible = headerVisible,
+            visible = headerVisible && !isFocusMode,
             enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
             exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut()
         ) {
@@ -288,6 +321,18 @@ fun PlannerReaderScreen(
                         }
 
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            // Focus mode toggle (web parity: isFocusMode immersive hide-chrome)
+                            IconButton(
+                                onClick = { isFocusMode = !isFocusMode },
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (isFocusMode) NurIcons.EyeOff else NurIcons.Eye,
+                                    contentDescription = if (isFocusMode) "Exit focus mode" else "Enter focus mode",
+                                    tint = if (isFocusMode) hGold else hInk
+                                )
+                            }
+
                             // Auto-scroll toggle button
                             IconButton(
                                 onClick = {
@@ -303,7 +348,8 @@ fun PlannerReaderScreen(
                                 )
                             }
 
-                            // Audio Play/Pause Button
+                            // Audio Play/Pause Button (tap toggles, setup opens via the
+                            // settings row below so playback stays day-scoped)
                             IconButton(
                                 onClick = {
                                     val state = uiState
@@ -318,6 +364,19 @@ fun PlannerReaderScreen(
                                     imageVector = if (isPlaying) NurIcons.PauseFilled else NurIcons.PlayFilled,
                                     contentDescription = if (isPlaying) "Pause Audio" else "Play Audio",
                                     tint = hTeal
+                                )
+                            }
+
+                            // In-reader audio setup entry (web parity: AudioSetupModal in
+                            // PlannerReader.jsx) — day-scoped playlist wiring.
+                            IconButton(
+                                onClick = { showReaderAudioSetup = true },
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(
+                                    imageVector = NurIcons.Settings,
+                                    contentDescription = "Audio setup",
+                                    tint = hInk
                                 )
                             }
 
@@ -626,7 +685,8 @@ fun PlannerReaderScreen(
             }
         }
 
-        // Bottom Dock Bar: Navigation between pages
+        // Bottom Dock Bar: Navigation between pages (hidden in focus mode)
+        if (!isFocusMode) {
         Surface(
             color = hWhite,
             tonalElevation = 6.dp,
@@ -679,6 +739,30 @@ fun PlannerReaderScreen(
                         Spacer(modifier = Modifier.width(6.dp))
                         Text("Finish Day Assignment", fontSize = 13.sp, color = Color.White, fontWeight = FontWeight.Bold)
                     }
+                }
+            }
+        }
+        }
+    }
+
+    // Floating exit-focus chip while chrome is hidden (web: toggle back out).
+    if (isFocusMode) {
+        Box(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            contentAlignment = Alignment.TopEnd
+        ) {
+            Surface(
+                onClick = { isFocusMode = false },
+                shape = RoundedCornerShape(100),
+                color = hInk.copy(alpha = 0.7f)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    Icon(imageVector = NurIcons.Eye, contentDescription = "Exit focus mode", tint = Color.White, modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Exit Focus", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
                 }
             }
         }
@@ -843,6 +927,64 @@ fun PlannerReaderScreen(
                 ) {
                     Text(if (reflectionNote.isNotBlank()) "Save & Return" else "Return to Planner", color = Color.White, fontWeight = FontWeight.Bold)
                 }
+            }
+        )
+    }
+
+    // ── In-reader AudioSetupSheet (web parity: AudioSetupModal, day-scoped) ──
+    // Plays the currently loaded page verses as the day's playlist slice.
+    val readerVerses = (uiState as? SurahUiState.Success)?.verses ?: emptyList()
+    if (showReaderAudioSetup && readerVerses.isNotEmpty()) {
+        val firstVerse = readerVerses.first()
+        AudioSetupSheet(
+            chapterId = firstVerse.chapterId,
+            versesCount = readerVerses.size,
+            initialReciterId = currentReciterId,
+            initialStartAyah = 1,
+            initialEndAyah = readerVerses.size,
+            initialAyahRepeat = playbackSettings.ayahRepeat,
+            initialRangeRepeat = playbackSettings.rangeRepeat,
+            initialDelayMs = playbackSettings.delayMs,
+            initialSpeed = playbackSettings.speed,
+            initialStreamOnly = readerStreamOnly,
+            initialScrollWhilePlaying = readerScrollWhilePlaying,
+            onScrollWhilePlayingChange = surahViewModel::setScrollWhilePlaying,
+            onDismiss = { showReaderAudioSetup = false },
+            onPlayRange = { reciterId, startKey, endKey, ayahRepeat, rangeRepeat, delayMs, speed, streamOnly ->
+                if (playingVerseKey != null) {
+                    surahViewModel.applyInPlaySettings(
+                        reciterId, ayahRepeat, rangeRepeat, delayMs, speed, streamOnly,
+                        startKey, endKey
+                    )
+                } else {
+                    surahViewModel.setReciterId(reciterId)
+                    surahViewModel.setAyahRepeat(ayahRepeat)
+                    surahViewModel.setRangeRepeat(rangeRepeat)
+                    surahViewModel.setDelayMs(delayMs)
+                    surahViewModel.setSpeed(speed)
+                    surahViewModel.setStreamOnly(streamOnly)
+                    surahViewModel.playRange(readerVerses, firstVerse.chapterId, startKey, endKey)
+                }
+                showReaderAudioSetup = false
+            },
+            onPlayAll = { reciterId, ayahRepeat, rangeRepeat, delayMs, speed, streamOnly ->
+                if (playingVerseKey != null) {
+                    surahViewModel.applyInPlaySettings(
+                        reciterId, ayahRepeat, rangeRepeat, delayMs, speed, streamOnly
+                    )
+                } else {
+                    surahViewModel.setReciterId(reciterId)
+                    surahViewModel.setAyahRepeat(ayahRepeat)
+                    surahViewModel.setRangeRepeat(rangeRepeat)
+                    surahViewModel.setDelayMs(delayMs)
+                    surahViewModel.setSpeed(speed)
+                    surahViewModel.setStreamOnly(streamOnly)
+                    surahViewModel.playRange(
+                        readerVerses, firstVerse.chapterId,
+                        readerVerses.first().verseKey, readerVerses.last().verseKey
+                    )
+                }
+                showReaderAudioSetup = false
             }
         )
     }

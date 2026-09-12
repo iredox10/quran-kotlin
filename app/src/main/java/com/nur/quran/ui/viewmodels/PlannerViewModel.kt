@@ -50,8 +50,25 @@ class PlannerViewModel @Inject constructor(
     val plannerBookmarks: StateFlow<List<PlannerBookmark>> = _plannerBookmarks.asStateFlow()
 
     // ── Per-plan reading timers, day -> total seconds (web: plannerSessionTimers)
+    // Active-plan view — derived from [_sessionTotalsByPlan]; collectors keep working unchanged.
     private val _sessionTotals = MutableStateFlow<Map<Int, Long>>(emptyMap())
     val sessionTotals: StateFlow<Map<Int, Long>> = _sessionTotals.asStateFlow()
+
+    // ── PlanId-keyed extras (web parity: plannerReflections / plannerBookmarks / plannerSessionTimers)
+    // Web holds these as { [plannerId]: ... } maps for ALL plans at once. The
+    // active-plan flows above stay as derived views so every existing function
+    // signature and every screen collector keeps working unchanged.
+    private val _plannerReflectionsByPlan = MutableStateFlow<Map<String, Map<Int, String>>>(emptyMap())
+    val plannerReflectionsByPlan: StateFlow<Map<String, Map<Int, String>>> = _plannerReflectionsByPlan.asStateFlow()
+
+    private val _plannerBookmarksByPlan = MutableStateFlow<Map<String, List<PlannerBookmark>>>(emptyMap())
+    val plannerBookmarksByPlan: StateFlow<Map<String, List<PlannerBookmark>>> = _plannerBookmarksByPlan.asStateFlow()
+
+    private val _sessionTotalsByPlan = MutableStateFlow<Map<String, Map<Int, Long>>>(emptyMap())
+    val sessionTotalsByPlan: StateFlow<Map<String, Map<Int, Long>>> = _sessionTotalsByPlan.asStateFlow()
+
+    // Session-only timer start stamps, keyed by plan like web startedAt (never persisted).
+    private val _timerStartedAtByPlan = MutableStateFlow<Map<String, Map<Int, Long?>>>(emptyMap())
 
     // ── Planner settings (same SharedPreferences file the UI already uses)
     private val _useDeviceLocation = MutableStateFlow(false)
@@ -88,19 +105,52 @@ class PlannerViewModel @Inject constructor(
         }
     }
 
-    /** Load per-plan extras (bookmarks, timers) when the active plan changes. */
+    /** Push the keyed-map entries for [planId] into the derived active-plan views. */
+    private fun refreshActiveExtrasViews(planId: String?) {
+        _plannerBookmarks.value = _plannerBookmarksByPlan.value[planId] ?: emptyList()
+        _sessionTotals.value = _sessionTotalsByPlan.value[planId] ?: emptyMap()
+        _timerStartedAt.value = _timerStartedAtByPlan.value[planId] ?: emptyMap()
+    }
+
+    /**
+     * Load per-plan extras when the active plan changes (web: plannerBookmarks /
+     * plannerSessionTimers are planId-keyed maps held for ALL plans).
+     * Entries already in the maps are reused; missing ones load from the
+     * repository once, then the active-plan views are re-derived.
+     */
     private fun loadPlanExtras(planId: String?) {
-        if (planId == extrasPlanId) return
-        extrasPlanId = planId
-        _timerStartedAt.value = emptyMap()
-        if (planId == null) {
-            _plannerBookmarks.value = emptyList()
-            _sessionTotals.value = emptyMap()
+        if (planId == extrasPlanId) {
+            refreshActiveExtrasViews(planId)
             return
         }
+        extrasPlanId = planId
+        if (planId == null) {
+            refreshActiveExtrasViews(null)
+            return
+        }
+        // Fast path: maps already hold this plan (preloaded or written this session).
+        // Unlike before, timer start stamps for OTHER plans are preserved — web
+        // keeps startedAt per planId, so peeking at another plan must not kill a
+        // running timer.
+        val haveBookmarks = _plannerBookmarksByPlan.value.containsKey(planId)
+        val haveTotals = _sessionTotalsByPlan.value.containsKey(planId)
+        refreshActiveExtrasViews(planId)
+        if (haveBookmarks && haveTotals) return
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            try { _plannerBookmarks.value = repository.getPlannerBookmarks(planId) } catch (_: Exception) {}
-            try { _sessionTotals.value = repository.getPlannerSessionTotals(planId) } catch (_: Exception) {}
+            if (!haveBookmarks) {
+                try {
+                    val loaded = repository.getPlannerBookmarks(planId)
+                    _plannerBookmarksByPlan.value = _plannerBookmarksByPlan.value + (planId to loaded)
+                    if (planId == _activePlannerId.value) _plannerBookmarks.value = loaded
+                } catch (_: Exception) {}
+            }
+            if (!haveTotals) {
+                try {
+                    val loaded = repository.getPlannerSessionTotals(planId)
+                    _sessionTotalsByPlan.value = _sessionTotalsByPlan.value + (planId to loaded)
+                    if (planId == _activePlannerId.value) _sessionTotals.value = loaded
+                } catch (_: Exception) {}
+            }
         }
     }
 
@@ -131,6 +181,15 @@ class PlannerViewModel @Inject constructor(
             _activePlannerId.value = actId
             _activePlan.value = all.find { it.id == actId }
             _archivedPlans.value = repository.getArchivedPlans()
+            // Migration (item 3): seed the planId-keyed reflections map from each
+            // plan's embedded assignmentReflections (source before this change),
+            // so current active-plan data appears in the new maps on first run.
+            val seededReflections = all
+                .filter { it.assignmentReflections.isNotEmpty() }
+                .associate { it.id to it.assignmentReflections.toMap() }
+            if (seededReflections.isNotEmpty()) {
+                _plannerReflectionsByPlan.value = seededReflections
+            }
             loadPlanExtras(actId)
 
             repository.getAllBookmarksFlow().collect { bmList ->
@@ -192,12 +251,23 @@ class PlannerViewModel @Inject constructor(
 
     fun archiveActivePlan() {
         val current = _activePlan.value ?: return
+        archivePlanner(current.id)
+    }
+
+    /**
+     * Web parity: archivePlanner(planId) archives an arbitrary plan by id
+     * (web useAppStore.js:792 — targetId = planId || activePlannerId).
+     * archiveActivePlan() keeps its signature and delegates here.
+     */
+    fun archivePlanner(planId: String? = null) {
+        val targetId = planId ?: _activePlannerId.value ?: return
+        val target = _allPlans.value.find { it.id == targetId } ?: _activePlan.value?.takeIf { it.id == targetId } ?: return
         viewModelScope.launch {
-            val updatedArchives = _archivedPlans.value + current
+            val updatedArchives = _archivedPlans.value + target
             _archivedPlans.value = updatedArchives
             repository.saveArchivedPlans(updatedArchives)
-            
-            deletePlan(current.id)
+
+            deletePlan(targetId)
         }
     }
 
@@ -388,7 +458,13 @@ class PlannerViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Web: addPlannerReflection — active-plan overload (signature unchanged).
+     * Writes the embedded map as before AND mirrors into the planId-keyed
+     * plannerReflections map so reflections survive plan switches.
+     */
     fun saveReflection(dayNumber: Int, note: String) {
+        val planId = _activePlannerId.value
         val current = _activePlan.value ?: return
         val updatedMap = current.assignmentReflections.toMutableMap()
         if (note.isNotBlank()) {
@@ -398,6 +474,41 @@ class PlannerViewModel @Inject constructor(
         }
         val updatedPlan = current.copy(assignmentReflections = updatedMap)
         setActivePlan(updatedPlan)
+        if (planId != null) {
+            _plannerReflectionsByPlan.value = _plannerReflectionsByPlan.value + (planId to updatedMap.toMap())
+        }
+    }
+
+    /**
+     * Web parity: addPlannerReflection(plannerId, dayNumber, text) — write a
+     * reflection for an arbitrary plan; blank text clears the day entry.
+     * For the active plan this delegates to [saveReflection] so the embedded
+     * map (which the reader screen reads) stays in sync.
+     */
+    fun saveReflectionForPlan(planId: String, dayNumber: Int, note: String) {
+        if (planId == _activePlannerId.value) {
+            saveReflection(dayNumber, note)
+            return
+        }
+        val plan = _allPlans.value.find { it.id == planId } ?: return
+        val updatedEmbedded = plan.assignmentReflections.toMutableMap()
+        if (note.isNotBlank()) {
+            updatedEmbedded[dayNumber] = note
+        } else {
+            updatedEmbedded.remove(dayNumber)
+        }
+        _plannerReflectionsByPlan.value = _plannerReflectionsByPlan.value + (planId to updatedEmbedded.toMap())
+        val updatedAll = _allPlans.value.map { if (it.id == planId) plan.copy(assignmentReflections = updatedEmbedded) else it }
+        _allPlans.value = updatedAll
+        viewModelScope.launch {
+            repository.saveAllPlans(updatedAll)
+        }
+    }
+
+    /** Web parity read: plannerReflections[plannerId][dayNumber]?.text */
+    fun getReflectionForPlan(planId: String, dayNumber: Int): String {
+        _plannerReflectionsByPlan.value[planId]?.get(dayNumber)?.let { return it }
+        return _allPlans.value.find { it.id == planId }?.assignmentReflections?.get(dayNumber) ?: ""
     }
 
     fun buildRevisionPlan() {
@@ -467,35 +578,68 @@ class PlannerViewModel @Inject constructor(
         }
     }
 
-    // ── Per-plan highlights ─────────────────────────────────────────────
+    // ── Per-plan highlights (web: plannerBookmarks[plannerId]) ────────────
+    // Writes go through the planId-keyed map; the active-plan view is re-derived
+    // so existing collectors see the same values as before.
     fun togglePlannerBookmark(verseKey: String, surahName: String) {
         val planId = _activePlannerId.value ?: return
-        val current = _plannerBookmarks.value.toMutableList()
+        togglePlannerBookmarkForPlan(planId, verseKey, surahName)
+    }
+
+    /**
+     * Web parity: addPlannerBookmark(plannerId, verseKey, surahName, note) —
+     * planId-keyed, deduped by verseKey, updates the note when it already exists.
+     */
+    fun addPlannerBookmark(planId: String, verseKey: String, surahName: String, note: String = "") {
+        val current = (_plannerBookmarksByPlan.value[planId] ?: emptyList()).toMutableList()
+        val existingIdx = current.indexOfFirst { it.verseKey == verseKey }
+        if (existingIdx < 0) {
+            current.add(PlannerBookmark(verseKey = verseKey, surahName = surahName, note = note))
+        } else if (note.isNotBlank()) {
+            current[existingIdx] = current[existingIdx].copy(note = note)
+        } else {
+            return
+        }
+        persistPlannerBookmarks(planId, current)
+    }
+
+    /** Web parity: toggle a highlight for an explicit plan (active-plan overload delegates here). */
+    fun togglePlannerBookmarkForPlan(planId: String, verseKey: String, surahName: String) {
+        val current = (_plannerBookmarksByPlan.value[planId] ?: emptyList()).toMutableList()
         val existing = current.indexOfFirst { it.verseKey == verseKey }
         if (existing >= 0) {
             current.removeAt(existing)
         } else {
             current.add(PlannerBookmark(verseKey = verseKey, surahName = surahName))
         }
-        _plannerBookmarks.value = current
-        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            try { repository.savePlannerBookmarks(planId, current) } catch (_: Exception) {}
-        }
+        persistPlannerBookmarks(planId, current)
     }
 
     fun removePlannerBookmark(verseKey: String) {
         val planId = _activePlannerId.value ?: return
-        val current = _plannerBookmarks.value.filterNot { it.verseKey == verseKey }
-        _plannerBookmarks.value = current
+        removePlannerBookmarkForPlan(planId, verseKey)
+    }
+
+    /** Web parity: removePlannerBookmark(plannerId, verseKey). */
+    fun removePlannerBookmarkForPlan(planId: String, verseKey: String) {
+        val current = (_plannerBookmarksByPlan.value[planId] ?: emptyList()).filterNot { it.verseKey == verseKey }
+        persistPlannerBookmarks(planId, current)
+    }
+
+    private fun persistPlannerBookmarks(planId: String, bookmarks: List<PlannerBookmark>) {
+        _plannerBookmarksByPlan.value = _plannerBookmarksByPlan.value + (planId to bookmarks)
+        if (planId == _activePlannerId.value) _plannerBookmarks.value = bookmarks
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            try { repository.savePlannerBookmarks(planId, current) } catch (_: Exception) {}
+            try { repository.savePlannerBookmarks(planId, bookmarks) } catch (_: Exception) {}
         }
     }
 
     // ── Reading timers (web: startPlannerTimer/stopPlannerTimer) ────────
     // Web keeps plannerSessionTimers[planId][day] = { totalSeconds, startedAt }.
-    // Totals persist in the repository (key "planner_sessions_$planId", the same
-    // store stopPlannerTimer reads); startedAt is session-only in-memory state.
+    // Totals persist in the repository (key "planner_sessions_$planId"); startedAt
+    // is session-only in-memory state. Both are keyed by planId so switching plans
+    // no longer wipes a running timer.
+    // Active-plan view — derived from [_timerStartedAtByPlan].
     private val _timerStartedAt = MutableStateFlow<Map<Int, Long?>>(emptyMap())
     val timerStartedAt: StateFlow<Map<Int, Long?>> = _timerStartedAt.asStateFlow()
 
@@ -505,14 +649,18 @@ class PlannerViewModel @Inject constructor(
      */
     fun startPlannerTimer(planId: String? = null, dayNumber: Int) {
         val resolvedPlanId = planId ?: _activePlannerId.value ?: return
-        val updated = _sessionTotals.value.toMutableMap()
+        val updated = (_sessionTotalsByPlan.value[resolvedPlanId] ?: emptyMap()).toMutableMap()
         if (!updated.containsKey(dayNumber)) {
             updated[dayNumber] = 0L
         }
-        _sessionTotals.value = updated
-        val started = _timerStartedAt.value.toMutableMap()
+        _sessionTotalsByPlan.value = _sessionTotalsByPlan.value + (resolvedPlanId to updated)
+        val started = (_timerStartedAtByPlan.value[resolvedPlanId] ?: emptyMap()).toMutableMap()
         started[dayNumber] = System.currentTimeMillis()
-        _timerStartedAt.value = started
+        _timerStartedAtByPlan.value = _timerStartedAtByPlan.value + (resolvedPlanId to started)
+        if (resolvedPlanId == _activePlannerId.value) {
+            _sessionTotals.value = updated
+            _timerStartedAt.value = started
+        }
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try { repository.savePlannerSessionTotals(resolvedPlanId, updated) } catch (_: Exception) {}
         }
@@ -521,14 +669,21 @@ class PlannerViewModel @Inject constructor(
     /** Persist additional seconds for a day (called periodically + on pause/exit). */
     fun stopPlannerTimer(dayNumber: Int, additionalSeconds: Long) {
         val planId = _activePlannerId.value ?: return
-        val started = _timerStartedAt.value.toMutableMap()
+        stopPlannerTimerForPlan(planId, dayNumber, additionalSeconds)
+    }
+
+    /** Web parity: stopPlannerTimer(plannerId, dayNumber, additionalSeconds). */
+    fun stopPlannerTimerForPlan(planId: String, dayNumber: Int, additionalSeconds: Long) {
+        val started = (_timerStartedAtByPlan.value[planId] ?: emptyMap()).toMutableMap()
         if (started.remove(dayNumber) != null) {
-            _timerStartedAt.value = started
+            _timerStartedAtByPlan.value = _timerStartedAtByPlan.value + (planId to started)
+            if (planId == _activePlannerId.value) _timerStartedAt.value = started
         }
         if (additionalSeconds <= 0) return
-        val updated = _sessionTotals.value.toMutableMap()
+        val updated = (_sessionTotalsByPlan.value[planId] ?: emptyMap()).toMutableMap()
         updated[dayNumber] = (updated[dayNumber] ?: 0L) + additionalSeconds
-        _sessionTotals.value = updated
+        _sessionTotalsByPlan.value = _sessionTotalsByPlan.value + (planId to updated)
+        if (planId == _activePlannerId.value) _sessionTotals.value = updated
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try { repository.savePlannerSessionTotals(planId, updated) } catch (_: Exception) {}
         }
@@ -549,11 +704,12 @@ class PlannerViewModel @Inject constructor(
      */
     fun logPlannerDayToSessions(dayNumber: Int, chapterId: Int? = null) {
         val planId = _activePlannerId.value ?: return
-        val total = _sessionTotals.value[dayNumber] ?: 0L
+        val total = (_sessionTotalsByPlan.value[planId] ?: emptyMap())[dayNumber] ?: 0L
         if (total <= 0) return
         // Checkpoint synchronously so a repeated call can't double-log.
-        val reset = _sessionTotals.value.toMutableMap()
+        val reset = (_sessionTotalsByPlan.value[planId] ?: emptyMap()).toMutableMap()
         reset[dayNumber] = 0L
+        _sessionTotalsByPlan.value = _sessionTotalsByPlan.value + (planId to reset)
         _sessionTotals.value = reset
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {

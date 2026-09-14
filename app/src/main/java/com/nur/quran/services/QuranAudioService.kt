@@ -77,6 +77,11 @@ class QuranAudioService : MediaLibraryService() {
         val chapterId = parts?.getOrNull(0)?.toIntOrNull() ?: 1
         val intent = Intent(this, MainActivity::class.java).apply {
             action = "com.nur.quran.action.VIEW_VERSE"
+            data = if (!verseKey.isNullOrBlank()) {
+                Uri.parse("quran://verse/$chapterId/$verseKey")
+            } else {
+                Uri.parse("quran://verse/$chapterId")
+            }
             putExtra("chapterId", chapterId)
             putExtra("verseKey", verseKey)
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP

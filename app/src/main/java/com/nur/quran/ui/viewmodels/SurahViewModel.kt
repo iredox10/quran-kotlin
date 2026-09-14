@@ -388,6 +388,25 @@ class SurahViewModel @Inject constructor(
                         result.addListener(playerListener)
                         result.setPlaybackSpeed(_playbackSettings.value.speed)
                         mediaController = result
+
+                        // Synchronize state immediately if audio service is already running
+                        _isPlaying.value = result.isPlaying
+                        val liveItem = result.currentMediaItem
+                        val liveKey = liveItem?.mediaId
+                        if (liveKey != null) {
+                            _playingVerseKey.value = liveKey
+                            val parts = liveKey.split(":")
+                            val chId = parts.firstOrNull()?.toIntOrNull()
+                            if (chId != null && (playlistChapterId != chId || playlist.isEmpty())) {
+                                playlistChapterId = chId
+                                viewModelScope.launch(Dispatchers.IO) {
+                                    try {
+                                        val verses = repository.getVersesByChapterDirect(chId)
+                                        playlist = verses
+                                    } catch (_: Exception) {}
+                                }
+                            }
+                        }
                     }
 
                     override fun onFailure(t: Throwable) {
@@ -423,6 +442,13 @@ class SurahViewModel @Inject constructor(
 
     private val _isPlaying = MutableStateFlow(false)
     val isPlaying: StateFlow<Boolean> = _isPlaying.asStateFlow()
+
+    private val _scrollToVerseEvent = MutableSharedFlow<String>(replay = 1, extraBufferCapacity = 2)
+    val scrollToVerseEvent: SharedFlow<String> = _scrollToVerseEvent.asSharedFlow()
+
+    fun requestScrollToVerse(verseKey: String) {
+        _scrollToVerseEvent.tryEmit(verseKey)
+    }
 
     // ── Playback settings (repeat / delay / speed, persisted) ─────────────
     private val _playbackSettings = MutableStateFlow(
@@ -825,14 +851,21 @@ class SurahViewModel @Inject constructor(
         }
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-            val player = mediaController ?: return
-            val index = player.currentMediaItemIndex
+            val keyFromItem = mediaItem?.mediaId
+            val player = mediaController
+            val index = player?.currentMediaItemIndex ?: -1
             val list = if (hifdhLoopActive) hifdhPlaylist else playlist
-            _playingVerseKey.value = list.getOrNull(index)?.verseKey
-            if (hifdhLoopActive) {
-                lastMediaIndex = index
-            } else {
-                handlePlaylistTransition(player, index, reason)
+            val key = keyFromItem ?: list.getOrNull(index)?.verseKey
+            if (key != null) {
+                _playingVerseKey.value = key
+                updateRecentlyReadVerse(key)
+            }
+            if (player != null && index >= 0) {
+                if (hifdhLoopActive) {
+                    lastMediaIndex = index
+                } else {
+                    handlePlaylistTransition(player, index, reason)
+                }
             }
         }
 

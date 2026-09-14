@@ -66,10 +66,27 @@ class MainActivity : ComponentActivity() {
 
     private fun handleDeepLink(intent: Intent?) {
         if (intent == null) return
-        if (intent.action == "com.nur.quran.action.VIEW_VERSE" || intent.hasExtra("chapterId")) {
-            val chapterId = intent.getIntExtra("chapterId", 1)
-            val verseKey = intent.getStringExtra("verseKey")
-            pendingDeepLink = chapterId to verseKey
+        val isViewVerse = intent.action == "com.nur.quran.action.VIEW_VERSE" ||
+            intent.hasExtra("chapterId") ||
+            intent.data?.scheme == "quran"
+        if (isViewVerse) {
+            val uri = intent.data
+            val uriChapterId = uri?.pathSegments?.firstOrNull()?.toIntOrNull()
+            val uriVerseKey = uri?.pathSegments?.getOrNull(1)?.takeIf { it != "none" }
+            val chapterId = uriChapterId ?: intent.getIntExtra("chapterId", 1)
+
+            // If audio is actively playing, prefer the live reciting verse:
+            val currentKey = surahViewModel.playingVerseKey.value
+            val currentChapterId = currentKey?.split(":")?.firstOrNull()?.toIntOrNull()
+            val effectiveChapterId = if (surahViewModel.isPlaying.value && currentChapterId != null) currentChapterId else chapterId
+            val effectiveVerseKey = if (surahViewModel.isPlaying.value && !currentKey.isNullOrBlank()) {
+                currentKey
+            } else {
+                uriVerseKey ?: intent.getStringExtra("verseKey")
+            }
+
+            pendingDeepLink = effectiveChapterId to effectiveVerseKey
+            effectiveVerseKey?.let { surahViewModel.requestScrollToVerse(it) }
         }
     }
 
@@ -91,7 +108,11 @@ class MainActivity : ComponentActivity() {
         }
 
         override fun onStart(owner: LifecycleOwner) {
-            // Nothing: timer restarts naturally via checkpoint start=now.
+            // Returning to foreground: if audio is playing, resume tracking and scroll to active reciting ayah
+            val activeKey = surahViewModel.playingVerseKey.value
+            if (surahViewModel.isPlaying.value && !activeKey.isNullOrBlank()) {
+                surahViewModel.requestScrollToVerse(activeKey)
+            }
         }
     }
 
@@ -109,9 +130,18 @@ class MainActivity : ComponentActivity() {
 
             LaunchedEffect(pendingDeepLink) {
                 pendingDeepLink?.let { (chapterId, verseKey) ->
-                    navController.navigate(Screen.SurahDetail.createRoute(chapterId, verseKey)) {
-                        popUpTo(Screen.Quran.route) { inclusive = false }
-                        launchSingleTop = true
+                    val currentBackStack = navController.currentBackStackEntry
+                    val currentRoute = currentBackStack?.destination?.route
+                    val curChapterId = currentBackStack?.arguments?.getInt("chapterId")
+
+                    if (currentRoute == Screen.SurahDetail.route && curChapterId == chapterId) {
+                        verseKey?.let { surahViewModel.requestScrollToVerse(it) }
+                    } else {
+                        navController.navigate(Screen.SurahDetail.createRoute(chapterId, verseKey)) {
+                            popUpTo(Screen.Quran.route) { inclusive = false }
+                            launchSingleTop = true
+                        }
+                        verseKey?.let { surahViewModel.requestScrollToVerse(it) }
                     }
                     pendingDeepLink = null
                 }

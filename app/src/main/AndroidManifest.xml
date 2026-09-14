@@ -23,10 +23,18 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTask"
             android:theme="@style/Theme.Quran">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.nur.quran.action.VIEW_VERSE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data
+                    android:host="verse"
+                    android:scheme="quran" />
             </intent-filter>
         </activity>
         

@@ -4,6 +4,7 @@ build/
 app/build/
 */build/
 captures/
+*.apk
 
 # Local SDK / signing config
 local.properties

@@ -1,6 +1,8 @@
 package com.nur.quran.ui.screens
 
 import android.content.Intent
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
@@ -275,6 +277,20 @@ val hTealMid   get() = if (isDarkThemeGlobal) Color(0xFF3D6560) else Color(0xFF3
 val glassBg    get() = if (isDarkThemeGlobal) Color(0x802D2D2A) else Color(0x99EFECE4)
 
 
+private fun computeHeaderOffset(
+    isMemorizeModeEnabled: Boolean,
+    showSwipeTip: Boolean,
+    hasSauka: Boolean,
+    chapterId: Int
+): Int {
+    var offset = 1 // SurahHeader
+    if (isMemorizeModeEnabled) offset += 2 // Two memorize banner/cards
+    if (showSwipeTip) offset += 1 // Swipe tip
+    if (hasSauka) offset += 1 // Sauka completion
+    if (chapterId != 1 && chapterId != 9) offset += 1 // Bismillah
+    return offset
+}
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun SurahScreen(
@@ -371,6 +387,57 @@ fun SurahScreen(
         }
     }
 
+    // Lifecycle observer: when returning to foreground while audio is playing,
+    // immediately scroll and continue tracking the active reciting ayah.
+    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, chapterId) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                val activeKey = viewModel.playingVerseKey.value
+                if (viewModel.isPlaying.value && !activeKey.isNullOrBlank()) {
+                    val state = uiState
+                    if (state is SurahUiState.Success && state.chapter.id == chapterId) {
+                        val index = state.verses.indexOfFirst { it.verseKey == activeKey }
+                        if (index >= 0) {
+                            val hOffset = computeHeaderOffset(
+                                isMemorizeModeEnabled = isMemorizeModeEnabled,
+                                showSwipeTip = showSwipeTip,
+                                hasSauka = saukaAssignmentId != null && backToSauka != null,
+                                chapterId = chapterId
+                            )
+                            coroutineScope.launch {
+                                listState.scrollToItem(index + hOffset)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    // Scroll to verse events triggered by notification taps or deep links
+    LaunchedEffect(chapterId) {
+        viewModel.scrollToVerseEvent.collect { targetKey ->
+            val state = uiState
+            if (state is SurahUiState.Success && state.chapter.id == chapterId) {
+                val index = state.verses.indexOfFirst { it.verseKey == targetKey }
+                if (index >= 0) {
+                    val hOffset = computeHeaderOffset(
+                        isMemorizeModeEnabled = isMemorizeModeEnabled,
+                        showSwipeTip = showSwipeTip,
+                        hasSauka = saukaAssignmentId != null && backToSauka != null,
+                        chapterId = chapterId
+                    )
+                    listState.scrollToItem(index + hOffset)
+                }
+            }
+        }
+    }
+
     // Follow-along: scroll the now-playing ayah into view while auto-scroll is on.
     // Header offset mirrors the targetVerseKey effect above (header + optional
     // banners + basmala). No-op in reading mode (page items, not verse items).
@@ -381,12 +448,12 @@ fun SurahScreen(
         if (state !is SurahUiState.Success || state.chapter.id != chapterId) return@LaunchedEffect
         val verseIndex = state.verses.indexOfFirst { it.verseKey == key }
         if (verseIndex < 0) return@LaunchedEffect
-        var hOffset = 1
-        if (isMemorizeModeEnabled) hOffset += 1
-        if (showSwipeTip) hOffset += 1
-        if (saukaAssignmentId != null && backToSauka != null) hOffset += 1
-        if (isMemorizeModeEnabled) hOffset += 1
-        if (chapterId != 1 && chapterId != 9) hOffset += 1
+        val hOffset = computeHeaderOffset(
+            isMemorizeModeEnabled = isMemorizeModeEnabled,
+            showSwipeTip = showSwipeTip,
+            hasSauka = saukaAssignmentId != null && backToSauka != null,
+            chapterId = chapterId
+        )
         try {
             listState.animateScrollToItem(verseIndex + hOffset)
         } catch (_: Exception) {
@@ -445,15 +512,16 @@ fun SurahScreen(
     LaunchedEffect(chapterId, targetVerseKey, uiState) {
         val state = uiState
         if (state is SurahUiState.Success && state.chapter.id == chapterId) {
-            if (!targetVerseKey.isNullOrBlank()) {
-                val index = state.verses.indexOfFirst { it.verseKey == targetVerseKey }
+            val effectiveTarget = targetVerseKey ?: viewModel.scrollToVerseEvent.replayCache.firstOrNull()
+            if (!effectiveTarget.isNullOrBlank()) {
+                val index = state.verses.indexOfFirst { it.verseKey == effectiveTarget }
                 if (index >= 0) {
-                    var hOffset = 1
-                    if (isMemorizeModeEnabled) hOffset += 1
-                    if (showSwipeTip) hOffset += 1
-                    if (saukaAssignmentId != null && backToSauka != null) hOffset += 1
-                    if (isMemorizeModeEnabled) hOffset += 1
-                    if (chapterId != 1 && chapterId != 9) hOffset += 1
+                    val hOffset = computeHeaderOffset(
+                        isMemorizeModeEnabled = isMemorizeModeEnabled,
+                        showSwipeTip = showSwipeTip,
+                        hasSauka = saukaAssignmentId != null && backToSauka != null,
+                        chapterId = chapterId
+                    )
                     listState.scrollToItem(index + hOffset)
                 } else {
                     val saved = viewModel.getSurahScrollPosition(chapterId)
@@ -1231,11 +1299,12 @@ fun SurahScreen(
                         val idx = playerVerses.indexOfFirst { it.verseKey == key }
                         if (idx >= 0) {
                             coroutineScope.launch {
-                                var hOffset = 1
-                                if (isMemorizeModeEnabled) hOffset += 1
-                                if (showSwipeTip) hOffset += 1
-                                if (saukaAssignmentId != null && backToSauka != null) hOffset += 1
-                                if (chapterId != 1 && chapterId != 9) hOffset += 1
+                                val hOffset = computeHeaderOffset(
+                                    isMemorizeModeEnabled = isMemorizeModeEnabled,
+                                    showSwipeTip = showSwipeTip,
+                                    hasSauka = saukaAssignmentId != null && backToSauka != null,
+                                    chapterId = chapterId
+                                )
                                 listState.animateScrollToItem(idx + hOffset)
                             }
                         }

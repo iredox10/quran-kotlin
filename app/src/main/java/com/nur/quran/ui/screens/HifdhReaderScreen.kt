@@ -279,12 +279,12 @@ fun HifdhReaderScreen(
 
                     IconButton(
                         onClick = { showSettingsDrawer = true },
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(36.dp)
                     ) {
                         Icon(
                             imageVector = NurIcons.Settings,
                             contentDescription = "Settings",
-                            tint = hInkMid,
+                            tint = hInkMuted,
                             modifier = Modifier.size(18.dp)
                         )
                     }

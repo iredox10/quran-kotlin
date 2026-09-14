@@ -19,7 +19,6 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
@@ -596,7 +595,7 @@ fun SurahScreen(
                     ) { isDarkThemeGlobal = !isDarkThemeGlobal; prefs.edit().putBoolean("is_dark_theme", isDarkThemeGlobal).apply() }
 
                     TopBarIconBtn(
-                        icon = Icons.Default.Settings,
+                        icon = NurIcons.Settings,
                         active = showSettingsDrawer,
                         label = "Settings"
                     ) { showSettingsDrawer = true }

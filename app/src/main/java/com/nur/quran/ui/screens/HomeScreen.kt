@@ -46,6 +46,7 @@ import com.nur.quran.R
 import com.nur.quran.data.HIZB_STARTS
 import com.nur.quran.data.JUZ_STARTS
 import com.nur.quran.data.MUSHAF_PAGE_COUNT
+import com.nur.quran.data.getJuzByPage
 import com.nur.quran.data.db.entities.BookmarkEntity
 import com.nur.quran.data.db.entities.ChapterEntity
 import com.nur.quran.data.db.entities.RecentlyReadEntity
@@ -229,6 +230,15 @@ fun HomeScreen(
     }
     var copied by remember { mutableStateOf(false) }
 
+    val defaultArabicFontName = remember {
+        context.getSharedPreferences("HifdhPrefs", Context.MODE_PRIVATE)
+            .getString("arabic_font", "KFGQPC Hafs") ?: "KFGQPC Hafs"
+    }
+    val activeArabicFontName = surahViewModel?.selectedArabicFontName?.collectAsState(initial = defaultArabicFontName)?.value ?: defaultArabicFontName
+    val fontFamilyArabic = remember(activeArabicFontName) {
+        getArabicFontFamily(activeArabicFontName)
+    }
+
     // Reset the copied state after 2s (same as the web app)
     LaunchedEffect(copied) {
         if (copied) {
@@ -349,7 +359,7 @@ fun HomeScreen(
                         }
                     }
 
-                    // ─── Greeting Hero + Continue Reading ───
+                    // ─── Greeting Hero + Continue Reading (web Home.jsx parity) ───
                     item {
                         Column(
                             modifier = Modifier
@@ -357,13 +367,6 @@ fun HomeScreen(
                                 .padding(top = 24.dp, bottom = 24.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            androidx.compose.foundation.Image(
-                                painter = androidx.compose.ui.res.painterResource(id = com.nur.quran.R.drawable.ic_logo),
-                                contentDescription = "Quran Nur Logo",
-                                modifier = Modifier
-                                    .size(64.dp)
-                                    .padding(bottom = 8.dp)
-                            )
                             Text(
                                 text = greeting.first,
                                 fontSize = 28.sp,
@@ -386,12 +389,16 @@ fun HomeScreen(
                                 letterSpacing = 1.sp,
                                 fontWeight = FontWeight.Medium
                             )
+                            Spacer(modifier = Modifier.height(20.dp))
 
                             if (lastRead != null) {
-                                Spacer(modifier = Modifier.height(20.dp))
                                 ContinueReadingCard(
                                     item = lastRead,
                                     onClick = { onChapterClick(lastRead.chapterId, lastRead.verseKey) }
+                                )
+                            } else {
+                                ZeroStateContinueCard(
+                                    onClick = { onChapterClick(1, null) }
                                 )
                             }
                         }
@@ -538,6 +545,7 @@ fun HomeScreen(
                                     reference = dailyVerse.reference
                                 )
                             },
+                            fontFamilyArabic = fontFamilyArabic,
                             modifier = Modifier.onGloballyPositioned { targetRects["verse"] = it.boundsInWindow() }
                         )
                         Spacer(modifier = Modifier.height(28.dp))
@@ -577,13 +585,24 @@ fun HomeScreen(
                                     .onGloballyPositioned { targetRects["resume"] = it.boundsInWindow() }
                             ) {
                                 Column(modifier = Modifier.fillMaxWidth()) {
-                                    Text(
-                                        text = "Recently Read",
-                                        fontSize = 18.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = hInk,
-                                        fontFamily = fontFamilyUi
-                                    )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = NurIcons.BookOpen,
+                                            contentDescription = null,
+                                            tint = hInk,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Text(
+                                            text = "Recently Read",
+                                            fontSize = 18.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = hInk,
+                                            fontFamily = fontFamilyUi
+                                        )
+                                    }
                                     Spacer(modifier = Modifier.height(12.dp))
                                     Row(
                                         modifier = Modifier
@@ -651,7 +670,10 @@ fun HomeScreen(
                                     modes.forEach { (mode, label, icon) ->
                                         val isSelected = browseMode == mode
                                         Surface(
-                                            onClick = { viewModel.setBrowseMode(mode) },
+                                            onClick = {
+                                                viewModel.setBrowseMode(mode)
+                                                viewModel.setSearchQuery("")
+                                            },
                                             shape = RoundedCornerShape(20.dp),
                                             color = if (isSelected) hTealSoft else Color.Transparent,
                                             border = androidx.compose.foundation.BorderStroke(
@@ -692,9 +714,10 @@ fun HomeScreen(
                             onValueChange = { viewModel.setSearchQuery(it) },
                             placeholder = {
                                 Text(
-                                    "Search $browseMode...",
+                                    "Search ${browseMode.replaceFirstChar { it.uppercase() }}...",
                                     color = hInkMuted,
-                                    fontSize = 15.sp
+                                    fontSize = 15.sp,
+                                    fontFamily = fontFamilyBody
                                 )
                             },
                             leadingIcon = {
@@ -705,6 +728,21 @@ fun HomeScreen(
                                     modifier = Modifier.size(18.dp)
                                 )
                             },
+                            trailingIcon = {
+                                if (searchQuery.isNotEmpty()) {
+                                    IconButton(
+                                        onClick = { viewModel.setSearchQuery("") },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            NurIcons.X,
+                                            contentDescription = "Clear Search",
+                                            tint = hInkMuted,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                            },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(14.dp),
                             colors = OutlinedTextFieldDefaults.colors(
@@ -712,7 +750,9 @@ fun HomeScreen(
                                 unfocusedBorderColor = hBoneDark,
                                 focusedContainerColor = hCream,
                                 unfocusedContainerColor = hCream,
-                                cursorColor = hTeal
+                                cursorColor = hTeal,
+                                focusedTextColor = hInk,
+                                unfocusedTextColor = hInk
                             ),
                             singleLine = true
                         )
@@ -723,8 +763,10 @@ fun HomeScreen(
                     items(browseItems, key = { it.key }) { item ->
                         BrowseItemCard(
                             item = item,
+                            fontFamilyArabic = fontFamilyArabic,
                             onClick = {
                                 when {
+                                    item.pageNumber != null && browseMode != "surah" -> onPageClick(item.pageNumber)
                                     item.chapterId != null -> onChapterClick(item.chapterId, null)
                                     item.pageNumber != null -> onPageClick(item.pageNumber)
                                 }
@@ -733,18 +775,47 @@ fun HomeScreen(
                     }
                     if (browseItems.isEmpty()) {
                         item {
-                            Box(
+                            Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 32.dp),
-                                contentAlignment = Alignment.Center
+                                    .padding(vertical = 36.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                Text(
-                                    text = "No results matching your search.",
-                                    fontSize = 14.sp,
-                                    fontStyle = FontStyle.Italic,
-                                    color = hInkMuted
+                                Icon(
+                                    imageVector = NurIcons.Search,
+                                    contentDescription = null,
+                                    tint = hInkMuted.copy(alpha = 0.4f),
+                                    modifier = Modifier.size(36.dp)
                                 )
+                                Text(
+                                    text = if (searchQuery.isNotEmpty()) {
+                                        "No results found for \"$searchQuery\" in $browseMode"
+                                    } else {
+                                        "No results matching your search."
+                                    },
+                                    fontSize = 14.sp,
+                                    fontFamily = fontFamilyUi,
+                                    color = hInk,
+                                    textAlign = TextAlign.Center
+                                )
+                                if (searchQuery.isNotEmpty()) {
+                                    Surface(
+                                        onClick = { viewModel.setSearchQuery("") },
+                                        shape = RoundedCornerShape(12.dp),
+                                        color = hCream,
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, hBoneDark),
+                                        modifier = Modifier.padding(top = 4.dp)
+                                    ) {
+                                        Text(
+                                            text = "Clear Search",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = hInk,
+                                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -919,13 +990,16 @@ fun TopNavbar(
 private fun ContinueReadingCard(item: RecentlyReadEntity, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
-        modifier = Modifier.widthIn(max = 420.dp),
-        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .widthIn(max = 440.dp)
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(18.dp),
         color = Color.Transparent
     ) {
         Row(
             modifier = Modifier
-                .background(Brush.verticalGradient(listOf(hTeal, hTealMid)))
+                .background(Brush.linearGradient(listOf(hTeal, hTealMid)))
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -971,6 +1045,80 @@ private fun ContinueReadingCard(item: RecentlyReadEntity, onClick: () -> Unit) {
                 tint = Color.White.copy(alpha = 0.6f),
                 modifier = Modifier.size(18.dp)
             )
+        }
+    }
+}
+
+@Composable
+private fun ZeroStateContinueCard(onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .widthIn(max = 440.dp)
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(18.dp),
+        color = hTealSoft,
+        border = androidx.compose.foundation.BorderStroke(1.5.dp, hTeal.copy(alpha = 0.25f))
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(hTeal.copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = NurIcons.BookOpen,
+                    contentDescription = null,
+                    tint = hTeal,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Begin Your Journey",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = hInk,
+                fontFamily = fontFamilyUi
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = "Start reading with Surah Al-Fatihah (The Opening).",
+                fontSize = 12.sp,
+                color = hInkMuted
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = hTeal,
+                modifier = Modifier.height(34.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = "Start Reading",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        fontFamily = fontFamilyUi
+                    )
+                    Icon(
+                        imageVector = NurIcons.ArrowRight,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
+            }
         }
     }
 }
@@ -1044,6 +1192,7 @@ private fun VerseOfDayCard(
     onCoachmarkDismiss: () -> Unit,
     onCopy: () -> Unit,
     onShare: () -> Unit,
+    fontFamilyArabic: FontFamily = fontScheherazade,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -1496,7 +1645,11 @@ private fun RecentlyReadCard(item: RecentlyReadEntity, onClick: () -> Unit) {
 
 // ── Browse Item Card (unified Surah/Page/Juz/Hizb, matching web) ────────
 @Composable
-private fun BrowseItemCard(item: BrowseItem, onClick: () -> Unit) {
+private fun BrowseItemCard(
+    item: BrowseItem,
+    fontFamilyArabic: FontFamily = fontScheherazade,
+    onClick: () -> Unit
+) {
     Surface(
         onClick = onClick,
         modifier = Modifier
@@ -1558,7 +1711,8 @@ private fun BrowseItemCard(item: BrowseItem, onClick: () -> Unit) {
                     if (item.arabic != null) {
                         Text(
                             text = item.arabic,
-                            fontSize = 18.sp,
+                            fontFamily = fontFamilyArabic,
+                            fontSize = 20.sp,
                             color = hGold,
                             maxLines = 1
                         )
@@ -1572,6 +1726,7 @@ private fun BrowseItemCard(item: BrowseItem, onClick: () -> Unit) {
                     Text(
                         text = item.subtitle,
                         fontSize = 11.sp,
+                        fontFamily = fontFamilyBody,
                         color = hInkMuted,
                         modifier = Modifier.weight(1f),
                         maxLines = 1,
@@ -1601,46 +1756,55 @@ private fun BrowseItemCard(item: BrowseItem, onClick: () -> Unit) {
 
 /** Mirrors the web app's getBrowseItems(). */
 private fun buildBrowseItems(mode: String, chapters: List<ChapterEntity>): List<BrowseItem> {
+    val chapMap = chapters.associateBy { it.id }
     return when (mode) {
         "page" -> (1..MUSHAF_PAGE_COUNT).map { n ->
+            val juz = getJuzByPage(n)
             BrowseItem(
                 key = "page-$n",
                 title = "Page $n",
-                subtitle = "Mushaf page view",
+                subtitle = "Juz ${juz.id} · Mushaf View",
                 meta = "Page ${n.toString().padStart(3, '0')}",
-                arabic = null,
-                prefix = null,
+                arabic = "صفحة $n",
+                prefix = n,
                 pageNumber = n
             )
         }
         "juz" -> JUZ_STARTS.map { juz ->
+            val chapId = juz.verseKey.substringBefore(":").toIntOrNull() ?: 1
+            val surahName = chapMap[chapId]?.nameSimple ?: "Surah $chapId"
             BrowseItem(
                 key = "juz-${juz.id}",
                 title = "Juz ${juz.id}",
-                subtitle = "Starts at ${juz.verseKey}",
+                subtitle = "$surahName (${juz.verseKey})",
                 meta = "Page ${juz.pageNumber}",
                 arabic = "الجزء ${juz.id}",
                 prefix = juz.id,
-                pageNumber = juz.pageNumber
+                pageNumber = juz.pageNumber,
+                chapterId = chapId
             )
         }
         "hizb" -> HIZB_STARTS.map { hizb ->
+            val chapId = hizb.verseKey.substringBefore(":").toIntOrNull() ?: 1
+            val surahName = chapMap[chapId]?.nameSimple ?: "Surah $chapId"
             BrowseItem(
                 key = "hizb-${hizb.id}",
                 title = "Hizb ${hizb.id}",
-                subtitle = "Starts at ${hizb.verseKey}",
+                subtitle = "$surahName (${hizb.verseKey})",
                 meta = "Page ${hizb.pageNumber}",
                 arabic = "حزب ${hizb.id}",
                 prefix = hizb.id,
-                pageNumber = hizb.pageNumber
+                pageNumber = hizb.pageNumber,
+                chapterId = chapId
             )
         }
         else -> chapters.map { chapter ->
+            val place = if (chapter.revelationPlace.equals("makkah", ignoreCase = true)) "Meccan" else "Medinan"
             BrowseItem(
                 key = "surah-${chapter.id}",
                 title = chapter.nameSimple,
-                subtitle = chapter.translatedName,
-                meta = "${chapter.versesCount} Ayahs",
+                subtitle = chapter.translatedName.ifEmpty { "Surah ${chapter.id}" },
+                meta = "$place • ${chapter.versesCount} Ayahs",
                 arabic = chapter.nameArabic,
                 prefix = chapter.id,
                 chapterId = chapter.id
@@ -1649,13 +1813,20 @@ private fun buildBrowseItems(mode: String, chapters: List<ChapterEntity>): List<
     }
 }
 
-/** Mirrors the web app's search filter (title/subtitle/meta/arabic). */
+/** Mirrors the web app's search filter (title/subtitle/meta/arabic/number). */
 private fun filterBrowseItems(items: List<BrowseItem>, query: String): List<BrowseItem> {
     val q = query.trim().lowercase()
     if (q.isEmpty()) return items
     return items.filter { item ->
-        listOfNotNull(item.title, item.subtitle, item.meta, item.arabic)
-            .any { it.lowercase().contains(q) }
+        listOfNotNull(
+            item.title,
+            item.subtitle,
+            item.meta,
+            item.arabic,
+            item.prefix?.toString(),
+            item.chapterId?.toString(),
+            item.pageNumber?.toString()
+        ).any { it.lowercase().contains(q) }
     }
 }
 

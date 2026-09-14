@@ -2070,7 +2070,8 @@ fun VerseItem(
     arabicFontScale: Float = 1.0f,
     translationFontScale: Float = 1.0f,
     fontFamilyArabic: FontFamily = fontScheherazade,
-    selectedArabicFontName: String = "KFGQPC Hafs"
+    selectedArabicFontName: String = "KFGQPC Hafs",
+    showShareAction: Boolean = true
 ) {
     var activeFootnoteId by remember { mutableStateOf<String?>(null) }
     var footnoteText by remember { mutableStateOf("") }
@@ -2163,7 +2164,9 @@ fun VerseItem(
                     label = "Read Tafsir",
                     onClick = onTafsirClick
                 )
-                VerseActionIcon(icon = NurIcons.Share2, tint = hInkMuted, label = "Share verse", onClick = onShareClick)
+                if (showShareAction) {
+                    VerseActionIcon(icon = NurIcons.Share2, tint = hInkMuted, label = "Share verse", onClick = onShareClick)
+                }
             }
         }
 

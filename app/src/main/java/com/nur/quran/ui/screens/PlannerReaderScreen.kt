@@ -2,6 +2,7 @@ package com.nur.quran.ui.screens
 
 import android.content.Context
 import androidx.compose.animation.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -27,14 +28,21 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nur.quran.data.db.entities.VerseEntity
+import com.nur.quran.data.db.entities.WordEntity
 import com.nur.quran.data.planner.PlannerEngine
 import com.nur.quran.ui.components.AutoScrollerBar
 import androidx.compose.foundation.gestures.scrollBy
 import com.nur.quran.ui.components.NurIcons
+import com.nur.quran.ui.components.SettingsDrawer
+import com.nur.quran.ui.components.MushafPageView
 import com.nur.quran.ui.components.audio.AudioSetupSheet
+import com.nur.quran.ui.viewmodels.PackViewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.nur.quran.ui.viewmodels.PlannerViewModel
 import com.nur.quran.ui.viewmodels.SurahUiState
 import com.nur.quran.ui.viewmodels.SurahViewModel
@@ -115,17 +123,66 @@ fun PlannerReaderScreen(
     val translationFontScale by surahViewModel.translationFontScale.collectAsState()
     val planBookmarks by plannerViewModel.plannerBookmarks.collectAsState()
     val sessionTotals by plannerViewModel.sessionTotals.collectAsState()
-    val appPrefs = LocalContext.current.getSharedPreferences("PlannerSettings", Context.MODE_PRIVATE)
+    val context = LocalContext.current
+    val appPrefs = context.getSharedPreferences("PlannerSettings", Context.MODE_PRIVATE)
     val showIntentionPrompt = appPrefs.getBoolean("show_intention_prompt", true)
 
     // ── Focus mode (web parity: PlannerReader.jsx isFocusMode immersive
     // hide-chrome): explicit user toggle that hides the header + bottom bar.
     // Separate from the existing scroll-driven headerVisible auto-hide.
     var isFocusMode by remember { mutableStateOf(false) }
-    // ── Focus mode: auto-hide header during scroll ───────────────────
+    var isReadingMode by remember { mutableStateOf(false) }
+    var showPageJumpDialog by remember { mutableStateOf(false) }
+    var showSettingsDrawer by remember { mutableStateOf(false) }
+    var selectedWordForTooltip by remember { mutableStateOf<WordEntity?>(null) }
+    var selectedTajweedRule by remember { mutableStateOf<TajweedRule?>(null) }
+    var collectionVerse by remember { mutableStateOf<VerseEntity?>(null) }
+    val collections by surahViewModel.collections.collectAsState()
+    val collectionItems by surahViewModel.collectionItems.collectAsState()
+
+    // Sync global dark theme state
+    val hifdhPrefs = LocalContext.current.getSharedPreferences("hifdh_settings", Context.MODE_PRIVATE)
+    LaunchedEffect(Unit) {
+        isDarkThemeGlobal = hifdhPrefs.getBoolean("is_dark_theme", false)
+    }
+
+    val advanceToNextPage: () -> Unit = {
+        if (currentPage < pageEnd) {
+            val currentItem = assignment.items.find { currentPage in it.pageStart..it.pageEnd }
+            if (currentItem != null) {
+                val completedRanges = activePlan?.assignmentCompletedItems?.get(dayNumber) ?: emptyList()
+                if (!completedRanges.contains(currentItem.rangeValue)) {
+                    if (activePlan?.unitType == "page" || currentPage >= currentItem.pageEnd) {
+                        plannerViewModel.markPlannerItemComplete(dayNumber, currentItem.rangeValue)
+                    }
+                }
+            }
+            currentPage++
+        }
+    }
+
+    // Seamless Audio Autoplay across pages in assignment (web parity: PlannerReader.jsx:450-480)
+    var wasAudioPlaying by remember { mutableStateOf(false) }
+    var shouldAutoPlayNextPage by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isPlaying, playingVerseKey) {
+        if (wasAudioPlaying && !isPlaying && playingVerseKey == null) {
+            if (currentPage < pageEnd) {
+                shouldAutoPlayNextPage = true
+                advanceToNextPage()
+            }
+        }
+        wasAudioPlaying = isPlaying
+    }
+
+    // ── Sticky Header HUD & Auto-Scroll ──────────────────────────────
     val lazyListState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
-    var headerVisible by remember { mutableStateOf(true) }
+    val isScrolled by remember {
+        derivedStateOf {
+            lazyListState.firstVisibleItemIndex > 0 || lazyListState.firstVisibleItemScrollOffset > 40
+        }
+    }
     var isAutoScrollActive by remember { mutableStateOf(false) }
     var isAutoScrollPaused by remember { mutableStateOf(false) }
     var autoScrollSpeed by remember { mutableIntStateOf(3) }
@@ -158,15 +215,6 @@ fun PlannerReaderScreen(
                     lastFrameTimeNanos = frameTimeNanos
                 }
             }
-        }
-    }
-
-    LaunchedEffect(lazyListState.isScrollInProgress) {
-        if (lazyListState.isScrollInProgress) {
-            headerVisible = false
-        } else {
-            delay(800)
-            headerVisible = true
         }
     }
 
@@ -257,7 +305,16 @@ fun PlannerReaderScreen(
     // ── Completion progress tracking ────────────────────────────────
     val totalPages = (pageEnd - pageStart + 1)
     val readPages = activePlan?.assignmentReadPages?.get(dayNumber)?.size ?: 0
-    val progressPct = if (totalPages > 0) (readPages * 100 / totalPages) else 0
+    val progressPct = remember(activePlan, assignment, readPages, totalPages) {
+        if (activePlan?.unitType == "surah" && totalPages > 0) {
+            (readPages * 100 / totalPages).coerceIn(0, 100)
+        } else {
+            val completed = activePlan?.assignmentCompletedItems?.get(dayNumber)?.size ?: 0
+            val totalItems = assignment.items.size
+            if (totalItems > 0) (completed * 100 / totalItems).coerceIn(0, 100)
+            else if (totalPages > 0) (readPages * 100 / totalPages).coerceIn(0, 100) else 0
+        }
+    }
     // Web parity (PlannerReader.jsx:578): estimated reading time label.
     val estimatedMins = ceil(totalPages * 2.5).toInt()
 
@@ -266,6 +323,25 @@ fun PlannerReaderScreen(
 
     // ── Swipe gesture handler ────────────────────────────────────────
     var accumulatedDrag by remember { mutableFloatStateOf(0f) }
+
+    val currentChapter = remember(chapters, currentPage, activePlan, assignment) {
+        if (chapters.isEmpty()) null
+        else {
+            val matching = chapters.filter { currentPage in it.pagesStart..it.pagesEnd }
+            when {
+                matching.isEmpty() -> null
+                matching.size == 1 -> matching.first()
+                activePlan?.unitType == "surah" -> {
+                    val assignedIds = assignment.items.mapNotNull { it.rangeValue.toIntOrNull() }
+                    matching.find { it.id in assignedIds } ?: matching.find { it.pagesStart == currentPage } ?: matching.last()
+                }
+                else -> {
+                    matching.find { it.pagesStart == currentPage } ?: matching.last()
+                }
+            }
+        }
+    }
+    var isIntentionDismissed by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -277,7 +353,7 @@ fun PlannerReaderScreen(
                         if (accumulatedDrag > 100f && currentPage > pageStart) {
                             currentPage--
                         } else if (accumulatedDrag < -100f && currentPage < pageEnd) {
-                            currentPage++
+                            advanceToNextPage()
                         }
                         accumulatedDrag = 0f
                     },
@@ -288,68 +364,94 @@ fun PlannerReaderScreen(
                 )
             }
     ) {
-        // ── Header Bar (auto-hides on scroll; fully hidden in focus mode) ──
+        // ── Header Bar (stays sticky on scroll; fully hidden in focus mode) ──
         AnimatedVisibility(
-            visible = headerVisible && !isFocusMode,
+            visible = !isFocusMode,
             enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
             exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut()
         ) {
-            Surface(
-                color = hCream,
-                tonalElevation = 2.dp,
-                border = androidx.compose.foundation.BorderStroke(1.dp, hBoneDark)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(hCream)
             ) {
-                Column {
+                // Top Minimal Nav Row
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            IconButton(onClick = onBack, modifier = Modifier.size(36.dp)) {
-                                Icon(imageVector = NurIcons.ArrowLeft, contentDescription = "Back", tint = hInk)
-                            }
+                        IconButton(onClick = onBack, modifier = Modifier.size(36.dp)) {
+                            Icon(imageVector = NurIcons.ArrowLeft, contentDescription = "Back", tint = hInk)
+                        }
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { showPageJumpDialog = true }
+                                .padding(horizontal = 4.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "Day $dayNumber Reader",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = hInk,
+                                fontFamily = fontFamilyUi
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(
+                                imageVector = NurIcons.ChevronDown,
+                                contentDescription = "Select page",
+                                tint = hInkMuted,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
 
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            Column {
-                                Text("DAY $dayNumber ASSIGNMENT", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = hGold, fontFamily = fontFamilyMono, letterSpacing = 1.sp)
-                                Text(assignment.title, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = hInk, fontFamily = fontFamilyUi)
-                            }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        // 1. Auto-scroll: ChevronsDown (web Layout.jsx:254-256)
+                        IconButton(
+                            onClick = {
+                                isAutoScrollActive = !isAutoScrollActive
+                                if (!isAutoScrollActive) isAutoScrollPaused = false
+                            },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = NurIcons.ChevronsDown,
+                                contentDescription = if (isAutoScrollActive) "Stop Auto-scroll" else "Auto-scroll",
+                                tint = if (isAutoScrollActive) hGold else hInkMuted,
+                                modifier = Modifier.size(18.dp)
+                            )
                         }
 
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            // Focus mode toggle (web parity: isFocusMode immersive hide-chrome)
-                            IconButton(
-                                onClick = { isFocusMode = !isFocusMode },
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Icon(
-                                    imageVector = if (isFocusMode) NurIcons.EyeOff else NurIcons.Eye,
-                                    contentDescription = if (isFocusMode) "Exit focus mode" else "Enter focus mode",
-                                    tint = if (isFocusMode) hGold else hInk
-                                )
-                            }
+                        // 2. Reading mode: BookOpen (web Layout.jsx:257-259)
+                        IconButton(
+                            onClick = { isReadingMode = !isReadingMode },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = NurIcons.BookOpen,
+                                contentDescription = if (isReadingMode) "Translation Mode" else "Reading Mode",
+                                tint = if (isReadingMode) hGold else hInkMuted,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
 
-                            // Auto-scroll toggle button
-                            IconButton(
-                                onClick = {
-                                    isAutoScrollActive = !isAutoScrollActive
-                                    if (!isAutoScrollActive) isAutoScrollPaused = false
-                                },
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Icon(
-                                    imageVector = NurIcons.Rows3,
-                                    contentDescription = "Auto-scroll",
-                                    tint = if (isAutoScrollActive) hGold else hInk
-                                )
-                            }
-
-                            // Audio Play/Pause Button (tap toggles, setup opens via the
-                            // settings row below so playback stays day-scoped)
+                        // 3. Audio toggle: Volume2 (web Layout.jsx:265-278)
+                        Box(
+                            modifier = Modifier.size(36.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
                             IconButton(
                                 onClick = {
                                     val state = uiState
@@ -361,79 +463,195 @@ fun PlannerReaderScreen(
                                 modifier = Modifier.size(36.dp)
                             ) {
                                 Icon(
-                                    imageVector = if (isPlaying) NurIcons.PauseFilled else NurIcons.PlayFilled,
-                                    contentDescription = if (isPlaying) "Pause Audio" else "Play Audio",
-                                    tint = hTeal
+                                    imageVector = NurIcons.Volume2,
+                                    contentDescription = "Audio Play/Pause",
+                                    tint = if (isPlaying) hTeal else hInkMuted,
+                                    modifier = Modifier.size(18.dp)
                                 )
                             }
-
-                            // In-reader audio setup entry (web parity: AudioSetupModal in
-                            // PlannerReader.jsx) — day-scoped playlist wiring.
-                            IconButton(
-                                onClick = { showReaderAudioSetup = true },
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Icon(
-                                    imageVector = NurIcons.Settings,
-                                    contentDescription = "Audio setup",
-                                    tint = hInk
-                                )
-                            }
-
-                            Column(horizontalAlignment = Alignment.End) {
-                                Surface(
-                                    shape = RoundedCornerShape(100),
-                                    color = if (isDayCompleted) hGreen.copy(alpha = 0.15f) else hGoldSoft
-                                ) {
-                                    Text(
-                                        text = "Page $currentPage of $pageEnd",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (isDayCompleted) hGreen else hGold,
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                                        fontFamily = fontFamilyMono
-                                    )
-                                }
-                                // Web parity: estimated time label + session timer with pause/resume toggle (MM:SS)
-                                Text(
-                                    text = "≈$estimatedMins min",
-                                    fontSize = 9.sp,
-                                    color = hInkMuted,
-                                    fontFamily = fontFamilyMono,
-                                    modifier = Modifier.padding(top = 2.dp, end = 4.dp)
-                                )
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
+                            if (isPlaying) {
+                                Box(
                                     modifier = Modifier
-                                        .padding(top = 2.dp, end = 4.dp)
-                                        .clip(RoundedCornerShape(100))
-                                        .clickable { isTimerRunning = !isTimerRunning }
-                                ) {
-                                    Icon(
-                                        imageVector = if (isTimerRunning) NurIcons.PauseFilled else NurIcons.PlayFilled,
-                                        contentDescription = if (isTimerRunning) "Pause session timer" else "Resume session timer",
-                                        tint = hTeal,
-                                        modifier = Modifier.size(12.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = formatSessionTime(displayedSeconds),
-                                        fontSize = 9.sp,
-                                        color = hInkMuted,
-                                        fontFamily = fontFamilyMono
-                                    )
-                                }
+                                        .size(6.dp)
+                                        .align(Alignment.TopEnd)
+                                        .offset(x = (-4).dp, y = 4.dp)
+                                        .clip(CircleShape)
+                                        .background(hGold)
+                                )
                             }
                         }
-                    }
 
-                    // Progress bar under header
-                    LinearProgressIndicator(
-                        progress = progressPct / 100f,
-                        modifier = Modifier.fillMaxWidth().height(2.dp),
-                        color = hGold,
-                        trackColor = hBone
-                    )
+                        // 4. Toggle Theme: Moon / Sun (web Layout.jsx:280-292)
+                        IconButton(
+                            onClick = {
+                                val nextTheme = !isDarkThemeGlobal
+                                isDarkThemeGlobal = nextTheme
+                                context.getSharedPreferences("hifdh_settings", Context.MODE_PRIVATE)
+                                    .edit()
+                                    .putBoolean("is_dark_theme", nextTheme)
+                                    .apply()
+                            },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (isDarkThemeGlobal) NurIcons.Sun else NurIcons.Moon,
+                                contentDescription = "Toggle Theme",
+                                tint = if (isDarkThemeGlobal) hGold else hInkMuted,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+
+                        // 5. Settings: Settings gear (web Layout.jsx:294-296)
+                        IconButton(
+                            onClick = { showSettingsDrawer = true },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = NurIcons.Settings,
+                                contentDescription = "Settings",
+                                tint = if (showSettingsDrawer) hGold else hInkMuted,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                }
+
+                // Sticky Glass Planner Card (web parity: PlannerReader.jsx lines 616-671)
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = hWhite,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, hBoneDark.copy(alpha = 0.8f)),
+                    shadowElevation = 2.dp,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = if (isScrolled) 2.dp else 4.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(if (isScrolled) 10.dp else 14.dp),
+                        verticalArrangement = Arrangement.spacedBy(if (isScrolled) 6.dp else 10.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Left: Page number or Assignment Title + Subtitle
+                            Column(modifier = Modifier.weight(1f, fill = false)) {
+                                if (activePlan?.unitType == "page") {
+                                    Text(
+                                        text = "Page $currentPage / $pageEnd",
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = hInk,
+                                        fontFamily = fontFamilyUi,
+                                        modifier = Modifier.clickable { showPageJumpDialog = true }
+                                    )
+                                } else {
+                                    Text(
+                                        text = assignment.title,
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = hInk,
+                                        fontFamily = fontFamilyUi,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    val subPrefix = remember(assignment.subtitle) {
+                                        val parts = assignment.subtitle.split(" · ")
+                                        if (parts.isNotEmpty() && parts[0].isNotBlank()) "${parts[0]} • " else ""
+                                    }
+                                    Text(
+                                        text = "${subPrefix}Page $currentPage / $pageEnd",
+                                        fontSize = 11.sp,
+                                        color = hInkMuted,
+                                        fontFamily = fontFamilyUi,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.clickable { showPageJumpDialog = true }
+                                    )
+                                }
+                            }
+
+                            // Right: Surah badge (if Juz/Page or different) + Timer pill + % Achieved
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                if (currentChapter != null && activePlan?.unitType != "surah") {
+                                    Surface(
+                                        shape = RoundedCornerShape(100),
+                                        color = hTeal.copy(alpha = 0.08f),
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, hTeal.copy(alpha = 0.2f))
+                                    ) {
+                                        Text(
+                                            text = "${currentChapter.id}. Surah ${currentChapter.nameSimple}",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = hTeal,
+                                            fontFamily = fontFamilyUi,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                }
+
+                                Surface(
+                                    shape = RoundedCornerShape(100),
+                                    color = hTeal.copy(alpha = 0.08f),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, hTeal.copy(alpha = 0.2f)),
+                                    modifier = Modifier.clickable { isTimerRunning = !isTimerRunning }
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = if (isTimerRunning) NurIcons.PauseFilled else NurIcons.PlayFilled,
+                                            contentDescription = if (isTimerRunning) "Pause session timer" else "Resume session timer",
+                                            tint = hTeal,
+                                            modifier = Modifier.size(10.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = formatSessionTime(displayedSeconds),
+                                            fontSize = 11.sp,
+                                            fontFamily = fontFamilyMono,
+                                            fontWeight = FontWeight.Bold,
+                                            color = hTeal
+                                        )
+                                    }
+                                }
+
+                                Text(
+                                    text = "$progressPct%",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = hTeal,
+                                    fontFamily = fontFamilyUi
+                                )
+                            }
+                        }
+
+                        // Progress bar line: 3dp teal fill matching web
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(3.dp)
+                                .clip(RoundedCornerShape(100))
+                                .background(Color.Black.copy(alpha = 0.06f))
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .fillMaxWidth(fraction = (progressPct / 100f).coerceIn(0f, 1f))
+                                    .clip(RoundedCornerShape(100))
+                                    .background(hTeal)
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -456,29 +674,52 @@ fun PlannerReaderScreen(
                     val wordsMap = state.wordsMap
                     val tajweedMap = state.tajweedMap
 
+                    // Filter verses on boundary pages to only assigned items
+                    val plan = activePlan
+                    val assignedVerses = remember(verses, plan, assignment) {
+                        if (verses.isEmpty() || plan == null) verses
+                        else if (plan.unitType == "surah") {
+                            val assignedSurahIds = assignment.items.mapNotNull { it.rangeValue.toIntOrNull() }
+                            verses.filter { it.chapterId in assignedSurahIds }
+                        } else if (plan.unitType == "juz") {
+                            val assignedJuzIds = assignment.items.mapNotNull { it.rangeValue.toIntOrNull() }
+                            verses.filter { it.juzNumber in assignedJuzIds }
+                        } else {
+                            verses
+                        }
+                    }
+                    val assignedVerseKeys = remember(assignedVerses) {
+                        assignedVerses.map { it.verseKey }.toSet()
+                    }
+
                     // Tajweed overlays for every chapter on this page
-                    LaunchedEffect(verses) {
-                        verses.map { it.chapterId }.distinct().forEach { chapterId ->
+                    LaunchedEffect(assignedVerses) {
+                        assignedVerses.map { it.chapterId }.distinct().forEach { chapterId ->
                             surahViewModel.ensureTajweedForChapter(chapterId)
                         }
-                        if (verses.isNotEmpty() && takeawayVerse == null) {
-                            takeawayVerse = verses.random()
+                        if (assignedVerses.isNotEmpty() && takeawayVerse == null) {
+                            takeawayVerse = assignedVerses.random()
                         }
                     }
 
                     // Web parity (PlannerReader.jsx:215-268): non-verse header items
                     // (intention banner + swipe hint) shift LazyColumn indices.
                     val verseHeaderOffset =
-                        (if (showIntentionPrompt) 1 else 0) + (if (currentPage == pageStart) 1 else 0)
+                        (if (showIntentionPrompt && !isIntentionDismissed) 1 else 0) + (if (currentPage == pageStart) 1 else 0)
+
+                    // Web parity: scroll to top of page on page change
+                    LaunchedEffect(currentPage) {
+                        lazyListState.scrollToItem(0)
+                    }
 
                     // Auto-scroll to the last-read verse on initial load.
-                    LaunchedEffect(verses, currentPage, lastReadVerseKey) {
-                        if (hasAutoScrolledToLastRead || verses.isEmpty()) return@LaunchedEffect
+                    LaunchedEffect(assignedVerses, currentPage, lastReadVerseKey) {
+                        if (hasAutoScrolledToLastRead || assignedVerses.isEmpty()) return@LaunchedEffect
                         val targetKey = lastReadVerseKey ?: run {
                             hasAutoScrolledToLastRead = true
                             return@LaunchedEffect
                         }
-                        val verseIndex = verses.indexOfFirst { it.verseKey == targetKey }
+                        val verseIndex = assignedVerses.indexOfFirst { it.verseKey == targetKey }
                         if (verseIndex >= 0) {
                             lazyListState.scrollToItem(verseIndex + verseHeaderOffset)
                         }
@@ -487,159 +728,190 @@ fun PlannerReaderScreen(
                     }
 
                     // Track the top-visible verse (debounced) as the last-read position.
-                    LaunchedEffect(lazyListState.firstVisibleItemIndex, verses.size, currentPage) {
-                        if (verses.isEmpty() || !hasAutoScrolledToLastRead) return@LaunchedEffect
+                    LaunchedEffect(lazyListState.firstVisibleItemIndex, assignedVerses.size, currentPage) {
+                        if (assignedVerses.isEmpty() || !hasAutoScrolledToLastRead) return@LaunchedEffect
                         delay(1000)
                         val verseIndex = lazyListState.firstVisibleItemIndex - verseHeaderOffset
-                        val visibleVerse = verses.getOrNull(verseIndex) ?: return@LaunchedEffect
+                        val visibleVerse = assignedVerses.getOrNull(verseIndex) ?: return@LaunchedEffect
                         if (activePlan?.lastReadVerseKey != visibleVerse.verseKey) {
                             plannerViewModel.setLastReadPosition(currentPage, visibleVerse.verseKey)
                         }
                     }
 
-                    LazyColumn(
-                        state = lazyListState,
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 24.dp),
-                        verticalArrangement = Arrangement.spacedBy(28.dp)
-                    ) {
-                        // Renewal of Intention Banner (web: intentionPromptEnabled)
-                        if (showIntentionPrompt) {
+                    if (currentMushaf.renderMode == com.nur.quran.data.mushaf.MushafRenderMode.QCF_PAGE && !isReadingMode) {
+                        LazyColumn(
+                            state = lazyListState,
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp)
+                        ) {
                             item {
-                                Surface(
-                                    shape = RoundedCornerShape(16.dp),
-                                    color = hGoldSoft,
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, hGold.copy(alpha = 0.3f)),
-                                    modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(14.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(imageVector = NurIcons.Sparkles, contentDescription = null, tint = hGold, modifier = Modifier.size(18.dp))
-                                        Spacer(modifier = Modifier.width(10.dp))
-                                        Text("Pause to renew your intention for Allah's sake before reading.", fontSize = 12.sp, color = hInk, fontFamily = fontFamilyUi)
-                                    }
-                                }
-                            }
-                        }
-
-                        // Swipe hint (shown on first page)
-                        if (currentPage == pageStart) {
-                            item {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
-                                    horizontalArrangement = Arrangement.Center,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(imageVector = NurIcons.ArrowLeft, contentDescription = null, tint = hInkMuted.copy(alpha = 0.5f), modifier = Modifier.size(12.dp))
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Swipe to turn pages", fontSize = 10.sp, color = hInkMuted.copy(alpha = 0.5f), fontFamily = fontFamilyMono)
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Icon(imageVector = NurIcons.ArrowRight, contentDescription = null, tint = hInkMuted.copy(alpha = 0.5f), modifier = Modifier.size(12.dp))
-                                }
-                            }
-                        }
-
-                        itemsIndexed(verses, key = { _, verse -> verse.id }) { index, verse ->
-                            val prevVerse = if (index > 0) verses[index - 1] else null
-                            val showPageDivider = verse.pageNumber != 0 && (prevVerse == null || prevVerse.pageNumber != verse.pageNumber)
-
-                            Column(modifier = Modifier.fillMaxWidth()) {
-                                if (showPageDivider) {
-                                    PageDivider(pageNumber = verse.pageNumber)
-                                }
-
-                                if (verse.verseNumber == 1) {
-                                    val chapter = chapters.find { it.id == verse.chapterId }
-                                    if (chapter != null) {
-                                        SurahHeader(
-                                            chapter = chapter,
-                                            versesStartPage = verse.pageNumber,
-                                            isPlaying = isPlaying,
-                                            isDownloaded = true,
-                                            isDownloading = false,
-                                            onPlayClick = { surahViewModel.playPauseChapter(verses, chapter.id) },
-                                            onDownloadClick = {}
-                                        )
-                                    }
-                                    if (verse.chapterId != 1 && verse.chapterId != 9) {
-                                        Box(
-                                            modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp, horizontal = 16.dp),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                text = "بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ",
-                                                fontSize = 28.sp,
-                                                fontFamily = fontFamilyArabic,
-                                                color = hGold,
-                                                textAlign = TextAlign.Center
-                                            )
-                                        }
-                                    }
-                                }
-
-                                VerseDivider()
-
-                                val verseWords = wordsMap[verse.id] ?: emptyList()
-                                val verseChapter = chapters.find { it.id == verse.chapterId }
-                                VerseItem(
-                                    verse = verse,
-                                    words = verseWords,
-                                    isTranslationEnabled = isTranslationEnabled,
-                                    isTajweedEnabled = isTajweedEffective,
-                                    mushafId = currentMushaf.id,
+                                MushafPageView(
+                                    page = currentPage,
+                                    verses = assignedVerses,
+                                    wordsMap = wordsMap,
                                     tajweedMap = tajweedMap,
-                                    isCurrentlyPlaying = playingVerseKey == verse.verseKey && isPlaying,
-                                    isBookmarked = planBookmarks.any { it.verseKey == verse.verseKey },
-                                    isTafsirOpen = (tafsirState as? TafsirUiState.Visible)?.verseKey == verse.verseKey,
-                                    onPlayClick = { surahViewModel.playVerse(verses, verse.chapterId, verse) },
-                                    onBookmarkClick = {
-                                        plannerViewModel.togglePlannerBookmark(
-                                            verse.verseKey,
-                                            verseChapter?.nameSimple ?: "Surah ${verse.chapterId}"
-                                        )
-                                    },
-                                    onTafsirClick = {
-                                        if ((tafsirState as? TafsirUiState.Visible)?.verseKey == verse.verseKey) {
-                                            surahViewModel.dismissTafsir()
-                                        } else {
-                                            surahViewModel.loadTafsir(verse.verseKey, verse.chapterId)
-                                        }
-                                    },
-                                    onShareClick = { verseToShare = verse },
-                                    onAddToCollection = {},
-                                    onWordClick = {},
-                                    onTajweedClick = {},
-                                    onLoadFootnote = { id -> surahViewModel.getFootnoteText(id) },
+                                    isTajweedEnabled = isTajweedEffective,
+                                    mushaf = currentMushaf,
+                                    activeAudioVerseKey = playingVerseKey,
+                                    assignedVerseKeys = assignedVerseKeys,
+                                    onWordClick = { word -> selectedWordForTooltip = word },
+                                    onTajweedClick = { selectedTajweedRule = it },
                                     arabicFontScale = arabicFontScale,
-                                    translationFontScale = translationFontScale,
                                     fontFamilyArabic = fontFamilyArabic,
                                     selectedArabicFontName = selectedArabicFontName
                                 )
                             }
                         }
+                    } else if (isReadingMode) {
+                        LazyColumn(
+                            state = lazyListState,
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp)
+                        ) {
+                            item {
+                                ContinuousReadingPageItem(
+                                    page = currentPage,
+                                    pageVerses = assignedVerses,
+                                    wordsMap = wordsMap,
+                                    tajweedMap = tajweedMap,
+                                    isTajweedEnabled = isTajweedEffective,
+                                    mushafId = currentMushaf.id,
+                                    onWordClick = { word -> selectedWordForTooltip = word },
+                                    onTajweedClick = { selectedTajweedRule = it },
+                                    arabicFontScale = arabicFontScale,
+                                    fontFamilyArabic = fontFamilyArabic,
+                                    selectedArabicFontName = selectedArabicFontName
+                                )
+                            }
+                        }
+                    } else {
+                        LazyColumn(
+                            state = lazyListState,
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 24.dp),
+                            verticalArrangement = Arrangement.spacedBy(28.dp)
+                        ) {
+                            // Renewal of Intention Banner (web: intentionPromptEnabled)
+                            if (showIntentionPrompt && !isIntentionDismissed) {
+                                item {
+                                    Surface(
+                                        shape = RoundedCornerShape(16.dp),
+                                        color = hTeal.copy(alpha = 0.06f),
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, hTeal.copy(alpha = 0.18f)),
+                                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(imageVector = NurIcons.Sparkles, contentDescription = null, tint = hTeal, modifier = Modifier.size(16.dp))
+                                            Spacer(modifier = Modifier.width(10.dp))
+                                            Text(
+                                                text = "Pause to renew your intention for Allah's sake before reading.",
+                                                fontSize = 12.sp,
+                                                color = hInk,
+                                                fontFamily = fontFamilyUi,
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                            IconButton(
+                                                onClick = { isIntentionDismissed = true },
+                                                modifier = Modifier.size(24.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = NurIcons.X,
+                                                    contentDescription = "Dismiss",
+                                                    tint = hInkMuted,
+                                                    modifier = Modifier.size(14.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
 
-                        // Day Reflection Note Section
-                        item {
-                            Card(
-                                shape = RoundedCornerShape(18.dp),
-                                colors = CardDefaults.cardColors(containerColor = hCream),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, hBoneDark),
-                                modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 20.dp)
-                            ) {
-                                Column(modifier = Modifier.padding(16.dp)) {
-                                    Text("DAY $dayNumber REFLECTION & NOTES", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = hGold, fontFamily = fontFamilyMono, letterSpacing = 1.sp)
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    OutlinedTextField(
-                                        value = reflectionNote,
-                                        onValueChange = {
-                                            reflectionNote = it
-                                            plannerViewModel.saveReflection(dayNumber, it)
+                            // Swipe hint (shown on first page)
+                            if (currentPage == pageStart) {
+                                item {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+                                        horizontalArrangement = Arrangement.Center,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(imageVector = NurIcons.ArrowLeft, contentDescription = null, tint = hInkMuted.copy(alpha = 0.5f), modifier = Modifier.size(12.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Swipe to turn pages", fontSize = 10.sp, color = hInkMuted.copy(alpha = 0.5f), fontFamily = fontFamilyMono)
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Icon(imageVector = NurIcons.ArrowRight, contentDescription = null, tint = hInkMuted.copy(alpha = 0.5f), modifier = Modifier.size(12.dp))
+                                    }
+                                }
+                            }
+
+                            itemsIndexed(assignedVerses, key = { _, verse -> verse.id }) { index, verse ->
+                                Column(modifier = Modifier.fillMaxWidth()) {
+                                    if (verse.verseNumber == 1) {
+                                        val chapter = chapters.find { it.id == verse.chapterId }
+                                        if (chapter != null) {
+                                            PlannerMinimalHeader(
+                                                overline = "Surah ${chapter.id}",
+                                                title = chapter.nameSimple,
+                                                pillPrimary = chapter.translatedName.ifBlank { null },
+                                                pillSecondary = "${chapter.versesCount} Ayahs"
+                                            )
+                                        }
+                                        if (verse.chapterId != 1 && verse.chapterId != 9) {
+                                            Text(
+                                                text = "بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ",
+                                                fontSize = 28.sp,
+                                                fontFamily = fontFamilyArabic,
+                                                color = hGold,
+                                                textAlign = TextAlign.Center,
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(top = 10.dp, bottom = 20.dp)
+                                            )
+                                        }
+                                    }
+
+                                    if (index > 0 && verse.verseNumber != 1) {
+                                        VerseDivider()
+                                    }
+
+                                    val verseWords = wordsMap[verse.id] ?: emptyList()
+                                    val verseChapter = chapters.find { it.id == verse.chapterId }
+                                    VerseItem(
+                                        verse = verse,
+                                        words = verseWords,
+                                        isTranslationEnabled = isTranslationEnabled,
+                                        isTajweedEnabled = isTajweedEffective,
+                                        mushafId = currentMushaf.id,
+                                        tajweedMap = tajweedMap,
+                                        isCurrentlyPlaying = playingVerseKey == verse.verseKey && isPlaying,
+                                        isBookmarked = planBookmarks.any { it.verseKey == verse.verseKey },
+                                        isTafsirOpen = (tafsirState as? TafsirUiState.Visible)?.verseKey == verse.verseKey,
+                                        onPlayClick = { surahViewModel.playVerse(assignedVerses, verse.chapterId, verse) },
+                                        onBookmarkClick = {
+                                            plannerViewModel.togglePlannerBookmark(
+                                                verse.verseKey,
+                                                verseChapter?.nameSimple ?: "Surah ${verse.chapterId}"
+                                            )
                                         },
-                                        placeholder = { Text("Write your thoughts or reflections for today's reading...", fontSize = 13.sp, color = hInkMuted) },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        minLines = 2
+                                        onTafsirClick = {
+                                            if ((tafsirState as? TafsirUiState.Visible)?.verseKey == verse.verseKey) {
+                                                surahViewModel.dismissTafsir()
+                                            } else {
+                                                surahViewModel.loadTafsir(verse.verseKey, verse.chapterId)
+                                            }
+                                        },
+                                        onShareClick = { verseToShare = verse },
+                                        onAddToCollection = { collectionVerse = verse },
+                                        onWordClick = { word -> selectedWordForTooltip = word },
+                                        onTajweedClick = { selectedTajweedRule = it },
+                                        onLoadFootnote = { id -> surahViewModel.getFootnoteText(id) },
+                                        arabicFontScale = arabicFontScale,
+                                        translationFontScale = translationFontScale,
+                                        fontFamilyArabic = fontFamilyArabic,
+                                        selectedArabicFontName = selectedArabicFontName,
+                                        showShareAction = false
                                     )
                                 }
                             }
@@ -664,84 +936,141 @@ fun PlannerReaderScreen(
             }
         }
 
-        // Per-item Done (web: Mark {currentItem.title} Done)
-        val completedRangeValues = activePlan?.assignmentCompletedItems?.get(dayNumber) ?: emptyList()
-        val currentItem = assignment.items.find { currentPage in it.pageStart..it.pageEnd }
-            ?: assignment.items.firstOrNull()
-        val dayProgressComplete = activePlan?.let { PlannerEngine.getAssignmentProgress(it, assignment).isComplete } == true
-        val isCurrentItemComplete = currentItem == null || completedRangeValues.contains(currentItem.rangeValue)
-        if (currentItem != null && !isCurrentItemComplete && !dayProgressComplete &&
-            (assignment.unitType != "surah" || currentPage >= assignment.pageEnd)
-        ) {
-            Button(
-                onClick = { plannerViewModel.markPlannerItemComplete(dayNumber, currentItem.rangeValue) },
-                colors = ButtonDefaults.buttonColors(containerColor = hTeal),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)
-            ) {
-                Icon(imageVector = NurIcons.CheckCircle2, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Mark ${currentItem.title} Done", fontSize = 13.sp, color = Color.White, fontWeight = FontWeight.Bold)
-            }
-        }
-
-        // Bottom Dock Bar: Navigation between pages (hidden in focus mode)
+        // Bottom Dock Bar: Navigation between pages (web parity: PlannerReader.jsx lines 832-869)
         if (!isFocusMode) {
-        Surface(
-            color = hWhite,
-            tonalElevation = 6.dp,
-            border = androidx.compose.foundation.BorderStroke(1.5.dp, hBoneDark),
-            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 14.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            Surface(
+                color = hWhite,
+                tonalElevation = 4.dp,
+                border = androidx.compose.foundation.BorderStroke(1.dp, hBoneDark.copy(alpha = 0.7f)),
+                shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
             ) {
-                // Prev Page Button
-                Button(
-                    onClick = { if (currentPage > pageStart) currentPage-- },
-                    enabled = currentPage > pageStart,
-                    colors = ButtonDefaults.buttonColors(containerColor = hCream),
-                    shape = RoundedCornerShape(12.dp),
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
                 ) {
-                    Icon(imageVector = NurIcons.ArrowLeft, contentDescription = "Prev", tint = if (currentPage > pageStart) hInk else hInkMuted, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Prev", fontSize = 12.sp, color = if (currentPage > pageStart) hInk else hInkMuted, fontWeight = FontWeight.Bold)
-                }
-
-                // Complete Assignment / Next Page Button
-                if (currentPage < pageEnd) {
-                    Button(
-                        onClick = { currentPage++ },
-                        colors = ButtonDefaults.buttonColors(containerColor = hGold),
-                        shape = RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp)
+                    // Per-item Done (web: Mark {currentItem.title} Done)
+                    val completedRangeValues = activePlan?.assignmentCompletedItems?.get(dayNumber) ?: emptyList()
+                    val currentItem = assignment.items.find { currentPage in it.pageStart..it.pageEnd }
+                        ?: assignment.items.firstOrNull()
+                    val dayProgressComplete = activePlan?.let { PlannerEngine.getAssignmentProgress(it, assignment).isComplete } == true
+                    val isCurrentItemComplete = currentItem == null || completedRangeValues.contains(currentItem.rangeValue)
+                    if (currentItem != null && !isCurrentItemComplete && !dayProgressComplete &&
+                        (assignment.unitType != "surah" || currentPage >= assignment.pageEnd)
                     ) {
-                        Text("Next Page", fontSize = 13.sp, color = Color.White, fontWeight = FontWeight.Bold)
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Icon(imageVector = NurIcons.ArrowRight, contentDescription = "Next", tint = Color.White, modifier = Modifier.size(16.dp))
+                        Surface(
+                            shape = RoundedCornerShape(100),
+                            color = hTeal,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 10.dp)
+                                .clickable {
+                                    plannerViewModel.markPlannerItemComplete(dayNumber, currentItem.rangeValue)
+                                }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(vertical = 12.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(imageVector = NurIcons.CheckCircle2, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Mark ${currentItem.title} Done", fontSize = 14.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                            }
+                        }
                     }
-                } else {
-                    Button(
-                        onClick = {
-                            plannerViewModel.toggleAssignmentCompleted(dayNumber)
-                            showCelebrationDialog = true
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = hGreen),
-                        shape = RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp)
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(imageVector = NurIcons.CheckCircle2, contentDescription = "Done", tint = Color.White, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Finish Day Assignment", fontSize = 13.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                        // Prev Page Button
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = if (currentPage > pageStart) hBone.copy(alpha = 0.6f) else hBone.copy(alpha = 0.2f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, hBoneDark.copy(alpha = 0.5f)),
+                            modifier = Modifier.clickable(enabled = currentPage > pageStart) {
+                                currentPage--
+                            }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = NurIcons.ChevronLeft,
+                                    contentDescription = "Prev",
+                                    tint = if (currentPage > pageStart) hInk else hInkMuted.copy(alpha = 0.4f),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Column {
+                                    Text("PREV", fontSize = 9.sp, color = hInkMuted, fontFamily = fontFamilyMono, letterSpacing = 0.5.sp)
+                                    Text("Page ${if (currentPage > pageStart) currentPage - 1 else pageStart}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (currentPage > pageStart) hInk else hInkMuted.copy(alpha = 0.4f))
+                                }
+                            }
+                        }
+
+                        // Center: page progress indicator
+                        Text(
+                            text = "$currentPage / $pageEnd",
+                            fontSize = 13.sp,
+                            fontFamily = fontFamilyMono,
+                            fontWeight = FontWeight.Bold,
+                            color = hInkMuted,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .clickable { showPageJumpDialog = true }
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+
+                        // Next / Complete Assignment Button
+                        if (currentPage < pageEnd) {
+                            Surface(
+                                shape = RoundedCornerShape(16.dp),
+                                color = hTeal,
+                                modifier = Modifier.clickable { advanceToNextPage() }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(horizontalAlignment = Alignment.End) {
+                                        Text("NEXT", fontSize = 9.sp, color = Color.White.copy(alpha = 0.8f), fontFamily = fontFamilyMono, letterSpacing = 0.5.sp)
+                                        Text("Page ${currentPage + 1}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                    }
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Icon(
+                                        imageVector = NurIcons.ChevronRight,
+                                        contentDescription = "Next",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        } else {
+                            Surface(
+                                shape = RoundedCornerShape(16.dp),
+                                color = hGreen,
+                                modifier = Modifier.clickable {
+                                    plannerViewModel.markAssignmentCompleted(dayNumber)
+                                    showCelebrationDialog = true
+                                }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(imageVector = NurIcons.CheckCircle2, contentDescription = "Finish", tint = Color.White, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Finish Day", fontSize = 13.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
                     }
                 }
             }
-        }
         }
     }
 
@@ -778,157 +1107,35 @@ fun PlannerReaderScreen(
         )
     }
 
-    // ── Celebration Dialog with Takeaway Verse ────────────────────────
+    // ── Celebration Dialog with Takeaway Verse (web parity: PlannerReader.jsx lines 677-718) ──
     if (showCelebrationDialog) {
         Box(modifier = Modifier.fillMaxSize()) {
             ConfettiOverlay()
-        }
-        AlertDialog(
-            onDismissRequest = {
-                showCelebrationDialog = false
-                onBack()
-            },
-            containerColor = hCream,
-            shape = RoundedCornerShape(24.dp),
-            title = {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text("🎉", fontSize = 42.sp)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        "Alhamdulillah!",
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = hGreen,
-                        fontFamily = fontFamilyUi,
-                        textAlign = TextAlign.Center
-                    )
+            Dialog(
+                onDismissRequest = {
+                    showCelebrationDialog = false
+                    onBack()
                 }
-            },
-            text = {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        "You have completed Day $dayNumber! May Allah bless your journey with the Quran.",
-                        fontSize = 14.sp,
-                        color = hInk,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    // Session time summary
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = hBone,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(12.dp),
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("⏱ ", fontSize = 14.sp)
-                            Text(
-                                "Session: ${formatSessionTime(displayedSeconds)}",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = hInkMid,
-                                fontFamily = fontFamilyMono
-                            )
-                        }
-                    }
-
-                    // Takeaway of the Day verse card
-                    takeawayVerse?.let { verse ->
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = hGoldSoft,
-                            border = androidx.compose.foundation.BorderStroke(1.dp, hGold.copy(alpha = 0.3f)),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(16.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(
-                                    "TAKEAWAY OF THE DAY",
-                                    fontSize = 9.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = hGold,
-                                    fontFamily = fontFamilyMono,
-                                    letterSpacing = 1.sp
-                                )
-                                Spacer(modifier = Modifier.height(10.dp))
-
-                                val arabicText = verse.textUthmani ?: verse.textQpcHafs ?: ""
-                                if (arabicText.isNotBlank()) {
-                                    Text(
-                                        text = arabicText.replace("\u25cc", ""),
-                                        fontSize = 20.sp,
-                                        fontFamily = fontFamilyArabic,
-                                        color = hInk,
-                                        textAlign = TextAlign.Center,
-                                        lineHeight = 36.sp,
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                }
-
-                                if (!verse.translation.isNullOrBlank()) {
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text(
-                                        text = verse.translation,
-                                        fontSize = 13.sp,
-                                        color = hInkMid,
-                                        fontFamily = fontFamilyBody,
-                                        textAlign = TextAlign.Center,
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                }
-
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text(
-                                    text = "— ${verse.verseKey}",
-                                    fontSize = 11.sp,
-                                    color = hInkMuted,
-                                    fontFamily = fontFamilyMono
-                                )
-                            }
-                        }
-                    }
-
-                    // Reflection quick-save
-                    Spacer(modifier = Modifier.height(16.dp))
-                    OutlinedTextField(
-                        value = reflectionNote,
-                        onValueChange = {
-                            reflectionNote = it
-                            plannerViewModel.saveReflection(dayNumber, it)
-                        },
-                        placeholder = { Text("Daily reflection...", fontSize = 13.sp, color = hInkMuted) },
-                        label = { Text("Reflection", fontSize = 11.sp, color = hGold) },
-                        modifier = Modifier.fillMaxWidth(),
-                        minLines = 2,
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showCelebrationDialog = false
-                        onBack()
+            ) {
+                DayCelebrationCard(
+                    dayNumber = dayNumber,
+                    takeawayVerse = takeawayVerse,
+                    reflectionNote = reflectionNote,
+                    displayedSeconds = displayedSeconds,
+                    onReflectionChange = {
+                        reflectionNote = it
+                        plannerViewModel.saveReflection(dayNumber, it)
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = hGreen),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(if (reflectionNote.isNotBlank()) "Save & Return" else "Return to Planner", color = Color.White, fontWeight = FontWeight.Bold)
-                }
+                    onSaveAndReturn = {
+                        showCelebrationDialog = false
+                        if (reflectionNote.isNotBlank()) {
+                            plannerViewModel.saveReflection(dayNumber, reflectionNote)
+                        }
+                        onBack()
+                    }
+                )
             }
-        )
+        }
     }
 
     // ── In-reader AudioSetupSheet (web parity: AudioSetupModal, day-scoped) ──
@@ -1014,6 +1221,99 @@ fun PlannerReaderScreen(
             }
         )
     }
+
+    // Page Jump Dialog
+    if (showPageJumpDialog) {
+        PageJumpDialog(
+            currentPage = currentPage,
+            pageStart = pageStart,
+            pageEnd = pageEnd,
+            onPageSelected = { selectedPage ->
+                currentPage = selectedPage
+            },
+            onDismiss = { showPageJumpDialog = false }
+        )
+    }
+
+    // Word Translation Tooltip Drawer
+    selectedWordForTooltip?.let { word ->
+        WordTranslationTooltipDrawer(
+            word = word,
+            onDismiss = { selectedWordForTooltip = null },
+            onDownloadWordPack = { surahViewModel.downloadChapterWords(currentChapter?.id ?: 1) }
+        )
+    }
+
+    // Tajweed Rule Tooltip Bottom Sheet
+    selectedTajweedRule?.let { rule ->
+        TajweedRuleBottomSheet(
+            rule = rule,
+            onDismiss = { selectedTajweedRule = null }
+        )
+    }
+
+    // Add To Collection Modal
+    collectionVerse?.let { verse ->
+        CollectionModal(
+            verse = verse,
+            chapterId = verse.chapterId,
+            surahName = chapters.find { it.id == verse.chapterId }?.nameSimple ?: "Surah ${verse.chapterId}",
+            collections = collections,
+            collectionItems = collectionItems,
+            onAddToCollection = { collectionId ->
+                surahViewModel.addToCollection(
+                    collectionId,
+                    verse.verseKey,
+                    verse.chapterId,
+                    chapters.find { it.id == verse.chapterId }?.nameSimple ?: "Surah ${verse.chapterId}"
+                )
+                collectionVerse = null
+            },
+            onCreateCollection = { name ->
+                surahViewModel.addCollection(name) { newId ->
+                    surahViewModel.addToCollection(
+                        newId,
+                        verse.verseKey,
+                        verse.chapterId,
+                        chapters.find { it.id == verse.chapterId }?.nameSimple ?: "Surah ${verse.chapterId}"
+                    )
+                }
+                collectionVerse = null
+            },
+            onDismiss = { collectionVerse = null }
+        )
+    }
+
+    // Reader Settings Drawer (web parity: SettingsDrawer - fonts, translations, mushaf)
+    if (showSettingsDrawer) {
+        val packVm: PackViewModel = hiltViewModel()
+        val tafsirPackRows by packVm.tafsirPacks.collectAsState()
+        val wordCached by packVm.wordCachedCount.collectAsState()
+        val wordDownloading by packVm.wordIsDownloading.collectAsState()
+        val wordProgress by packVm.wordProgressByTafsir.collectAsState()
+        val syncState by packVm.syncUiState.collectAsState()
+        SettingsDrawer(
+            viewModel = surahViewModel,
+            onDismiss = { showSettingsDrawer = false },
+            tafsirPacks = tafsirPackRows,
+            onDownloadTafsir = packVm::downloadTafsirPack,
+            onCancelTafsir = packVm::cancelTafsirPack,
+            onDeleteTafsir = packVm::deleteTafsirPack,
+            translationPacks = packVm.translationPacks.collectAsState().value,
+            onDownloadTranslation = packVm::downloadTranslationPack,
+            onCancelTranslation = packVm::cancelTranslationPack,
+            onDeleteTranslation = packVm::deleteTranslationPack,
+            wordCachedCount = wordCached,
+            wordIsDownloading = wordDownloading,
+            onDownloadAllWords = packVm::downloadAllMissingWordPacks,
+            onCancelAllWords = packVm::cancelAllWordPacks,
+            completedEvents = packVm.completedEvents,
+            syncState = syncState,
+            onBackup = packVm::backupNow,
+            onRestore = packVm::restoreNow,
+            wordProgressByTafsir = wordProgress
+        )
+    }
 }
 
 // ── Helper: Format session time (web parity: MM:SS) ─────────────────────
@@ -1021,6 +1321,133 @@ private fun formatSessionTime(seconds: Int): String {
     val mins = seconds / 60
     val secs = seconds % 60
     return "%02d:%02d".format(mins, secs)
+}
+
+/**
+ * Quick jump dialog allowing user to jump directly to any page in the assignment.
+ */
+@Composable
+fun PageJumpDialog(
+    currentPage: Int,
+    pageStart: Int,
+    pageEnd: Int,
+    onPageSelected: (Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var targetPage by remember { mutableIntStateOf(currentPage) }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = hCream,
+            border = BorderStroke(1.5.dp, hBoneDark),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Jump to Page",
+                    fontFamily = fontFamilyUi,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = hInk
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Assignment range: $pageStart – $pageEnd",
+                    fontFamily = fontFamilyMono,
+                    fontSize = 12.sp,
+                    color = hInkMuted
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    IconButton(
+                        onClick = { if (targetPage > pageStart) targetPage-- },
+                        enabled = targetPage > pageStart
+                    ) {
+                        Icon(NurIcons.ChevronLeft, contentDescription = "Decrease", tint = if (targetPage > pageStart) hInk else hInkMuted.copy(alpha = 0.4f))
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = hWhite,
+                        border = BorderStroke(1.dp, hBoneDark),
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    ) {
+                        Text(
+                            text = "$targetPage",
+                            fontFamily = fontFamilyMono,
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = hTeal,
+                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+                        )
+                    }
+
+                    IconButton(
+                        onClick = { if (targetPage < pageEnd) targetPage++ },
+                        enabled = targetPage < pageEnd
+                    ) {
+                        Icon(NurIcons.ChevronRight, contentDescription = "Increase", tint = if (targetPage < pageEnd) hInk else hInkMuted.copy(alpha = 0.4f))
+                    }
+                }
+
+                if (pageEnd > pageStart) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Slider(
+                        value = targetPage.toFloat(),
+                        onValueChange = { targetPage = it.toInt() },
+                        valueRange = pageStart.toFloat()..pageEnd.toFloat(),
+                        steps = (pageEnd - pageStart - 1).coerceAtLeast(0),
+                        colors = SliderDefaults.colors(
+                            thumbColor = hTeal,
+                            activeTrackColor = hTeal,
+                            inactiveTrackColor = hBoneDark
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Button(
+                        onClick = onDismiss,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = hWhite),
+                        border = BorderStroke(1.dp, hBoneDark),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Cancel", fontFamily = fontFamilyUi, color = hInkMuted)
+                    }
+                    Button(
+                        onClick = {
+                            onPageSelected(targetPage)
+                            onDismiss()
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = hTeal),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Jump", fontFamily = fontFamilyUi, fontWeight = FontWeight.Bold, color = Color.White)
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -1088,3 +1515,289 @@ fun ConfettiOverlay() {
         }
     }
 }
+
+// ── Web Parity: PlannerMinimalHeader ────────────────────────────────────
+@Composable
+fun PlannerMinimalHeader(
+    overline: String?,
+    title: String,
+    pillPrimary: String?,
+    pillSecondary: String?,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        if (!overline.isNullOrBlank()) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.padding(bottom = 8.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(32.dp)
+                        .height(1.dp)
+                        .background(hBoneDark)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = overline.uppercase(),
+                    fontSize = 11.sp,
+                    fontFamily = fontFamilyMono,
+                    fontWeight = FontWeight.SemiBold,
+                    color = hInkMuted,
+                    letterSpacing = 2.sp
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Box(
+                    modifier = Modifier
+                        .width(32.dp)
+                        .height(1.dp)
+                        .background(hBoneDark)
+                )
+            }
+        }
+
+        Text(
+            text = title,
+            fontSize = 32.sp,
+            fontFamily = fontFamilyUi,
+            fontWeight = FontWeight.Bold,
+            color = hInk,
+            textAlign = TextAlign.Center
+        )
+
+        if (!pillPrimary.isNullOrBlank() || !pillSecondary.isNullOrBlank()) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Surface(
+                shape = RoundedCornerShape(999.dp),
+                color = hWhite,
+                border = BorderStroke(1.dp, hBoneDark),
+                shadowElevation = 1.dp
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (!pillPrimary.isNullOrBlank()) {
+                        Text(
+                            text = pillPrimary,
+                            fontSize = 13.sp,
+                            fontFamily = fontFamilyUi,
+                            fontWeight = FontWeight.Medium,
+                            color = hInk
+                        )
+                    }
+                    if (!pillPrimary.isNullOrBlank() && !pillSecondary.isNullOrBlank()) {
+                        Box(
+                            modifier = Modifier
+                                .size(5.dp)
+                                .background(hTeal, CircleShape)
+                        )
+                    }
+                    if (!pillSecondary.isNullOrBlank()) {
+                        Text(
+                            text = pillSecondary,
+                            fontSize = 12.sp,
+                            fontFamily = fontFamilyUi,
+                            color = hInkMuted
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ── Web Parity: DayCelebrationCard ───────────────────────────────────────
+@Composable
+fun DayCelebrationCard(
+    dayNumber: Int,
+    takeawayVerse: VerseEntity?,
+    reflectionNote: String,
+    displayedSeconds: Int,
+    onReflectionChange: (String) -> Unit,
+    onSaveAndReturn: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        color = hTeal,
+        shadowElevation = 8.dp
+    ) {
+        Box(modifier = Modifier.fillMaxWidth().padding(24.dp)) {
+            // Background watermark icon
+            Icon(
+                imageVector = NurIcons.CheckCircle2,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.12f),
+                modifier = Modifier
+                    .size(130.dp)
+                    .align(Alignment.TopEnd)
+                    .offset(x = 24.dp, y = (-20).dp)
+            )
+
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Alhamdulillah! 🎉",
+                    fontSize = 24.sp,
+                    fontFamily = fontFamilyUi,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = "You have completed Day $dayNumber.",
+                    fontSize = 15.sp,
+                    fontFamily = fontFamilyUi,
+                    color = Color.White.copy(alpha = 0.9f)
+                )
+
+                if (displayedSeconds > 0) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Session Time: ${formatSessionTime(displayedSeconds)}",
+                        fontSize = 12.sp,
+                        fontFamily = fontFamilyMono,
+                        color = Color.White.copy(alpha = 0.75f)
+                    )
+                }
+
+                if (takeawayVerse != null) {
+                    Spacer(modifier = Modifier.height(18.dp))
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        color = Color.Black.copy(alpha = 0.15f),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                        ) {
+                            Text(
+                                text = "TAKEAWAY OF THE DAY",
+                                fontSize = 10.sp,
+                                fontFamily = fontFamilyUi,
+                                fontWeight = FontWeight.SemiBold,
+                                letterSpacing = 1.sp,
+                                color = Color.White.copy(alpha = 0.8f)
+                            )
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            val arabicText = takeawayVerse.textUthmani ?: takeawayVerse.textQpcHafs ?: ""
+                            if (arabicText.isNotBlank()) {
+                                Text(
+                                    text = arabicText,
+                                    fontSize = 20.sp,
+                                    fontFamily = fontScheherazade,
+                                    color = Color.White,
+                                    textAlign = TextAlign.Right,
+                                    lineHeight = 36.sp,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                            }
+
+                            val cleanTranslation = takeawayVerse.translation
+                                ?.replace(Regex("<sup[^>]*>.*?</sup>"), "")
+                                ?.replace(Regex("<[^>]+>"), "")
+                                ?.trim()
+
+                            if (!cleanTranslation.isNullOrBlank()) {
+                                Text(
+                                    text = "\"$cleanTranslation\"",
+                                    fontSize = 13.sp,
+                                    fontFamily = fontFamilyBody,
+                                    color = Color.White.copy(alpha = 0.9f),
+                                    lineHeight = 20.sp
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                            }
+
+                            Text(
+                                text = "— Surah ${takeawayVerse.verseKey.replace(":", ", Ayah ")}",
+                                fontSize = 11.sp,
+                                fontFamily = fontFamilyUi,
+                                fontWeight = FontWeight.Medium,
+                                color = Color.White.copy(alpha = 0.65f)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(18.dp))
+
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "Daily Reflection (Optional)",
+                        fontSize = 13.sp,
+                        fontFamily = fontFamilyUi,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White.copy(alpha = 0.95f)
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = reflectionNote,
+                        onValueChange = onReflectionChange,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = Color.White.copy(alpha = 0.12f),
+                            unfocusedContainerColor = Color.White.copy(alpha = 0.08f),
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            cursorColor = Color.White,
+                            focusedBorderColor = Color.White.copy(alpha = 0.5f),
+                            unfocusedBorderColor = Color.White.copy(alpha = 0.2f)
+                        ),
+                        placeholder = {
+                            Text(
+                                text = "Write a brief reflection for today's reading...",
+                                fontSize = 13.sp,
+                                color = Color.White.copy(alpha = 0.45f)
+                            )
+                        },
+                        minLines = 3,
+                        maxLines = 5
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Button(
+                    onClick = onSaveAndReturn,
+                    shape = RoundedCornerShape(999.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.White,
+                        contentColor = hTeal
+                    ),
+                    modifier = Modifier.height(44.dp)
+                ) {
+                    Text(
+                        text = if (reflectionNote.isNotBlank()) "Save & Return" else "Return to Planner",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = fontFamilyUi
+                    )
+                }
+            }
+        }
+    }
+}
+

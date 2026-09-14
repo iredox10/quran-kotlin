@@ -406,6 +406,16 @@ class PlannerViewModel @Inject constructor(
         setPlannerAssignmentProgress(dayNumber, if (isCompleted) 0 else assignment.items.size)
     }
 
+    /**
+     * Web parity: markAssignmentCompleted — ensures the assignment is marked completed
+     * without unmarking if already complete.
+     */
+    fun markAssignmentCompleted(dayNumber: Int) {
+        val current = _activePlan.value ?: return
+        val assignment = current.assignments.find { it.dayNumber == dayNumber } ?: return
+        setPlannerAssignmentProgress(dayNumber, assignment.items.size)
+    }
+
     fun setLastReadPosition(pageNumber: Int, verseKey: String? = null) {
         val current = _activePlan.value ?: return
         val updatedPlan = current.copy(
@@ -688,33 +698,25 @@ class PlannerViewModel @Inject constructor(
             try { repository.savePlannerSessionTotals(planId, updated) } catch (_: Exception) {}
         }
     }
+    private val _loggedSessionDeltas: MutableMap<String, MutableMap<Int, Long>> = mutableMapOf()
 
     /**
-     * Bridge planner reading time into reading_sessions (Home stats/streak).
-     * Reads the sessionTotals[dayNumber] checkpoint (seconds), logs it as a
-     * "reading" session, then resets that day's total to 0 so repeated calls
-     * can't double-log; the live timer keeps accumulating fresh time via
-     * stopPlannerTimer deltas on top of the reset total.
-     *
-     * Safe re stopPlannerTimer bookkeeping: it only ever ADDS deltas
-     * (`totals[day] + additionalSeconds`), never overwrites, so zeroing here
-     * can't corrupt in-flight timing — at most the screen's unflushed
-     * remainder (timerTick - savedTick) lands on top of 0 on the next flush.
-     * No-op when the total is 0 or there's no active plan. Never throws.
+     * Bridges reading duration accumulated on a planner day into the global
+     * "reading" session tracking via incremental deltas, preserving the day's
+     * total duration display on both reader and dashboard.
      */
     fun logPlannerDayToSessions(dayNumber: Int, chapterId: Int? = null) {
         val planId = _activePlannerId.value ?: return
         val total = (_sessionTotalsByPlan.value[planId] ?: emptyMap())[dayNumber] ?: 0L
         if (total <= 0) return
-        // Checkpoint synchronously so a repeated call can't double-log.
-        val reset = (_sessionTotalsByPlan.value[planId] ?: emptyMap()).toMutableMap()
-        reset[dayNumber] = 0L
-        _sessionTotalsByPlan.value = _sessionTotalsByPlan.value + (planId to reset)
-        _sessionTotals.value = reset
+        val planDeltas = _loggedSessionDeltas.getOrPut(planId) { mutableMapOf() }
+        val alreadyLogged = planDeltas[dayNumber] ?: 0L
+        val delta = total - alreadyLogged
+        if (delta <= 0) return
+        planDeltas[dayNumber] = total
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
-                repository.logReadingSession(total, "reading", chapterId)
-                repository.savePlannerSessionTotals(planId, reset)
+                repository.logReadingSession(delta, "reading", chapterId)
             } catch (_: Exception) { /* planner time stays invisible rather than crash */ }
         }
     }

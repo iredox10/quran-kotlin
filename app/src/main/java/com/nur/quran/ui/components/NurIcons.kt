@@ -453,6 +453,13 @@ object NurIcons {
         "M1 3h22v5H1z",
         "M10 12h4")
     }
+
+    val Gem: ImageVector by lazy {
+        lucideIcon("Gem",
+        "M 12 2 L 22 8.5 L 22 15.5 L 12 22 L 2 15.5 L 2 8.5 Z",
+        "M 12 22 L 12 2",
+        "M 2 8.5 L 12 13.5 L 22 8.5")
+    }
 }
 
 private fun lucideIcon(name: String, vararg pathData: String): ImageVector {

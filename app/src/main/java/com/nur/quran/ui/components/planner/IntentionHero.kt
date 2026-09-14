@@ -1,6 +1,5 @@
 package com.nur.quran.ui.components.planner
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -8,6 +7,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -30,15 +32,16 @@ fun IntentionHero(
     ) {
         if (hasActivePlan) {
             Surface(
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(14.dp),
                 color = hTeal,
+                shadowElevation = 3.dp,
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { onViewActive() }
-                    .padding(bottom = 16.dp)
+                    .padding(bottom = 20.dp)
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp),
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
@@ -46,25 +49,34 @@ fun IntentionHero(
                         text = "Continue my active plan",
                         fontFamily = fontFamilyBody,
                         fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = hWhite
+                        fontStyle = FontStyle.Italic,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.White
                     )
                     Icon(
                         imageVector = NurIcons.ArrowRight,
                         contentDescription = null,
-                        tint = hWhite,
+                        tint = Color.White,
                         modifier = Modifier.size(18.dp)
                     )
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        // Quran icon watermark (matching web: img /logo-192.png opacity-20)
+        Icon(
+            imageVector = NurIcons.BookOpen,
+            contentDescription = null,
+            tint = hInk.copy(alpha = 0.18f),
+            modifier = Modifier.size(54.dp)
+        )
+
+        Spacer(modifier = Modifier.height(14.dp))
 
         Text(
             text = "THE FIRST STEP",
             fontFamily = fontFamilyMono,
-            fontSize = 11.sp,
+            fontSize = 10.5.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 2.sp,
             color = hTeal
@@ -75,8 +87,8 @@ fun IntentionHero(
         Text(
             text = "Set Your Intention",
             fontFamily = fontFamilyUi,
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Bold,
+            fontSize = 30.sp,
+            fontWeight = FontWeight.SemiBold,
             color = hInk,
             textAlign = TextAlign.Center
         )
@@ -86,8 +98,8 @@ fun IntentionHero(
         Text(
             text = "Choose a pace that resonates with your soul. Whether intensive or slow, the journey of the Quran is a dialogue of devotion.",
             fontFamily = fontFamilyBody,
-            fontSize = 13.sp,
-            lineHeight = 20.sp,
+            fontSize = 13.5.sp,
+            lineHeight = 22.sp,
             color = hInkMid,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(horizontal = 16.dp)

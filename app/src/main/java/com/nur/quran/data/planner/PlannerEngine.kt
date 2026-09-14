@@ -951,7 +951,6 @@ fun buildPrayerSlots(
         val doneInSlot = slotItems.count { completedRangeValues.contains(it.rangeValue) }
 
         val isComplete = count > 0 && doneInSlot >= count
-        val isCurrent = count > 0 && !isComplete && doneInSlot > 0
         // Web parity: slots unlock sequentially — a slot with pending items is
         // locked until every earlier slot is complete.
         val earlierIncomplete = (0 until i).any { prevIdx ->
@@ -960,6 +959,7 @@ fun buildPrayerSlots(
             val pItems = items.subList(pStart.coerceAtMost(total), pEnd.coerceAtMost(total))
             pItems.isNotEmpty() && pItems.any { !completedRangeValues.contains(it.rangeValue) }
         }
+        val isCurrent = count > 0 && !isComplete && !earlierIncomplete
         // Web order: empty -> completed -> locked -> current -> upcoming.
         val status = when {
             count == 0 -> "empty"

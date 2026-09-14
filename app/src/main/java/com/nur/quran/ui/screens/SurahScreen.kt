@@ -1688,10 +1688,14 @@ fun SurahScreen(
             }
 
             if (showAudioSetupDialog && uiState is SurahUiState.Success) {
-                val verses = (uiState as SurahUiState.Success).verses
+                val success = uiState as SurahUiState.Success
+                val verses = success.verses
                 AudioSetupSheet(
                     chapterId = chapterId,
                     versesCount = verses.size,
+                    chapterName = success.chapter.nameSimple,
+                    pagesStart = success.chapter.pagesStart,
+                    pagesEnd = success.chapter.pagesEnd,
                     initialReciterId = currentReciterId,
                     initialAyahRepeat = playbackSettings.ayahRepeat,
                     initialRangeRepeat = playbackSettings.rangeRepeat,

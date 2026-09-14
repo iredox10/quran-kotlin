@@ -3,9 +3,11 @@ package com.nur.quran.services
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Intent
+import android.net.Uri
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.LibraryResult
@@ -16,6 +18,7 @@ import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import com.nur.quran.MainActivity
+import com.nur.quran.data.mushaf.ChapterMetadata
 
 /**
  * Background audio service for Quran playback (music-player style).
@@ -48,20 +51,42 @@ class QuranAudioService : MediaLibraryService() {
             .build()
         player = exoPlayer
 
-        val sessionActivity = PendingIntent.getActivity(
-            this,
-            0,
-            Intent(this, MainActivity::class.java).apply { action = Intent.ACTION_MAIN },
-            PendingIntent.FLAG_IMMUTABLE,
-        )
-        mediaSession = MediaLibrarySession.Builder(this, exoPlayer, LibraryCallback())
+        val uniformPlayer = SurahUniformPlayer(exoPlayer)
+
+        val sessionActivity = createSessionActivityPendingIntent(null)
+        val session = MediaLibrarySession.Builder(this, uniformPlayer, LibraryCallback())
             .setId("quran-audio")
             .setSessionActivity(sessionActivity)
             .build()
+        mediaSession = session
+
+        exoPlayer.addListener(object : androidx.media3.common.Player.Listener {
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                val pendingIntent = createSessionActivityPendingIntent(mediaItem?.mediaId)
+                mediaSession?.setSessionActivity(pendingIntent)
+            }
+        })
 
         setMediaNotificationProvider(PlaybackNotificationProvider(this))
 
         noisyReceiver = PlaybackNoisyHandler().register(this, exoPlayer)
+    }
+
+    private fun createSessionActivityPendingIntent(verseKey: String?): PendingIntent {
+        val parts = verseKey?.split(":")
+        val chapterId = parts?.getOrNull(0)?.toIntOrNull() ?: 1
+        val intent = Intent(this, MainActivity::class.java).apply {
+            action = "com.nur.quran.action.VIEW_VERSE"
+            putExtra("chapterId", chapterId)
+            putExtra("verseKey", verseKey)
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        return PendingIntent.getActivity(
+            this,
+            101,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? =
@@ -145,22 +170,31 @@ class QuranAudioService : MediaLibraryService() {
 
     private fun resolveSurahItems(reciterId: Int, surah: Int): List<MediaItem> {
         return runCatching {
+            val context = this
+            val artworkUri = Uri.parse("android.resource://${context.packageName}/${com.nur.quran.R.drawable.ic_logo}")
+            val artworkBytes = runCatching { context.resources.openRawResource(com.nur.quran.R.drawable.ic_logo).use { it.readBytes() } }.getOrNull()
+            val surahName = com.nur.quran.data.mushaf.ChapterMetadata.nameById(surah)
             val manager = com.nur.quran.data.audio.AudioDownloadManager(this)
             val verses = kotlinx.coroutines.runBlocking {
                 libraryDb.quranDao().getVersesByChapterDirect(surah)
             }
             verses.mapNotNull { verse ->
                 val uri = manager.localFile(reciterId, verse.verseKey)?.let {
-                    android.net.Uri.fromFile(it).toString()
+                    Uri.fromFile(it).toString()
                 } ?: com.nur.quran.data.audio.Reciters.buildAudioUrl(reciterId, verse.verseKey)
                     ?: return@mapNotNull null
+                val formattedTitle = "$surahName $surah:${verse.verseNumber}"
                 MediaItem.Builder()
                     .setUri(uri)
                     .setMediaId(verse.verseKey)
                     .setMediaMetadata(
-                        androidx.media3.common.MediaMetadata.Builder()
-                            .setTitle("Surah $surah Ayah ${verse.verseNumber}")
+                        MediaMetadata.Builder()
+                            .setTitle(formattedTitle)
+                            .setDisplayTitle(formattedTitle)
                             .setArtist(com.nur.quran.data.audio.Reciters.nameOf(reciterId))
+                            .setAlbumTitle("Surah $surahName")
+                            .setArtworkUri(artworkUri)
+                            .apply { if (artworkBytes != null) setArtworkData(artworkBytes, MediaMetadata.PICTURE_TYPE_FRONT_COVER) }
                             .build(),
                     )
                     .build()

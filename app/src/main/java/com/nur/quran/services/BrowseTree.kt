@@ -3,6 +3,7 @@ package com.nur.quran.services
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import com.nur.quran.data.audio.Reciters
+import com.nur.quran.data.mushaf.ChapterMetadata
 
 /**
  * Dependency-free Android Auto / Automotive browse tree.
@@ -72,18 +73,21 @@ object BrowseTree {
             .build()
     }
 
-    fun surahItem(reciterId: Int, surah: Int, artist: String = Reciters.nameOf(reciterId)): MediaItem =
-        MediaItem.Builder()
+    fun surahItem(reciterId: Int, surah: Int, artist: String = Reciters.nameOf(reciterId)): MediaItem {
+        val surahName = ChapterMetadata.nameById(surah)
+        return MediaItem.Builder()
             .setMediaId(surahMediaId(reciterId, surah))
             .setMediaMetadata(
                 MediaMetadata.Builder()
-                    .setTitle("Surah $surah")
+                    .setTitle(surahName)
+                    .setDisplayTitle(surahName)
                     .setArtist(artist)
                     .setIsBrowsable(false)
                     .setIsPlayable(true)
                     .build(),
             )
             .build()
+    }
 
     fun reciterMediaId(reciterId: Int): String = "$PREFIX:$reciterId"
 

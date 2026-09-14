@@ -1,6 +1,7 @@
 package com.nur.quran
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -61,6 +62,23 @@ class MainActivity : ComponentActivity() {
     private val plannerViewModel: PlannerViewModel by viewModels()
     private val libraryViewModel: LibraryViewModel by viewModels()
 
+    private var pendingDeepLink by mutableStateOf<Pair<Int, String?>?>(null)
+
+    private fun handleDeepLink(intent: Intent?) {
+        if (intent == null) return
+        if (intent.action == "com.nur.quran.action.VIEW_VERSE" || intent.hasExtra("chapterId")) {
+            val chapterId = intent.getIntExtra("chapterId", 1)
+            val verseKey = intent.getStringExtra("verseKey")
+            pendingDeepLink = chapterId to verseKey
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleDeepLink(intent)
+    }
+
     private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
@@ -79,6 +97,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        handleDeepLink(intent)
         ProcessLifecycleOwner.get().lifecycle.addObserver(appLifecycleObserver)
         
         // Initialize global dark theme preference before composing
@@ -87,6 +106,16 @@ class MainActivity : ComponentActivity() {
         
         setContent {
             val navController = rememberNavController()
+
+            LaunchedEffect(pendingDeepLink) {
+                pendingDeepLink?.let { (chapterId, verseKey) ->
+                    navController.navigate(Screen.SurahDetail.createRoute(chapterId, verseKey)) {
+                        popUpTo(Screen.Quran.route) { inclusive = false }
+                        launchSingleTop = true
+                    }
+                    pendingDeepLink = null
+                }
+            }
 
             MaterialTheme {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()

@@ -23,6 +23,7 @@ import com.nur.quran.data.audio.NetworkPolicy
 import com.nur.quran.data.audio.PlaybackSettings
 import com.nur.quran.data.audio.Reciters
 import com.nur.quran.data.audio.TimingImporter
+import com.nur.quran.data.mushaf.ChapterMetadata
 import com.nur.quran.data.tafsir.TafsirPackManager
 import com.nur.quran.data.words.WordPackManager
 import com.nur.quran.ui.components.audio.PackUiState
@@ -669,9 +670,16 @@ class SurahViewModel @Inject constructor(
             ?: audioDownloadManager.localFile(verse.verseKey)?.let { Uri.fromFile(it).toString() }
             ?: audioDownloadManager.remoteUrl(_currentReciterId.value, verse)
             ?: return null
+        val surahName = ChapterMetadata.nameById(chapterId)
+        val formattedTitle = "$surahName $chapterId:${verse.verseNumber}"
+        val artworkUri = Uri.parse("android.resource://${context.packageName}/${com.nur.quran.R.drawable.ic_logo}")
+        val artworkBytes = runCatching { context.resources.openRawResource(com.nur.quran.R.drawable.ic_logo).use { it.readBytes() } }.getOrNull()
         val metadata = MediaMetadata.Builder()
-            .setTitle("Surah $chapterId Ayah ${verse.verseNumber}")
+            .setTitle(formattedTitle)
+            .setDisplayTitle(formattedTitle)
             .setArtist(reciterName(_currentReciterId.value))
+            .setArtworkUri(artworkUri)
+            .apply { if (artworkBytes != null) setArtworkData(artworkBytes, MediaMetadata.PICTURE_TYPE_FRONT_COVER) }
             .build()
         return MediaItem.Builder()
             .setUri(uriString)

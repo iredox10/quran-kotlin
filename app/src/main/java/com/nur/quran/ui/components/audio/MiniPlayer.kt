@@ -58,6 +58,7 @@ fun MiniPlayer(
     modifier: Modifier = Modifier,
     onSettings: (() -> Unit)? = null,
     onStop: (() -> Unit)? = null,
+    onVerseClick: (() -> Unit)? = null,
 ) {
     val pillBg = if (isDarkThemeGlobal) Color(0xF22D2D2A) else Color(0xF2EFECE4)
     val pillBorder = if (isDarkThemeGlobal) Color(0xFF4A4A45) else Color(0x66FFFFFF)
@@ -127,16 +128,31 @@ fun MiniPlayer(
                             .background(hBoneDark)
                     )
 
-                    // Current verse key
+                    // Current verse key with Surah name (clickable to jump to reciting ayah)
+                    val formattedVerseText = androidx.compose.runtime.remember(verseKey) {
+                        if (verseKey.isBlank()) "—"
+                        else {
+                            val parts = verseKey.split(":")
+                            val chId = parts.getOrNull(0)?.toIntOrNull()
+                            if (chId != null) {
+                                "${com.nur.quran.data.mushaf.ChapterMetadata.nameById(chId)} $verseKey"
+                            } else verseKey
+                        }
+                    }
                     Text(
-                        text = verseKey.ifBlank { "—" },
+                        text = formattedVerseText,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = fontFamilyMono,
                         color = hInk,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(horizontal = 4.dp)
+                        modifier = Modifier
+                            .padding(horizontal = 4.dp)
+                            .then(
+                                if (onVerseClick != null) Modifier.clickable { onVerseClick() }
+                                else Modifier
+                            )
                     )
 
                     // Play / Pause toggle

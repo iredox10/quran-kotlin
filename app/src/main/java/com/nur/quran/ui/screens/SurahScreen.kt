@@ -1224,7 +1224,23 @@ fun SurahScreen(
                 },
                 onClose = { playerHiddenByUser = true },
                 onStop = { viewModel.stopPlaying() },
-                onSettings = { showAudioSetupDialog = true }
+                onSettings = { showAudioSetupDialog = true },
+                onVerseClick = {
+                    val key = playingVerseKey
+                    if (!key.isNullOrBlank()) {
+                        val idx = playerVerses.indexOfFirst { it.verseKey == key }
+                        if (idx >= 0) {
+                            coroutineScope.launch {
+                                var hOffset = 1
+                                if (isMemorizeModeEnabled) hOffset += 1
+                                if (showSwipeTip) hOffset += 1
+                                if (saukaAssignmentId != null && backToSauka != null) hOffset += 1
+                                if (chapterId != 1 && chapterId != 9) hOffset += 1
+                                listState.animateScrollToItem(idx + hOffset)
+                            }
+                        }
+                    }
+                }
             )
 
             // Save-to-Collection modal

@@ -49,15 +49,6 @@ data class HomeStats(
     val weekMax: Int = 1
 )
 
-/** Active Sauka group claimed reading assignment. */
-data class SaukaGoal(
-    val id: String,
-    val groupTitle: String,
-    val divisionType: String, // "juz", "page", etc.
-    val partNumber: Int,
-    val pageNumber: Int = 1
-)
-
 /** One row of the onboarding checklist, mirroring the web app's ALL_TOURS. */
 data class OnboardingTourRow(val id: String, val emoji: String, val label: String)
 
@@ -93,13 +84,6 @@ class HomeViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val tourPrefs = TourPrefs(context)
-
-    private val _activeGoals = MutableStateFlow<List<SaukaGoal>>(
-        listOf(
-            SaukaGoal(id = "1", groupTitle = "Community Ramadan Khatmah", divisionType = "juz", partNumber = 5, pageNumber = 82)
-        )
-    )
-    val activeGoals: StateFlow<List<SaukaGoal>> = _activeGoals.asStateFlow()
 
     // ─── Tour / coachmark / page-visit state (persisted, mirrors web store) ──
 

@@ -62,7 +62,6 @@ import com.nur.quran.ui.viewmodels.HomeViewModel
 import com.nur.quran.ui.viewmodels.OnboardingState
 import com.nur.quran.ui.viewmodels.OnboardingTours
 import com.nur.quran.ui.viewmodels.PackViewModel
-import com.nur.quran.ui.viewmodels.SaukaGoal
 import com.nur.quran.ui.viewmodels.SurahViewModel
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -195,7 +194,6 @@ fun HomeScreen(
     val recentlyRead by viewModel.recentlyRead.collectAsState()
     val latestBookmark by viewModel.latestBookmark.collectAsState()
     val stats by viewModel.stats.collectAsState()
-    val activeGoals by viewModel.activeGoals.collectAsState()
     val onboardingState by viewModel.onboardingState.collectAsState()
     val isOnline by viewModel.isOnline.collectAsState()
     val completedTours by viewModel.completedTours.collectAsState()
@@ -211,11 +209,10 @@ fun HomeScreen(
     val lazyListState: LazyListState = rememberLazyListState()
 
     // Item indices of the tour-targeted sections (mirrors the LazyColumn order below).
-    val sectionIndices = remember(onboardingState.isDismissed, isOnline, activeGoals, latestBookmark, recentlyRead) {
+    val sectionIndices = remember(onboardingState.isDismissed, isOnline, latestBookmark, recentlyRead) {
         buildSectionIndexMap(
             isOnline = isOnline,
             onboardingDismissed = onboardingState.isDismissed,
-            hasActiveGoals = activeGoals.isNotEmpty(),
             hasBookmark = latestBookmark != null,
             hasRecentlyRead = recentlyRead.isNotEmpty()
         )
@@ -403,18 +400,6 @@ fun HomeScreen(
                             }
                         }
                     }
-
-                    // ─── My Sauka Readings (Active Goals) ───
-                    if (activeGoals.isNotEmpty()) {
-                        item {
-                            MySaukaReadingsSection(
-                                goals = activeGoals,
-                                onGoalClick = { onNavigateToSauka?.invoke() }
-                            )
-                            Spacer(modifier = Modifier.height(20.dp))
-                        }
-                    }
-
 
                     // ─── Quick Action Mobile Shortcuts ───
                     item {
@@ -2099,112 +2084,16 @@ private fun OnboardingProgressCard(
     }
 }
 
-// ── My Sauka Readings (Active Goals) Widget ─────────────────────────────
-@Composable
-private fun MySaukaReadingsSection(
-    goals: List<SaukaGoal>,
-    onGoalClick: () -> Unit
-) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.padding(start = 4.dp, end = 4.dp, bottom = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = NurIcons.Users,
-                contentDescription = null,
-                tint = hGold,
-                modifier = Modifier.size(16.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "My Sauka Readings",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = hInk,
-                fontFamily = fontFamilyUi
-            )
-        }
-        goals.forEach { goal ->
-            Surface(
-                onClick = onGoalClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 6.dp),
-                shape = RoundedCornerShape(20.dp),
-                color = hGold.copy(alpha = 0.05f),
-                border = androidx.compose.foundation.BorderStroke(1.5.dp, hGold)
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = goal.groupTitle.uppercase(),
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = hGold,
-                            fontFamily = fontFamilyMono,
-                            letterSpacing = 0.8.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "${goal.divisionType} ${goal.partNumber}".replaceFirstChar { it.uppercase() },
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = hInk,
-                            fontFamily = fontFamilyUi,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = hGold
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .height(40.dp)
-                                .padding(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Read",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                            Icon(
-                                imageVector = NurIcons.ArrowRight,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
 // ── Tour target indices (mirrors the LazyColumn item order) ─────────────
 private fun buildSectionIndexMap(
     isOnline: Boolean,
     onboardingDismissed: Boolean,
-    hasActiveGoals: Boolean,
     hasBookmark: Boolean,
     hasRecentlyRead: Boolean
 ): Map<String, Int> {
     var idx = 0
     if (!isOnline) idx++ // offline banner
     idx++ // greeting hero
-    if (hasActiveGoals) idx++ // my sauks
     idx++ // quick actions
     if (!onboardingDismissed) idx++ // onboarding card
     val stats = idx; idx++

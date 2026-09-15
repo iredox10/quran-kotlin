@@ -67,6 +67,11 @@ class PageViewModel @Inject constructor(
 
     private val hifdhPrefs = context.getSharedPreferences("hifdh_settings", Context.MODE_PRIVATE)
 
+    private val _currentTranslationId = MutableStateFlow(
+        hifdhPrefs.getInt("translation_id", 20).let { if (it == 131) 20 else it }
+    )
+    val currentTranslationId: StateFlow<Int> = _currentTranslationId.asStateFlow()
+
     private val _isTranslationEnabled = MutableStateFlow(hifdhPrefs.getBoolean("is_translation_enabled", true))
     val isTranslationEnabled: StateFlow<Boolean> = _isTranslationEnabled.asStateFlow()
 
@@ -112,6 +117,25 @@ class PageViewModel @Inject constructor(
         }
     }
 
+    fun toggleTranslation() {
+        _isTranslationEnabled.value = !_isTranslationEnabled.value
+        hifdhPrefs.edit().putBoolean("is_translation_enabled", _isTranslationEnabled.value).apply()
+    }
+
+    fun setTranslationId(translationId: Int) {
+        val targetId = if (translationId == 131) 20 else translationId
+        _currentTranslationId.value = targetId
+        hifdhPrefs.edit().putInt("translation_id", targetId).apply()
+        loadPage(_currentPageNumber.value)
+    }
+
+    suspend fun getFootnote(footnoteId: String): String =
+        try {
+            repository.getFootnote(footnoteId).foot_note.text
+        } catch (e: Exception) {
+            "Footnote not available."
+        }
+
     private var loadJob: Job? = null
 
     fun loadPage(pageNumber: Int) {
@@ -122,7 +146,7 @@ class PageViewModel @Inject constructor(
         loadJob = viewModelScope.launch(Dispatchers.IO) {
             _uiState.value = PageUiState.Loading
             try {
-                val verses = repository.getVersesByPage(pageNumber, _mushafPreset.value)
+                val verses = repository.getVersesByPage(pageNumber, _mushafPreset.value, _currentTranslationId.value)
                 if (verses.isEmpty()) {
                     _uiState.value = PageUiState.Error("No verses found for page $pageNumber")
                     return@launch
@@ -143,9 +167,28 @@ class PageViewModel @Inject constructor(
                 }
                 
                 val wordsMap = repository.getWordsForVerses(verses.map { it.id })
+
+                var pageVerses = verses
+                if (pageVerses.any { it.translation.isNullOrBlank() }) {
+                    repository.repairBlankTranslations()
+                    pageVerses = repository.getVersesByPage(pageNumber, _mushafPreset.value, _currentTranslationId.value)
+                }
+                val sanitizedVerses = pageVerses.map { verse ->
+                    if (!verse.translation.isNullOrBlank()) {
+                        verse
+                    } else {
+                        val packed = repository.getStoredTranslation(_currentTranslationId.value, verse.verseKey)
+                            ?: repository.getStoredTranslation(20, verse.verseKey)
+                        if (!packed.isNullOrBlank()) {
+                            verse.copy(translation = packed)
+                        } else {
+                            verse.copy(translation = "Translation unavailable")
+                        }
+                    }
+                }
                 
                 _uiState.value = PageUiState.Success(
-                    verses = verses,
+                    verses = sanitizedVerses,
                     wordsMap = wordsMap,
                     chapterMap = chapterMap,
                     tajweedMap = tajweedMap,
@@ -171,7 +214,7 @@ class PageViewModel @Inject constructor(
             for (p in startPage..endPage) {
                 if (p <= 604) {
                     try {
-                        repository.getVersesByPage(p, _mushafPreset.value)
+                        repository.getVersesByPage(p, _mushafPreset.value, _currentTranslationId.value)
                     } catch (_: Exception) {}
                 }
             }
@@ -225,6 +268,9 @@ class PageViewModel @Inject constructor(
     val streamOnly: StateFlow<Boolean> = _streamOnly.asStateFlow()
 
     init {
+        if (hifdhPrefs.getInt("translation_id", 20) == 131) {
+            hifdhPrefs.edit().putInt("translation_id", 20).apply()
+        }
         ensureController()
     }
 

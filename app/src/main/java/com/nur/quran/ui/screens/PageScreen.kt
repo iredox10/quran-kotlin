@@ -261,7 +261,7 @@ fun PageScreen(
                                     onShareClick = { /* Share not implemented in page view */ },
                                     onAddToCollection = { /* Collections not implemented in page view */ },
                                     onWordClick = { /* Word tap not implemented in page view */ },
-                                    onLoadFootnote = { "" },
+                                    onLoadFootnote = { viewModel.getFootnote(it) },
                                     arabicFontScale = arabicFontScale,
                                     translationFontScale = translationFontScale,
                                     fontFamilyArabic = fontFamilyArabic,

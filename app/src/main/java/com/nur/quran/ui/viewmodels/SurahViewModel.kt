@@ -269,8 +269,9 @@ class SurahViewModel @Inject constructor(
     private var currentChapterName: String = ""
     private var currentTafsirId: Int = hifdhPrefs.getInt("tafsir_id", 169)
     private val _currentTafsirId = MutableStateFlow(hifdhPrefs.getInt("tafsir_id", 169))
-    val currentTafsirIdFlow: StateFlow<Int> = _currentTafsirId.asStateFlow()
-    private val _currentTranslationId = MutableStateFlow(hifdhPrefs.getInt("translation_id", 20))
+    private val _currentTranslationId = MutableStateFlow(
+        hifdhPrefs.getInt("translation_id", 20).let { if (it == 131) 20 else it }
+    )
     val currentTranslationId: StateFlow<Int> = _currentTranslationId.asStateFlow()
     private var cachedTafsirVerses: List<ApiTafsirVerse> = emptyList()
 
@@ -362,6 +363,9 @@ class SurahViewModel @Inject constructor(
     private var playlistChapterId: Int = 0
 
     init {
+        if (hifdhPrefs.getInt("translation_id", 20) == 131) {
+            hifdhPrefs.edit().putInt("translation_id", 20).apply()
+        }
         ensureController()
     }
 

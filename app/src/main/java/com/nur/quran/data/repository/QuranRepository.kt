@@ -23,6 +23,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -126,10 +127,13 @@ class QuranRepository @Inject constructor(
     }
 
     // Verses by Chapter
-    fun getVersesByChapterFlow(chapterId: Int): Flow<List<VerseEntity>> = quranDao.getVersesByChapter(chapterId)
+    fun getVersesByChapterFlow(chapterId: Int): Flow<List<VerseEntity>> = quranDao.getVersesByChapter(chapterId).map { verses ->
+        backfillBlankTranslations(verses, 20)
+    }
 
     suspend fun getVersesByChapterDirect(chapterId: Int): List<VerseEntity> = withContext(Dispatchers.IO) {
-        quranDao.getVersesByChapterDirect(chapterId)
+        val verses = quranDao.getVersesByChapterDirect(chapterId)
+        backfillBlankTranslations(verses, 20)
     }
 
     suspend fun getVersesByKey(keys: List<String>): List<VerseEntity> = withContext(Dispatchers.IO) {
@@ -146,10 +150,14 @@ class QuranRepository @Inject constructor(
             runCatching { quranDao.getTranslationText(translationId, verseKey) }.getOrNull()
         }
 
+    private val offlineTranslationsByVerseKey: Map<String, String> by lazy {
+        getAllOfflineVerses().associate { it.verse_key to (it.translation ?: "") }
+    }
+
     /**
      * Fill every verse whose [VerseEntity.translation] is blank from the packed
-     * `translation_texts` table. Already-filled verses are returned untouched,
-     * so the online path (network translations present) is behavior-identical.
+     * `translation_texts` table or the bundled offline asset fallback.
+     * Already-filled verses are returned untouched.
      */
     private suspend fun backfillBlankTranslations(
         verses: List<VerseEntity>,
@@ -164,7 +172,8 @@ class QuranRepository @Inject constructor(
                 val packed = runCatching {
                     quranDao.getTranslationText(translationId, verse.verseKey)
                 }.getOrNull()
-                if (!packed.isNullOrBlank()) verse.copy(translation = packed) else verse
+                val text = if (!packed.isNullOrBlank()) packed else offlineTranslationsByVerseKey[verse.verseKey]
+                if (!text.isNullOrBlank()) verse.copy(translation = text) else verse
             }
         }
     }
@@ -239,7 +248,7 @@ class QuranRepository @Inject constructor(
                             textQpcHafs = qpcHafs,
                             pageNumber = apiVerse.page_number ?: pageNumber,
                             juzNumber = apiVerse.juz_number ?: 1,
-                            translation = apiVerse.translations?.firstOrNull()?.text
+                            translation = apiVerse.translations?.firstOrNull()?.text?.takeIf { it.isNotBlank() } ?: offlineTranslationsByVerseKey[apiVerse.verse_key]
                         )
                     )
 
@@ -605,7 +614,7 @@ class QuranRepository @Inject constructor(
                     textQpcHafs = apiVerse.words?.joinToString(" ") { it.text_qpc_hafs ?: "" } ?: "",
                     pageNumber = apiVerse.page_number,
                     juzNumber = apiVerse.juz_number,
-                    translation = apiVerse.translations?.firstOrNull()?.text,
+                    translation = apiVerse.translations?.firstOrNull()?.text?.takeIf { it.isNotBlank() } ?: offlineTranslationsByVerseKey[apiVerse.verse_key],
                     audioUrl = apiVerse.audio?.url
                 )
                 verseEntities.add(verseEntity)

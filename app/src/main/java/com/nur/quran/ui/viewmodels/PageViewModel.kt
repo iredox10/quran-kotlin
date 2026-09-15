@@ -190,6 +190,12 @@ class PageViewModel @Inject constructor(
         }
     }
 
+    fun logReadingSession(durationSeconds: Int, type: String = "reading", pageNumber: Int? = null) {
+        viewModelScope.launch {
+            repository.logReadingSession(durationSeconds, type, pageNumber)
+        }
+    }
+
     // --- Audio Player ---
     private var mediaController: MediaController? = null
     private var controllerFuture: ListenableFuture<MediaController>? = null

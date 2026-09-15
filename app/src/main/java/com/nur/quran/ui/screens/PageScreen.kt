@@ -67,6 +67,14 @@ fun PageScreen(
         viewModel.loadPage(pageNumber)
     }
 
+    DisposableEffect(pageNumber) {
+        val sessionStartMs = System.currentTimeMillis()
+        onDispose {
+            val durationSec = ((System.currentTimeMillis() - sessionStartMs) / 1000).toInt()
+            viewModel.logReadingSession(durationSec, "reading", pageNumber)
+        }
+    }
+
     var swipeTotal by remember { mutableStateOf(0f) }
     val swipeThreshold = with(LocalDensity.current) { 60.dp.toPx() }
     val listState = rememberLazyListState()

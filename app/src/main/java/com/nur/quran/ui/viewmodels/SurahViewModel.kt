@@ -269,6 +269,7 @@ class SurahViewModel @Inject constructor(
     private var currentChapterName: String = ""
     private var currentTafsirId: Int = hifdhPrefs.getInt("tafsir_id", 169)
     private val _currentTafsirId = MutableStateFlow(hifdhPrefs.getInt("tafsir_id", 169))
+    val currentTafsirIdFlow: StateFlow<Int> = _currentTafsirId.asStateFlow()
     private val _currentTranslationId = MutableStateFlow(
         hifdhPrefs.getInt("translation_id", 20).let { if (it == 131) 20 else it }
     )

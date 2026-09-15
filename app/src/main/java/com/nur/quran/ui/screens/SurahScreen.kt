@@ -361,7 +361,12 @@ fun SurahScreen(
         hadPlayback = hasPlayback
     }
     var showNavigationDialog by remember { mutableStateOf(false) }
-    var highlightedVerseKey by remember { mutableStateOf<String?>(null) }
+    var highlightedVerseKey by remember(targetVerseKey) { mutableStateOf(targetVerseKey) }
+    LaunchedEffect(targetVerseKey) {
+        if (!targetVerseKey.isNullOrBlank()) {
+            highlightedVerseKey = targetVerseKey
+        }
+    }
     LaunchedEffect(highlightedVerseKey) {
         if (highlightedVerseKey != null) {
             kotlinx.coroutines.delay(2000L)
@@ -715,6 +720,10 @@ fun SurahScreen(
                     detectHorizontalDragGestures(
                         onDragStart = { swipeTotal = 0f },
                         onDragEnd = {
+                            if (swipeTotal > swipeThreshold || swipeTotal < -swipeThreshold) {
+                                showSwipeTip = false
+                                prefs.edit().putBoolean("has_seen_swipe_tip", true).apply()
+                            }
                             when {
                                 swipeTotal > swipeThreshold && chapterId < 114 ->
                                     onNavigateToSurah(chapterId + 1, null)

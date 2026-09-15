@@ -19,11 +19,13 @@ import com.nur.quran.data.db.entities.VerseEntity
 import com.nur.quran.data.db.entities.WordEntity
 import com.nur.quran.data.words.WordPackManager
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -40,6 +42,14 @@ class QuranRepository @Inject constructor(
     private val gson: Gson,
     private val wordPackManager: WordPackManager
 ) {
+
+    init {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                repairBlankTranslations()
+            } catch (_: Exception) {}
+        }
+    }
 
     // Helper to cache API responses in key-value table (offline-first: cache wins)
     private suspend inline fun <reified T> fetchWithOfflineCache(
@@ -107,6 +117,7 @@ class QuranRepository @Inject constructor(
         try { getAllOfflineVerses() } catch (_: Exception) {}
         try { getAllOfflineTafsirs() } catch (_: Exception) {}
         try { ensureChaptersFromAssets() } catch (_: Exception) {}
+        try { repairBlankTranslations() } catch (_: Exception) {}
     }
 
     /**
@@ -116,7 +127,12 @@ class QuranRepository @Inject constructor(
      */
     suspend fun ensureOfflineChapter(chapterId: Int): Boolean = withContext(Dispatchers.IO) {
         val existing = quranDao.getVersesByChapter(chapterId).firstOrNull()
-        if (!existing.isNullOrEmpty()) return@withContext true
+        if (!existing.isNullOrEmpty()) {
+            if (existing.any { it.translation.isNullOrBlank() }) {
+                repairBlankTranslations()
+            }
+            return@withContext true
+        }
         return@withContext try {
             val (offlineVerses, offlineWords) = loadOfflineVersesFromAssets(chapterId)
             if (offlineVerses.isNotEmpty()) {
@@ -152,6 +168,20 @@ class QuranRepository @Inject constructor(
 
     private val offlineTranslationsByVerseKey: Map<String, String> by lazy {
         getAllOfflineVerses().associate { it.verse_key to (it.translation ?: "") }
+    }
+
+    suspend fun repairBlankTranslations() = withContext(Dispatchers.IO) {
+        val versesWithBlankTranslations = quranDao.getVersesWithBlankTranslations()
+        if (versesWithBlankTranslations.isEmpty()) return@withContext
+        val repaired = versesWithBlankTranslations.mapNotNull { verse ->
+            val fallback = offlineTranslationsByVerseKey[verse.verseKey]
+            if (!fallback.isNullOrBlank()) {
+                verse.copy(translation = fallback)
+            } else null
+        }
+        if (repaired.isNotEmpty()) {
+            quranDao.updateVerses(repaired)
+        }
     }
 
     /**

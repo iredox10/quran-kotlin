@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import androidx.room.Update
 import com.nur.quran.data.db.entities.*
 import kotlinx.coroutines.flow.Flow
 
@@ -34,8 +35,14 @@ interface QuranDao {
     @Query("SELECT * FROM verses WHERE pageNumber = :pageNumber ORDER BY chapterId ASC, verseNumber ASC")
     fun getVersesByPage(pageNumber: Int): Flow<List<VerseEntity>>
 
+    @Query("SELECT * FROM verses WHERE translation IS NULL OR translation = ''")
+    suspend fun getVersesWithBlankTranslations(): List<VerseEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertVerses(verses: List<VerseEntity>)
+
+    @Update
+    suspend fun updateVerses(verses: List<VerseEntity>)
 
     @Transaction
     suspend fun insertVersesAndWords(verses: List<VerseEntity>, words: List<WordEntity>) {

@@ -203,7 +203,7 @@ class QuranRepository @Inject constructor(
 
     fun getVersesByPageFlow(pageNumber: Int): Flow<List<VerseEntity>> = quranDao.getVersesByPage(pageNumber)
 
-    suspend fun getVersesByPage(pageNumber: Int, mushafId: String? = null): List<VerseEntity> = withContext(Dispatchers.IO) {
+    suspend fun getVersesByPage(pageNumber: Int, mushafId: String? = null, translationId: Int = 20): List<VerseEntity> = withContext(Dispatchers.IO) {
         val mushaf = com.nur.quran.data.mushaf.Mushaf.fromId(mushafId)
         var list = quranDao.getVersesByPage(pageNumber).firstOrNull()
         if (list.isNullOrEmpty() || list.any { it.textUthmani.isNullOrBlank() }) {
@@ -274,7 +274,7 @@ class QuranRepository @Inject constructor(
                 }
             }
         }
-        list ?: emptyList()
+        backfillBlankTranslations(list ?: emptyList(), translationId)
     }
 
     data class OfflineVerseItem(

@@ -291,6 +291,9 @@ private fun computeHeaderOffset(
     return offset
 }
 
+/** Module-level scroll position cache — survives recomposition and Surah navigation. */
+private val surahScrollPositions = mutableMapOf<Int, Pair<Int, Int>>()
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun SurahScreen(
@@ -423,6 +426,22 @@ fun SurahScreen(
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
+            // Save scroll position for this chapter
+            surahScrollPositions[chapterId] = Pair(
+                listState.firstVisibleItemIndex,
+                listState.firstVisibleItemScrollOffset
+            )
+        }
+    }
+
+    // Restore saved scroll position when returning to a previously visited Surah
+    LaunchedEffect(uiState, chapterId) {
+        if (uiState is SurahUiState.Success && targetVerseKey == null) {
+            val saved = surahScrollPositions[chapterId]
+            if (saved != null) {
+                listState.scrollToItem(saved.first, saved.second)
+                surahScrollPositions.remove(chapterId)  // One-time restore
+            }
         }
     }
 

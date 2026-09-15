@@ -1447,7 +1447,7 @@ class SurahViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.value = SurahUiState.Loading
             try {
-                val verses = repository.getVersesByPage(pageNumber)
+                val verses = repository.getVersesByPage(pageNumber, _mushafPreset.value, _currentTranslationId.value)
                 if (verses.isEmpty()) {
                     _uiState.value = SurahUiState.Error("No verses found for page $pageNumber")
                     return@launch

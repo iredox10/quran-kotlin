@@ -47,3 +47,5 @@ fun translationNameOf(id: Int): String =
 
 fun translationsByLanguage(): Map<String, List<TranslationEdition>> =
     TRANSLATION_EDITIONS.groupBy { it.language }
+
+fun resolveTranslationId(id: Int): Int = com.nur.quran.data.TranslationFallback.resolveTranslationId(id)

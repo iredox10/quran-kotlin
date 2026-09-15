@@ -292,7 +292,7 @@ private fun computeHeaderOffset(
 }
 
 /** Module-level scroll position cache — survives recomposition and Surah navigation. */
-private val surahScrollPositions = mutableMapOf<Int, Pair<Int, Int>>()
+internal val surahScrollPositions: MutableMap<Int, Pair<Int, Int>> = com.nur.quran.ui.ScrollPositionMemory.scrollPositions
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable

@@ -125,13 +125,12 @@ interface QuranDao {
     suspend fun getVersesByKey(keys: List<String>): List<VerseEntity>
 
     // Reading Sessions
-    @Query("SELECT * FROM reading_sessions ORDER BY timestamp ASC")
-    fun getAllReadingSessions(): Flow<List<ReadingSessionEntity>>
+    @Query("SELECT * FROM reading_sessions ORDER BY timestamp DESC LIMIT 500")
+    fun getReadingSessions(): Flow<List<ReadingSessionEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertReadingSession(session: ReadingSessionEntity)
 
-    // Keep only the newest 500 sessions (matches the web store's slice(-500))
     @Query("DELETE FROM reading_sessions WHERE id NOT IN (SELECT id FROM reading_sessions ORDER BY timestamp DESC LIMIT 500)")
     suspend fun pruneReadingSessions()
 

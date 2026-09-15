@@ -116,15 +116,15 @@ data class ApiResponseCacheEntity(
 )
 
 /**
- * A single reading/memorizing/listening session, equivalent to the web app's
- * `readingSessions` store entries: { date (YYYY-MM-DD), duration (seconds), type, chapterId, timestamp }.
+ * Reading session log — tracks time spent reading each chapter.
+ * Matches web app's `readingSessions` store array.
  */
 @Entity(tableName = "reading_sessions")
 data class ReadingSessionEntity(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val date: String,
-    val duration: Long,
-    val type: String = "reading",
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val date: String,              // ISO date "2026-09-15"
+    val durationSeconds: Int,       // session length in seconds
+    val type: String = "reading",   // "reading" or "memorizing"
     val chapterId: Int? = null,
     val timestamp: Long = System.currentTimeMillis()
 )

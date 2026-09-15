@@ -44,6 +44,7 @@ import androidx.navigation.compose.rememberNavController
 import com.nur.quran.ui.navigation.Screen
 import com.nur.quran.ui.screens.HomeScreen
 import com.nur.quran.ui.screens.SurahScreen
+import com.nur.quran.ui.screens.PageScreen
 import com.nur.quran.ui.viewmodels.HomeViewModel
 import com.nur.quran.ui.viewmodels.SurahViewModel
 import com.nur.quran.ui.viewmodels.PlannerViewModel
@@ -299,7 +300,15 @@ class MainActivity : ComponentActivity() {
                         }
                         composable(Screen.PageDetail.route) { backStackEntry ->
                             val pageNum = backStackEntry.arguments?.getString("pageNumber")?.toIntOrNull() ?: 1
-                            Text(text = "Page Detail Screen for Page $pageNum")
+                            PageScreen(
+                                pageNumber = pageNum,
+                                onBackClick = { navController.popBackStack() },
+                                onNavigateToPage = { newPage ->
+                                    navController.navigate(Screen.PageDetail.createRoute(newPage)) {
+                                        popUpTo(Screen.PageDetail.route) { inclusive = true }
+                                    }
+                                }
+                            )
                         }
                     }
 

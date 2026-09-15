@@ -1726,13 +1726,14 @@ class SurahViewModel @Inject constructor(
     fun getCurrentTafsirId(): Int = _currentTafsirId.value
 
     fun setTranslationId(translationId: Int) {
-        _currentTranslationId.value = translationId
-        hifdhPrefs.edit().putInt("translation_id", translationId).apply()
+        val targetId = com.nur.quran.data.TranslationFallback.resolveTranslationId(translationId)
+        _currentTranslationId.value = targetId
+        hifdhPrefs.edit().putInt("translation_id", targetId).apply()
         val chapterId = currentChapterId
         if (chapterId <= 0) return
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                repository.refreshVersesByChapter(chapterId, translationId, _mushafPreset.value)
+                repository.refreshVersesByChapter(chapterId, targetId, _mushafPreset.value)
             } catch (_: Exception) {
             }
             // Offline pack backfill: refresh may have left blank translations

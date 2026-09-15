@@ -1,7 +1,9 @@
 package com.nur.quran.data
 
+import com.nur.quran.data.api.ApiTranslation
+import com.nur.quran.data.api.ApiVerse
+import com.nur.quran.data.db.entities.VerseEntity
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -9,55 +11,174 @@ import org.junit.Test
 class TranslationFallbackTest {
 
     @Test
-    fun `deprecated translation id 131 is migrated to 20`() {
-        val storedId = 131
-        val effectiveId = if (storedId == 131) 20 else storedId
-        assertEquals(20, effectiveId)
-    }
-
-    @Test
-    fun `supported translation ids are preserved`() {
-        val validIds = listOf(20, 85, 22, 84, 32, 234)
-        for (id in validIds) {
-            val effective = if (id == 131) 20 else id
-            assertEquals(id, effective)
-        }
-    }
-
-    @Test
-    fun `blank translation falls back to offline translation`() {
-        val offlineMap = mapOf(
-            "1:1" to "In the name of God, the Lord of Mercy, the Giver of Mercy!",
-            "2:1" to "Alif Lam Mim",
-            "2:2" to "This is the Scripture in which there is no doubt, containing guidance for those who are mindful of God,"
+    fun `api verse with null translation falls back to offline translation text for 1-1`() {
+        val apiVerse = ApiVerse(
+            id = 1,
+            verse_number = 1,
+            verse_key = "1:1",
+            page_number = 1,
+            juz_number = 1,
+            text_uthmani = "بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ",
+            words = null,
+            translations = null,
+            audio = null
         )
 
-        val apiTranslation: String? = null
-        val verseKey = "2:2"
-        val resolved = if (!apiTranslation.isNullOrBlank()) apiTranslation else offlineMap[verseKey]
+        val translation = TranslationFallback.resolveTranslation(apiVerse)
 
-        assertNotNull(resolved)
-        assertEquals("This is the Scripture in which there is no doubt, containing guidance for those who are mindful of God,", resolved)
+        assertNotNull(translation)
+        assertTrue(
+            "Expected offline fallback starting with 'In the name of God', got: $translation",
+            translation!!.startsWith("In the name of God")
+        )
+        assertEquals(
+            "In the name of God, the Lord of Mercy, the Giver of Mercy!",
+            translation
+        )
     }
 
     @Test
-    fun `non-blank api translation is preserved without override`() {
-        val offlineMap = mapOf("1:1" to "Fallback Translation")
-        val apiTranslation = "Custom API Translation Text"
-        val verseKey = "1:1"
-        val resolved = if (!apiTranslation.isNullOrBlank()) apiTranslation else offlineMap[verseKey]
+    fun `api verse with empty translations list falls back to offline text`() {
+        val apiVerse = ApiVerse(
+            id = 1,
+            verse_number = 1,
+            verse_key = "1:1",
+            page_number = 1,
+            juz_number = 1,
+            text_uthmani = "بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ",
+            words = null,
+            translations = emptyList(),
+            audio = null
+        )
 
-        assertEquals("Custom API Translation Text", resolved)
+        val translation = TranslationFallback.resolveTranslation(apiVerse)
+
+        assertNotNull(translation)
+        assertTrue(translation!!.startsWith("In the name of God"))
     }
 
     @Test
-    fun `offline fallback covers prominent surahs`() {
-        val testKeys = listOf("1:1", "1:2", "2:1", "2:2", "2:255", "36:1", "112:1", "114:1")
-        val mockOfflineTranslations = testKeys.associateWith { "Translation for $it" }
+    fun `api verse with blank translation text falls back to offline text`() {
+        val blankTranslation = ApiTranslation(
+            resource_id = 20,
+            text = "   "
+        )
+        val apiVerse = ApiVerse(
+            id = 1,
+            verse_number = 1,
+            verse_key = "1:1",
+            page_number = 1,
+            juz_number = 1,
+            text_uthmani = "بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ",
+            words = null,
+            translations = listOf(blankTranslation),
+            audio = null
+        )
 
-        for (key in testKeys) {
-            assertTrue(mockOfflineTranslations.containsKey(key))
-            assertFalse(mockOfflineTranslations[key].isNullOrBlank())
-        }
+        val translation = TranslationFallback.resolveTranslation(apiVerse)
+
+        assertNotNull(translation)
+        assertTrue(translation!!.startsWith("In the name of God"))
+    }
+
+    @Test
+    fun `api verse with valid translation retains api text without fallback`() {
+        val validTranslation = ApiTranslation(
+            resource_id = 20,
+            text = "In the name of Allah, the Entirely Merciful, the Especially Merciful."
+        )
+        val apiVerse = ApiVerse(
+            id = 1,
+            verse_number = 1,
+            verse_key = "1:1",
+            page_number = 1,
+            juz_number = 1,
+            text_uthmani = "بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ",
+            words = null,
+            translations = listOf(validTranslation),
+            audio = null
+        )
+
+        val translation = TranslationFallback.resolveTranslation(apiVerse)
+
+        assertEquals("In the name of Allah, the Entirely Merciful, the Especially Merciful.", translation)
+    }
+
+    @Test
+    fun `translation 131 maps to fallback translation id 20`() {
+        val resolvedId = TranslationFallback.resolveTranslationId(131)
+        assertEquals(20, resolvedId)
+        assertEquals(TranslationFallback.FALLBACK_TRANSLATION_ID, resolvedId)
+
+        // Also verify the convenience function in com.nur.quran.data.translation
+        val packageResolvedId = com.nur.quran.data.translation.resolveTranslationId(131)
+        assertEquals(20, packageResolvedId)
+    }
+
+    @Test
+    fun `valid translation ids other than 131 are preserved`() {
+        assertEquals(20, TranslationFallback.resolveTranslationId(20))
+        assertEquals(85, TranslationFallback.resolveTranslationId(85))
+        assertEquals(22, TranslationFallback.resolveTranslationId(22))
+        assertEquals(163, TranslationFallback.resolveTranslationId(163))
+    }
+
+    @Test
+    fun `backfillBlankTranslations fills null and empty translations from offline fallback`() {
+        val verses = listOf(
+            VerseEntity(
+                id = 1,
+                chapterId = 1,
+                verseNumber = 1,
+                verseKey = "1:1",
+                textUthmani = "بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ",
+                textIndopak = null,
+                textQpcHafs = null,
+                pageNumber = 1,
+                juzNumber = 1,
+                translation = null
+            ),
+            VerseEntity(
+                id = 2,
+                chapterId = 1,
+                verseNumber = 2,
+                verseKey = "1:2",
+                textUthmani = "ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَـٰلَمِينَ",
+                textIndopak = null,
+                textQpcHafs = null,
+                pageNumber = 1,
+                juzNumber = 1,
+                translation = ""
+            ),
+            VerseEntity(
+                id = 3,
+                chapterId = 1,
+                verseNumber = 3,
+                verseKey = "1:3",
+                textUthmani = "ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ",
+                textIndopak = null,
+                textQpcHafs = null,
+                pageNumber = 1,
+                juzNumber = 1,
+                translation = "Existing translation text"
+            )
+        )
+
+        val backfilled = TranslationFallback.backfillBlankTranslations(verses)
+
+        assertEquals(3, backfilled.size)
+        assertTrue(backfilled[0].translation!!.startsWith("In the name of God"))
+        assertEquals("Praise belongs to God, Lord of the Worlds,", backfilled[1].translation)
+        assertEquals("Existing translation text", backfilled[2].translation)
+    }
+
+    @Test
+    fun `getOfflineTranslation provides offline text for common verses`() {
+        val verse1 = TranslationFallback.getOfflineTranslation("1:1")
+        assertNotNull(verse1)
+        assertTrue(verse1!!.startsWith("In the name of God"))
+
+        val verse2 = TranslationFallback.getOfflineTranslation("1:2")
+        assertEquals("Praise belongs to God, Lord of the Worlds,", verse2)
     }
 }

@@ -40,11 +40,11 @@ class LibraryViewModel @Inject constructor(
         viewModelScope.launch {
             val isBookmarked = bookmarks.value.any { it.verseKey == verseKey }
             if (isBookmarked) {
-                repository.deleteBookmark(verseKey)
+                repository.clearBookmarks()
             } else {
-                repository.addBookmark(
+                repository.setSingleBookmark(
                     BookmarkEntity(
-                        id = verseKey.hashCode(),
+                        id = 1,
                         verseKey = verseKey,
                         chapterId = chapterId,
                         surahName = surahName,

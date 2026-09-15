@@ -358,6 +358,13 @@ fun SurahScreen(
         hadPlayback = hasPlayback
     }
     var showNavigationDialog by remember { mutableStateOf(false) }
+    var highlightedVerseKey by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(highlightedVerseKey) {
+        if (highlightedVerseKey != null) {
+            kotlinx.coroutines.delay(2000L)
+            highlightedVerseKey = null
+        }
+    }
     var isAutoScrollActive by remember { mutableStateOf(false) }
     var settingsSubView by remember { mutableStateOf(SettingsSubView.ROOT) }
     var settingsActiveTab by remember { mutableStateOf("general") }
@@ -433,6 +440,7 @@ fun SurahScreen(
                         chapterId = chapterId
                     )
                     listState.scrollToItem(index + hOffset)
+                    highlightedVerseKey = targetKey
                 }
             }
         }
@@ -523,6 +531,7 @@ fun SurahScreen(
                         chapterId = chapterId
                     )
                     listState.scrollToItem(index + hOffset)
+                    highlightedVerseKey = effectiveTarget
                 } else {
                     val saved = viewModel.getSurahScrollPosition(chapterId)
                     if (saved != null) {
@@ -1076,6 +1085,7 @@ fun SurahScreen(
                                     isTajweedEnabled = isTajweedEffective,
                                     mushafId = currentMushaf.id,
                                     isCurrentlyPlaying = playingVerseKey == verse.verseKey && isPlaying,
+                                    isHighlighted = verse.verseKey == highlightedVerseKey,
                                     isBookmarked = verse.verseKey in bookmarkedVerses,
                                     isTafsirOpen = (tafsirState as? TafsirUiState.Visible)?.verseKey == verse.verseKey,
                                     onPlayClick = { viewModel.playVerse(verses, chapter.id, verse) },
@@ -2142,6 +2152,7 @@ fun VerseItem(
     isTajweedEnabled: Boolean,
     mushafId: String = "madani-standard",
     isCurrentlyPlaying: Boolean,
+    isHighlighted: Boolean = false,
     isBookmarked: Boolean,
     isTafsirOpen: Boolean,
     onPlayClick: () -> Unit,
@@ -2181,14 +2192,14 @@ fun VerseItem(
             .fillMaxWidth()
             .graphicsLayer { scaleX = playScale; scaleY = playScale }
             .then(
-                if (isCurrentlyPlaying) {
+                if (isCurrentlyPlaying || isHighlighted) {
                     Modifier
                         .padding(horizontal = 16.dp, vertical = 4.dp)
                         .clip(RoundedCornerShape(16.dp))
                         .background(hGoldLight)
                 } else Modifier
             )
-            .padding(horizontal = if (isCurrentlyPlaying) 24.dp else 40.dp, vertical = 20.dp)
+            .padding(horizontal = if (isCurrentlyPlaying || isHighlighted) 24.dp else 40.dp, vertical = 20.dp)
     ) {
         // Verse key + actions row
         Row(

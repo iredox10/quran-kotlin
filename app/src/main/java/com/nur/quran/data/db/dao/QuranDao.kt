@@ -68,11 +68,11 @@ interface QuranDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertWords(words: List<WordEntity>)
 
-    // Bookmarks
-    @Query("SELECT * FROM bookmarks ORDER BY timestamp DESC")
+    // Bookmarks (Single active reading bookmark ribbon)
+    @Query("SELECT * FROM bookmarks ORDER BY timestamp DESC LIMIT 1")
     fun getAllBookmarks(): Flow<List<BookmarkEntity>>
 
-    @Query("SELECT verseKey FROM bookmarks")
+    @Query("SELECT verseKey FROM bookmarks ORDER BY timestamp DESC LIMIT 1")
     fun getBookmarkedVerseKeys(): Flow<List<String>>
 
     @Query("SELECT * FROM bookmarks WHERE verseKey = :verseKey LIMIT 1")

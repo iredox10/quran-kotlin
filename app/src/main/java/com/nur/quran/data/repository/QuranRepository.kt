@@ -736,20 +736,21 @@ class QuranRepository @Inject constructor(
     fun getLatestBookmarkFlow(): Flow<BookmarkEntity?> = quranDao.getLatestBookmark()
 
     // Reading Sessions
-    fun getReadingSessionsFlow(): Flow<List<ReadingSessionEntity>> = quranDao.getAllReadingSessions()
+    fun getReadingSessionsFlow(): Flow<List<ReadingSessionEntity>> = quranDao.getReadingSessions()
 
-    suspend fun logReadingSession(durationSeconds: Long, type: String = "reading", chapterId: Int? = null) {
+    suspend fun logReadingSession(durationSeconds: Int, type: String = "reading", chapterId: Int? = null) {
+        if (durationSeconds < 10) return  // Only log sessions >= 10 seconds
         withContext(Dispatchers.IO) {
-            val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+            val today = java.time.LocalDate.now().toString()
             quranDao.insertReadingSession(
                 ReadingSessionEntity(
                     date = today,
-                    duration = durationSeconds,
+                    duration = durationSeconds.toLong(),
                     type = type,
                     chapterId = chapterId
                 )
             )
-            quranDao.pruneReadingSessions()
+            quranDao.pruneReadingSessions()  // Keep last 500
         }
     }
 

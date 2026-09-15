@@ -125,6 +125,9 @@ interface QuranDao {
     suspend fun getVersesByKey(keys: List<String>): List<VerseEntity>
 
     // Reading Sessions
+    @Query("SELECT * FROM reading_sessions ORDER BY timestamp ASC")
+    fun getAllReadingSessions(): Flow<List<ReadingSessionEntity>>
+
     @Query("SELECT * FROM reading_sessions ORDER BY timestamp DESC LIMIT 500")
     fun getReadingSessions(): Flow<List<ReadingSessionEntity>>
 

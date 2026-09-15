@@ -716,7 +716,7 @@ class PlannerViewModel @Inject constructor(
         planDeltas[dayNumber] = total
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
-                repository.logReadingSession(delta, "reading", chapterId)
+                repository.logReadingSession(delta.toInt(), "reading", chapterId)
             } catch (_: Exception) { /* planner time stays invisible rather than crash */ }
         }
     }

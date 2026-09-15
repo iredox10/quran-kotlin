@@ -570,11 +570,12 @@ fun SurahScreen(
         }
     }
 
-    // Reading-session timer: starts when the screen opens, logs on exit
+    // Reading session duration tracking (web parity: logReadingSession)
     DisposableEffect(chapterId) {
-        viewModel.startReadingSession(chapterId)
+        val sessionStartMs = System.currentTimeMillis()
         onDispose {
-            viewModel.endReadingSession()
+            val durationSec = ((System.currentTimeMillis() - sessionStartMs) / 1000).toInt()
+            viewModel.logReadingSession(durationSec, "reading", chapterId)
         }
     }
 

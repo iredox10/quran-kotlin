@@ -19,7 +19,7 @@ import com.nur.quran.data.db.entities.*
         LinkedTimingEntity::class,
         TranslationTextEntity::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 abstract class QuranDatabase : RoomDatabase() {

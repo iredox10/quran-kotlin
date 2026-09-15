@@ -1538,6 +1538,12 @@ class SurahViewModel @Inject constructor(
      */
     private var currentSessionType: String = "reading"
 
+    fun logReadingSession(durationSeconds: Int, type: String = "reading", chapterId: Int? = null) {
+        viewModelScope.launch {
+            repository.logReadingSession(durationSeconds, type, chapterId)
+        }
+    }
+
     fun startReadingSession(chapterId: Int, sessionType: String = "reading") {
         endReadingSession(currentSessionType)
         readingSessionChapterId = chapterId
@@ -1569,7 +1575,7 @@ class SurahViewModel @Inject constructor(
                 readingSessionStart = now
                 viewModelScope.launch {
                     try {
-                        repository.logReadingSession(duration, type, chapterId)
+                        repository.logReadingSession(duration.toInt(), type, chapterId)
                     } catch (_: Exception) {
                     }
                 }
@@ -1591,7 +1597,7 @@ class SurahViewModel @Inject constructor(
         if (duration >= 10) {
             val chapterId = if (readingSessionChapterId > 0) readingSessionChapterId else null
             viewModelScope.launch {
-                repository.logReadingSession(duration, sessionType, chapterId)
+                repository.logReadingSession(duration.toInt(), sessionType, chapterId)
             }
         }
     }
@@ -1865,7 +1871,7 @@ class SurahViewModel @Inject constructor(
             if (duration >= 10) {
                 val chapterId = if (readingSessionChapterId > 0) readingSessionChapterId else null
                 kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
-                    repository.logReadingSession(duration, currentSessionType, chapterId)
+                    repository.logReadingSession(duration.toInt(), currentSessionType, chapterId)
                 }
             }
         }

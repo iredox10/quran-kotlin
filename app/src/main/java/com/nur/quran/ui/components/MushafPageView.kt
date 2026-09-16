@@ -90,6 +90,9 @@ fun MushafPageView(
 
     val juz = remember(page) { getJuzByPage(page) }
     val hizb = remember(page) { getHizbByPage(page) }
+    val startingSurahs = remember(verses) {
+        verses.filter { it.verseNumber == 1 }.distinctBy { it.chapterId }
+    }
 
     if (lines.isEmpty()) {
         // Fallback to continuous reading view if line numbers are unavailable
@@ -165,6 +168,63 @@ fun MushafPageView(
                         color = hGold,
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                     )
+                }
+            }
+
+            // Surah-title banner — web parity (MushafFlipBook.jsx:50-62):
+            // shown only when this page starts a new surah (verseNumber == 1 present).
+            startingSurahs.forEach { startVerse ->
+                val info = ChapterMetadata.findById(startVerse.chapterId)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 10.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = hGold.copy(alpha = 0.08f),
+                        border = BorderStroke(1.dp, hGold.copy(alpha = 0.6f))
+                    ) {
+                        Box(
+                            modifier = Modifier.padding(horizontal = 28.dp, vertical = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "سورة ${info?.nameArabic ?: startVerse.chapterId}",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = fontFamilyArabic,
+                                color = hGold
+                            )
+                            Text(
+                                text = "✦",
+                                fontSize = 8.sp,
+                                color = hGold.copy(alpha = 0.6f),
+                                modifier = Modifier
+                                    .align(Alignment.TopStart)
+                                    .padding(top = 0.dp, start = 0.dp)
+                            )
+                            Text(
+                                text = "✦",
+                                fontSize = 8.sp,
+                                color = hGold.copy(alpha = 0.6f),
+                                modifier = Modifier.align(Alignment.TopEnd)
+                            )
+                            Text(
+                                text = "✦",
+                                fontSize = 8.sp,
+                                color = hGold.copy(alpha = 0.6f),
+                                modifier = Modifier.align(Alignment.BottomStart)
+                            )
+                            Text(
+                                text = "✦",
+                                fontSize = 8.sp,
+                                color = hGold.copy(alpha = 0.6f),
+                                modifier = Modifier.align(Alignment.BottomEnd)
+                            )
+                        }
+                    }
                 }
             }
 

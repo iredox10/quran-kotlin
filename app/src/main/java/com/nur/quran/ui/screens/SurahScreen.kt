@@ -341,7 +341,10 @@ fun SurahScreen(
         getArabicFontFamily(selectedArabicFontName)
     }
 
-    var isReadingMode by remember { mutableStateOf(false) }
+    // Persisted reading mode (web: `readingMode` in useAppStore.js), unified
+    // with `isTranslationEnabled` in SurahViewModel (readingMode =
+    // !translationEnabled). Previously a transient `remember(false)` here.
+    val isReadingMode by viewModel.isReadingMode.collectAsState()
     var pendingScrollTarget by remember { mutableStateOf<Int?>(null) }
     var selectedWordForTooltip by remember { mutableStateOf<WordEntity?>(null) }
     var collectionVerse by remember { mutableStateOf<VerseEntity?>(null) }
@@ -660,7 +663,7 @@ fun SurahScreen(
                         
                         if (!isReadingMode) {
                             val verseIndex = (visibleItem?.index ?: hOffset) - hOffset
-                            isReadingMode = true
+                            viewModel.setReadingMode(true)
                             if (verseIndex >= 0 && verseIndex < verses.size) {
                                 val pageToScroll = verses[verseIndex].pageNumber
                                 val pagesList = verses.groupBy { it.pageNumber }.keys.toList().sorted()
@@ -671,7 +674,7 @@ fun SurahScreen(
                             }
                         } else {
                             val pageIndex = (visibleItem?.index ?: hOffset) - hOffset
-                            isReadingMode = false
+                            viewModel.setReadingMode(false)
                             val pagesList = verses.groupBy { it.pageNumber }.keys.toList().sorted()
                             if (pageIndex >= 0 && pageIndex < pagesList.size) {
                                 val pageNumber = pagesList[pageIndex]

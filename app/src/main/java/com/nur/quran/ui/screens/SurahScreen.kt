@@ -3509,6 +3509,12 @@ object TajweedRules {
             "#D500B7",
             "Oral hiding — when a Meem Saakinah (مْ) is followed by the letter Ba (ب). The meem is pronounced with a slight nasalization while hiding its sound."
         ),
+        "ikhafa_shafawi" to TajweedRule(
+            "Ikhfa Shafawi",
+            "إخفاء شفوي",
+            "#D500B7",
+            "Oral hiding — when a Meem Saakinah (مْ) is followed by the letter Ba (ب). The meem is pronounced with a slight nasalization while hiding its sound."
+        ),
         "ikhfa" to TajweedRule(
             "Ikhfa",
             "إخفاء",

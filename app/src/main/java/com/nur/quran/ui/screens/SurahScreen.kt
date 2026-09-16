@@ -333,6 +333,7 @@ fun SurahScreen(
     val memorizedAyahs by viewModel.memorizedAyahs.collectAsState()
     val arabicFontScale by viewModel.arabicFontScale.collectAsState()
     val translationFontScale by viewModel.translationFontScale.collectAsState()
+    val lineHeightMultiplier by viewModel.lineHeightMultiplier.collectAsState()
     val isSaukaCompleting by viewModel.isSaukaCompleting.collectAsState()
     val activeTranslationId by viewModel.currentTranslationId.collectAsState()
     val wordTapBehavior by viewModel.wordTapBehavior.collectAsState()
@@ -1142,6 +1143,7 @@ fun SurahScreen(
                                     onToggleMemorized = { viewModel.toggleMemorizedAyah(verse.verseKey) },
                                     arabicFontScale = arabicFontScale,
                                     translationFontScale = translationFontScale,
+                                    lineHeightMultiplier = lineHeightMultiplier,
                                     fontFamilyArabic = fontFamilyArabic,
                                     selectedArabicFontName = selectedArabicFontName
                                 )
@@ -1162,6 +1164,7 @@ fun SurahScreen(
                                     },
                                     onTajweedClick = { selectedTajweedRule = it },
                                     arabicFontScale = arabicFontScale,
+                                    lineHeightMultiplier = lineHeightMultiplier,
                                     fontFamilyArabic = fontFamilyArabic,
                                     selectedArabicFontName = selectedArabicFontName
                                 )
@@ -2197,6 +2200,7 @@ fun VerseItem(
     onToggleMemorized: () -> Unit = {},
     arabicFontScale: Float = 1.0f,
     translationFontScale: Float = 1.0f,
+    lineHeightMultiplier: Float = 1.0f,
     fontFamilyArabic: FontFamily = fontScheherazade,
     selectedArabicFontName: String = "KFGQPC Hafs",
     showShareAction: Boolean = true
@@ -2344,7 +2348,7 @@ fun VerseItem(
                         segments = tajweedSegments,
                         fontFamily = fontFamilyArabic,
                         fontSize = (26 * arabicFontScale).sp,
-                        lineHeight = (52 * arabicFontScale).sp,
+                        lineHeight = (52 * arabicFontScale * lineHeightMultiplier).sp,
                         isInteractive = !isHidden,
                         onWordClick = { idx ->
                             if (idx >= 0 && idx < words.size) {
@@ -2361,7 +2365,7 @@ fun VerseItem(
                     )
                 } else {
                     // Non-tajweed: simple verse text as single AnnotatedString
-                    val verseAnnotated = remember(verse, words, fontFamilyArabic, arabicFontScale, isDarkThemeGlobal, mushafId, selectedArabicFontName) {
+                    val verseAnnotated = remember(verse, words, fontFamilyArabic, arabicFontScale, lineHeightMultiplier, isDarkThemeGlobal, mushafId, selectedArabicFontName) {
                         buildAnnotatedString {
                             if (words.isNotEmpty()) {
                                 val displayWords = mushafPlainWordTexts(words, mushafId, selectedArabicFontName)
@@ -2397,7 +2401,7 @@ fun VerseItem(
                             color = hInk,
                             fontFamily = fontFamilyArabic,
                             textAlign = TextAlign.Right,
-                            lineHeight = (52 * arabicFontScale).sp
+                            lineHeight = (52 * arabicFontScale * lineHeightMultiplier).sp
                         ),
                         onClick = { offset ->
                             if (!isHidden) {
@@ -3028,6 +3032,7 @@ fun ContinuousReadingPageItem(
     onWordClick: (WordEntity) -> Unit,
     onTajweedClick: (TajweedRule) -> Unit = {},
     arabicFontScale: Float = 1.0f,
+    lineHeightMultiplier: Float = 1.0f,
     fontFamilyArabic: FontFamily = fontScheherazade,
     selectedArabicFontName: String = "KFGQPC Hafs"
 ) {
@@ -3081,7 +3086,7 @@ fun ContinuousReadingPageItem(
                         segments = pageSegments,
                         fontFamily = fontFamilyArabic,
                         fontSize = (26 * arabicFontScale).sp,
-                        lineHeight = (52 * arabicFontScale).sp,
+                        lineHeight = (52 * arabicFontScale * lineHeightMultiplier).sp,
                         onWordClick = { idx ->
                             if (idx >= 0 && idx < allPageWords.size) {
                                 onWordClick(allPageWords[idx])
@@ -3096,7 +3101,7 @@ fun ContinuousReadingPageItem(
                         modifier = Modifier.fillMaxWidth()
                     )
                 } else {
-                    val pageAnnotated = remember(allPageWords, fontFamilyArabic, arabicFontScale, isDarkThemeGlobal, mushafId, selectedArabicFontName) {
+                    val pageAnnotated = remember(allPageWords, fontFamilyArabic, arabicFontScale, lineHeightMultiplier, isDarkThemeGlobal, mushafId, selectedArabicFontName) {
                         buildAnnotatedString {
                             val displayWords = mushafPlainWordTexts(allPageWords, mushafId, selectedArabicFontName)
                             allPageWords.forEachIndexed { wordIndex, word ->
@@ -3126,7 +3131,7 @@ fun ContinuousReadingPageItem(
                             color = hInk,
                             fontFamily = fontFamilyArabic,
                             textAlign = TextAlign.Right,
-                            lineHeight = (52 * arabicFontScale).sp
+                            lineHeight = (52 * arabicFontScale * lineHeightMultiplier).sp
                         ),
                         onClick = { offset ->
                             val wordAnn = pageAnnotated.getStringAnnotations("WORD_INDEX", offset, offset).firstOrNull()

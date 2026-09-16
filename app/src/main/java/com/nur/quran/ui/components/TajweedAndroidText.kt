@@ -39,6 +39,7 @@ fun TajweedAndroidText(
     selectedArabicFontName: String,
     fontSizeSp: Float,
     lineHeightRatio: Float,
+    lineHeightMultiplier: Float = 1.0f,
     textColor: Color,
     isInteractive: Boolean,
     onWordClick: (Int) -> Unit,
@@ -68,7 +69,7 @@ fun TajweedAndroidText(
             TextView(ctx).apply {
                 textSize = fontSizeSp
                 includeFontPadding = false
-                setLineSpacing(0f, lineHeightRatio)
+                setLineSpacing(0f, lineHeightRatio * lineHeightMultiplier)
                 layoutDirection = View.LAYOUT_DIRECTION_RTL
                 textDirection = View.TEXT_DIRECTION_RTL
                 gravity = textAlign or Gravity.CENTER_VERTICAL
@@ -81,7 +82,7 @@ fun TajweedAndroidText(
         },
         update = { tv ->
             tv.textSize = fontSizeSp
-            tv.setLineSpacing(0f, lineHeightRatio)
+            tv.setLineSpacing(0f, lineHeightRatio * lineHeightMultiplier)
             tv.typeface = typeface
             tv.text = spannable
         }

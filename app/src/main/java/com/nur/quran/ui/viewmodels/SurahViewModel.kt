@@ -110,6 +110,9 @@ class SurahViewModel @Inject constructor(
     private val _translationFontScale = MutableStateFlow(hifdhPrefs.getFloat("translation_scale", 1f))
     val translationFontScale: StateFlow<Float> = _translationFontScale.asStateFlow()
 
+    private val _lineHeightMultiplier = MutableStateFlow(hifdhPrefs.getFloat("line_height_multiplier", 1f))
+    val lineHeightMultiplier: StateFlow<Float> = _lineHeightMultiplier.asStateFlow()
+
     private val _isSaukaCompleting = MutableStateFlow(false)
     val isSaukaCompleting: StateFlow<Boolean> = _isSaukaCompleting.asStateFlow()
 
@@ -1791,6 +1794,11 @@ class SurahViewModel @Inject constructor(
         hifdhPrefs.edit().putFloat("translation_scale", _translationFontScale.value).apply()
     }
 
+    fun updateLineHeightMultiplier(delta: Float) {
+        _lineHeightMultiplier.value = (_lineHeightMultiplier.value + delta).coerceIn(1.0f, 2.0f)
+        hifdhPrefs.edit().putFloat("line_height_multiplier", _lineHeightMultiplier.value).apply()
+    }
+
     fun setSelectedArabicFontName(name: String) {
         // Web: setArabicFont coerced to mushaf-compatible font.
         val mushaf = com.nur.quran.data.mushaf.Mushaf.fromId(_mushafPreset.value)
@@ -1819,6 +1827,7 @@ class SurahViewModel @Inject constructor(
             "arabicFont" to _selectedArabicFontName.value,
             "arabicFontScale" to _arabicFontScale.value,
             "translationFontScale" to _translationFontScale.value,
+            "lineHeightMultiplier" to _lineHeightMultiplier.value,
             "translationId" to _currentTranslationId.value,
             "tafsirId" to _currentTafsirId.value,
             "reciterId" to _currentReciterId.value,

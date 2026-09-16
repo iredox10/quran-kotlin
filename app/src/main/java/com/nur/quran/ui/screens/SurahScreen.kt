@@ -1869,7 +1869,7 @@ fun SurahScreen(
                                     if (isMemorizeModeEnabled) hOffset += 1
                                     if (chapterId != 1 && chapterId != 9) hOffset += 1
                                     coroutineScope.launch {
-                                        listState.animateScrollToItem(verseIndex + hOffset)
+                                        scrollToVerseListIndex(verseIndex + hOffset, hOffset, verses.size, 0)
                                     }
                                 }
                             }
@@ -1897,7 +1897,7 @@ fun SurahScreen(
                                     if (isMemorizeModeEnabled) hOffset += 1
                                     if (chapterId != 1 && chapterId != 9) hOffset += 1
                                     coroutineScope.launch {
-                                        listState.animateScrollToItem(verseIndex + hOffset)
+                                        scrollToVerseListIndex(verseIndex + hOffset, hOffset, verses.size, 0)
                                     }
                                 }
                             }

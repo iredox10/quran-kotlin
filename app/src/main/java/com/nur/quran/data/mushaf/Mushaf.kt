@@ -106,10 +106,17 @@ data class Mushaf(
         }
 
         /** Verse/word fields per mushaf — mirrors buildFieldsForMushaf in quranApi.js. */
+        // Division/sajdah fields are always requested (Quran.com API v4 field
+        // reference: juz/hizb/rub/ruku/manzil/sajdah_number/sajdah_type) so a
+        // future schema migration can persist them; UI derives markers
+        // in-memory from VerseDividers until then.
+        private const val DIVISION_FIELDS =
+            "hizb_number,rub_el_hizb_number,ruku_number,manzil_number,sajdah_number,sajdah_type"
+
         fun verseFields(mushaf: Mushaf): String = when (mushaf.verseField) {
-            "text_indopak" -> "text_indopak,text_uthmani,page_number"
-            "text_qpc_hafs" -> "text_qpc_hafs,text_uthmani,page_number"
-            else -> "text_uthmani,page_number"
+            "text_indopak" -> "text_indopak,text_uthmani,page_number,$DIVISION_FIELDS"
+            "text_qpc_hafs" -> "text_qpc_hafs,text_uthmani,page_number,$DIVISION_FIELDS"
+            else -> "text_uthmani,page_number,$DIVISION_FIELDS"
         }
 
         fun wordFields(mushaf: Mushaf): String = when (mushaf.scriptField) {

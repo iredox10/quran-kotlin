@@ -277,6 +277,29 @@ fun MushafPageView(
                     }
                 }
             }
+
+            // Footer — web parity (MushafFlipBook.jsx:149-153): centered Page N pill.
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(50.dp),
+                    color = hGold.copy(alpha = 0.06f),
+                    border = BorderStroke(0.75.dp, hGold.copy(alpha = 0.5f))
+                ) {
+                    Text(
+                        text = "$page",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = fontFamilyMono,
+                        color = hGold,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 3.dp)
+                    )
+                }
+            }
         }
     }
 }

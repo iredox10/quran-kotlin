@@ -291,6 +291,16 @@ private fun computeHeaderOffset(
     return offset
 }
 
+/** Web parity: Surah.jsx loads 50 ayahs per page via useInfiniteQuery. */
+private const val AYAH_PAGE_SIZE = 50
+
+/** Round a 1-based verse count up to the next page boundary, clamped to [0, total]. */
+private fun ceilToAyahPage(count: Int, total: Int): Int {
+    if (total <= 0) return 0
+    val paged = ((count + AYAH_PAGE_SIZE - 1) / AYAH_PAGE_SIZE) * AYAH_PAGE_SIZE
+    return paged.coerceIn(0, total)
+}
+
 /** Module-level scroll position cache — survives recomposition and Surah navigation. */
 internal val surahScrollPositions: MutableMap<Int, Pair<Int, Int>> = com.nur.quran.ui.ScrollPositionMemory.scrollPositions
 
@@ -343,6 +353,12 @@ fun SurahScreen(
 
     var isReadingMode by remember { mutableStateOf(false) }
     var pendingScrollTarget by remember { mutableStateOf<Int?>(null) }
+    // Incremental verse display (rendering-safe pagination): the ViewModel still
+    // loads the full chapter (Room/API untouched); only LazyColumn composition is
+    // windowed to AYAH_PAGE_SIZE verses, mirroring web Surah.jsx perPage=50.
+    // The window is always a prefix, so verse keys, page dividers and header
+    // offsets stay index-stable as it grows (web: fetchNextPage appends pages).
+    var visibleVerseCount by remember(chapterId) { mutableIntStateOf(AYAH_PAGE_SIZE) }
     var selectedWordForTooltip by remember { mutableStateOf<WordEntity?>(null) }
     var collectionVerse by remember { mutableStateOf<VerseEntity?>(null) }
     var shareVerseDialogTarget by remember { mutableStateOf<VerseEntity?>(null) }
@@ -816,6 +832,11 @@ fun SurahScreen(
                     }
 
                     val versesByPage = remember(verses) { verses.groupBy { it.pageNumber }.toSortedMap() }
+                    // Windowed display: compose only the first visibleVerseCount ayahs.
+                    // Prefix slicing preserves verse keys and page-divider adjacency.
+                    val visibleVerses = remember(verses, visibleVerseCount) {
+                        verses.take(visibleVerseCount)
+                    }
 
                     LazyColumn(
                         state = listState,
@@ -1095,8 +1116,8 @@ fun SurahScreen(
                         }
 
                         if (!isReadingMode) {
-                            itemsIndexed(verses, key = { _, verse -> verse.id }) { index, verse ->
-                                val prevVerse = if (index > 0) verses[index - 1] else null
+                            itemsIndexed(visibleVerses, key = { _, verse -> verse.id }) { index, verse ->
+                                val prevVerse = if (index > 0) visibleVerses[index - 1] else null
                                 val showPageDivider = verse.pageNumber != 0 &&
                                     (prevVerse == null || prevVerse.pageNumber != verse.pageNumber)
 
@@ -1145,6 +1166,20 @@ fun SurahScreen(
                                     fontFamilyArabic = fontFamilyArabic,
                                     selectedArabicFontName = selectedArabicFontName
                                 )
+                            }
+                            // Web parity: Surah.jsx sentinel div — manual "Load more
+                            // Ayahs..." trigger at the end of the composed window.
+                            // Placed after the verse items so header offsets are untouched.
+                            if (visibleVerseCount < verses.size) {
+                                item(key = "ayah_pagination_sentinel") {
+                                    LoadMoreAyahsRow(
+                                        remaining = verses.size - visibleVerseCount,
+                                        onLoadMore = {
+                                            visibleVerseCount =
+                                                (visibleVerseCount + AYAH_PAGE_SIZE).coerceAtMost(verses.size)
+                                        }
+                                    )
+                                }
                             }
                         } else {
                             items(versesByPage.entries.toList(), key = { (page, _) -> "page_$page" }) { (page, pageVerses) ->
@@ -2088,6 +2123,41 @@ fun SurahHeader(
                     )
                 }
             }
+        }
+    }
+}
+
+// ── Incremental pagination sentinel (web parity: Surah.jsx observer div) ────
+@Composable
+private fun LoadMoreAyahsRow(
+    remaining: Int,
+    onLoadMore: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "$remaining more ayahs",
+            fontFamily = fontFamilyUi,
+            fontSize = 12.sp,
+            color = hInkMuted
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        OutlinedButton(
+            onClick = onLoadMore,
+            shape = RoundedCornerShape(100),
+            border = BorderStroke(1.dp, hGold.copy(alpha = 0.5f))
+        ) {
+            Text(
+                text = "Load more Ayahs",
+                fontFamily = fontFamilyUi,
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp,
+                color = hGold
+            )
         }
     }
 }

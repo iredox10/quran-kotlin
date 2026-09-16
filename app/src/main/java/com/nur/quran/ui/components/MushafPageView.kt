@@ -40,7 +40,6 @@ import com.nur.quran.ui.screens.TajweedRule
 import com.nur.quran.ui.screens.ContinuousReadingPageItem
 import com.nur.quran.ui.screens.fontFamilyMono
 import com.nur.quran.ui.screens.fontScheherazade
-import com.nur.quran.ui.screens.hBorderColor
 import com.nur.quran.ui.screens.hGold
 import com.nur.quran.ui.screens.hGoldLight
 import com.nur.quran.ui.screens.hInk
@@ -115,12 +114,20 @@ fun MushafPageView(
     Surface(
         shape = RoundedCornerShape(24.dp),
         color = hSurface,
-        border = BorderStroke(1.dp, hBorderColor),
+        border = BorderStroke(1.dp, hGold.copy(alpha = 0.4f)),
         shadowElevation = 2.dp,
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 8.dp)
     ) {
+        // Inner frame — web parity double-border (MushafFlipBook.jsx:48,123):
+        // thin gold inner stroke inside the outer card border.
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(5.dp)
+                .border(1.dp, hGold.copy(alpha = 0.3f), RoundedCornerShape(18.dp))
+        ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -300,6 +307,7 @@ fun MushafPageView(
                     )
                 }
             }
+        }
         }
     }
 }

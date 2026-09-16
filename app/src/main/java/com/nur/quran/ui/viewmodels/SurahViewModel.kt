@@ -1838,6 +1838,9 @@ class SurahViewModel @Inject constructor(
     /**
      * Plain syncable settings snapshot for the sync engine (web: getSyncableState).
      * Read-only: no prefs writes here. Bookmarks/planners live in Room already.
+     * `mushafId` mirrors web `mushafId`; `mushafPreset` carries the same
+     * canonical id under the native prefs name. `readingMode` mirrors web
+     * semantics (true = arabic-only); `translationEnabled` is its inverse.
      */
     fun buildSyncableMap(): Map<String, Any> {
         val isDark = context.getSharedPreferences("Settings", Context.MODE_PRIVATE)
@@ -1852,7 +1855,11 @@ class SurahViewModel @Inject constructor(
             "tafsirId" to _currentTafsirId.value,
             "reciterId" to _currentReciterId.value,
             "tajweedEnabled" to _isTajweedEnabled.value,
-            "wordTapBehavior" to _wordTapBehavior.value
+            "wordTapBehavior" to _wordTapBehavior.value,
+            "mushafPreset" to _mushafPreset.value,
+            "mushafId" to _mushafPreset.value,
+            "readingMode" to _isReadingMode.value,
+            "translationEnabled" to _isTranslationEnabled.value
         )
     }
 

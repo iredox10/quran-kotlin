@@ -96,6 +96,16 @@ data class ApiVerse(
     val verse_key: String,
     val page_number: Int,
     val juz_number: Int,
+    // Division/sajdah metadata (Quran.com API v4 `fields`: hizb_number,
+    // rub_el_hizb_number, ruku_number, manzil_number, sajdah_number, sajdah_type).
+    // Parsed only — persistence is intentionally in-memory (see VerseDividers)
+    // so no Room schema change is required.
+    val hizb_number: Int? = null,
+    val rub_el_hizb_number: Int? = null,
+    val ruku_number: Int? = null,
+    val manzil_number: Int? = null,
+    val sajdah_number: Int? = null,
+    val sajdah_type: String? = null,
     val text_uthmani: String? = null,
     val text_indopak: String? = null,
     val text_qpc_hafs: String? = null,

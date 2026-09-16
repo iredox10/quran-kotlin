@@ -1112,7 +1112,15 @@ fun SurahScreen(
                             }
                         }
 
-                        if (!isReadingMode) {
+                        if (verses.isEmpty()) {
+                            // Empty Success: header + Bismillah above remain;
+                            // verse item rendering untouched (no items).
+                            item {
+                                SurahEmptyState(
+                                    onRetry = { viewModel.loadChapterDetails(chapterId) }
+                                )
+                            }
+                        } else if (!isReadingMode) {
                             itemsIndexed(verses, key = { _, verse -> verse.id }) { index, verse ->
                                 val prevVerse = if (index > 0) verses[index - 1] else null
                                 val showPageDivider = verse.pageNumber != 0 &&
@@ -1160,6 +1168,7 @@ fun SurahScreen(
                                     onToggleMemorized = { viewModel.toggleMemorizedAyah(verse.verseKey) },
                                     arabicFontScale = arabicFontScale,
                                     translationFontScale = translationFontScale,
+                                    lineHeightMultiplier = lineHeightMultiplier,
                                     fontFamilyArabic = fontFamilyArabic,
                                     selectedArabicFontName = selectedArabicFontName
                                 )
@@ -2106,6 +2115,49 @@ fun SurahHeader(
                     )
                 }
             }
+        }
+    }
+}
+
+// ── Empty verses state (Success with verses=[]) ──────────────────────────
+// Shown inside the LazyColumn after the header + Bismillah so the surah
+// identity remains on screen. Verse item rendering is untouched.
+@Composable
+fun SurahEmptyState(
+    onRetry: () -> Unit = {}
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "No ayahs available",
+            fontFamily = fontFamilyUi,
+            fontWeight = FontWeight.Bold,
+            fontSize = 16.sp,
+            color = hInk,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "Check your connection and try again.",
+            fontFamily = fontFamilyBody,
+            fontSize = 13.sp,
+            color = hInkMid,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        TextButton(onClick = onRetry) {
+            Text(
+                text = "Retry",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = hGold,
+                fontFamily = fontFamilyUi
+            )
         }
     }
 }

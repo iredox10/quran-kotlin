@@ -333,6 +333,7 @@ fun SurahScreen(
     val memorizedAyahs by viewModel.memorizedAyahs.collectAsState()
     val arabicFontScale by viewModel.arabicFontScale.collectAsState()
     val translationFontScale by viewModel.translationFontScale.collectAsState()
+    val lineHeightMultiplier by viewModel.lineHeightMultiplier.collectAsState()
     val isSaukaCompleting by viewModel.isSaukaCompleting.collectAsState()
     val activeTranslationId by viewModel.currentTranslationId.collectAsState()
     val wordTapBehavior by viewModel.wordTapBehavior.collectAsState()
@@ -759,16 +760,33 @@ fun SurahScreen(
                     }
                 }
                 is SurahUiState.Error -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
                         Text(
                             text = state.message,
-                            color = Color.Red,
+                            color = hRed,
                             textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(16.dp)
+                            fontFamily = fontFamilyBody,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium
                         )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        // Retry restarts the chapter load (audio download
+                        // retry pattern: red message + Retry TextButton).
+                        TextButton(onClick = { viewModel.loadChapterDetails(chapterId) }) {
+                            Text(
+                                text = "Retry",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = hRed,
+                                fontFamily = fontFamilyUi
+                            )
+                        }
                     }
                 }
                 is SurahUiState.Success -> {

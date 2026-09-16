@@ -265,6 +265,10 @@ class SurahViewModel @Inject constructor(
     private val _isDownloading = MutableStateFlow(false)
     val isDownloading: StateFlow<Boolean> = _isDownloading.asStateFlow()
 
+    /** Manual refresh indicator (web: isVersesFetching top progress bar). */
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+
     private var currentChapterId: Int = 0
     private var currentChapterName: String = ""
     private var currentTafsirId: Int = hifdhPrefs.getInt("tafsir_id", 169)
@@ -1378,6 +1382,10 @@ class SurahViewModel @Inject constructor(
         if (memoryCached != null) {
             _uiState.value = memoryCached
             currentChapterName = memoryCached.chapter.nameSimple
+        } else if (_uiState.value is SurahUiState.Error) {
+            // Retry from a terminal error: show loading immediately so the
+            // Retry button gives instant feedback (no stale error on screen).
+            _uiState.value = SurahUiState.Loading
         }
 
         loadChapterJob?.cancel()
@@ -1444,6 +1452,39 @@ class SurahViewModel @Inject constructor(
                 if (SurahPerfLog) android.util.Log.d("SurahPerf", "surah $chapterId background upgrade done in ${System.currentTimeMillis() - t0}ms total")
             } else {
                 _uiState.value = SurahUiState.Error("Chapter $chapterId not found")
+            }
+        }
+    }
+
+    /**
+     * Manual refresh (web: refetch button + isVersesFetching top bar).
+     * Forces a network revalidation via [refreshVersesByChapter] even when
+     * cached rows exist, then repaints Success. Failures keep the current
+     * state (cached Success stays, Error stays) — the UI surfaces Retry.
+     * Never throws.
+     */
+    fun refreshChapter(chapterId: Int) {
+        if (_isRefreshing.value) return
+        viewModelScope.launch(Dispatchers.IO) {
+            _isRefreshing.value = true
+            try {
+                chapterMemoryCache.remove(chapterId)
+                loadedMushafByChapter.remove(chapterId)
+                repository.refreshVersesByChapter(chapterId, _currentTranslationId.value, _mushafPreset.value)
+                val chapter = repository.getChapterById(chapterId) ?: return@launch
+                val fresh = repository.getVersesByChapterDirect(chapterId)
+                if (fresh.isEmpty()) return@launch
+                val wordsMap = repository.getWordsForVerses(fresh.map { it.id })
+                val tajweed = (_uiState.value as? SurahUiState.Success)?.tajweedMap ?: emptyMap()
+                val successState = SurahUiState.Success(chapter, fresh, wordsMap, tajweed)
+                chapterMemoryCache[chapterId] = successState
+                loadedMushafByChapter[chapterId] = _mushafPreset.value
+                if (currentChapterId == chapterId) _uiState.value = successState
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                // Keep current UI state; user can Retry again.
+            } finally {
+                _isRefreshing.value = false
             }
         }
     }

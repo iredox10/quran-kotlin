@@ -42,6 +42,8 @@ fun PlanProgressTab(
     var selectedAssignment by remember { mutableStateOf<PlannerAssignment?>(null) }
     val analytics = remember(planner) { PlannerEngine.getPlannerAnalytics(planner) }
     val weeklySummary = remember(planner) { PlannerEngine.getWeeklySummary(planner) }
+    // Web parity: difficulty indicators — red dot for heavy days (>1.3× avg), green for light (<0.7× avg)
+    val difficulty = remember(planner) { PlannerEngine.getDifficultyIndicators(planner.assignments) }
 
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         // 1. Header: Timeline + Rebalance / Adjust buttons
@@ -176,6 +178,21 @@ fun PlanProgressTab(
                                             else -> hInkMuted
                                         }
                                     )
+                                    // Difficulty dot (web parity: red for heavy >1.3×, green for light <0.7×)
+                                    val dayDifficulty = difficulty[a.dayNumber]
+                                    if (dayDifficulty != null && dayDifficulty.level != "moderate") {
+                                        Box(
+                                            modifier = Modifier
+                                                .align(Alignment.TopEnd)
+                                                .offset(x = (-2).dp, y = 2.dp)
+                                                .size(7.dp)
+                                                .clip(CircleShape)
+                                                .background(
+                                                    if (dayDifficulty.level == "heavy") Color(0xFFDC2626)
+                                                    else Color(0xFF10B981)
+                                                )
+                                        )
+                                    }
                                 }
                             }
                             repeat(7 - rowDays.size) {
@@ -196,6 +213,16 @@ fun PlanProgressTab(
                     LegendItem(color = hGoldSoft, label = "Today")
                     LegendItem(color = Color(0xFFDC2626), label = "Missed")
                     LegendItem(color = hInkMuted, label = "Upcoming")
+                }
+                // Difficulty legend (web parity)
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    LegendItem(color = Color(0xFFDC2626), label = "Heavy", dotSize = 7)
+                    Spacer(modifier = Modifier.width(16.dp))
+                    LegendItem(color = Color(0xFF10B981), label = "Light", dotSize = 7)
                 }
 
                 // Selected Day Details Card
@@ -419,12 +446,12 @@ fun PlanProgressTab(
 }
 
 @Composable
-private fun LegendItem(color: Color, label: String) {
+private fun LegendItem(color: Color, label: String, dotSize: Int = 8) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(color))
+        Box(modifier = Modifier.size(dotSize.dp).clip(CircleShape).background(color))
         Text(text = label, fontFamily = fontFamilyMono, fontSize = 10.sp, color = hInkMuted)
     }
 }

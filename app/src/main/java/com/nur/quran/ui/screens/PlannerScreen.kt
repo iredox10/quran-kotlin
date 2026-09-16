@@ -64,9 +64,24 @@ fun PlannerScreen(
     val todayStr = remember { PlannerEngine.formatPlannerDate() }
     val plannerListState = rememberLazyListState()
 
+    // Auto-rebalance prompt guard (web parity: Planner.jsx#L687-L695)
+    var hasCheckedRebalance by remember { mutableStateOf(false) }
+
     LaunchedEffect(activePlan) {
         if (activePlan != null && viewMode == "intention" && allPlans.isNotEmpty()) {
             viewMode = "dashboard"
+        }
+    }
+
+    // Web parity: auto-show rebalance modal when overdue days exist on dashboard load
+    LaunchedEffect(activePlan, viewMode) {
+        if (!hasCheckedRebalance && viewMode == "dashboard" && activePlan != null) {
+            val overview = PlannerEngine.getPlannerOverview(activePlan!!)
+            val firstIncompleteDate = overview?.firstIncomplete?.date
+            if (firstIncompleteDate != null && firstIncompleteDate < todayStr) {
+                showRebalanceDialog = true
+            }
+            hasCheckedRebalance = true
         }
     }
 

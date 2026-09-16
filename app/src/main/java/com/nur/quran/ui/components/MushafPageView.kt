@@ -2,12 +2,12 @@ package com.nur.quran.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -24,12 +24,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nur.quran.data.getHizbByPage
+import com.nur.quran.data.getJuzByPage
 import com.nur.quran.data.db.entities.VerseEntity
 import com.nur.quran.data.db.entities.WordEntity
+import com.nur.quran.data.mushaf.ChapterMetadata
 import com.nur.quran.data.mushaf.Mushaf
 import com.nur.quran.data.mushaf.wordTextForMushaf
 import com.nur.quran.ui.screens.TajweedRule
@@ -84,6 +88,9 @@ fun MushafPageView(
         lineMap.entries.sortedBy { it.key }
     }
 
+    val juz = remember(page) { getJuzByPage(page) }
+    val hizb = remember(page) { getHizbByPage(page) }
+
     if (lines.isEmpty()) {
         // Fallback to continuous reading view if line numbers are unavailable
         ContinuousReadingPageItem(
@@ -116,7 +123,7 @@ fun MushafPageView(
                 .fillMaxWidth()
                 .padding(horizontal = 14.dp, vertical = 18.dp)
         ) {
-            // Header badge matching web: "{mushaf.name} · line-grouped page scaffolding"
+            // Header — web parity (MushafFlipBook.jsx:126-133): Juz + Hizb pills.
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -124,19 +131,41 @@ fun MushafPageView(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                Surface(
+                    shape = RoundedCornerShape(50.dp),
+                    color = hGold.copy(alpha = 0.06f),
+                    border = BorderStroke(0.75.dp, hGold.copy(alpha = 0.5f))
+                ) {
+                    Text(
+                        text = "الجزء ${juz.id}",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = fontFamilyArabic,
+                        color = hGold,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                    )
+                }
                 Text(
-                    text = "${mushaf.name} · line-grouped page scaffolding",
-                    fontSize = 11.sp,
+                    text = mushaf.name,
+                    fontSize = 10.sp,
                     fontFamily = fontFamilyMono,
                     color = hInkMuted,
                     letterSpacing = 0.5.sp
                 )
-                Text(
-                    text = "Page $page",
-                    fontSize = 11.sp,
-                    fontFamily = fontFamilyMono,
-                    color = hGold
-                )
+                Surface(
+                    shape = RoundedCornerShape(50.dp),
+                    color = hGold.copy(alpha = 0.06f),
+                    border = BorderStroke(0.75.dp, hGold.copy(alpha = 0.5f))
+                ) {
+                    Text(
+                        text = "Hizb ${hizb.id}",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = fontFamilyMono,
+                        color = hGold,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                    )
+                }
             }
 
             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {

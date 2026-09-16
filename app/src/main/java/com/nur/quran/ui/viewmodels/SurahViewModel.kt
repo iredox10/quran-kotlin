@@ -98,6 +98,19 @@ class SurahViewModel @Inject constructor(
     private val _isTranslationEnabled = MutableStateFlow(hifdhPrefs.getBoolean("is_translation_enabled", true))
     val isTranslationEnabled: StateFlow<Boolean> = _isTranslationEnabled.asStateFlow()
 
+    /**
+     * Persisted reading mode (web: `readingMode` in useAppStore.js).
+     * Web semantics: true = arabic-only, false = with translation.
+     * Always kept as the inverse of [_isTranslationEnabled]; initialized from
+     * `is_reading_mode` when present, otherwise derived from the legacy
+     * `is_translation_enabled` key so existing installs migrate cleanly.
+     */
+    private val _isReadingMode = MutableStateFlow(
+        if (hifdhPrefs.contains("is_reading_mode")) hifdhPrefs.getBoolean("is_reading_mode", false)
+        else !hifdhPrefs.getBoolean("is_translation_enabled", true)
+    )
+    val isReadingMode: StateFlow<Boolean> = _isReadingMode.asStateFlow()
+
     private val _isMemorizeModeEnabled = MutableStateFlow(false)
     val isMemorizeModeEnabled: StateFlow<Boolean> = _isMemorizeModeEnabled.asStateFlow()
 
@@ -1616,8 +1629,24 @@ class SurahViewModel @Inject constructor(
     }
 
     fun toggleTranslation() {
-        _isTranslationEnabled.value = !_isTranslationEnabled.value
-        hifdhPrefs.edit().putBoolean("is_translation_enabled", _isTranslationEnabled.value).apply()
+        setTranslationEnabled(!_isTranslationEnabled.value)
+    }
+
+    fun setTranslationEnabled(enabled: Boolean) {
+        _isTranslationEnabled.value = enabled
+        _isReadingMode.value = !enabled
+        hifdhPrefs.edit()
+            .putBoolean("is_translation_enabled", enabled)
+            .putBoolean("is_reading_mode", !enabled)
+            .apply()
+    }
+
+    fun setReadingMode(enabled: Boolean) {
+        setTranslationEnabled(!enabled)
+    }
+
+    fun toggleReadingMode() {
+        setReadingMode(!_isReadingMode.value)
     }
 
     fun toggleBookmark(verseKey: String, chapterId: Int, surahName: String) {

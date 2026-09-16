@@ -55,7 +55,10 @@ private val TAFSIRS_LIST = listOf(
     169 to "Ibn Kathir (Abridged)",
     168 to "Ma'arif al-Qur'an",
     817 to "Tazkirul Quran",
-    16 to "Tafsir al-Muyassar"
+    16 to "Tafsir al-Muyassar",
+    14 to "Tafsir Ibn Kathir",
+    15 to "Tafsir al-Tabari",
+    93 to "Al-Tafsir al-Wasit"
 )
 
 private data class FontOption(val id: String, val name: String, val fontFamily: FontFamily)

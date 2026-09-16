@@ -71,6 +71,8 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.graphics.toArgb
 import androidx.core.text.HtmlCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.nur.quran.data.db.entities.ChapterEntity
@@ -3396,16 +3398,33 @@ fun TafsirBottomSheet(
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
-            val cleanTafsir = remember(text) {
-                HtmlCompat.fromHtml(text, HtmlCompat.FROM_HTML_MODE_LEGACY).toString().trim()
+            // Span-preserving trim: CharSequence.trim() would drop formatting spans.
+            val tafsirHtml: CharSequence = remember(text) {
+                val spanned = HtmlCompat.fromHtml(text, HtmlCompat.FROM_HTML_MODE_LEGACY)
+                var start = 0
+                var end = spanned.length
+                while (start < end && spanned[start].isWhitespace()) start++
+                while (end > start && spanned[end - 1].isWhitespace()) end--
+                spanned.subSequence(start, end)
             }
-            Text(
-                text = cleanTafsir,
-                fontSize = 16.sp,
-                color = hInkMid,
-                fontFamily = fontFamilyBody,
-                lineHeight = 29.sp,
-                textAlign = TextAlign.Start
+            val tafsirColor = hInkMid
+            AndroidView(
+                modifier = Modifier.fillMaxWidth(),
+                factory = { context ->
+                    android.widget.TextView(context).apply {
+                        movementMethod = android.text.method.LinkMovementMethod.getInstance()
+                        setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 16f)
+                        setLineSpacing(0f, 29f / 16f)
+                        setTextColor(tafsirColor.toArgb())
+                        // Keep default typeface + locale-driven text direction so
+                        // Arabic shaping and bidi stay intact.
+                        setText(tafsirHtml)
+                    }
+                },
+                update = { view ->
+                    view.setTextColor(tafsirColor.toArgb())
+                    view.setText(tafsirHtml)
+                }
             )
             Spacer(modifier = Modifier.height(32.dp))
         }

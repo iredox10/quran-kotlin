@@ -103,6 +103,7 @@ fun SettingsDrawer(
     val currentReciterId by viewModel.currentReciterId.collectAsState()
     val wordTapBehavior by viewModel.wordTapBehavior.collectAsState()
     val mushafPreset by viewModel.mushafPreset.collectAsState()
+    val isTranslationEnabled by viewModel.isTranslationEnabled.collectAsState()
     val currentMushaf = remember(mushafPreset) {
         com.nur.quran.data.mushaf.Mushaf.fromId(mushafPreset)
     }
@@ -391,6 +392,15 @@ fun SettingsDrawer(
                                                     label = "Tafsir",
                                                     value = "Ibn Kathir",
                                                     onClick = { activeSubView = "tafsir" }
+                                                )
+                                                Divider(color = hBoneDark)
+                                                // Translation on/off (web: readingMode inverse).
+                                                // Previously only in the legacy SurahScreen settings sheet.
+                                                SettingsToggleItem(
+                                                    label = "Translation",
+                                                    subtitle = "Show translation under each verse",
+                                                    checked = isTranslationEnabled,
+                                                    onToggle = { viewModel.toggleTranslation() }
                                                 )
                                                 Divider(color = hBoneDark)
                                                 SettingsToggleItem(

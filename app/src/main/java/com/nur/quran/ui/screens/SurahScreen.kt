@@ -3344,7 +3344,8 @@ fun ContinuousReadingPageItem(
                                 onTajweedClick(rule)
                             }
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        justified = true
                     )
                 } else {
                     val pageAnnotated = remember(pageVerses, wordsMap, allPageWords, fontFamilyArabic, arabicFontScale, lineHeightMultiplier, isDarkThemeGlobal, mushafId, selectedArabicFontName) {
@@ -3385,7 +3386,7 @@ fun ContinuousReadingPageItem(
                             fontSize = (26 * arabicFontScale).sp,
                             color = hInk,
                             fontFamily = fontFamilyArabic,
-                            textAlign = TextAlign.Right,
+                            textAlign = TextAlign.Justify,
                             lineHeight = (52 * arabicFontScale * lineHeightMultiplier).sp
                         ),
                         onClick = { offset ->

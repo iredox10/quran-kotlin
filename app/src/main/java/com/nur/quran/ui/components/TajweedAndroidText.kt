@@ -50,7 +50,8 @@ fun TajweedAndroidText(
     onWordClick: (Int) -> Unit,
     onTajweedClick: (String) -> Unit,
     modifier: Modifier = Modifier,
-    textAlign: Int = Gravity.RIGHT
+    textAlign: Int = Gravity.RIGHT,
+    justified: Boolean = false
 ) {
     val context = LocalContext.current
     val typeface = remember(selectedArabicFontName) {
@@ -81,7 +82,7 @@ fun TajweedAndroidText(
                 // balance/phrase-break lines, wrapping earlier and leaving big
                 // ragged gaps that were never there in the Compose renderer.
                 breakStrategy = android.text.Layout.BREAK_STRATEGY_SIMPLE
-                justificationMode = android.text.Layout.JUSTIFICATION_MODE_NONE
+                applyJustification(this, justified)
                 gravity = textAlign or Gravity.CENTER_VERTICAL
                 this.typeface = typeface
                 highlightColor = android.graphics.Color.TRANSPARENT
@@ -94,7 +95,7 @@ fun TajweedAndroidText(
             tv.textSize = fontSizeSp
             tv.setLineSpacing(0f, lineHeightRatio * lineHeightMultiplier)
             tv.breakStrategy = android.text.Layout.BREAK_STRATEGY_SIMPLE
-            tv.justificationMode = android.text.Layout.JUSTIFICATION_MODE_NONE
+            applyJustification(tv, justified)
             tv.typeface = typeface
             tv.text = spannable
             scheduleWrapSpaceFix(tv)
@@ -285,6 +286,21 @@ private class WrapFixState(
 private val wrapFixStates = WeakHashMap<TextView, WrapFixState>()
 
 private const val WRAP_FIX_MAX_PASSES = 3
+
+/**
+ * Reading mode (Quran without translation) justifies the text so wrapped
+ * lines end flush like the mushaf instead of leaving ragged gaps; the
+ * per-verse list keeps ragged-right like the web app. Guarded for API < 26
+ * which has no justificationMode.
+ */
+private fun applyJustification(tv: TextView, justified: Boolean) {
+    if (android.os.Build.VERSION.SDK_INT < 26) return
+    tv.justificationMode = if (justified) {
+        android.text.Layout.JUSTIFICATION_MODE_INTER_WORD
+    } else {
+        android.text.Layout.JUSTIFICATION_MODE_NONE
+    }
+}
 
 private fun scheduleWrapSpaceFix(tv: TextView) {
     val current = tv.text

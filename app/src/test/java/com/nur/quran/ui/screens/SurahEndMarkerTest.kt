@@ -95,14 +95,14 @@ class SurahEndMarkerTest {
     @Test
     fun `formatCleanEndMarker KFGQPC is bare digits, other fonts get U+06DD prefix`() {
         val kfgqpc = formatCleanEndMarker(null, 7, "KFGQPC Hafs")
-        assertEquals(" <tajweed class='end'>٧</tajweed>", kfgqpc)
+        assertEquals("<tajweed class='end'>٧</tajweed>", kfgqpc)
         assertFalse("KFGQPC marker must not contain U+06DD: $kfgqpc", kfgqpc.contains("\u06DD"))
 
         val uthman = formatCleanEndMarker(null, 7, "Uthman Taha Naskh")
-        assertEquals(" <tajweed class='end'>\u06DD٧</tajweed>", uthman)
+        assertEquals("<tajweed class='end'>\u06DD٧</tajweed>", uthman)
 
         val amiri = formatCleanEndMarker(null, 7, "Amiri Quran")
-        assertEquals(" <tajweed class='end'>\u06DD٧</tajweed>", amiri)
+        assertEquals("<tajweed class='end'>\u06DD٧</tajweed>", amiri)
     }
 
     @Test
@@ -110,14 +110,14 @@ class SurahEndMarkerTest {
         // End word as stored offline/API: ornament frame around the number.
         val framed = endWord(99, 5, "\u06DD٧")
         val kfgqpc = formatCleanEndMarker(framed, 7, "KFGQPC Hafs")
-        assertEquals(" <tajweed class='end'>٧</tajweed>", kfgqpc)
+        assertEquals("<tajweed class='end'>٧</tajweed>", kfgqpc)
 
         val braced = endWord(99, 5, "﴿٧﴾")
-        assertEquals(" <tajweed class='end'>٧</tajweed>", formatCleanEndMarker(braced, 7, "KFGQPC Hafs"))
+        assertEquals("<tajweed class='end'>٧</tajweed>", formatCleanEndMarker(braced, 7, "KFGQPC Hafs"))
 
         // Other fonts keep/ensure the U+06DD frame.
         assertEquals(
-            " <tajweed class='end'>\u06DD٧</tajweed>",
+            "<tajweed class='end'>\u06DD٧</tajweed>",
             formatCleanEndMarker(framed, 7, "Uthman Taha Naskh")
         )
     }
@@ -128,11 +128,11 @@ class SurahEndMarkerTest {
     fun `formatCleanEndMarker arabic-indic end word resolves to verse number`() {
         val arabicIndicEnd = endWord(99, 5, "٧")
         assertEquals(
-            " <tajweed class='end'>٧</tajweed>",
+            "<tajweed class='end'>٧</tajweed>",
             formatCleanEndMarker(arabicIndicEnd, 7, "KFGQPC Hafs")
         )
         assertEquals(
-            " <tajweed class='end'>\u06DD٧</tajweed>",
+            "<tajweed class='end'>\u06DD٧</tajweed>",
             formatCleanEndMarker(arabicIndicEnd, 7, "Uthman Taha Naskh")
         )
     }
@@ -141,11 +141,11 @@ class SurahEndMarkerTest {
     fun `formatCleanEndMarker multi-digit arabic-indic end word resolves correctly`() {
         val end = endWord(99, 8, "٢٥٥")
         assertEquals(
-            " <tajweed class='end'>٢٥٥</tajweed>",
+            "<tajweed class='end'>٢٥٥</tajweed>",
             formatCleanEndMarker(end, 255, "KFGQPC Hafs")
         )
         assertEquals(
-            " <tajweed class='end'>\u06DD٢٥٥</tajweed>",
+            "<tajweed class='end'>\u06DD٢٥٥</tajweed>",
             formatCleanEndMarker(end, 255, "Scheherazade New")
         )
     }
@@ -154,7 +154,7 @@ class SurahEndMarkerTest {
     fun `formatCleanEndMarker ascii end word resolves to same digits`() {
         val asciiEnd = endWord(99, 5, "7")
         assertEquals(
-            " <tajweed class='end'>٧</tajweed>",
+            "<tajweed class='end'>٧</tajweed>",
             formatCleanEndMarker(asciiEnd, 7, "KFGQPC Hafs")
         )
     }

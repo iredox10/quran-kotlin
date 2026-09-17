@@ -84,7 +84,7 @@ import com.nur.quran.data.getJuzByPage
 import com.nur.quran.data.hizbStartForVerseKey
 import com.nur.quran.data.juzStartForVerseKey
 import com.nur.quran.data.sajdahNumberFor
-import com.nur.quran.ui.components.ColoredArabicText
+import com.nur.quran.ui.components.TajweedAndroidText
 import com.nur.quran.ui.components.audio.AudioSetupSheet
 import com.nur.quran.ui.components.audio.MiniPlayer
 import com.nur.quran.ui.components.TajweedSegment
@@ -2627,13 +2627,15 @@ fun VerseItem(
                         TajweedProcessor.getWordTajweedSegments(tajweedPlainText.first, finalTajweedHtml, textColorHex)
                     }
 
-                    SurahTajweedText(
+                    TajweedAndroidText(
                         text = tajweedPlainText.first,
                         wordRanges = tajweedPlainText.second,
                         segments = tajweedSegments,
-                        fontFamily = fontFamilyArabic,
-                        fontSize = (26 * arabicFontScale).sp,
-                        lineHeight = (52 * arabicFontScale * lineHeightMultiplier).sp,
+                        selectedArabicFontName = selectedArabicFontName,
+                        fontSizeSp = 26 * arabicFontScale,
+                        lineHeightRatio = 2.0f,
+                        lineHeightMultiplier = lineHeightMultiplier,
+                        textColor = hInk,
                         isInteractive = !isHidden,
                         onWordClick = { idx ->
                             if (idx >= 0 && idx < words.size) {
@@ -3237,73 +3239,6 @@ fun SurahNavButtons(
     }
 }
 
-// ── Compose-native tajweed renderer ────────────────────────
-/** Colors tajweed segments over `text` and exposes word / tajweed-rule taps via annotations. */
-@Composable
-private fun SurahTajweedText(
-    text: String,
-    wordRanges: List<Pair<IntRange, Int>>,
-    segments: List<TajweedSegment>,
-    fontFamily: FontFamily,
-    fontSize: TextUnit,
-    lineHeight: TextUnit,
-    isInteractive: Boolean = true,
-    onWordClick: (Int) -> Unit,
-    onTajweedClick: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val annotated = remember(text, segments, isDarkThemeGlobal) {
-        buildAnnotatedString {
-            var cursor = 0
-            for (seg in segments.sortedBy { it.start }) {
-                if (seg.start > cursor) append(text.substring(cursor, seg.start))
-                val segStart = length
-                append(text.substring(seg.start, seg.end))
-                val isEndRule = seg.ruleClass == "end"
-                addStyle(
-                    style = SpanStyle(
-                        color = Color(android.graphics.Color.parseColor(if (isEndRule) "#C6A87C" else seg.colorHex))
-                    ),
-                    start = segStart,
-                    end = length
-                )
-                if (!isEndRule && seg.ruleClass != null) {
-                    addStringAnnotation("TAJWEED_RULE", seg.ruleClass, segStart, length)
-                }
-                cursor = seg.end
-            }
-            if (cursor < text.length) append(text.substring(cursor))
-            for ((range, wordIndex) in wordRanges) {
-                addStringAnnotation("WORD_INDEX", wordIndex.toString(), range.first, range.last)
-            }
-        }
-    }
-    ClickableText(
-        text = annotated,
-        modifier = modifier,
-        style = TextStyle(
-            fontSize = fontSize,
-            color = hInk,
-            fontFamily = fontFamily,
-            textAlign = TextAlign.Right,
-            lineHeight = lineHeight
-        ),
-        onClick = { offset ->
-            if (!isInteractive) return@ClickableText
-            val rule = annotated.getStringAnnotations("TAJWEED_RULE", offset, offset).firstOrNull()
-            if (rule != null) {
-                onTajweedClick(rule.item)
-                return@ClickableText
-            }
-            val word = annotated.getStringAnnotations("WORD_INDEX", offset, offset).firstOrNull()
-            if (word != null) {
-                val idx = word.item.toIntOrNull()
-                if (idx != null) onWordClick(idx)
-            }
-        }
-    )
-}
-
 // ── Continuous Reading View (per-page flow, web reading mode) ───────────
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -3365,13 +3300,16 @@ fun ContinuousReadingPageItem(
                         TajweedProcessor.getWordTajweedSegments(pagePlainText.first, fullPageHtml, textColorHex)
                     }
 
-                    SurahTajweedText(
+                    TajweedAndroidText(
                         text = pagePlainText.first,
                         wordRanges = pagePlainText.second,
                         segments = pageSegments,
-                        fontFamily = fontFamilyArabic,
-                        fontSize = (26 * arabicFontScale).sp,
-                        lineHeight = (52 * arabicFontScale * lineHeightMultiplier).sp,
+                        selectedArabicFontName = selectedArabicFontName,
+                        fontSizeSp = 26 * arabicFontScale,
+                        lineHeightRatio = 2.0f,
+                        lineHeightMultiplier = lineHeightMultiplier,
+                        textColor = hInk,
+                        isInteractive = true,
                         onWordClick = { idx ->
                             if (idx >= 0 && idx < allPageWords.size) {
                                 onWordClick(allPageWords[idx])

@@ -81,6 +81,9 @@ import com.nur.quran.data.db.entities.WordEntity
 import com.nur.quran.data.audio.Reciters
 import com.nur.quran.data.getHizbByPage
 import com.nur.quran.data.getJuzByPage
+import com.nur.quran.data.hizbStartForVerseKey
+import com.nur.quran.data.juzStartForVerseKey
+import com.nur.quran.data.sajdahNumberFor
 import com.nur.quran.ui.components.ColoredArabicText
 import com.nur.quran.ui.components.audio.AudioSetupSheet
 import com.nur.quran.ui.components.audio.MiniPlayer
@@ -1226,6 +1229,15 @@ fun SurahScreen(
 
                                 if (showPageDivider) {
                                     PageDivider(pageNumber = verse.pageNumber)
+                                }
+                                // Inline Juz/Hizb markers (in-memory VerseDividers —
+                                // no schema change). Juz wins when a verse opens both.
+                                val juzStart = juzStartForVerseKey(verse.verseKey)
+                                val hizbStart = hizbStartForVerseKey(verse.verseKey)
+                                if (juzStart != null) {
+                                    DivisionDivider(label = "Juz ${juzStart.id}")
+                                } else if (hizbStart != null) {
+                                    DivisionDivider(label = "Hizb ${hizbStart.id}")
                                 }
                                 VerseDivider()
 
@@ -2466,15 +2478,24 @@ fun VerseItem(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Plain gold bold text on mobile (web sm:hidden pill)
-            Text(
-                text = verse.verseKey,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                color = hGold,
-                fontFamily = fontFamilyMono,
-                letterSpacing = 0.65.sp
-            )
+            // Plain gold bold text on mobile (web sm:hidden pill) + sajdah badge.
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = verse.verseKey,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = hGold,
+                    fontFamily = fontFamilyMono,
+                    letterSpacing = 0.65.sp
+                )
+                val sajdahNumber = sajdahNumberFor(verse.verseKey)
+                if (sajdahNumber != null) {
+                    SajdahBadge(sajdahNumber = sajdahNumber)
+                }
+            }
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,

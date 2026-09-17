@@ -75,7 +75,6 @@ fun TajweedAndroidText(
             TextView(ctx).apply {
                 textSize = fontSizeSp
                 includeFontPadding = false
-                setLineSpacing(0f, lineHeightRatio * lineHeightMultiplier)
                 layoutDirection = View.LAYOUT_DIRECTION_RTL
                 textDirection = View.TEXT_DIRECTION_RTL
                 // Greedy breaks like Compose Text: newer Android defaults may
@@ -85,6 +84,7 @@ fun TajweedAndroidText(
                 applyJustification(this, justified)
                 gravity = textAlign or Gravity.CENTER_VERTICAL
                 this.typeface = typeface
+                applyVerseLineSpacing(this, lineHeightRatio, lineHeightMultiplier)
                 highlightColor = android.graphics.Color.TRANSPARENT
                 if (isInteractive) {
                     setOnTouchListener(TajweedTouchListener())
@@ -93,10 +93,10 @@ fun TajweedAndroidText(
         },
         update = { tv ->
             tv.textSize = fontSizeSp
-            tv.setLineSpacing(0f, lineHeightRatio * lineHeightMultiplier)
+            tv.typeface = typeface
             tv.breakStrategy = android.text.Layout.BREAK_STRATEGY_SIMPLE
             applyJustification(tv, justified)
-            tv.typeface = typeface
+            applyVerseLineSpacing(tv, lineHeightRatio, lineHeightMultiplier)
             tv.text = spannable
             scheduleWrapSpaceFix(tv)
         }
@@ -286,6 +286,22 @@ private class WrapFixState(
 private val wrapFixStates = WeakHashMap<TextView, WrapFixState>()
 
 private const val WRAP_FIX_MAX_PASSES = 3
+
+/**
+ * Makes the TextView line height match Compose's absolute lineHeight
+ * (fontSize x ratio, e.g. 26sp x 2.0 = 52sp). TextView's multiplier applies
+ * to the font's NATURAL height, which is huge for Quran fonts (tall ascent /
+ * descent for tashkeel and waqf marks), so a raw 2.0x multiplier produces
+ * nearly double the Compose rhythm. Deriving the multiplier from the target
+ * keeps both renderers on identical baselines at every font scale.
+ * Must be called after textSize and typeface are set.
+ */
+private fun applyVerseLineSpacing(tv: TextView, lineHeightRatio: Float, lineHeightMultiplier: Float) {
+    val natural = tv.paint.fontMetrics.let { it.descent - it.ascent }
+    val targetPx = tv.textSize * lineHeightRatio * lineHeightMultiplier
+    val mult = if (natural > 0) targetPx / natural else lineHeightRatio * lineHeightMultiplier
+    tv.setLineSpacing(0f, mult)
+}
 
 /**
  * Reading mode (Quran without translation) justifies the text so wrapped

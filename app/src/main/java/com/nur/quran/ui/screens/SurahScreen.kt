@@ -337,6 +337,8 @@ fun SurahScreen(
     // audio-link agent; the build fixer aligns the ViewModel property.
     val linkedMap by viewModel.linkedState.collectAsState()
     val isDownloading by viewModel.isDownloading.collectAsState()
+    // Manual refresh indicator (web: isVersesFetching top progress bar).
+    val isRefreshing by viewModel.isRefreshing.collectAsState()
     val collections by viewModel.collections.collectAsState()
     val collectionItems by viewModel.collectionItems.collectAsState()
 
@@ -769,6 +771,11 @@ fun SurahScreen(
                     ) { isDarkThemeGlobal = !isDarkThemeGlobal; prefs.edit().putBoolean("is_dark_theme", isDarkThemeGlobal).apply() }
 
                     TopBarIconBtn(
+                        icon = NurIcons.RefreshCw,
+                        active = isRefreshing,
+                        label = "Refresh"
+                    ) { viewModel.refreshChapter(chapterId) }
+                    TopBarIconBtn(
                         icon = NurIcons.Settings,
                         active = showSettingsDrawer,
                         label = "Settings"
@@ -808,6 +815,18 @@ fun SurahScreen(
                     )
                 }
         ) {
+            // Web parity (Surah.jsx:534-538): thin top progress bar while the
+            // manual refresh revalidates verses in the background.
+            if (isRefreshing) {
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(3.dp)
+                        .align(Alignment.TopCenter),
+                    color = hGold,
+                    trackColor = Color.Transparent
+                )
+            }
             when (val state = uiState) {
                 is SurahUiState.Loading -> {
                     Column(
@@ -831,16 +850,33 @@ fun SurahScreen(
                     }
                 }
                 is SurahUiState.Error -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
                         Text(
                             text = state.message,
-                            color = Color.Red,
+                            color = hRed,
                             textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(16.dp)
+                            fontFamily = fontFamilyBody,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium
                         )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        // Retry restarts the chapter load (audio download
+                        // retry pattern: red message + Retry TextButton).
+                        TextButton(onClick = { viewModel.loadChapterDetails(chapterId) }) {
+                            Text(
+                                text = "Retry",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = hRed,
+                                fontFamily = fontFamilyUi
+                            )
+                        }
                     }
                 }
                 is SurahUiState.Success -> {
@@ -1174,7 +1210,15 @@ fun SurahScreen(
                             }
                         }
 
-                        if (!isReadingMode) {
+                        if (verses.isEmpty()) {
+                            // Empty Success: header + Bismillah above remain;
+                            // verse item rendering untouched (no items).
+                            item {
+                                SurahEmptyState(
+                                    onRetry = { viewModel.loadChapterDetails(chapterId) }
+                                )
+                            }
+                        } else if (!isReadingMode) {
                             itemsIndexed(visibleVerses, key = { _, verse -> verse.id }) { index, verse ->
                                 val prevVerse = if (index > 0) visibleVerses[index - 1] else null
                                 val showPageDivider = verse.pageNumber != 0 &&
@@ -2229,6 +2273,51 @@ private fun LoadMoreAyahsRow(
                 color = hGold
             )
         }
+    }
+}
+
+// ── Empty verses state (Success with verses=[]) ──────────────────────────
+// Shown inside the LazyColumn after the header + Bismillah so the surah
+// identity remains on screen. Verse item rendering is untouched.
+@Composable
+fun SurahEmptyState(
+    onRetry: () -> Unit = {}
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "No ayahs available",
+            fontFamily = fontFamilyUi,
+            fontWeight = FontWeight.Bold,
+            fontSize = 16.sp,
+            color = hInk,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "Check your connection and try again.",
+            fontFamily = fontFamilyBody,
+            fontSize = 13.sp,
+            color = hInkMid,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        TextButton(onClick = onRetry) {
+            Text(
+                text = "Retry",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = hGold,
+                fontFamily = fontFamilyUi
+            )
+        }
+    }
+}
     }
 }
 

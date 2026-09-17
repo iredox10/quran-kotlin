@@ -2330,9 +2330,6 @@ fun SurahEmptyState(
         }
     }
 }
-    }
-}
-
 // ── Web-style gradient verse divider ────────────────────────────────────
 @Composable
 fun VerseDivider() {

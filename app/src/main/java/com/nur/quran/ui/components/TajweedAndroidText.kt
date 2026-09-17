@@ -77,6 +77,11 @@ fun TajweedAndroidText(
                 setLineSpacing(0f, lineHeightRatio * lineHeightMultiplier)
                 layoutDirection = View.LAYOUT_DIRECTION_RTL
                 textDirection = View.TEXT_DIRECTION_RTL
+                // Greedy breaks like Compose Text: newer Android defaults may
+                // balance/phrase-break lines, wrapping earlier and leaving big
+                // ragged gaps that were never there in the Compose renderer.
+                breakStrategy = android.text.Layout.BREAK_STRATEGY_SIMPLE
+                justificationMode = android.text.Layout.JUSTIFICATION_MODE_NONE
                 gravity = textAlign or Gravity.CENTER_VERTICAL
                 this.typeface = typeface
                 highlightColor = android.graphics.Color.TRANSPARENT
@@ -88,6 +93,8 @@ fun TajweedAndroidText(
         update = { tv ->
             tv.textSize = fontSizeSp
             tv.setLineSpacing(0f, lineHeightRatio * lineHeightMultiplier)
+            tv.breakStrategy = android.text.Layout.BREAK_STRATEGY_SIMPLE
+            tv.justificationMode = android.text.Layout.JUSTIFICATION_MODE_NONE
             tv.typeface = typeface
             tv.text = spannable
             scheduleWrapSpaceFix(tv)

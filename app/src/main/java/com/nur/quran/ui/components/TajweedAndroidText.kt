@@ -1,17 +1,22 @@
 package com.nur.quran.ui.components
 
 import android.content.Context
+import android.graphics.Canvas
+import android.graphics.Paint
 import android.graphics.Typeface
+import android.text.Spannable
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.TextPaint
 import android.text.style.ClickableSpan
 import android.text.style.ForegroundColorSpan
+import android.text.style.ReplacementSpan
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
 import android.widget.TextView
+import java.util.WeakHashMap
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -85,6 +90,7 @@ fun TajweedAndroidText(
             tv.setLineSpacing(0f, lineHeightRatio * lineHeightMultiplier)
             tv.typeface = typeface
             tv.text = spannable
+            scheduleWrapSpaceFix(tv)
         }
     )
 }
@@ -227,4 +233,91 @@ private class TajweedTouchListener : View.OnTouchListener {
         }
         return false
     }
+}
+
+/**
+ * Zero-width stand-in for a wrap-point space.
+ *
+ * Android's StaticLayout keeps the break space at the end of the wrapped line
+ * and counts it in the line width. For right-aligned RTL verse text that space
+ * renders as a phantom gap at the visual end of every wrapped line (Compose
+ * Text drops it, which is why the gap only appeared after switching the
+ * tajweed renderer to TextView). Covering the wrap space with this span gives
+ * it zero advance width while keeping the break opportunity, so wrapped lines
+ * end flush like they do in Compose. Text offsets are untouched, so tap
+ * mapping and color segments keep working.
+ */
+private class ZeroWidthSpaceSpan : ReplacementSpan() {
+    override fun getSize(
+        paint: Paint,
+        text: CharSequence,
+        start: Int,
+        end: Int,
+        fm: Paint.FontMetricsInt?
+    ): Int = 0
+
+    override fun draw(
+        canvas: Canvas,
+        text: CharSequence,
+        start: Int,
+        end: Int,
+        x: Float,
+        top: Int,
+        y: Int,
+        bottom: Int,
+        paint: Paint
+    ) = Unit
+}
+
+private class WrapFixState(
+    var spannable: Spannable? = null,
+    var offsets: Set<Int> = emptySet(),
+    var pass: Int = 0
+)
+
+private val wrapFixStates = WeakHashMap<TextView, WrapFixState>()
+
+private const val WRAP_FIX_MAX_PASSES = 3
+
+private fun scheduleWrapSpaceFix(tv: TextView) {
+    val current = tv.text
+    val state = wrapFixStates.getOrPut(tv) { WrapFixState() }
+    if (state.spannable !== current) {
+        state.spannable = current as? Spannable
+        state.offsets = emptySet()
+        state.pass = 0
+    }
+    tv.post { runWrapSpaceFix(tv, state) }
+}
+
+private fun runWrapSpaceFix(tv: TextView, state: WrapFixState) {
+    if (state.pass >= WRAP_FIX_MAX_PASSES) return
+    val layout = tv.layout
+    if (layout == null || tv.width == 0) {
+        // Not laid out yet — retry on the next frame without burning a pass.
+        tv.post { runWrapSpaceFix(tv, state) }
+        return
+    }
+    val sp = tv.text as? Spannable ?: return
+    if (state.spannable !== sp) return // Superseded by a newer text.
+    // Re-scan from scratch every pass: zeroing widths can pull words up and
+    // move later breaks, so stale offsets must be released first.
+    for (s in sp.getSpans(0, sp.length, ZeroWidthSpaceSpan::class.java)) {
+        sp.removeSpan(s)
+    }
+    val fresh = mutableSetOf<Int>()
+    for (i in 0 until layout.lineCount) {
+        val end = layout.getLineEnd(i)
+        if (end > 0 && end <= sp.length && sp[end - 1] == ' ') {
+            fresh.add(end - 1)
+        }
+    }
+    if (fresh == state.offsets) return // Stable — nothing more to do.
+    for (off in fresh) {
+        sp.setSpan(ZeroWidthSpaceSpan(), off, off + 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+    }
+    state.offsets = fresh
+    state.pass++
+    tv.requestLayout()
+    tv.post { runWrapSpaceFix(tv, state) }
 }

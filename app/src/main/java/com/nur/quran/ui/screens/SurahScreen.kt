@@ -293,6 +293,16 @@ private fun computeHeaderOffset(
     return offset
 }
 
+/** Web parity: Surah.jsx loads 50 ayahs per page via useInfiniteQuery. */
+private const val AYAH_PAGE_SIZE = 50
+
+/** Round a 1-based verse count up to the next page boundary, clamped to [0, total]. */
+private fun ceilToAyahPage(count: Int, total: Int): Int {
+    if (total <= 0) return 0
+    val paged = ((count + AYAH_PAGE_SIZE - 1) / AYAH_PAGE_SIZE) * AYAH_PAGE_SIZE
+    return paged.coerceIn(0, total)
+}
+
 /** Module-level scroll position cache — survives recomposition and Surah navigation. */
 internal val surahScrollPositions: MutableMap<Int, Pair<Int, Int>> = com.nur.quran.ui.ScrollPositionMemory.scrollPositions
 
@@ -349,6 +359,12 @@ fun SurahScreen(
     // !translationEnabled). Previously a transient `remember(false)` here.
     val isReadingMode by viewModel.isReadingMode.collectAsState()
     var pendingScrollTarget by remember { mutableStateOf<Int?>(null) }
+    // Incremental verse display (rendering-safe pagination): the ViewModel still
+    // loads the full chapter (Room/API untouched); only LazyColumn composition is
+    // windowed to AYAH_PAGE_SIZE verses, mirroring web Surah.jsx perPage=50.
+    // The window is always a prefix, so verse keys, page dividers and header
+    // offsets stay index-stable as it grows (web: fetchNextPage appends pages).
+    var visibleVerseCount by remember(chapterId) { mutableIntStateOf(AYAH_PAGE_SIZE) }
     var selectedWordForTooltip by remember { mutableStateOf<WordEntity?>(null) }
     var collectionVerse by remember { mutableStateOf<VerseEntity?>(null) }
     var shareVerseDialogTarget by remember { mutableStateOf<VerseEntity?>(null) }
@@ -400,10 +416,44 @@ fun SurahScreen(
 
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
-    
+
+    // Expand the verse window (if needed) then scroll to a LazyColumn index.
+    // Because the window is always a prefix, growing it never shifts already
+    // composed positions; the scroll is deferred via pendingScrollTarget so it
+    // runs after recomposition materializes the newly visible items.
+    val scrollToVerseListIndex: suspend (lazyIndex: Int, hOffset: Int, totalVerses: Int, scrollOffset: Int) -> Unit =
+        { lazyIndex, hOffset, totalVerses, scrollOffset ->
+            val needVerses = (lazyIndex - hOffset + 1).coerceAtLeast(0)
+            if (totalVerses > 0 && needVerses > visibleVerseCount) {
+                visibleVerseCount = ceilToAyahPage(needVerses, totalVerses)
+                pendingScrollTarget = lazyIndex
+            } else {
+                try {
+                    listState.scrollToItem(lazyIndex, scrollOffset)
+                } catch (_: Exception) {
+                    // Window shifted under us (e.g. verse reload) — expand fully and retry once.
+                    if (totalVerses > 0) {
+                        visibleVerseCount = totalVerses
+                        pendingScrollTarget = lazyIndex
+                    }
+                }
+            }
+        }
+
     LaunchedEffect(pendingScrollTarget) {
         pendingScrollTarget?.let { target ->
-            listState.scrollToItem(target)
+            try {
+                listState.scrollToItem(target)
+            } catch (_: Exception) {
+                // Target beyond the current window (stale restore/deep link) —
+                // expand to the full chapter and retry once.
+                val total = (uiState as? SurahUiState.Success)?.verses?.size ?: 0
+                if (total > 0) {
+                    visibleVerseCount = total
+                    try { withFrameNanos {} } catch (_: Exception) { delay(100) }
+                    try { listState.scrollToItem(target) } catch (_: Exception) { }
+                }
+            }
             pendingScrollTarget = null
         }
     }
@@ -427,7 +477,7 @@ fun SurahScreen(
                                 chapterId = chapterId
                             )
                             coroutineScope.launch {
-                                listState.scrollToItem(index + hOffset)
+                                scrollToVerseListIndex(index + hOffset, hOffset, state.verses.size, 0)
                             }
                         }
                     }
@@ -450,7 +500,14 @@ fun SurahScreen(
         if (uiState is SurahUiState.Success && targetVerseKey == null) {
             val saved = surahScrollPositions[chapterId]
             if (saved != null) {
-                listState.scrollToItem(saved.first, saved.second)
+                val success = uiState as? SurahUiState.Success ?: return@LaunchedEffect
+                val hOffset = computeHeaderOffset(
+                    isMemorizeModeEnabled = isMemorizeModeEnabled,
+                    showSwipeTip = showSwipeTip,
+                    hasSauka = saukaAssignmentId != null && backToSauka != null,
+                    chapterId = chapterId
+                )
+                scrollToVerseListIndex(saved.first, hOffset, success.verses.size, saved.second)
                 surahScrollPositions.remove(chapterId)  // One-time restore
             }
         }
@@ -469,7 +526,7 @@ fun SurahScreen(
                         hasSauka = saukaAssignmentId != null && backToSauka != null,
                         chapterId = chapterId
                     )
-                    listState.scrollToItem(index + hOffset)
+                    scrollToVerseListIndex(index + hOffset, hOffset, state.verses.size, 0)
                     highlightedVerseKey = targetKey
                 }
             }
@@ -479,6 +536,8 @@ fun SurahScreen(
     // Follow-along: scroll the now-playing ayah into view while auto-scroll is on.
     // Header offset mirrors the targetVerseKey effect above (header + optional
     // banners + basmala). No-op in reading mode (page items, not verse items).
+    // When the ayah is beyond the composed window, grow the window first and
+    // jump via pendingScrollTarget; in-window ayahs keep the smooth animation.
     LaunchedEffect(playingVerseKey) {
         val key = playingVerseKey ?: return@LaunchedEffect
         if ((!isAutoScrollActive && !scrollWhilePlaying) || isReadingMode) return@LaunchedEffect
@@ -492,6 +551,11 @@ fun SurahScreen(
             hasSauka = saukaAssignmentId != null && backToSauka != null,
             chapterId = chapterId
         )
+        if (verseIndex >= visibleVerseCount) {
+            visibleVerseCount = ceilToAyahPage(verseIndex + 1, state.verses.size)
+            pendingScrollTarget = verseIndex + hOffset
+            return@LaunchedEffect
+        }
         try {
             listState.animateScrollToItem(verseIndex + hOffset)
         } catch (_: Exception) {
@@ -550,22 +614,24 @@ fun SurahScreen(
     LaunchedEffect(chapterId, targetVerseKey, uiState) {
         val state = uiState
         if (state is SurahUiState.Success && state.chapter.id == chapterId) {
+            // Deep link (?verse=) or replayed scroll event: grow the window to
+            // cover the target ayah before scrolling (web: ?verse= param).
+            val hOffset = computeHeaderOffset(
+                isMemorizeModeEnabled = isMemorizeModeEnabled,
+                showSwipeTip = showSwipeTip,
+                hasSauka = saukaAssignmentId != null && backToSauka != null,
+                chapterId = chapterId
+            )
             val effectiveTarget = targetVerseKey ?: viewModel.scrollToVerseEvent.replayCache.firstOrNull()
             if (!effectiveTarget.isNullOrBlank()) {
                 val index = state.verses.indexOfFirst { it.verseKey == effectiveTarget }
                 if (index >= 0) {
-                    val hOffset = computeHeaderOffset(
-                        isMemorizeModeEnabled = isMemorizeModeEnabled,
-                        showSwipeTip = showSwipeTip,
-                        hasSauka = saukaAssignmentId != null && backToSauka != null,
-                        chapterId = chapterId
-                    )
-                    listState.scrollToItem(index + hOffset)
+                    scrollToVerseListIndex(index + hOffset, hOffset, state.verses.size, 0)
                     highlightedVerseKey = effectiveTarget
                 } else {
                     val saved = viewModel.getSurahScrollPosition(chapterId)
                     if (saved != null) {
-                        listState.scrollToItem(saved.first, saved.second)
+                        scrollToVerseListIndex(saved.first, hOffset, state.verses.size, saved.second)
                     } else {
                         listState.scrollToItem(0)
                     }
@@ -573,7 +639,7 @@ fun SurahScreen(
             } else {
                 val saved = viewModel.getSurahScrollPosition(chapterId)
                 if (saved != null) {
-                    listState.scrollToItem(saved.first, saved.second)
+                    scrollToVerseListIndex(saved.first, hOffset, state.verses.size, saved.second)
                 } else {
                     listState.scrollToItem(0)
                 }
@@ -783,24 +849,27 @@ fun SurahScreen(
                     val wordsMap = state.wordsMap
                     val tajweedMap = state.tajweedMap
 
-                    // Restore scroll position once verses are ready
+                    // Restore scroll position once verses are ready.
+                    // Saved indices are full-list positions, so grow the window
+                    // to cover them first (prefix window keeps indices stable).
                     LaunchedEffect(chapterId, verses.isNotEmpty()) {
                         if (verses.isNotEmpty()) {
+                            val hOffset = computeHeaderOffset(
+                                isMemorizeModeEnabled = isMemorizeModeEnabled,
+                                showSwipeTip = showSwipeTip,
+                                hasSauka = saukaAssignmentId != null && backToSauka != null,
+                                chapterId = chapterId
+                            )
                             val inMemoryPos = viewModel.scrollPositions[chapterId]
                             if (inMemoryPos != null) {
-                                listState.scrollToItem(inMemoryPos.first, inMemoryPos.second)
+                                scrollToVerseListIndex(inMemoryPos.first, hOffset, verses.size, inMemoryPos.second)
                             } else {
                                 val recentEntry = viewModel.getRecentlyReadForChapter(chapterId)
                                 val savedVerseKey = recentEntry?.verseKey
                                 if (!savedVerseKey.isNullOrEmpty()) {
                                     val verseIndex = verses.indexOfFirst { it.verseKey == savedVerseKey }
                                     if (verseIndex >= 0) {
-                                        var headerOffset = 1
-                                        if (chapter.id != 1 && chapter.id != 9) {
-                                            headerOffset += 1
-                                        }
-                                        val targetListIndex = (headerOffset + verseIndex).coerceIn(0, (verses.size + headerOffset - 1).coerceAtLeast(0))
-                                        listState.scrollToItem(targetListIndex)
+                                        scrollToVerseListIndex(verseIndex + hOffset, hOffset, verses.size, 0)
                                     }
                                 }
                             }
@@ -822,6 +891,11 @@ fun SurahScreen(
                     }
 
                     val versesByPage = remember(verses) { verses.groupBy { it.pageNumber }.toSortedMap() }
+                    // Windowed display: compose only the first visibleVerseCount ayahs.
+                    // Prefix slicing preserves verse keys and page-divider adjacency.
+                    val visibleVerses = remember(verses, visibleVerseCount) {
+                        verses.take(visibleVerseCount)
+                    }
 
                     LazyColumn(
                         state = listState,
@@ -1101,8 +1175,8 @@ fun SurahScreen(
                         }
 
                         if (!isReadingMode) {
-                            itemsIndexed(verses, key = { _, verse -> verse.id }) { index, verse ->
-                                val prevVerse = if (index > 0) verses[index - 1] else null
+                            itemsIndexed(visibleVerses, key = { _, verse -> verse.id }) { index, verse ->
+                                val prevVerse = if (index > 0) visibleVerses[index - 1] else null
                                 val showPageDivider = verse.pageNumber != 0 &&
                                     (prevVerse == null || prevVerse.pageNumber != verse.pageNumber)
 
@@ -1152,6 +1226,20 @@ fun SurahScreen(
                                     fontFamilyArabic = fontFamilyArabic,
                                     selectedArabicFontName = selectedArabicFontName
                                 )
+                            }
+                            // Web parity: Surah.jsx sentinel div — manual "Load more
+                            // Ayahs..." trigger at the end of the composed window.
+                            // Placed after the verse items so header offsets are untouched.
+                            if (visibleVerseCount < verses.size) {
+                                item(key = "ayah_pagination_sentinel") {
+                                    LoadMoreAyahsRow(
+                                        remaining = verses.size - visibleVerseCount,
+                                        onLoadMore = {
+                                            visibleVerseCount =
+                                                (visibleVerseCount + AYAH_PAGE_SIZE).coerceAtMost(verses.size)
+                                        }
+                                    )
+                                }
                             }
                         } else {
                             items(versesByPage.entries.toList(), key = { (page, _) -> "page_$page" }) { (page, pageVerses) ->
@@ -1352,7 +1440,16 @@ fun SurahScreen(
                                     hasSauka = saukaAssignmentId != null && backToSauka != null,
                                     chapterId = chapterId
                                 )
-                                listState.animateScrollToItem(idx + hOffset)
+                                if (idx >= visibleVerseCount) {
+                                    visibleVerseCount = ceilToAyahPage(idx + 1, playerVerses.size)
+                                    pendingScrollTarget = idx + hOffset
+                                } else {
+                                    try {
+                                        listState.animateScrollToItem(idx + hOffset)
+                                    } catch (_: Exception) {
+                                        pendingScrollTarget = idx + hOffset
+                                    }
+                                }
                             }
                         }
                     }
@@ -1780,7 +1877,7 @@ fun SurahScreen(
                                     if (isMemorizeModeEnabled) hOffset += 1
                                     if (chapterId != 1 && chapterId != 9) hOffset += 1
                                     coroutineScope.launch {
-                                        listState.animateScrollToItem(verseIndex + hOffset)
+                                        scrollToVerseListIndex(verseIndex + hOffset, hOffset, verses.size, 0)
                                     }
                                 }
                             }
@@ -1808,7 +1905,7 @@ fun SurahScreen(
                                     if (isMemorizeModeEnabled) hOffset += 1
                                     if (chapterId != 1 && chapterId != 9) hOffset += 1
                                     coroutineScope.launch {
-                                        listState.animateScrollToItem(verseIndex + hOffset)
+                                        scrollToVerseListIndex(verseIndex + hOffset, hOffset, verses.size, 0)
                                     }
                                 }
                             }
@@ -2096,6 +2193,41 @@ fun SurahHeader(
                     )
                 }
             }
+        }
+    }
+}
+
+// ── Incremental pagination sentinel (web parity: Surah.jsx observer div) ────
+@Composable
+private fun LoadMoreAyahsRow(
+    remaining: Int,
+    onLoadMore: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "$remaining more ayahs",
+            fontFamily = fontFamilyUi,
+            fontSize = 12.sp,
+            color = hInkMuted
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        OutlinedButton(
+            onClick = onLoadMore,
+            shape = RoundedCornerShape(100),
+            border = BorderStroke(1.dp, hGold.copy(alpha = 0.5f))
+        ) {
+            Text(
+                text = "Load more Ayahs",
+                fontFamily = fontFamilyUi,
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp,
+                color = hGold
+            )
         }
     }
 }

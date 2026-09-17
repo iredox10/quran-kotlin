@@ -244,6 +244,30 @@ fun mushafPlainVerseText(verse: VerseEntity, mushafId: String, fontName: String)
     return t
 }
 
+/**
+ * Single source of truth for VerseItem Arabic base text.
+ * Built exactly like the tajweed path: mushafPlainWordTexts + space-joined
+ * + per-word ranges. Both tajweed-ON and OFF branches must use this so the
+ * base strings render byte-identical (only spans/colors may differ).
+ */
+fun buildVerseDisplayText(
+    words: List<WordEntity>,
+    mushafId: String,
+    fontName: String
+): Pair<String, List<Pair<IntRange, Int>>> {
+    val sb = StringBuilder()
+    val ranges = mutableListOf<Pair<IntRange, Int>>()
+    val displayWords = mushafPlainWordTexts(words, mushafId, fontName)
+    words.forEachIndexed { wordIndex, _ ->
+        if (wordIndex > 0) sb.append(" ")
+        val rawText = displayWords.getOrElse(wordIndex) { "" }
+        val start = sb.length
+        sb.append(rawText)
+        ranges.add(Pair(start..sb.length, wordIndex))
+    }
+    return sb.toString() to ranges
+}
+
 // Colors matching the web app CSS variables (index.css) with dynamic dark mode mapping
 var isDarkThemeGlobal by mutableStateOf(false)
     internal set
@@ -2565,17 +2589,7 @@ fun VerseItem(
                     }
                     val tajweedPlainText = remember(verse.verseKey, words, mushafId, selectedArabicFontName) {
                         if (words.isNotEmpty()) {
-                            val sb = StringBuilder()
-                            val ranges = mutableListOf<Pair<IntRange, Int>>()
-                            val displayWords = mushafPlainWordTexts(words, mushafId, selectedArabicFontName)
-                            words.forEachIndexed { wordIndex, word ->
-                                if (wordIndex > 0) sb.append(" ")
-                                val rawText = displayWords.getOrElse(wordIndex) { "" }
-                                val start = sb.length
-                                sb.append(rawText)
-                                ranges.add(Pair(start..sb.length, wordIndex))
-                            }
-                            sb.toString() to ranges
+                            buildVerseDisplayText(words, mushafId, selectedArabicFontName)
                         } else {
                             val rawText = mushafPlainVerseText(verse, mushafId, selectedArabicFontName)
                             rawText to emptyList<Pair<IntRange, Int>>()
@@ -2608,31 +2622,27 @@ fun VerseItem(
                         modifier = Modifier.fillMaxWidth()
                     )
                 } else {
-                    // Non-tajweed: simple verse text as single AnnotatedString
-                    val verseAnnotated = remember(verse, words, fontFamilyArabic, arabicFontScale, lineHeightMultiplier, isDarkThemeGlobal, mushafId, selectedArabicFontName) {
+                    // Non-tajweed: same base string as tajweed path (only spans/colors differ).
+                    val verseDisplayText = remember(verse, words, mushafId, selectedArabicFontName) {
+                        if (words.isNotEmpty()) {
+                            buildVerseDisplayText(words, mushafId, selectedArabicFontName)
+                        } else {
+                            val rawText = mushafPlainVerseText(verse, mushafId, selectedArabicFontName)
+                            rawText to emptyList<Pair<IntRange, Int>>()
+                        }
+                    }
+                    val verseAnnotated = remember(verseDisplayText, words, fontFamilyArabic, arabicFontScale, lineHeightMultiplier, isDarkThemeGlobal, mushafId, selectedArabicFontName) {
                         buildAnnotatedString {
-                            if (words.isNotEmpty()) {
-                                val displayWords = mushafPlainWordTexts(words, mushafId, selectedArabicFontName)
-                                words.forEachIndexed { wordIndex, word ->
-                                    if (wordIndex > 0) append(" ")
-                                    val wordStart = length
-                                    val isEndMarker = word.charTypeName == "end"
-                                    val rawText = displayWords.getOrElse(wordIndex) { "" }
-                                    val plainText = rawText
-                                    val displayText = plainText
-                                    append(displayText)
-                                    if (isEndMarker) {
-                                        addStyle(
-                                            SpanStyle(color = hGold),
-                                            wordStart, length
-                                        )
-                                    }
-                                    addStringAnnotation("WORD_INDEX", wordIndex.toString(), wordStart, length)
+                            append(verseDisplayText.first)
+                            for ((range, wordIndex) in verseDisplayText.second) {
+                                val isEndMarker = words.getOrNull(wordIndex)?.charTypeName == "end"
+                                if (isEndMarker == true) {
+                                    addStyle(
+                                        SpanStyle(color = hGold),
+                                        range.first, range.last
+                                    )
                                 }
-                            } else {
-                                val rawText = mushafPlainVerseText(verse, mushafId, selectedArabicFontName)
-                                val plainText = rawText
-                                append(plainText)
+                                addStringAnnotation("WORD_INDEX", wordIndex.toString(), range.first, range.last)
                             }
                         }
                     }

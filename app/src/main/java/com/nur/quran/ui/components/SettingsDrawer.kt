@@ -101,6 +101,7 @@ fun SettingsDrawer(
 ) {
     val arabicFontScale by viewModel.arabicFontScale.collectAsState()
     val translationFontScale by viewModel.translationFontScale.collectAsState()
+    val lineHeightMultiplier by viewModel.lineHeightMultiplier.collectAsState()
     val selectedArabicFontName by viewModel.selectedArabicFontName.collectAsState()
     val activeTranslationId by viewModel.currentTranslationId.collectAsState()
     val currentReciterId by viewModel.currentReciterId.collectAsState()
@@ -507,6 +508,21 @@ fun SettingsDrawer(
                                                     value = translationFontScale,
                                                     onValueChange = { viewModel.updateTranslationFontScale(it - translationFontScale) },
                                                     valueRange = 0.7f..2.0f,
+                                                    colors = SliderDefaults.colors(thumbColor = hGold, activeTrackColor = hGold)
+                                                )
+                                                Spacer(modifier = Modifier.height(6.dp))
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Text("Line Spacing", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = hInk)
+                                                    Text("${(lineHeightMultiplier * 100).toInt()}%", fontSize = 12.sp, color = hInkMuted, fontFamily = fontFamilyMono)
+                                                }
+                                                Slider(
+                                                    value = lineHeightMultiplier,
+                                                    onValueChange = { viewModel.updateLineHeightMultiplier(it - lineHeightMultiplier) },
+                                                    valueRange = 1.0f..2.0f,
                                                     colors = SliderDefaults.colors(thumbColor = hGold, activeTrackColor = hGold)
                                                 )
                                             }

@@ -22,9 +22,12 @@ import javax.inject.Singleton
 /** Top-level alias for the supported packs (mirrors [TafsirPackManager.supported]). */
 val SUPPORTED_TAFSIRS = listOf(
     169 to "Ibn Kathir (Abridged)",
-    168 to "Ibn Kathir (Full)",
-    817 to "Al-Muyassar",
-    16 to "Tafsir al-Jalalayn"
+    168 to "Ma'arif al-Qur'an",
+    817 to "Tazkirul Quran",
+    16 to "Tafsir al-Muyassar",
+    14 to "Tafsir Ibn Kathir",
+    15 to "Tafsir al-Tabari",
+    93 to "Al-Tafsir al-Wasit"
 )
 
 data class TafsirPackStatus(

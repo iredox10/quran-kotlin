@@ -333,6 +333,7 @@ fun SurahScreen(
     val memorizedAyahs by viewModel.memorizedAyahs.collectAsState()
     val arabicFontScale by viewModel.arabicFontScale.collectAsState()
     val translationFontScale by viewModel.translationFontScale.collectAsState()
+    val lineHeightMultiplier by viewModel.lineHeightMultiplier.collectAsState()
     val isSaukaCompleting by viewModel.isSaukaCompleting.collectAsState()
     val activeTranslationId by viewModel.currentTranslationId.collectAsState()
     val wordTapBehavior by viewModel.wordTapBehavior.collectAsState()
@@ -1142,6 +1143,7 @@ fun SurahScreen(
                                     onToggleMemorized = { viewModel.toggleMemorizedAyah(verse.verseKey) },
                                     arabicFontScale = arabicFontScale,
                                     translationFontScale = translationFontScale,
+                                    lineHeightMultiplier = lineHeightMultiplier,
                                     fontFamilyArabic = fontFamilyArabic,
                                     selectedArabicFontName = selectedArabicFontName
                                 )

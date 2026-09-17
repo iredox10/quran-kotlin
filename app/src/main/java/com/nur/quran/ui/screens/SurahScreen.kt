@@ -3286,22 +3286,35 @@ fun ContinuousReadingPageItem(
                             if (index > 0) append(" ")
                             val vHtml = tajweedMap?.get(verse.verseKey)
                             val vWords = wordsMap[verse.id] ?: emptyList()
-                            append(buildCleanVerseTajweedHtml(vHtml, vWords, verse.verseNumber, selectedArabicFontName))
+                            val unit = buildCleanVerseTajweedHtml(vHtml, vWords, verse.verseNumber, selectedArabicFontName)
+                                .replace(Regex("\\s+<tajweed class='end'>"), "<tajweed class='end'>")
+                                .trim()
+                            append(unit)
                         }
                     }
                 }
                 
                 if (isTajweedEnabled && fullPageHtml.isNotBlank()) {
-                    val pagePlainText = remember(allPageWords, mushafId, selectedArabicFontName) {
+                    val pagePlainText = remember(pageVerses, wordsMap, allPageWords, mushafId, selectedArabicFontName) {
                         val sb = StringBuilder()
                         val ranges = mutableListOf<Pair<IntRange, Int>>()
-                        val displayWords = mushafPlainWordTexts(allPageWords, mushafId, selectedArabicFontName)
-                        allPageWords.forEachIndexed { wordIndex, word ->
-                            if (wordIndex > 0) sb.append(" ")
-                            val rawText = displayWords.getOrElse(wordIndex) { "" }
-                            val start = sb.length
-                            sb.append(rawText)
-                            ranges.add(Pair(start..sb.length, wordIndex))
+                        var globalWordIndex = 0
+                        pageVerses.forEach { verse ->
+                            val vWords = wordsMap[verse.id] ?: emptyList()
+                            val displayWords = mushafPlainWordTexts(vWords, mushafId, selectedArabicFontName)
+                            var verseHasAppended = false
+                            vWords.forEachIndexed { localIndex, word ->
+                                val rawText = displayWords.getOrElse(localIndex) { "" }
+                                val currentGlobalIndex = globalWordIndex + localIndex
+                                if (rawText.isEmpty()) return@forEachIndexed
+                                val isEndMarker = word.charTypeName == "end"
+                                if (sb.isNotEmpty() && !(isEndMarker && verseHasAppended)) sb.append(" ")
+                                val start = sb.length
+                                sb.append(rawText)
+                                ranges.add(Pair(start..sb.length, currentGlobalIndex))
+                                verseHasAppended = true
+                            }
+                            globalWordIndex += vWords.size
                         }
                         sb.toString() to ranges
                     }
@@ -3334,24 +3347,33 @@ fun ContinuousReadingPageItem(
                         modifier = Modifier.fillMaxWidth()
                     )
                 } else {
-                    val pageAnnotated = remember(allPageWords, fontFamilyArabic, arabicFontScale, lineHeightMultiplier, isDarkThemeGlobal, mushafId, selectedArabicFontName) {
+                    val pageAnnotated = remember(pageVerses, wordsMap, allPageWords, fontFamilyArabic, arabicFontScale, lineHeightMultiplier, isDarkThemeGlobal, mushafId, selectedArabicFontName) {
                         buildAnnotatedString {
-                            val displayWords = mushafPlainWordTexts(allPageWords, mushafId, selectedArabicFontName)
-                            allPageWords.forEachIndexed { wordIndex, word ->
-                                if (wordIndex > 0) append(" ")
-                                val wordStart = length
-                                val isEndMarker = word.charTypeName == "end"
-                                val rawText = displayWords.getOrElse(wordIndex) { "" }
-                                val plainText = rawText
-                                val displayText = plainText
-                                append(displayText)
-                                if (isEndMarker) {
-                                    addStyle(
-                                        SpanStyle(color = hGold),
-                                        wordStart, length
-                                    )
+                            var globalWordIndex = 0
+                            pageVerses.forEach { verse ->
+                                val vWords = wordsMap[verse.id] ?: emptyList()
+                                val displayWords = mushafPlainWordTexts(vWords, mushafId, selectedArabicFontName)
+                                var verseHasAppended = false
+                                vWords.forEachIndexed { localIndex, word ->
+                                    val rawText = displayWords.getOrElse(localIndex) { "" }
+                                    val currentGlobalIndex = globalWordIndex + localIndex
+                                    if (rawText.isEmpty()) return@forEachIndexed
+                                    val isEndMarker = word.charTypeName == "end"
+                                    if (length > 0 && !(isEndMarker && verseHasAppended)) append(" ")
+                                    val wordStart = length
+                                    val plainText = rawText
+                                    val displayText = plainText
+                                    append(displayText)
+                                    if (isEndMarker) {
+                                        addStyle(
+                                            SpanStyle(color = hGold),
+                                            wordStart, length
+                                        )
+                                    }
+                                    addStringAnnotation("WORD_INDEX", currentGlobalIndex.toString(), wordStart, length)
+                                    verseHasAppended = true
                                 }
-                                addStringAnnotation("WORD_INDEX", wordIndex.toString(), wordStart, length)
+                                globalWordIndex += vWords.size
                             }
                         }
                     }

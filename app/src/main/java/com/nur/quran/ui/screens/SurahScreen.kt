@@ -143,6 +143,26 @@ fun getArabicFontFamily(name: String): FontFamily {
     }
 }
 
+/**
+ * Shared vertical rhythm for Quran Arabic text, used by BOTH renderers so
+ * toggling tajweed never changes the air between lines:
+ * - Compose path (VerseItem / ContinuousReadingPageItem OFF branches,
+ *   HifdhTajweedText) sets these on its TextStyle.
+ * - TextView path (TajweedAndroidText) uses includeFontPadding = false +
+ *   setLineSpacing(0, ratio), the View-side equivalent.
+ * Trim.None is deliberate: trimming would clip tashkeel and the end marker.
+ */
+const val ARABIC_LINE_HEIGHT_RATIO = 2.0f
+
+fun arabicPlatformStyle() = androidx.compose.ui.text.PlatformTextStyle(
+    includeFontPadding = false
+)
+
+fun arabicLineHeightStyle() = androidx.compose.ui.text.style.LineHeightStyle(
+    alignment = androidx.compose.ui.text.style.LineHeightStyle.Alignment.Center,
+    trim = androidx.compose.ui.text.style.LineHeightStyle.Trim.None
+)
+
 fun formatArabicDigits(number: Int): String {
     val arabicDigits = charArrayOf('٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩')
     return number.toString().map { arabicDigits[it - '0'] }.joinToString("")
@@ -2698,7 +2718,9 @@ fun VerseItem(
                             color = hInk,
                             fontFamily = fontFamilyArabic,
                             textAlign = TextAlign.Right,
-                            lineHeight = (52 * arabicFontScale * lineHeightMultiplier).sp
+                            lineHeight = (52 * arabicFontScale * lineHeightMultiplier).sp,
+                            platformStyle = arabicPlatformStyle(),
+                            lineHeightStyle = arabicLineHeightStyle()
                         ),
                         onClick = { offset ->
                             if (!isHidden) {
@@ -3387,7 +3409,9 @@ fun ContinuousReadingPageItem(
                             color = hInk,
                             fontFamily = fontFamilyArabic,
                             textAlign = TextAlign.Justify,
-                            lineHeight = (52 * arabicFontScale * lineHeightMultiplier).sp
+                            lineHeight = (52 * arabicFontScale * lineHeightMultiplier).sp,
+                            platformStyle = arabicPlatformStyle(),
+                            lineHeightStyle = arabicLineHeightStyle()
                         ),
                         onClick = { offset ->
                             val wordAnn = pageAnnotated.getStringAnnotations("WORD_INDEX", offset, offset).firstOrNull()

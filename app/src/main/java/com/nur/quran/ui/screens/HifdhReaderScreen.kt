@@ -1167,6 +1167,10 @@ private fun HifdhTajweedText(
         lineHeight = lineHeight,
         color = baseColor,
         textAlign = textAlign,
-        modifier = modifier
+        modifier = modifier,
+        style = androidx.compose.ui.text.TextStyle(
+            platformStyle = arabicPlatformStyle(),
+            lineHeightStyle = arabicLineHeightStyle()
+        )
     )
 }

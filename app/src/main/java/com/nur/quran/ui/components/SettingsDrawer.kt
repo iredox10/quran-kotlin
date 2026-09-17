@@ -55,7 +55,10 @@ private val TAFSIRS_LIST = listOf(
     169 to "Ibn Kathir (Abridged)",
     168 to "Ma'arif al-Qur'an",
     817 to "Tazkirul Quran",
-    16 to "Tafsir al-Muyassar"
+    16 to "Tafsir al-Muyassar",
+    14 to "Tafsir Ibn Kathir",
+    15 to "Tafsir al-Tabari",
+    93 to "Al-Tafsir al-Wasit"
 )
 
 private data class FontOption(val id: String, val name: String, val fontFamily: FontFamily)
@@ -98,11 +101,13 @@ fun SettingsDrawer(
 ) {
     val arabicFontScale by viewModel.arabicFontScale.collectAsState()
     val translationFontScale by viewModel.translationFontScale.collectAsState()
+    val lineHeightMultiplier by viewModel.lineHeightMultiplier.collectAsState()
     val selectedArabicFontName by viewModel.selectedArabicFontName.collectAsState()
     val activeTranslationId by viewModel.currentTranslationId.collectAsState()
     val currentReciterId by viewModel.currentReciterId.collectAsState()
     val wordTapBehavior by viewModel.wordTapBehavior.collectAsState()
     val mushafPreset by viewModel.mushafPreset.collectAsState()
+    val isTranslationEnabled by viewModel.isTranslationEnabled.collectAsState()
     val currentMushaf = remember(mushafPreset) {
         com.nur.quran.data.mushaf.Mushaf.fromId(mushafPreset)
     }
@@ -393,6 +398,15 @@ fun SettingsDrawer(
                                                     onClick = { activeSubView = "tafsir" }
                                                 )
                                                 Divider(color = hBoneDark)
+                                                // Translation on/off (web: readingMode inverse).
+                                                // Previously only in the legacy SurahScreen settings sheet.
+                                                SettingsToggleItem(
+                                                    label = "Translation",
+                                                    subtitle = "Show translation under each verse",
+                                                    checked = isTranslationEnabled,
+                                                    onToggle = { viewModel.toggleTranslation() }
+                                                )
+                                                Divider(color = hBoneDark)
                                                 SettingsToggleItem(
                                                     label = if (currentMushaf.supportsTajweedToggle) "Tajweed"
                                                         else "Tajweed (Not available for IndoPak)",
@@ -494,6 +508,21 @@ fun SettingsDrawer(
                                                     value = translationFontScale,
                                                     onValueChange = { viewModel.updateTranslationFontScale(it - translationFontScale) },
                                                     valueRange = 0.7f..2.0f,
+                                                    colors = SliderDefaults.colors(thumbColor = hGold, activeTrackColor = hGold)
+                                                )
+                                                Spacer(modifier = Modifier.height(6.dp))
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Text("Line Spacing", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = hInk)
+                                                    Text("${(lineHeightMultiplier * 100).toInt()}%", fontSize = 12.sp, color = hInkMuted, fontFamily = fontFamilyMono)
+                                                }
+                                                Slider(
+                                                    value = lineHeightMultiplier,
+                                                    onValueChange = { viewModel.updateLineHeightMultiplier(it - lineHeightMultiplier) },
+                                                    valueRange = 1.0f..2.0f,
                                                     colors = SliderDefaults.colors(thumbColor = hGold, activeTrackColor = hGold)
                                                 )
                                             }

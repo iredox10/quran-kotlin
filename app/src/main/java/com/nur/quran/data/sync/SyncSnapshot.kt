@@ -27,6 +27,14 @@ import javax.inject.Singleton
  * - tajweedEnabled ← `is_tajweed_enabled` in `hifdh_settings`.
  * - wordTapBehavior ← `word_tap_behavior` in `hifdh_settings`
  *   (web `wordTooltipBehavior`).
+ * - mushafPreset / mushafId ← `mushaf_preset` in `hifdh_settings`
+ *   (web `mushafId`; both carry the canonical id, e.g. "madani-standard").
+ * - readingMode ← `is_reading_mode` in `hifdh_settings` (web `readingMode`;
+ *   true = arabic-only). Absent `is_reading_mode` falls back to the inverse
+ *   of `is_translation_enabled` so legacy installs still sync.
+ * - translationEnabled ← `is_translation_enabled` in `hifdh_settings`
+ *   (inverse of `readingMode`; absent key falls back to inverse of
+ *   `is_reading_mode`).
  * - bookmarksJson ← Room `bookmarks` table (web `bookmarks`/`bookmark`;
  *   Android keeps a single bookmark row, serialized as a list).
  * - collectionsJson ← Room `collections` + `collection_items` tables
@@ -66,6 +74,10 @@ data class SyncSnapshot(
     val reciterId: Int? = null,
     val tajweedEnabled: Boolean? = null,
     val wordTapBehavior: String? = null,
+    val mushafPreset: String? = null,
+    val mushafId: String? = null,
+    val readingMode: Boolean? = null,
+    val translationEnabled: Boolean? = null,
     val bookmarksJson: String? = null,
     val collectionsJson: String? = null,
     val plansJson: String? = null,
@@ -108,6 +120,18 @@ class SnapshotBuilder @Inject constructor(
             reciterId = if (hifdh.contains("reciter_id")) hifdh.getInt("reciter_id", 7) else null,
             tajweedEnabled = if (hifdh.contains("is_tajweed_enabled")) hifdh.getBoolean("is_tajweed_enabled", false) else null,
             wordTapBehavior = hifdh.getString("word_tap_behavior", null),
+            mushafPreset = if (hifdh.contains("mushaf_preset")) hifdh.getString("mushaf_preset", null) else null,
+            mushafId = if (hifdh.contains("mushaf_preset")) hifdh.getString("mushaf_preset", null) else null,
+            readingMode = when {
+                hifdh.contains("is_reading_mode") -> hifdh.getBoolean("is_reading_mode", false)
+                hifdh.contains("is_translation_enabled") -> !hifdh.getBoolean("is_translation_enabled", true)
+                else -> null
+            },
+            translationEnabled = when {
+                hifdh.contains("is_translation_enabled") -> hifdh.getBoolean("is_translation_enabled", true)
+                hifdh.contains("is_reading_mode") -> !hifdh.getBoolean("is_reading_mode", false)
+                else -> null
+            },
             bookmarksJson = readBookmarksJson(),
             collectionsJson = readCollectionsJson(),
             plansJson = readPlansJson(),

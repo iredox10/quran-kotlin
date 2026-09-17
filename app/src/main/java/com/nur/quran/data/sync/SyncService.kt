@@ -272,6 +272,22 @@ class SyncService @Inject constructor(
             out["tajweedEnabled"] = hifdh.getBoolean("is_tajweed_enabled", false)
         }
         hifdh.getString("word_tap_behavior", null)?.let { out["wordTapBehavior"] = it }
+        if (hifdh.contains("mushaf_preset")) {
+            hifdh.getString("mushaf_preset", null)?.let {
+                out["mushafPreset"] = it
+                out["mushafId"] = it
+            }
+        }
+        if (hifdh.contains("is_reading_mode")) {
+            out["readingMode"] = hifdh.getBoolean("is_reading_mode", false)
+        } else if (hifdh.contains("is_translation_enabled")) {
+            out["readingMode"] = !hifdh.getBoolean("is_translation_enabled", true)
+        }
+        if (hifdh.contains("is_translation_enabled")) {
+            out["translationEnabled"] = hifdh.getBoolean("is_translation_enabled", true)
+        } else if (hifdh.contains("is_reading_mode")) {
+            out["translationEnabled"] = !hifdh.getBoolean("is_reading_mode", false)
+        }
         runSuspendCatching { daoBookmarks() }.getOrNull()
             ?.let { out["bookmarksJson"] = gson.toJson(it) }
         runSuspendCatching {
@@ -317,6 +333,25 @@ class SyncService @Inject constructor(
         }
         (state["wordTapBehavior"] as? String)?.let {
             hifdhEdit.putString("word_tap_behavior", it); hifdhTouched = true
+        }
+        // Mushaf preset (web `mushafId`; native `mushafPreset` carries the same
+        // canonical id). Canonicalize through Mushaf.fromId so legacy preset
+        // keys ("uthmani"/"tajweed") and web ids both land consistently.
+        ((state["mushafPreset"] as? String) ?: (state["mushafId"] as? String))?.let { raw ->
+            val canonical = com.nur.quran.data.mushaf.Mushaf.fromId(raw).id
+            hifdhEdit.putString("mushaf_preset", canonical); hifdhTouched = true
+        }
+        // Reading mode (web `readingMode`, true = arabic-only) and its inverse
+        // `translationEnabled`. Applied translation-first, readingMode-last so
+        // web `readingMode` wins when both are present; either way both prefs
+        // keys stay in sync (readingMode == !translationEnabled).
+        (state["translationEnabled"] as? Boolean)?.let {
+            hifdhEdit.putBoolean("is_translation_enabled", it)
+            hifdhEdit.putBoolean("is_reading_mode", !it); hifdhTouched = true
+        }
+        (state["readingMode"] as? Boolean)?.let {
+            hifdhEdit.putBoolean("is_reading_mode", it)
+            hifdhEdit.putBoolean("is_translation_enabled", !it); hifdhTouched = true
         }
 
         // hifdhJson section → hifdh_settings keys.

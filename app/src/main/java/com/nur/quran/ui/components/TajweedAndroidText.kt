@@ -1,17 +1,22 @@
 package com.nur.quran.ui.components
 
 import android.content.Context
+import android.graphics.Canvas
+import android.graphics.Paint
 import android.graphics.Typeface
+import android.text.Spannable
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.TextPaint
 import android.text.style.ClickableSpan
 import android.text.style.ForegroundColorSpan
+import android.text.style.ReplacementSpan
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
 import android.widget.TextView
+import java.util.WeakHashMap
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -39,12 +44,14 @@ fun TajweedAndroidText(
     selectedArabicFontName: String,
     fontSizeSp: Float,
     lineHeightRatio: Float,
+    lineHeightMultiplier: Float = 1.0f,
     textColor: Color,
     isInteractive: Boolean,
     onWordClick: (Int) -> Unit,
     onTajweedClick: (String) -> Unit,
     modifier: Modifier = Modifier,
-    textAlign: Int = Gravity.RIGHT
+    textAlign: Int = Gravity.RIGHT,
+    justified: Boolean = false
 ) {
     val context = LocalContext.current
     val typeface = remember(selectedArabicFontName) {
@@ -68,11 +75,16 @@ fun TajweedAndroidText(
             TextView(ctx).apply {
                 textSize = fontSizeSp
                 includeFontPadding = false
-                setLineSpacing(0f, lineHeightRatio)
                 layoutDirection = View.LAYOUT_DIRECTION_RTL
                 textDirection = View.TEXT_DIRECTION_RTL
+                // Greedy breaks like Compose Text: newer Android defaults may
+                // balance/phrase-break lines, wrapping earlier and leaving big
+                // ragged gaps that were never there in the Compose renderer.
+                breakStrategy = android.text.Layout.BREAK_STRATEGY_SIMPLE
+                applyJustification(this, justified)
                 gravity = textAlign or Gravity.CENTER_VERTICAL
                 this.typeface = typeface
+                applyVerseLineSpacing(this, lineHeightRatio, lineHeightMultiplier)
                 highlightColor = android.graphics.Color.TRANSPARENT
                 if (isInteractive) {
                     setOnTouchListener(TajweedTouchListener())
@@ -81,9 +93,12 @@ fun TajweedAndroidText(
         },
         update = { tv ->
             tv.textSize = fontSizeSp
-            tv.setLineSpacing(0f, lineHeightRatio)
             tv.typeface = typeface
+            tv.breakStrategy = android.text.Layout.BREAK_STRATEGY_SIMPLE
+            applyJustification(tv, justified)
+            applyVerseLineSpacing(tv, lineHeightRatio, lineHeightMultiplier)
             tv.text = spannable
+            scheduleWrapSpaceFix(tv)
         }
     )
 }
@@ -226,4 +241,122 @@ private class TajweedTouchListener : View.OnTouchListener {
         }
         return false
     }
+}
+
+/**
+ * Zero-width stand-in for a wrap-point space.
+ *
+ * Android's StaticLayout keeps the break space at the end of the wrapped line
+ * and counts it in the line width. For right-aligned RTL verse text that space
+ * renders as a phantom gap at the visual end of every wrapped line (Compose
+ * Text drops it, which is why the gap only appeared after switching the
+ * tajweed renderer to TextView). Covering the wrap space with this span gives
+ * it zero advance width while keeping the break opportunity, so wrapped lines
+ * end flush like they do in Compose. Text offsets are untouched, so tap
+ * mapping and color segments keep working.
+ */
+private class ZeroWidthSpaceSpan : ReplacementSpan() {
+    override fun getSize(
+        paint: Paint,
+        text: CharSequence,
+        start: Int,
+        end: Int,
+        fm: Paint.FontMetricsInt?
+    ): Int = 0
+
+    override fun draw(
+        canvas: Canvas,
+        text: CharSequence,
+        start: Int,
+        end: Int,
+        x: Float,
+        top: Int,
+        y: Int,
+        bottom: Int,
+        paint: Paint
+    ) = Unit
+}
+
+private class WrapFixState(
+    var spannable: Spannable? = null,
+    var offsets: Set<Int> = emptySet(),
+    var pass: Int = 0
+)
+
+private val wrapFixStates = WeakHashMap<TextView, WrapFixState>()
+
+private const val WRAP_FIX_MAX_PASSES = 3
+
+/**
+ * Makes the TextView line height match Compose's absolute lineHeight
+ * (fontSize x ratio, e.g. 26sp x 2.0 = 52sp). TextView's multiplier applies
+ * to the font's NATURAL height, which is huge for Quran fonts (tall ascent /
+ * descent for tashkeel and waqf marks), so a raw 2.0x multiplier produces
+ * nearly double the Compose rhythm. Deriving the multiplier from the target
+ * keeps both renderers on identical baselines at every font scale.
+ * Must be called after textSize and typeface are set.
+ */
+private fun applyVerseLineSpacing(tv: TextView, lineHeightRatio: Float, lineHeightMultiplier: Float) {
+    val natural = tv.paint.fontMetrics.let { it.descent - it.ascent }
+    val targetPx = tv.textSize * lineHeightRatio * lineHeightMultiplier
+    val mult = if (natural > 0) targetPx / natural else lineHeightRatio * lineHeightMultiplier
+    tv.setLineSpacing(0f, mult)
+}
+
+/**
+ * Reading mode (Quran without translation) justifies the text so wrapped
+ * lines end flush like the mushaf instead of leaving ragged gaps; the
+ * per-verse list keeps ragged-right like the web app. Guarded for API < 26
+ * which has no justificationMode.
+ */
+private fun applyJustification(tv: TextView, justified: Boolean) {
+    if (android.os.Build.VERSION.SDK_INT < 26) return
+    tv.justificationMode = if (justified) {
+        android.text.Layout.JUSTIFICATION_MODE_INTER_WORD
+    } else {
+        android.text.Layout.JUSTIFICATION_MODE_NONE
+    }
+}
+
+private fun scheduleWrapSpaceFix(tv: TextView) {
+    val current = tv.text
+    val state = wrapFixStates.getOrPut(tv) { WrapFixState() }
+    if (state.spannable !== current) {
+        state.spannable = current as? Spannable
+        state.offsets = emptySet()
+        state.pass = 0
+    }
+    tv.post { runWrapSpaceFix(tv, state) }
+}
+
+private fun runWrapSpaceFix(tv: TextView, state: WrapFixState) {
+    if (state.pass >= WRAP_FIX_MAX_PASSES) return
+    val layout = tv.layout
+    if (layout == null || tv.width == 0) {
+        // Not laid out yet — retry on the next frame without burning a pass.
+        tv.post { runWrapSpaceFix(tv, state) }
+        return
+    }
+    val sp = tv.text as? Spannable ?: return
+    if (state.spannable !== sp) return // Superseded by a newer text.
+    // Re-scan from scratch every pass: zeroing widths can pull words up and
+    // move later breaks, so stale offsets must be released first.
+    for (s in sp.getSpans(0, sp.length, ZeroWidthSpaceSpan::class.java)) {
+        sp.removeSpan(s)
+    }
+    val fresh = mutableSetOf<Int>()
+    for (i in 0 until layout.lineCount) {
+        val end = layout.getLineEnd(i)
+        if (end > 0 && end <= sp.length && sp[end - 1] == ' ') {
+            fresh.add(end - 1)
+        }
+    }
+    if (fresh == state.offsets) return // Stable — nothing more to do.
+    for (off in fresh) {
+        sp.setSpan(ZeroWidthSpaceSpan(), off, off + 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+    }
+    state.offsets = fresh
+    state.pass++
+    tv.requestLayout()
+    tv.post { runWrapSpaceFix(tv, state) }
 }

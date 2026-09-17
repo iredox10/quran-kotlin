@@ -51,9 +51,12 @@ import com.nur.quran.ui.screens.hRed
  */
 val DEFAULT_TAFSIR_PACKS: List<Pair<Int, String>> = listOf(
     169 to "Ibn Kathir (Abridged)",
-    168 to "Ibn Kathir (Full)",
-    817 to "Al-Muyassar",
-    16 to "al-Jalalayn"
+    168 to "Ma'arif al-Qur'an",
+    817 to "Tazkirul Quran",
+    16 to "Tafsir al-Muyassar",
+    14 to "Tafsir Ibn Kathir",
+    15 to "Tafsir al-Tabari",
+    93 to "Al-Tafsir al-Wasit"
 )
 
 /**

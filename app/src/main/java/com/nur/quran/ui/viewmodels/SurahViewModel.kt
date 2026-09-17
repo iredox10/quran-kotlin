@@ -98,6 +98,19 @@ class SurahViewModel @Inject constructor(
     private val _isTranslationEnabled = MutableStateFlow(hifdhPrefs.getBoolean("is_translation_enabled", true))
     val isTranslationEnabled: StateFlow<Boolean> = _isTranslationEnabled.asStateFlow()
 
+    /**
+     * Persisted reading mode (web: `readingMode` in useAppStore.js).
+     * Web semantics: true = arabic-only, false = with translation.
+     * Always kept as the inverse of [_isTranslationEnabled]; initialized from
+     * `is_reading_mode` when present, otherwise derived from the legacy
+     * `is_translation_enabled` key so existing installs migrate cleanly.
+     */
+    private val _isReadingMode = MutableStateFlow(
+        if (hifdhPrefs.contains("is_reading_mode")) hifdhPrefs.getBoolean("is_reading_mode", false)
+        else !hifdhPrefs.getBoolean("is_translation_enabled", true)
+    )
+    val isReadingMode: StateFlow<Boolean> = _isReadingMode.asStateFlow()
+
     private val _isMemorizeModeEnabled = MutableStateFlow(false)
     val isMemorizeModeEnabled: StateFlow<Boolean> = _isMemorizeModeEnabled.asStateFlow()
 
@@ -109,6 +122,9 @@ class SurahViewModel @Inject constructor(
 
     private val _translationFontScale = MutableStateFlow(hifdhPrefs.getFloat("translation_scale", 1f))
     val translationFontScale: StateFlow<Float> = _translationFontScale.asStateFlow()
+
+    private val _lineHeightMultiplier = MutableStateFlow(hifdhPrefs.getFloat("line_height_multiplier", 1f))
+    val lineHeightMultiplier: StateFlow<Float> = _lineHeightMultiplier.asStateFlow()
 
     private val _isSaukaCompleting = MutableStateFlow(false)
     val isSaukaCompleting: StateFlow<Boolean> = _isSaukaCompleting.asStateFlow()
@@ -264,6 +280,10 @@ class SurahViewModel @Inject constructor(
 
     private val _isDownloading = MutableStateFlow(false)
     val isDownloading: StateFlow<Boolean> = _isDownloading.asStateFlow()
+
+    /** Manual refresh indicator (web: isVersesFetching top progress bar). */
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
     private var currentChapterId: Int = 0
     private var currentChapterName: String = ""
@@ -1378,6 +1398,10 @@ class SurahViewModel @Inject constructor(
         if (memoryCached != null) {
             _uiState.value = memoryCached
             currentChapterName = memoryCached.chapter.nameSimple
+        } else if (_uiState.value is SurahUiState.Error) {
+            // Retry from a terminal error: show loading immediately so the
+            // Retry button gives instant feedback (no stale error on screen).
+            _uiState.value = SurahUiState.Loading
         }
 
         loadChapterJob?.cancel()
@@ -1444,6 +1468,39 @@ class SurahViewModel @Inject constructor(
                 if (SurahPerfLog) android.util.Log.d("SurahPerf", "surah $chapterId background upgrade done in ${System.currentTimeMillis() - t0}ms total")
             } else {
                 _uiState.value = SurahUiState.Error("Chapter $chapterId not found")
+            }
+        }
+    }
+
+    /**
+     * Manual refresh (web: refetch button + isVersesFetching top bar).
+     * Forces a network revalidation via [refreshVersesByChapter] even when
+     * cached rows exist, then repaints Success. Failures keep the current
+     * state (cached Success stays, Error stays) — the UI surfaces Retry.
+     * Never throws.
+     */
+    fun refreshChapter(chapterId: Int) {
+        if (_isRefreshing.value) return
+        viewModelScope.launch(Dispatchers.IO) {
+            _isRefreshing.value = true
+            try {
+                chapterMemoryCache.remove(chapterId)
+                loadedMushafByChapter.remove(chapterId)
+                repository.refreshVersesByChapter(chapterId, _currentTranslationId.value, _mushafPreset.value)
+                val chapter = repository.getChapterById(chapterId) ?: return@launch
+                val fresh = repository.getVersesByChapterDirect(chapterId)
+                if (fresh.isEmpty()) return@launch
+                val wordsMap = repository.getWordsForVerses(fresh.map { it.id })
+                val tajweed = (_uiState.value as? SurahUiState.Success)?.tajweedMap ?: emptyMap()
+                val successState = SurahUiState.Success(chapter, fresh, wordsMap, tajweed)
+                chapterMemoryCache[chapterId] = successState
+                loadedMushafByChapter[chapterId] = _mushafPreset.value
+                if (currentChapterId == chapterId) _uiState.value = successState
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                // Keep current UI state; user can Retry again.
+            } finally {
+                _isRefreshing.value = false
             }
         }
     }
@@ -1616,8 +1673,24 @@ class SurahViewModel @Inject constructor(
     }
 
     fun toggleTranslation() {
-        _isTranslationEnabled.value = !_isTranslationEnabled.value
-        hifdhPrefs.edit().putBoolean("is_translation_enabled", _isTranslationEnabled.value).apply()
+        setTranslationEnabled(!_isTranslationEnabled.value)
+    }
+
+    fun setTranslationEnabled(enabled: Boolean) {
+        _isTranslationEnabled.value = enabled
+        _isReadingMode.value = !enabled
+        hifdhPrefs.edit()
+            .putBoolean("is_translation_enabled", enabled)
+            .putBoolean("is_reading_mode", !enabled)
+            .apply()
+    }
+
+    fun setReadingMode(enabled: Boolean) {
+        setTranslationEnabled(!enabled)
+    }
+
+    fun toggleReadingMode() {
+        setReadingMode(!_isReadingMode.value)
     }
 
     fun toggleBookmark(verseKey: String, chapterId: Int, surahName: String) {
@@ -1791,6 +1864,11 @@ class SurahViewModel @Inject constructor(
         hifdhPrefs.edit().putFloat("translation_scale", _translationFontScale.value).apply()
     }
 
+    fun updateLineHeightMultiplier(delta: Float) {
+        _lineHeightMultiplier.value = (_lineHeightMultiplier.value + delta).coerceIn(1.0f, 2.0f)
+        hifdhPrefs.edit().putFloat("line_height_multiplier", _lineHeightMultiplier.value).apply()
+    }
+
     fun setSelectedArabicFontName(name: String) {
         // Web: setArabicFont coerced to mushaf-compatible font.
         val mushaf = com.nur.quran.data.mushaf.Mushaf.fromId(_mushafPreset.value)
@@ -1809,6 +1887,9 @@ class SurahViewModel @Inject constructor(
     /**
      * Plain syncable settings snapshot for the sync engine (web: getSyncableState).
      * Read-only: no prefs writes here. Bookmarks/planners live in Room already.
+     * `mushafId` mirrors web `mushafId`; `mushafPreset` carries the same
+     * canonical id under the native prefs name. `readingMode` mirrors web
+     * semantics (true = arabic-only); `translationEnabled` is its inverse.
      */
     fun buildSyncableMap(): Map<String, Any> {
         val isDark = context.getSharedPreferences("Settings", Context.MODE_PRIVATE)
@@ -1819,11 +1900,16 @@ class SurahViewModel @Inject constructor(
             "arabicFont" to _selectedArabicFontName.value,
             "arabicFontScale" to _arabicFontScale.value,
             "translationFontScale" to _translationFontScale.value,
+            "lineHeightMultiplier" to _lineHeightMultiplier.value,
             "translationId" to _currentTranslationId.value,
             "tafsirId" to _currentTafsirId.value,
             "reciterId" to _currentReciterId.value,
             "tajweedEnabled" to _isTajweedEnabled.value,
-            "wordTapBehavior" to _wordTapBehavior.value
+            "wordTapBehavior" to _wordTapBehavior.value,
+            "mushafPreset" to _mushafPreset.value,
+            "mushafId" to _mushafPreset.value,
+            "readingMode" to _isReadingMode.value,
+            "translationEnabled" to _isTranslationEnabled.value
         )
     }
 

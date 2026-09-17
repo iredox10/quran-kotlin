@@ -63,6 +63,7 @@ fun HifdhReaderScreen(
     val bookmarkedVerses by surahViewModel.bookmarkedVerses.collectAsState()
     val arabicFontScale by surahViewModel.arabicFontScale.collectAsState()
     val isTajweedEnabled by surahViewModel.isTajweedEnabled.collectAsState()
+    val currentMushaf by surahViewModel.currentMushaf.collectAsState()
     val selectedArabicFontName by surahViewModel.selectedArabicFontName.collectAsState(initial = "KFGQPC Hafs")
 
     val fontFamilyArabic = remember(selectedArabicFontName) {
@@ -308,6 +309,7 @@ fun HifdhReaderScreen(
                 val versesList = state.verses
                 val chapterObj = state.chapter
                 val tajweedMap = state.tajweedMap
+                val wordsMap = state.wordsMap
                 val currentVerses = remember(currentVerseIndex, ayahsPerChunk, versesList) {
                     currentVersesOf(versesList, currentVerseIndex, ayahsPerChunk)
                 }
@@ -382,9 +384,28 @@ fun HifdhReaderScreen(
                             val verseKey = verse.verseKey
                             val isMemorized = memorizedAyahs.contains(verseKey)
                             val isBookmarked = bookmarkedVerses.contains(verseKey)
-                            val rawText = verse.textUthmani ?: verse.textQpcHafs ?: verse.textIndopak ?: ""
-                            val cleanedText = rawText.replace("\u25cc", "")
-                            val verseTajweedHtml = if (isTajweedEnabled) tajweedMap[verseKey] else null
+                            val verseWords = wordsMap[verse.id] ?: emptyList()
+                            val mushafId = currentMushaf.id
+                            // Mushaf-aware plain display text (both tajweed ON and OFF):
+                            // words (incl. the end marker as the last word unit) are
+                            // joined into one RTL string so the marker stays attached
+                            // to its verse's words in continuous Arabic flow.
+                            val displayText = remember(verse, verseWords, mushafId, selectedArabicFontName) {
+                                if (verseWords.isNotEmpty()) {
+                                    mushafPlainWordTexts(verseWords, mushafId, selectedArabicFontName)
+                                        .joinToString(" ")
+                                } else {
+                                    mushafPlainVerseText(verse, mushafId, selectedArabicFontName)
+                                }
+                            }
+                            val verseTajweedHtml = remember(verseKey, isTajweedEnabled, tajweedMap, verseWords, selectedArabicFontName) {
+                                if (!isTajweedEnabled) null
+                                else {
+                                    val rawHtml = tajweedMap[verseKey]
+                                    if (rawHtml.isNullOrBlank() && verseWords.isEmpty()) null
+                                    else buildCleanVerseTajweedHtml(rawHtml, verseWords, verse.verseNumber, selectedArabicFontName)
+                                }
+                            }
                             val isActiveAudio = playingVerseKey == verseKey
                             val textColor = if (isActiveAudio) hTeal
                             else if (isDarkThemeGlobal) Color(0xFFEFECE4) else Color(0xFF2B3F3C)
@@ -459,7 +480,7 @@ fun HifdhReaderScreen(
                                                 ) {
                                                     if (verseTajweedHtml != null) {
                                                         HifdhTajweedText(
-                                                            text = cleanedText,
+                                                            text = displayText,
                                                             tajweedHtml = verseTajweedHtml,
                                                             defaultColorHex = if (isDarkThemeGlobal) "#EFECE4" else "#2B3F3C",
                                                             fontFamily = fontFamilyArabic,
@@ -473,7 +494,7 @@ fun HifdhReaderScreen(
                                                         )
                                                     } else {
                                                         Text(
-                                                            text = cleanedText,
+                                                            text = displayText,
                                                             fontFamily = fontFamilyArabic,
                                                             fontSize = (28 * arabicFontScale).sp,
                                                             color = textColor,
@@ -487,16 +508,21 @@ fun HifdhReaderScreen(
                                                 }
                                             }
                                             "word" -> {
-                                                val words = remember(verseKey, cleanedText, verseTajweedHtml) {
+                                                val plainWords = remember(verseKey, displayText) {
+                                                    displayText.split(" ").filter { it.isNotEmpty() }
+                                                }
+                                                val words = remember(verseKey, displayText, verseTajweedHtml) {
                                                     if (verseTajweedHtml != null) TajweedProcessor.splitTajweedHtmlIntoWords(verseTajweedHtml)
-                                                    else cleanedText.split(" ")
+                                                    else plainWords
                                                 }
                                                 FlowRow(
                                                     modifier = Modifier.fillMaxWidth(),
                                                     horizontalArrangement = Arrangement.Center
                                                 ) {
                                                     words.forEachIndexed { wordIdx, rawWord ->
-                                                        val cleanWord = rawWord.replace(tajweedTagRegex, "")
+                                                        val cleanWord = plainWords.getOrElse(wordIdx) {
+                                                            rawWord.replace(tajweedTagRegex, "")
+                                                        }
                                                         val wordKey = "$verseKey-$wordIdx"
                                                         val isWordRevealed = revealedWords.contains(wordKey)
 
@@ -543,16 +569,21 @@ fun HifdhReaderScreen(
                                                 }
                                             }
                                             "firstletter" -> {
-                                                val words = remember(verseKey, cleanedText, verseTajweedHtml) {
+                                                val plainWords = remember(verseKey, displayText) {
+                                                    displayText.split(" ").filter { it.isNotEmpty() }
+                                                }
+                                                val words = remember(verseKey, displayText, verseTajweedHtml) {
                                                     if (verseTajweedHtml != null) TajweedProcessor.splitTajweedHtmlIntoWords(verseTajweedHtml)
-                                                    else cleanedText.split(" ")
+                                                    else plainWords
                                                 }
                                                 FlowRow(
                                                     modifier = Modifier.fillMaxWidth(),
                                                     horizontalArrangement = Arrangement.Center
                                                 ) {
                                                     words.forEachIndexed { wordIdx, rawWord ->
-                                                        val cleanWord = rawWord.replace(tajweedTagRegex, "")
+                                                        val cleanWord = plainWords.getOrElse(wordIdx) {
+                                                            rawWord.replace(tajweedTagRegex, "")
+                                                        }
                                                         val wordKey = "$verseKey-$wordIdx"
                                                         val isWordRevealed = revealedWords.contains(wordKey)
                                                         val firstChar = if (cleanWord.isNotEmpty()) getHifdhFirstLetter(cleanWord) + "⸱".repeat((cleanWord.length / 4).coerceAtLeast(1)) else ""
@@ -602,7 +633,7 @@ fun HifdhReaderScreen(
                                             else -> {
                                                 if (verseTajweedHtml != null) {
                                                     HifdhTajweedText(
-                                                        text = cleanedText,
+                                                        text = displayText,
                                                         tajweedHtml = verseTajweedHtml,
                                                         defaultColorHex = if (isDarkThemeGlobal) "#EFECE4" else "#2B3F3C",
                                                         fontFamily = fontFamilyArabic,
@@ -614,7 +645,7 @@ fun HifdhReaderScreen(
                                                     )
                                                 } else {
                                                     Text(
-                                                        text = cleanedText,
+                                                        text = displayText,
                                                         fontFamily = fontFamilyArabic,
                                                         fontSize = (28 * arabicFontScale).sp,
                                                         color = textColor,
@@ -1136,6 +1167,10 @@ private fun HifdhTajweedText(
         lineHeight = lineHeight,
         color = baseColor,
         textAlign = textAlign,
-        modifier = modifier
+        modifier = modifier,
+        style = androidx.compose.ui.text.TextStyle(
+            platformStyle = arabicPlatformStyle(),
+            lineHeightStyle = arabicLineHeightStyle()
+        )
     )
 }

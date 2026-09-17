@@ -71,6 +71,8 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.graphics.toArgb
 import androidx.core.text.HtmlCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.nur.quran.data.db.entities.ChapterEntity
@@ -79,7 +81,10 @@ import com.nur.quran.data.db.entities.WordEntity
 import com.nur.quran.data.audio.Reciters
 import com.nur.quran.data.getHizbByPage
 import com.nur.quran.data.getJuzByPage
-import com.nur.quran.ui.components.ColoredArabicText
+import com.nur.quran.data.hizbStartForVerseKey
+import com.nur.quran.data.juzStartForVerseKey
+import com.nur.quran.data.sajdahNumberFor
+import com.nur.quran.ui.components.TajweedAndroidText
 import com.nur.quran.ui.components.audio.AudioSetupSheet
 import com.nur.quran.ui.components.audio.MiniPlayer
 import com.nur.quran.ui.components.TajweedSegment
@@ -138,6 +143,26 @@ fun getArabicFontFamily(name: String): FontFamily {
     }
 }
 
+/**
+ * Shared vertical rhythm for Quran Arabic text, used by BOTH renderers so
+ * toggling tajweed never changes the air between lines:
+ * - Compose path (VerseItem / ContinuousReadingPageItem OFF branches,
+ *   HifdhTajweedText) sets these on its TextStyle.
+ * - TextView path (TajweedAndroidText) uses includeFontPadding = false +
+ *   setLineSpacing(0, ratio), the View-side equivalent.
+ * Trim.None is deliberate: trimming would clip tashkeel and the end marker.
+ */
+const val ARABIC_LINE_HEIGHT_RATIO = 2.0f
+
+fun arabicPlatformStyle() = androidx.compose.ui.text.PlatformTextStyle(
+    includeFontPadding = false
+)
+
+fun arabicLineHeightStyle() = androidx.compose.ui.text.style.LineHeightStyle(
+    alignment = androidx.compose.ui.text.style.LineHeightStyle.Alignment.Center,
+    trim = androidx.compose.ui.text.style.LineHeightStyle.Trim.None
+)
+
 fun formatArabicDigits(number: Int): String {
     val arabicDigits = charArrayOf('٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩')
     return number.toString().map { arabicDigits[it - '0'] }.joinToString("")
@@ -154,24 +179,17 @@ fun usesEmbeddedEndMarker(fontName: String): Boolean {
 fun formatArabicVerseEndMarker(verseNumber: Int, fontName: String = "KFGQPC Hafs"): String {
     val digits = formatArabicDigits(verseNumber)
     val mark = if (usesEmbeddedEndMarker(fontName)) digits else "\u06dd$digits"
-    return " <tajweed class='end'>$mark</tajweed>"
+    return "<tajweed class='end'>$mark</tajweed>"
 }
 
+@Suppress("UNUSED_PARAMETER")
 fun formatCleanEndMarker(endWord: WordEntity?, verseNumber: Int, fontName: String = "KFGQPC Hafs"): String {
-    val digits = if (endWord != null) {
-        val raw = endWord.textUthmani ?: endWord.textQpcHafs ?: ""
-        val cleaned = raw.replace("﴿", "").replace("﴾", "").replace("{", "").replace("}", "").replace("\u06dd", "").trim()
-        val parsedInt = cleaned.toIntOrNull()
-        if (parsedInt != null) {
-            formatArabicDigits(parsedInt)
-        } else {
-            formatArabicDigits(verseNumber)
-        }
-    } else {
-        formatArabicDigits(verseNumber)
-    }
+    // verseNumber is authoritative: the end-word raw text carries Arabic-Indic
+    // digits which never parse via toIntOrNull, so the old parse-then-fallback
+    // was misleading dead code. Digits always come from verseNumber.
+    val digits = formatArabicDigits(verseNumber)
     val mark = if (usesEmbeddedEndMarker(fontName)) digits else "\u06dd$digits"
-    return " <tajweed class='end'>$mark</tajweed>"
+    return "<tajweed class='end'>$mark</tajweed>"
 }
 
 fun buildCleanVerseTajweedHtml(fullVerseHtml: String?, words: List<WordEntity>, verseNumber: Int, fontName: String = "KFGQPC Hafs"): String {
@@ -195,11 +213,46 @@ fun buildCleanVerseTajweedHtml(fullVerseHtml: String?, words: List<WordEntity>, 
         .replace("\\{.*?\\}".toRegex(), "")
         .replace("[﴿﴾{}]".toRegex(), "")
 
-    return baseHtml.trim() + cleanEndMarker
+    return baseHtml.trimEnd() + cleanEndMarker
 }
 
 private val ORNAMENT_EMBEDDED_REGEX = "[\u06dd\u06de\u06df\u06e0\u06e2\u06ea-\u06ec\u25cc﴿﴾{}]".toRegex()
 private val ORNAMENT_PLAIN_REGEX = "[\u06df\u06e0\u06e2\u06ea-\u06ec\u25cc]".toRegex()
+
+private fun foldExtendedArabicDigitsToStandard(text: String): String {
+    val sb = StringBuilder(text.length)
+    for (c in text) {
+        val v = c.code
+        sb.append(if (v in 0x06F0..0x06F9) (0x0660 + (v - 0x06F0)).toChar() else c)
+    }
+    return sb.toString()
+}
+
+private fun ensureSingleEndMarkerFrame(text: String): String {
+    val frame = 0x06DD.toChar()
+    val folded = foldExtendedArabicDigitsToStandard(text)
+    val collapsed = StringBuilder(folded.length)
+    var prevFrame = false
+    for (c in folded) {
+        if (c == frame) {
+            if (!prevFrame) collapsed.append(c)
+            prevFrame = true
+        } else {
+            collapsed.append(c)
+            prevFrame = false
+        }
+    }
+    val s = collapsed.toString()
+    val out = StringBuilder(s.length + 1)
+    var i = 0
+    while (i < s.length) {
+        val c = s[i]
+        if (c.code in 0x0660..0x0669 && (i == 0 || s[i - 1] != frame)) out.append(frame)
+        out.append(c)
+        i++
+    }
+    return out.toString()
+}
 
 /**
  * Display text per word, index-aligned with [words] (no reordering/removal,
@@ -224,8 +277,14 @@ fun mushafPlainWordTexts(words: List<WordEntity>, mushafId: String, fontName: St
         if (word.charTypeName == "end") {
             if (endSeen) return@map ""
             endSeen = true
-            t = t.trim()
-            if (!embedded && t.isNotBlank() && !t.contains("\u06dd")) t = "\u06dd$t"
+            if (embedded) {
+                t = t.trim()
+            } else {
+                // Canonicalize to a single U+06DD + bare standard digits so the OFF path is
+                // glyph-identical to the ON-path rebuilt marker (U+06DD + verseNumber digits).
+                val bare = foldExtendedArabicDigitsToStandard(t.replace(ORNAMENT_EMBEDDED_REGEX, "").trim())
+                t = if (bare.isBlank()) "" else 0x06DD.toChar().toString() + bare
+            }
         }
         t
     }
@@ -235,8 +294,39 @@ fun mushafPlainWordTexts(words: List<WordEntity>, mushafId: String, fontName: St
 fun mushafPlainVerseText(verse: VerseEntity, mushafId: String, fontName: String): String {
     val mushaf = com.nur.quran.data.mushaf.Mushaf.fromId(mushafId)
     var t = com.nur.quran.data.mushaf.verseTextForMushaf(mushaf, verse.textUthmani, verse.textIndopak, verse.textQpcHafs)
-    t = if (usesEmbeddedEndMarker(fontName)) t.replace(ORNAMENT_EMBEDDED_REGEX, "") else t.replace(ORNAMENT_PLAIN_REGEX, "")
+    t = if (usesEmbeddedEndMarker(fontName)) {
+        t.replace(ORNAMENT_EMBEDDED_REGEX, "")
+    } else {
+        // Strip small ornaments + ornate brackets/braces (keep the U+06DD frame and rub),
+        // then canonicalize to a single U+06DD + standard digits: glyph-identical to ON-path.
+        val stripped = t.replace(ORNAMENT_PLAIN_REGEX, "").filter { c -> c.code != 0xFD3F && c.code != 0xFD3E && c != '{' && c != '}' }
+        ensureSingleEndMarkerFrame(stripped)
+    }
     return t
+}
+
+/**
+ * Single source of truth for VerseItem Arabic base text.
+ * Built exactly like the tajweed path: mushafPlainWordTexts + space-joined
+ * + per-word ranges. Both tajweed-ON and OFF branches must use this so the
+ * base strings render byte-identical (only spans/colors may differ).
+ */
+fun buildVerseDisplayText(
+    words: List<WordEntity>,
+    mushafId: String,
+    fontName: String
+): Pair<String, List<Pair<IntRange, Int>>> {
+    val sb = StringBuilder()
+    val ranges = mutableListOf<Pair<IntRange, Int>>()
+    val displayWords = mushafPlainWordTexts(words, mushafId, fontName)
+    words.forEachIndexed { wordIndex, _ ->
+        if (wordIndex > 0) sb.append(" ")
+        val rawText = displayWords.getOrElse(wordIndex) { "" }
+        val start = sb.length
+        sb.append(rawText)
+        ranges.add(Pair(start..sb.length, wordIndex))
+    }
+    return sb.toString() to ranges
 }
 
 // Colors matching the web app CSS variables (index.css) with dynamic dark mode mapping
@@ -291,6 +381,16 @@ private fun computeHeaderOffset(
     return offset
 }
 
+/** Web parity: Surah.jsx loads 50 ayahs per page via useInfiniteQuery. */
+private const val AYAH_PAGE_SIZE = 50
+
+/** Round a 1-based verse count up to the next page boundary, clamped to [0, total]. */
+private fun ceilToAyahPage(count: Int, total: Int): Int {
+    if (total <= 0) return 0
+    val paged = ((count + AYAH_PAGE_SIZE - 1) / AYAH_PAGE_SIZE) * AYAH_PAGE_SIZE
+    return paged.coerceIn(0, total)
+}
+
 /** Module-level scroll position cache — survives recomposition and Surah navigation. */
 internal val surahScrollPositions: MutableMap<Int, Pair<Int, Int>> = com.nur.quran.ui.ScrollPositionMemory.scrollPositions
 
@@ -325,6 +425,8 @@ fun SurahScreen(
     // audio-link agent; the build fixer aligns the ViewModel property.
     val linkedMap by viewModel.linkedState.collectAsState()
     val isDownloading by viewModel.isDownloading.collectAsState()
+    // Manual refresh indicator (web: isVersesFetching top progress bar).
+    val isRefreshing by viewModel.isRefreshing.collectAsState()
     val collections by viewModel.collections.collectAsState()
     val collectionItems by viewModel.collectionItems.collectAsState()
 
@@ -333,6 +435,7 @@ fun SurahScreen(
     val memorizedAyahs by viewModel.memorizedAyahs.collectAsState()
     val arabicFontScale by viewModel.arabicFontScale.collectAsState()
     val translationFontScale by viewModel.translationFontScale.collectAsState()
+    val lineHeightMultiplier by viewModel.lineHeightMultiplier.collectAsState()
     val isSaukaCompleting by viewModel.isSaukaCompleting.collectAsState()
     val activeTranslationId by viewModel.currentTranslationId.collectAsState()
     val wordTapBehavior by viewModel.wordTapBehavior.collectAsState()
@@ -341,8 +444,17 @@ fun SurahScreen(
         getArabicFontFamily(selectedArabicFontName)
     }
 
-    var isReadingMode by remember { mutableStateOf(false) }
+    // Persisted reading mode (web: `readingMode` in useAppStore.js), unified
+    // with `isTranslationEnabled` in SurahViewModel (readingMode =
+    // !translationEnabled). Previously a transient `remember(false)` here.
+    val isReadingMode by viewModel.isReadingMode.collectAsState()
     var pendingScrollTarget by remember { mutableStateOf<Int?>(null) }
+    // Incremental verse display (rendering-safe pagination): the ViewModel still
+    // loads the full chapter (Room/API untouched); only LazyColumn composition is
+    // windowed to AYAH_PAGE_SIZE verses, mirroring web Surah.jsx perPage=50.
+    // The window is always a prefix, so verse keys, page dividers and header
+    // offsets stay index-stable as it grows (web: fetchNextPage appends pages).
+    var visibleVerseCount by remember(chapterId) { mutableIntStateOf(AYAH_PAGE_SIZE) }
     var selectedWordForTooltip by remember { mutableStateOf<WordEntity?>(null) }
     var collectionVerse by remember { mutableStateOf<VerseEntity?>(null) }
     var shareVerseDialogTarget by remember { mutableStateOf<VerseEntity?>(null) }
@@ -394,10 +506,44 @@ fun SurahScreen(
 
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
-    
+
+    // Expand the verse window (if needed) then scroll to a LazyColumn index.
+    // Because the window is always a prefix, growing it never shifts already
+    // composed positions; the scroll is deferred via pendingScrollTarget so it
+    // runs after recomposition materializes the newly visible items.
+    val scrollToVerseListIndex: suspend (lazyIndex: Int, hOffset: Int, totalVerses: Int, scrollOffset: Int) -> Unit =
+        { lazyIndex, hOffset, totalVerses, scrollOffset ->
+            val needVerses = (lazyIndex - hOffset + 1).coerceAtLeast(0)
+            if (totalVerses > 0 && needVerses > visibleVerseCount) {
+                visibleVerseCount = ceilToAyahPage(needVerses, totalVerses)
+                pendingScrollTarget = lazyIndex
+            } else {
+                try {
+                    listState.scrollToItem(lazyIndex, scrollOffset)
+                } catch (_: Exception) {
+                    // Window shifted under us (e.g. verse reload) — expand fully and retry once.
+                    if (totalVerses > 0) {
+                        visibleVerseCount = totalVerses
+                        pendingScrollTarget = lazyIndex
+                    }
+                }
+            }
+        }
+
     LaunchedEffect(pendingScrollTarget) {
         pendingScrollTarget?.let { target ->
-            listState.scrollToItem(target)
+            try {
+                listState.scrollToItem(target)
+            } catch (_: Exception) {
+                // Target beyond the current window (stale restore/deep link) —
+                // expand to the full chapter and retry once.
+                val total = (uiState as? SurahUiState.Success)?.verses?.size ?: 0
+                if (total > 0) {
+                    visibleVerseCount = total
+                    try { withFrameNanos {} } catch (_: Exception) { delay(100) }
+                    try { listState.scrollToItem(target) } catch (_: Exception) { }
+                }
+            }
             pendingScrollTarget = null
         }
     }
@@ -421,7 +567,7 @@ fun SurahScreen(
                                 chapterId = chapterId
                             )
                             coroutineScope.launch {
-                                listState.scrollToItem(index + hOffset)
+                                scrollToVerseListIndex(index + hOffset, hOffset, state.verses.size, 0)
                             }
                         }
                     }
@@ -444,7 +590,14 @@ fun SurahScreen(
         if (uiState is SurahUiState.Success && targetVerseKey == null) {
             val saved = surahScrollPositions[chapterId]
             if (saved != null) {
-                listState.scrollToItem(saved.first, saved.second)
+                val success = uiState as? SurahUiState.Success ?: return@LaunchedEffect
+                val hOffset = computeHeaderOffset(
+                    isMemorizeModeEnabled = isMemorizeModeEnabled,
+                    showSwipeTip = showSwipeTip,
+                    hasSauka = saukaAssignmentId != null && backToSauka != null,
+                    chapterId = chapterId
+                )
+                scrollToVerseListIndex(saved.first, hOffset, success.verses.size, saved.second)
                 surahScrollPositions.remove(chapterId)  // One-time restore
             }
         }
@@ -463,7 +616,7 @@ fun SurahScreen(
                         hasSauka = saukaAssignmentId != null && backToSauka != null,
                         chapterId = chapterId
                     )
-                    listState.scrollToItem(index + hOffset)
+                    scrollToVerseListIndex(index + hOffset, hOffset, state.verses.size, 0)
                     highlightedVerseKey = targetKey
                 }
             }
@@ -473,6 +626,8 @@ fun SurahScreen(
     // Follow-along: scroll the now-playing ayah into view while auto-scroll is on.
     // Header offset mirrors the targetVerseKey effect above (header + optional
     // banners + basmala). No-op in reading mode (page items, not verse items).
+    // When the ayah is beyond the composed window, grow the window first and
+    // jump via pendingScrollTarget; in-window ayahs keep the smooth animation.
     LaunchedEffect(playingVerseKey) {
         val key = playingVerseKey ?: return@LaunchedEffect
         if ((!isAutoScrollActive && !scrollWhilePlaying) || isReadingMode) return@LaunchedEffect
@@ -486,6 +641,11 @@ fun SurahScreen(
             hasSauka = saukaAssignmentId != null && backToSauka != null,
             chapterId = chapterId
         )
+        if (verseIndex >= visibleVerseCount) {
+            visibleVerseCount = ceilToAyahPage(verseIndex + 1, state.verses.size)
+            pendingScrollTarget = verseIndex + hOffset
+            return@LaunchedEffect
+        }
         try {
             listState.animateScrollToItem(verseIndex + hOffset)
         } catch (_: Exception) {
@@ -544,22 +704,24 @@ fun SurahScreen(
     LaunchedEffect(chapterId, targetVerseKey, uiState) {
         val state = uiState
         if (state is SurahUiState.Success && state.chapter.id == chapterId) {
+            // Deep link (?verse=) or replayed scroll event: grow the window to
+            // cover the target ayah before scrolling (web: ?verse= param).
+            val hOffset = computeHeaderOffset(
+                isMemorizeModeEnabled = isMemorizeModeEnabled,
+                showSwipeTip = showSwipeTip,
+                hasSauka = saukaAssignmentId != null && backToSauka != null,
+                chapterId = chapterId
+            )
             val effectiveTarget = targetVerseKey ?: viewModel.scrollToVerseEvent.replayCache.firstOrNull()
             if (!effectiveTarget.isNullOrBlank()) {
                 val index = state.verses.indexOfFirst { it.verseKey == effectiveTarget }
                 if (index >= 0) {
-                    val hOffset = computeHeaderOffset(
-                        isMemorizeModeEnabled = isMemorizeModeEnabled,
-                        showSwipeTip = showSwipeTip,
-                        hasSauka = saukaAssignmentId != null && backToSauka != null,
-                        chapterId = chapterId
-                    )
-                    listState.scrollToItem(index + hOffset)
+                    scrollToVerseListIndex(index + hOffset, hOffset, state.verses.size, 0)
                     highlightedVerseKey = effectiveTarget
                 } else {
                     val saved = viewModel.getSurahScrollPosition(chapterId)
                     if (saved != null) {
-                        listState.scrollToItem(saved.first, saved.second)
+                        scrollToVerseListIndex(saved.first, hOffset, state.verses.size, saved.second)
                     } else {
                         listState.scrollToItem(0)
                     }
@@ -567,7 +729,7 @@ fun SurahScreen(
             } else {
                 val saved = viewModel.getSurahScrollPosition(chapterId)
                 if (saved != null) {
-                    listState.scrollToItem(saved.first, saved.second)
+                    scrollToVerseListIndex(saved.first, hOffset, state.verses.size, saved.second)
                 } else {
                     listState.scrollToItem(0)
                 }
@@ -660,7 +822,7 @@ fun SurahScreen(
                         
                         if (!isReadingMode) {
                             val verseIndex = (visibleItem?.index ?: hOffset) - hOffset
-                            isReadingMode = true
+                            viewModel.setReadingMode(true)
                             if (verseIndex >= 0 && verseIndex < verses.size) {
                                 val pageToScroll = verses[verseIndex].pageNumber
                                 val pagesList = verses.groupBy { it.pageNumber }.keys.toList().sorted()
@@ -671,7 +833,7 @@ fun SurahScreen(
                             }
                         } else {
                             val pageIndex = (visibleItem?.index ?: hOffset) - hOffset
-                            isReadingMode = false
+                            viewModel.setReadingMode(false)
                             val pagesList = verses.groupBy { it.pageNumber }.keys.toList().sorted()
                             if (pageIndex >= 0 && pageIndex < pagesList.size) {
                                 val pageNumber = pagesList[pageIndex]
@@ -696,6 +858,11 @@ fun SurahScreen(
                         label = "Toggle theme"
                     ) { isDarkThemeGlobal = !isDarkThemeGlobal; prefs.edit().putBoolean("is_dark_theme", isDarkThemeGlobal).apply() }
 
+                    TopBarIconBtn(
+                        icon = NurIcons.RefreshCw,
+                        active = isRefreshing,
+                        label = "Refresh"
+                    ) { viewModel.refreshChapter(chapterId) }
                     TopBarIconBtn(
                         icon = NurIcons.Settings,
                         active = showSettingsDrawer,
@@ -736,6 +903,18 @@ fun SurahScreen(
                     )
                 }
         ) {
+            // Web parity (Surah.jsx:534-538): thin top progress bar while the
+            // manual refresh revalidates verses in the background.
+            if (isRefreshing) {
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(3.dp)
+                        .align(Alignment.TopCenter),
+                    color = hGold,
+                    trackColor = Color.Transparent
+                )
+            }
             when (val state = uiState) {
                 is SurahUiState.Loading -> {
                     Column(
@@ -759,16 +938,33 @@ fun SurahScreen(
                     }
                 }
                 is SurahUiState.Error -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
                         Text(
                             text = state.message,
-                            color = Color.Red,
+                            color = hRed,
                             textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(16.dp)
+                            fontFamily = fontFamilyBody,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium
                         )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        // Retry restarts the chapter load (audio download
+                        // retry pattern: red message + Retry TextButton).
+                        TextButton(onClick = { viewModel.loadChapterDetails(chapterId) }) {
+                            Text(
+                                text = "Retry",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = hRed,
+                                fontFamily = fontFamilyUi
+                            )
+                        }
                     }
                 }
                 is SurahUiState.Success -> {
@@ -777,24 +973,27 @@ fun SurahScreen(
                     val wordsMap = state.wordsMap
                     val tajweedMap = state.tajweedMap
 
-                    // Restore scroll position once verses are ready
+                    // Restore scroll position once verses are ready.
+                    // Saved indices are full-list positions, so grow the window
+                    // to cover them first (prefix window keeps indices stable).
                     LaunchedEffect(chapterId, verses.isNotEmpty()) {
                         if (verses.isNotEmpty()) {
+                            val hOffset = computeHeaderOffset(
+                                isMemorizeModeEnabled = isMemorizeModeEnabled,
+                                showSwipeTip = showSwipeTip,
+                                hasSauka = saukaAssignmentId != null && backToSauka != null,
+                                chapterId = chapterId
+                            )
                             val inMemoryPos = viewModel.scrollPositions[chapterId]
                             if (inMemoryPos != null) {
-                                listState.scrollToItem(inMemoryPos.first, inMemoryPos.second)
+                                scrollToVerseListIndex(inMemoryPos.first, hOffset, verses.size, inMemoryPos.second)
                             } else {
                                 val recentEntry = viewModel.getRecentlyReadForChapter(chapterId)
                                 val savedVerseKey = recentEntry?.verseKey
                                 if (!savedVerseKey.isNullOrEmpty()) {
                                     val verseIndex = verses.indexOfFirst { it.verseKey == savedVerseKey }
                                     if (verseIndex >= 0) {
-                                        var headerOffset = 1
-                                        if (chapter.id != 1 && chapter.id != 9) {
-                                            headerOffset += 1
-                                        }
-                                        val targetListIndex = (headerOffset + verseIndex).coerceIn(0, (verses.size + headerOffset - 1).coerceAtLeast(0))
-                                        listState.scrollToItem(targetListIndex)
+                                        scrollToVerseListIndex(verseIndex + hOffset, hOffset, verses.size, 0)
                                     }
                                 }
                             }
@@ -816,6 +1015,11 @@ fun SurahScreen(
                     }
 
                     val versesByPage = remember(verses) { verses.groupBy { it.pageNumber }.toSortedMap() }
+                    // Windowed display: compose only the first visibleVerseCount ayahs.
+                    // Prefix slicing preserves verse keys and page-divider adjacency.
+                    val visibleVerses = remember(verses, visibleVerseCount) {
+                        verses.take(visibleVerseCount)
+                    }
 
                     LazyColumn(
                         state = listState,
@@ -1094,14 +1298,31 @@ fun SurahScreen(
                             }
                         }
 
-                        if (!isReadingMode) {
-                            itemsIndexed(verses, key = { _, verse -> verse.id }) { index, verse ->
-                                val prevVerse = if (index > 0) verses[index - 1] else null
+                        if (verses.isEmpty()) {
+                            // Empty Success: header + Bismillah above remain;
+                            // verse item rendering untouched (no items).
+                            item {
+                                SurahEmptyState(
+                                    onRetry = { viewModel.loadChapterDetails(chapterId) }
+                                )
+                            }
+                        } else if (!isReadingMode) {
+                            itemsIndexed(visibleVerses, key = { _, verse -> verse.id }) { index, verse ->
+                                val prevVerse = if (index > 0) visibleVerses[index - 1] else null
                                 val showPageDivider = verse.pageNumber != 0 &&
                                     (prevVerse == null || prevVerse.pageNumber != verse.pageNumber)
 
                                 if (showPageDivider) {
                                     PageDivider(pageNumber = verse.pageNumber)
+                                }
+                                // Inline Juz/Hizb markers (in-memory VerseDividers —
+                                // no schema change). Juz wins when a verse opens both.
+                                val juzStart = juzStartForVerseKey(verse.verseKey)
+                                val hizbStart = hizbStartForVerseKey(verse.verseKey)
+                                if (juzStart != null) {
+                                    DivisionDivider(label = "Juz ${juzStart.id}")
+                                } else if (hizbStart != null) {
+                                    DivisionDivider(label = "Hizb ${hizbStart.id}")
                                 }
                                 VerseDivider()
 
@@ -1142,9 +1363,24 @@ fun SurahScreen(
                                     onToggleMemorized = { viewModel.toggleMemorizedAyah(verse.verseKey) },
                                     arabicFontScale = arabicFontScale,
                                     translationFontScale = translationFontScale,
+                                    lineHeightMultiplier = lineHeightMultiplier,
                                     fontFamilyArabic = fontFamilyArabic,
                                     selectedArabicFontName = selectedArabicFontName
                                 )
+                            }
+                            // Web parity: Surah.jsx sentinel div — manual "Load more
+                            // Ayahs..." trigger at the end of the composed window.
+                            // Placed after the verse items so header offsets are untouched.
+                            if (visibleVerseCount < verses.size) {
+                                item(key = "ayah_pagination_sentinel") {
+                                    LoadMoreAyahsRow(
+                                        remaining = verses.size - visibleVerseCount,
+                                        onLoadMore = {
+                                            visibleVerseCount =
+                                                (visibleVerseCount + AYAH_PAGE_SIZE).coerceAtMost(verses.size)
+                                        }
+                                    )
+                                }
                             }
                         } else {
                             items(versesByPage.entries.toList(), key = { (page, _) -> "page_$page" }) { (page, pageVerses) ->
@@ -1162,6 +1398,7 @@ fun SurahScreen(
                                     },
                                     onTajweedClick = { selectedTajweedRule = it },
                                     arabicFontScale = arabicFontScale,
+                                    lineHeightMultiplier = lineHeightMultiplier,
                                     fontFamilyArabic = fontFamilyArabic,
                                     selectedArabicFontName = selectedArabicFontName
                                 )
@@ -1344,7 +1581,16 @@ fun SurahScreen(
                                     hasSauka = saukaAssignmentId != null && backToSauka != null,
                                     chapterId = chapterId
                                 )
-                                listState.animateScrollToItem(idx + hOffset)
+                                if (idx >= visibleVerseCount) {
+                                    visibleVerseCount = ceilToAyahPage(idx + 1, playerVerses.size)
+                                    pendingScrollTarget = idx + hOffset
+                                } else {
+                                    try {
+                                        listState.animateScrollToItem(idx + hOffset)
+                                    } catch (_: Exception) {
+                                        pendingScrollTarget = idx + hOffset
+                                    }
+                                }
                             }
                         }
                     }
@@ -1772,7 +2018,7 @@ fun SurahScreen(
                                     if (isMemorizeModeEnabled) hOffset += 1
                                     if (chapterId != 1 && chapterId != 9) hOffset += 1
                                     coroutineScope.launch {
-                                        listState.animateScrollToItem(verseIndex + hOffset)
+                                        scrollToVerseListIndex(verseIndex + hOffset, hOffset, verses.size, 0)
                                     }
                                 }
                             }
@@ -1800,7 +2046,7 @@ fun SurahScreen(
                                     if (isMemorizeModeEnabled) hOffset += 1
                                     if (chapterId != 1 && chapterId != 9) hOffset += 1
                                     coroutineScope.launch {
-                                        listState.animateScrollToItem(verseIndex + hOffset)
+                                        scrollToVerseListIndex(verseIndex + hOffset, hOffset, verses.size, 0)
                                     }
                                 }
                             }
@@ -2092,6 +2338,83 @@ fun SurahHeader(
     }
 }
 
+// ── Incremental pagination sentinel (web parity: Surah.jsx observer div) ────
+@Composable
+private fun LoadMoreAyahsRow(
+    remaining: Int,
+    onLoadMore: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "$remaining more ayahs",
+            fontFamily = fontFamilyUi,
+            fontSize = 12.sp,
+            color = hInkMuted
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        OutlinedButton(
+            onClick = onLoadMore,
+            shape = RoundedCornerShape(100),
+            border = BorderStroke(1.dp, hGold.copy(alpha = 0.5f))
+        ) {
+            Text(
+                text = "Load more Ayahs",
+                fontFamily = fontFamilyUi,
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp,
+                color = hGold
+            )
+        }
+    }
+}
+
+// ── Empty verses state (Success with verses=[]) ──────────────────────────
+// Shown inside the LazyColumn after the header + Bismillah so the surah
+// identity remains on screen. Verse item rendering is untouched.
+@Composable
+fun SurahEmptyState(
+    onRetry: () -> Unit = {}
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "No ayahs available",
+            fontFamily = fontFamilyUi,
+            fontWeight = FontWeight.Bold,
+            fontSize = 16.sp,
+            color = hInk,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "Check your connection and try again.",
+            fontFamily = fontFamilyBody,
+            fontSize = 13.sp,
+            color = hInkMid,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        TextButton(onClick = onRetry) {
+            Text(
+                text = "Retry",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = hGold,
+                fontFamily = fontFamilyUi
+            )
+        }
+    }
+}
 // ── Web-style gradient verse divider ────────────────────────────────────
 @Composable
 fun VerseDivider() {
@@ -2197,6 +2520,7 @@ fun VerseItem(
     onToggleMemorized: () -> Unit = {},
     arabicFontScale: Float = 1.0f,
     translationFontScale: Float = 1.0f,
+    lineHeightMultiplier: Float = 1.0f,
     fontFamilyArabic: FontFamily = fontScheherazade,
     selectedArabicFontName: String = "KFGQPC Hafs",
     showShareAction: Boolean = true
@@ -2236,15 +2560,24 @@ fun VerseItem(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Plain gold bold text on mobile (web sm:hidden pill)
-            Text(
-                text = verse.verseKey,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                color = hGold,
-                fontFamily = fontFamilyMono,
-                letterSpacing = 0.65.sp
-            )
+            // Plain gold bold text on mobile (web sm:hidden pill) + sajdah badge.
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = verse.verseKey,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = hGold,
+                    fontFamily = fontFamilyMono,
+                    letterSpacing = 0.65.sp
+                )
+                val sajdahNumber = sajdahNumberFor(verse.verseKey)
+                if (sajdahNumber != null) {
+                    SajdahBadge(sajdahNumber = sajdahNumber)
+                }
+            }
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -2317,17 +2650,7 @@ fun VerseItem(
                     }
                     val tajweedPlainText = remember(verse.verseKey, words, mushafId, selectedArabicFontName) {
                         if (words.isNotEmpty()) {
-                            val sb = StringBuilder()
-                            val ranges = mutableListOf<Pair<IntRange, Int>>()
-                            val displayWords = mushafPlainWordTexts(words, mushafId, selectedArabicFontName)
-                            words.forEachIndexed { wordIndex, word ->
-                                if (wordIndex > 0) sb.append(" ")
-                                val rawText = displayWords.getOrElse(wordIndex) { "" }
-                                val start = sb.length
-                                sb.append(rawText)
-                                ranges.add(Pair(start..sb.length, wordIndex))
-                            }
-                            sb.toString() to ranges
+                            buildVerseDisplayText(words, mushafId, selectedArabicFontName)
                         } else {
                             val rawText = mushafPlainVerseText(verse, mushafId, selectedArabicFontName)
                             rawText to emptyList<Pair<IntRange, Int>>()
@@ -2338,13 +2661,15 @@ fun VerseItem(
                         TajweedProcessor.getWordTajweedSegments(tajweedPlainText.first, finalTajweedHtml, textColorHex)
                     }
 
-                    SurahTajweedText(
+                    TajweedAndroidText(
                         text = tajweedPlainText.first,
                         wordRanges = tajweedPlainText.second,
                         segments = tajweedSegments,
-                        fontFamily = fontFamilyArabic,
-                        fontSize = (26 * arabicFontScale).sp,
-                        lineHeight = (52 * arabicFontScale).sp,
+                        selectedArabicFontName = selectedArabicFontName,
+                        fontSizeSp = 26 * arabicFontScale,
+                        lineHeightRatio = 2.0f,
+                        lineHeightMultiplier = lineHeightMultiplier,
+                        textColor = hInk,
                         isInteractive = !isHidden,
                         onWordClick = { idx ->
                             if (idx >= 0 && idx < words.size) {
@@ -2360,31 +2685,27 @@ fun VerseItem(
                         modifier = Modifier.fillMaxWidth()
                     )
                 } else {
-                    // Non-tajweed: simple verse text as single AnnotatedString
-                    val verseAnnotated = remember(verse, words, fontFamilyArabic, arabicFontScale, isDarkThemeGlobal, mushafId, selectedArabicFontName) {
+                    // Non-tajweed: same base string as tajweed path (only spans/colors differ).
+                    val verseDisplayText = remember(verse, words, mushafId, selectedArabicFontName) {
+                        if (words.isNotEmpty()) {
+                            buildVerseDisplayText(words, mushafId, selectedArabicFontName)
+                        } else {
+                            val rawText = mushafPlainVerseText(verse, mushafId, selectedArabicFontName)
+                            rawText to emptyList<Pair<IntRange, Int>>()
+                        }
+                    }
+                    val verseAnnotated = remember(verseDisplayText, words, fontFamilyArabic, arabicFontScale, lineHeightMultiplier, isDarkThemeGlobal, mushafId, selectedArabicFontName) {
                         buildAnnotatedString {
-                            if (words.isNotEmpty()) {
-                                val displayWords = mushafPlainWordTexts(words, mushafId, selectedArabicFontName)
-                                words.forEachIndexed { wordIndex, word ->
-                                    if (wordIndex > 0) append(" ")
-                                    val wordStart = length
-                                    val isEndMarker = word.charTypeName == "end"
-                                    val rawText = displayWords.getOrElse(wordIndex) { "" }
-                                    val plainText = rawText
-                                    val displayText = plainText
-                                    append(displayText)
-                                    if (isEndMarker) {
-                                        addStyle(
-                                            SpanStyle(color = hGold),
-                                            wordStart, length
-                                        )
-                                    }
-                                    addStringAnnotation("WORD_INDEX", wordIndex.toString(), wordStart, length)
+                            append(verseDisplayText.first)
+                            for ((range, wordIndex) in verseDisplayText.second) {
+                                val isEndMarker = words.getOrNull(wordIndex)?.charTypeName == "end"
+                                if (isEndMarker == true) {
+                                    addStyle(
+                                        SpanStyle(color = hGold),
+                                        range.first, range.last
+                                    )
                                 }
-                            } else {
-                                val rawText = mushafPlainVerseText(verse, mushafId, selectedArabicFontName)
-                                val plainText = rawText
-                                append(plainText)
+                                addStringAnnotation("WORD_INDEX", wordIndex.toString(), range.first, range.last)
                             }
                         }
                     }
@@ -2397,7 +2718,9 @@ fun VerseItem(
                             color = hInk,
                             fontFamily = fontFamilyArabic,
                             textAlign = TextAlign.Right,
-                            lineHeight = (52 * arabicFontScale).sp
+                            lineHeight = (52 * arabicFontScale * lineHeightMultiplier).sp,
+                            platformStyle = arabicPlatformStyle(),
+                            lineHeightStyle = arabicLineHeightStyle()
                         ),
                         onClick = { offset ->
                             if (!isHidden) {
@@ -2948,73 +3271,6 @@ fun SurahNavButtons(
     }
 }
 
-// ── Compose-native tajweed renderer ────────────────────────
-/** Colors tajweed segments over `text` and exposes word / tajweed-rule taps via annotations. */
-@Composable
-private fun SurahTajweedText(
-    text: String,
-    wordRanges: List<Pair<IntRange, Int>>,
-    segments: List<TajweedSegment>,
-    fontFamily: FontFamily,
-    fontSize: TextUnit,
-    lineHeight: TextUnit,
-    isInteractive: Boolean = true,
-    onWordClick: (Int) -> Unit,
-    onTajweedClick: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val annotated = remember(text, segments, isDarkThemeGlobal) {
-        buildAnnotatedString {
-            var cursor = 0
-            for (seg in segments.sortedBy { it.start }) {
-                if (seg.start > cursor) append(text.substring(cursor, seg.start))
-                val segStart = length
-                append(text.substring(seg.start, seg.end))
-                val isEndRule = seg.ruleClass == "end"
-                addStyle(
-                    style = SpanStyle(
-                        color = Color(android.graphics.Color.parseColor(if (isEndRule) "#C6A87C" else seg.colorHex))
-                    ),
-                    start = segStart,
-                    end = length
-                )
-                if (!isEndRule && seg.ruleClass != null) {
-                    addStringAnnotation("TAJWEED_RULE", seg.ruleClass, segStart, length)
-                }
-                cursor = seg.end
-            }
-            if (cursor < text.length) append(text.substring(cursor))
-            for ((range, wordIndex) in wordRanges) {
-                addStringAnnotation("WORD_INDEX", wordIndex.toString(), range.first, range.last)
-            }
-        }
-    }
-    ClickableText(
-        text = annotated,
-        modifier = modifier,
-        style = TextStyle(
-            fontSize = fontSize,
-            color = hInk,
-            fontFamily = fontFamily,
-            textAlign = TextAlign.Right,
-            lineHeight = lineHeight
-        ),
-        onClick = { offset ->
-            if (!isInteractive) return@ClickableText
-            val rule = annotated.getStringAnnotations("TAJWEED_RULE", offset, offset).firstOrNull()
-            if (rule != null) {
-                onTajweedClick(rule.item)
-                return@ClickableText
-            }
-            val word = annotated.getStringAnnotations("WORD_INDEX", offset, offset).firstOrNull()
-            if (word != null) {
-                val idx = word.item.toIntOrNull()
-                if (idx != null) onWordClick(idx)
-            }
-        }
-    )
-}
-
 // ── Continuous Reading View (per-page flow, web reading mode) ───────────
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -3028,6 +3284,7 @@ fun ContinuousReadingPageItem(
     onWordClick: (WordEntity) -> Unit,
     onTajweedClick: (TajweedRule) -> Unit = {},
     arabicFontScale: Float = 1.0f,
+    lineHeightMultiplier: Float = 1.0f,
     fontFamilyArabic: FontFamily = fontScheherazade,
     selectedArabicFontName: String = "KFGQPC Hafs"
 ) {
@@ -3051,22 +3308,35 @@ fun ContinuousReadingPageItem(
                             if (index > 0) append(" ")
                             val vHtml = tajweedMap?.get(verse.verseKey)
                             val vWords = wordsMap[verse.id] ?: emptyList()
-                            append(buildCleanVerseTajweedHtml(vHtml, vWords, verse.verseNumber, selectedArabicFontName))
+                            val unit = buildCleanVerseTajweedHtml(vHtml, vWords, verse.verseNumber, selectedArabicFontName)
+                                .replace(Regex("\\s+<tajweed class='end'>"), "<tajweed class='end'>")
+                                .trim()
+                            append(unit)
                         }
                     }
                 }
                 
                 if (isTajweedEnabled && fullPageHtml.isNotBlank()) {
-                    val pagePlainText = remember(allPageWords, mushafId, selectedArabicFontName) {
+                    val pagePlainText = remember(pageVerses, wordsMap, allPageWords, mushafId, selectedArabicFontName) {
                         val sb = StringBuilder()
                         val ranges = mutableListOf<Pair<IntRange, Int>>()
-                        val displayWords = mushafPlainWordTexts(allPageWords, mushafId, selectedArabicFontName)
-                        allPageWords.forEachIndexed { wordIndex, word ->
-                            if (wordIndex > 0) sb.append(" ")
-                            val rawText = displayWords.getOrElse(wordIndex) { "" }
-                            val start = sb.length
-                            sb.append(rawText)
-                            ranges.add(Pair(start..sb.length, wordIndex))
+                        var globalWordIndex = 0
+                        pageVerses.forEach { verse ->
+                            val vWords = wordsMap[verse.id] ?: emptyList()
+                            val displayWords = mushafPlainWordTexts(vWords, mushafId, selectedArabicFontName)
+                            var verseHasAppended = false
+                            vWords.forEachIndexed { localIndex, word ->
+                                val rawText = displayWords.getOrElse(localIndex) { "" }
+                                val currentGlobalIndex = globalWordIndex + localIndex
+                                if (rawText.isEmpty()) return@forEachIndexed
+                                val isEndMarker = word.charTypeName == "end"
+                                if (sb.isNotEmpty() && !(isEndMarker && verseHasAppended)) sb.append(" ")
+                                val start = sb.length
+                                sb.append(rawText)
+                                ranges.add(Pair(start..sb.length, currentGlobalIndex))
+                                verseHasAppended = true
+                            }
+                            globalWordIndex += vWords.size
                         }
                         sb.toString() to ranges
                     }
@@ -3075,13 +3345,16 @@ fun ContinuousReadingPageItem(
                         TajweedProcessor.getWordTajweedSegments(pagePlainText.first, fullPageHtml, textColorHex)
                     }
 
-                    SurahTajweedText(
+                    TajweedAndroidText(
                         text = pagePlainText.first,
                         wordRanges = pagePlainText.second,
                         segments = pageSegments,
-                        fontFamily = fontFamilyArabic,
-                        fontSize = (26 * arabicFontScale).sp,
-                        lineHeight = (52 * arabicFontScale).sp,
+                        selectedArabicFontName = selectedArabicFontName,
+                        fontSizeSp = 26 * arabicFontScale,
+                        lineHeightRatio = 2.0f,
+                        lineHeightMultiplier = lineHeightMultiplier,
+                        textColor = hInk,
+                        isInteractive = true,
                         onWordClick = { idx ->
                             if (idx >= 0 && idx < allPageWords.size) {
                                 onWordClick(allPageWords[idx])
@@ -3093,27 +3366,37 @@ fun ContinuousReadingPageItem(
                                 onTajweedClick(rule)
                             }
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        justified = true
                     )
                 } else {
-                    val pageAnnotated = remember(allPageWords, fontFamilyArabic, arabicFontScale, isDarkThemeGlobal, mushafId, selectedArabicFontName) {
+                    val pageAnnotated = remember(pageVerses, wordsMap, allPageWords, fontFamilyArabic, arabicFontScale, lineHeightMultiplier, isDarkThemeGlobal, mushafId, selectedArabicFontName) {
                         buildAnnotatedString {
-                            val displayWords = mushafPlainWordTexts(allPageWords, mushafId, selectedArabicFontName)
-                            allPageWords.forEachIndexed { wordIndex, word ->
-                                if (wordIndex > 0) append(" ")
-                                val wordStart = length
-                                val isEndMarker = word.charTypeName == "end"
-                                val rawText = displayWords.getOrElse(wordIndex) { "" }
-                                val plainText = rawText
-                                val displayText = plainText
-                                append(displayText)
-                                if (isEndMarker) {
-                                    addStyle(
-                                        SpanStyle(color = hGold),
-                                        wordStart, length
-                                    )
+                            var globalWordIndex = 0
+                            pageVerses.forEach { verse ->
+                                val vWords = wordsMap[verse.id] ?: emptyList()
+                                val displayWords = mushafPlainWordTexts(vWords, mushafId, selectedArabicFontName)
+                                var verseHasAppended = false
+                                vWords.forEachIndexed { localIndex, word ->
+                                    val rawText = displayWords.getOrElse(localIndex) { "" }
+                                    val currentGlobalIndex = globalWordIndex + localIndex
+                                    if (rawText.isEmpty()) return@forEachIndexed
+                                    val isEndMarker = word.charTypeName == "end"
+                                    if (length > 0 && !(isEndMarker && verseHasAppended)) append(" ")
+                                    val wordStart = length
+                                    val plainText = rawText
+                                    val displayText = plainText
+                                    append(displayText)
+                                    if (isEndMarker) {
+                                        addStyle(
+                                            SpanStyle(color = hGold),
+                                            wordStart, length
+                                        )
+                                    }
+                                    addStringAnnotation("WORD_INDEX", currentGlobalIndex.toString(), wordStart, length)
+                                    verseHasAppended = true
                                 }
-                                addStringAnnotation("WORD_INDEX", wordIndex.toString(), wordStart, length)
+                                globalWordIndex += vWords.size
                             }
                         }
                     }
@@ -3125,8 +3408,10 @@ fun ContinuousReadingPageItem(
                             fontSize = (26 * arabicFontScale).sp,
                             color = hInk,
                             fontFamily = fontFamilyArabic,
-                            textAlign = TextAlign.Right,
-                            lineHeight = (52 * arabicFontScale).sp
+                            textAlign = TextAlign.Justify,
+                            lineHeight = (52 * arabicFontScale * lineHeightMultiplier).sp,
+                            platformStyle = arabicPlatformStyle(),
+                            lineHeightStyle = arabicLineHeightStyle()
                         ),
                         onClick = { offset ->
                             val wordAnn = pageAnnotated.getStringAnnotations("WORD_INDEX", offset, offset).firstOrNull()
@@ -3396,16 +3681,33 @@ fun TafsirBottomSheet(
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
-            val cleanTafsir = remember(text) {
-                HtmlCompat.fromHtml(text, HtmlCompat.FROM_HTML_MODE_LEGACY).toString().trim()
+            // Span-preserving trim: CharSequence.trim() would drop formatting spans.
+            val tafsirHtml: CharSequence = remember(text) {
+                val spanned = HtmlCompat.fromHtml(text, HtmlCompat.FROM_HTML_MODE_LEGACY)
+                var start = 0
+                var end = spanned.length
+                while (start < end && spanned[start].isWhitespace()) start++
+                while (end > start && spanned[end - 1].isWhitespace()) end--
+                spanned.subSequence(start, end)
             }
-            Text(
-                text = cleanTafsir,
-                fontSize = 16.sp,
-                color = hInkMid,
-                fontFamily = fontFamilyBody,
-                lineHeight = 29.sp,
-                textAlign = TextAlign.Start
+            val tafsirColor = hInkMid
+            AndroidView(
+                modifier = Modifier.fillMaxWidth(),
+                factory = { context ->
+                    android.widget.TextView(context).apply {
+                        movementMethod = android.text.method.LinkMovementMethod.getInstance()
+                        setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 16f)
+                        setLineSpacing(0f, 29f / 16f)
+                        setTextColor(tafsirColor.toArgb())
+                        // Keep default typeface + locale-driven text direction so
+                        // Arabic shaping and bidi stay intact.
+                        setText(tafsirHtml)
+                    }
+                },
+                update = { view ->
+                    view.setTextColor(tafsirColor.toArgb())
+                    view.setText(tafsirHtml)
+                }
             )
             Spacer(modifier = Modifier.height(32.dp))
         }
@@ -3504,6 +3806,12 @@ object TajweedRules {
             "An echoing or bouncing sound produced when pronouncing one of the five Qalqalah letters (ق ط ب ج د) with a sukoon. The sound bounces off the articulation point."
         ),
         "ikhfa_shafawi" to TajweedRule(
+            "Ikhfa Shafawi",
+            "إخفاء شفوي",
+            "#D500B7",
+            "Oral hiding — when a Meem Saakinah (مْ) is followed by the letter Ba (ب). The meem is pronounced with a slight nasalization while hiding its sound."
+        ),
+        "ikhafa_shafawi" to TajweedRule(
             "Ikhfa Shafawi",
             "إخفاء شفوي",
             "#D500B7",

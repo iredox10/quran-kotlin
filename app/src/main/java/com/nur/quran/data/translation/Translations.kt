@@ -25,6 +25,7 @@ val TRANSLATION_EDITIONS: List<TranslationEdition> = listOf(
     // then the rest alphabetically by language.
     TranslationEdition(20, "Saheeh International", "English"),
     TranslationEdition(85, "M.A.S. Abdel Haleem", "English"),
+    TranslationEdition(149, "Fadel Soliman, Bridges", "English"),
     TranslationEdition(131, "Dr. Mustafa Khattab", "English"),
     TranslationEdition(22, "A. Yusuf Ali", "English"),
     TranslationEdition(84, "Mufti Taqi Usmani", "English"),

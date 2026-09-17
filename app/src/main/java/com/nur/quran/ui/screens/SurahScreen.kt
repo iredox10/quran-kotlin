@@ -159,24 +159,17 @@ fun usesEmbeddedEndMarker(fontName: String): Boolean {
 fun formatArabicVerseEndMarker(verseNumber: Int, fontName: String = "KFGQPC Hafs"): String {
     val digits = formatArabicDigits(verseNumber)
     val mark = if (usesEmbeddedEndMarker(fontName)) digits else "\u06dd$digits"
-    return " <tajweed class='end'>$mark</tajweed>"
+    return "<tajweed class='end'>$mark</tajweed>"
 }
 
+@Suppress("UNUSED_PARAMETER")
 fun formatCleanEndMarker(endWord: WordEntity?, verseNumber: Int, fontName: String = "KFGQPC Hafs"): String {
-    val digits = if (endWord != null) {
-        val raw = endWord.textUthmani ?: endWord.textQpcHafs ?: ""
-        val cleaned = raw.replace("﴿", "").replace("﴾", "").replace("{", "").replace("}", "").replace("\u06dd", "").trim()
-        val parsedInt = cleaned.toIntOrNull()
-        if (parsedInt != null) {
-            formatArabicDigits(parsedInt)
-        } else {
-            formatArabicDigits(verseNumber)
-        }
-    } else {
-        formatArabicDigits(verseNumber)
-    }
+    // verseNumber is authoritative: the end-word raw text carries Arabic-Indic
+    // digits which never parse via toIntOrNull, so the old parse-then-fallback
+    // was misleading dead code. Digits always come from verseNumber.
+    val digits = formatArabicDigits(verseNumber)
     val mark = if (usesEmbeddedEndMarker(fontName)) digits else "\u06dd$digits"
-    return " <tajweed class='end'>$mark</tajweed>"
+    return "<tajweed class='end'>$mark</tajweed>"
 }
 
 fun buildCleanVerseTajweedHtml(fullVerseHtml: String?, words: List<WordEntity>, verseNumber: Int, fontName: String = "KFGQPC Hafs"): String {
@@ -200,11 +193,46 @@ fun buildCleanVerseTajweedHtml(fullVerseHtml: String?, words: List<WordEntity>, 
         .replace("\\{.*?\\}".toRegex(), "")
         .replace("[﴿﴾{}]".toRegex(), "")
 
-    return baseHtml.trim() + cleanEndMarker
+    return baseHtml.trimEnd() + cleanEndMarker
 }
 
 private val ORNAMENT_EMBEDDED_REGEX = "[\u06dd\u06de\u06df\u06e0\u06e2\u06ea-\u06ec\u25cc﴿﴾{}]".toRegex()
 private val ORNAMENT_PLAIN_REGEX = "[\u06df\u06e0\u06e2\u06ea-\u06ec\u25cc]".toRegex()
+
+private fun foldExtendedArabicDigitsToStandard(text: String): String {
+    val sb = StringBuilder(text.length)
+    for (c in text) {
+        val v = c.code
+        sb.append(if (v in 0x06F0..0x06F9) (0x0660 + (v - 0x06F0)).toChar() else c)
+    }
+    return sb.toString()
+}
+
+private fun ensureSingleEndMarkerFrame(text: String): String {
+    val frame = 0x06DD.toChar()
+    val folded = foldExtendedArabicDigitsToStandard(text)
+    val collapsed = StringBuilder(folded.length)
+    var prevFrame = false
+    for (c in folded) {
+        if (c == frame) {
+            if (!prevFrame) collapsed.append(c)
+            prevFrame = true
+        } else {
+            collapsed.append(c)
+            prevFrame = false
+        }
+    }
+    val s = collapsed.toString()
+    val out = StringBuilder(s.length + 1)
+    var i = 0
+    while (i < s.length) {
+        val c = s[i]
+        if (c.code in 0x0660..0x0669 && (i == 0 || s[i - 1] != frame)) out.append(frame)
+        out.append(c)
+        i++
+    }
+    return out.toString()
+}
 
 /**
  * Display text per word, index-aligned with [words] (no reordering/removal,
@@ -229,8 +257,14 @@ fun mushafPlainWordTexts(words: List<WordEntity>, mushafId: String, fontName: St
         if (word.charTypeName == "end") {
             if (endSeen) return@map ""
             endSeen = true
-            t = t.trim()
-            if (!embedded && t.isNotBlank() && !t.contains("\u06dd")) t = "\u06dd$t"
+            if (embedded) {
+                t = t.trim()
+            } else {
+                // Canonicalize to a single U+06DD + bare standard digits so the OFF path is
+                // glyph-identical to the ON-path rebuilt marker (U+06DD + verseNumber digits).
+                val bare = foldExtendedArabicDigitsToStandard(t.replace(ORNAMENT_EMBEDDED_REGEX, "").trim())
+                t = if (bare.isBlank()) "" else 0x06DD.toChar().toString() + bare
+            }
         }
         t
     }
@@ -240,7 +274,14 @@ fun mushafPlainWordTexts(words: List<WordEntity>, mushafId: String, fontName: St
 fun mushafPlainVerseText(verse: VerseEntity, mushafId: String, fontName: String): String {
     val mushaf = com.nur.quran.data.mushaf.Mushaf.fromId(mushafId)
     var t = com.nur.quran.data.mushaf.verseTextForMushaf(mushaf, verse.textUthmani, verse.textIndopak, verse.textQpcHafs)
-    t = if (usesEmbeddedEndMarker(fontName)) t.replace(ORNAMENT_EMBEDDED_REGEX, "") else t.replace(ORNAMENT_PLAIN_REGEX, "")
+    t = if (usesEmbeddedEndMarker(fontName)) {
+        t.replace(ORNAMENT_EMBEDDED_REGEX, "")
+    } else {
+        // Strip small ornaments + ornate brackets/braces (keep the U+06DD frame and rub),
+        // then canonicalize to a single U+06DD + standard digits: glyph-identical to ON-path.
+        val stripped = t.replace(ORNAMENT_PLAIN_REGEX, "").filter { c -> c.code != 0xFD3F && c.code != 0xFD3E && c != '{' && c != '}' }
+        ensureSingleEndMarkerFrame(stripped)
+    }
     return t
 }
 

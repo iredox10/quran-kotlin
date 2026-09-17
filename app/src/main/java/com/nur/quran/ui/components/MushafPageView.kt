@@ -2,12 +2,12 @@ package com.nur.quran.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -24,19 +24,22 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nur.quran.data.getHizbByPage
+import com.nur.quran.data.getJuzByPage
 import com.nur.quran.data.db.entities.VerseEntity
 import com.nur.quran.data.db.entities.WordEntity
+import com.nur.quran.data.mushaf.ChapterMetadata
 import com.nur.quran.data.mushaf.Mushaf
 import com.nur.quran.data.mushaf.wordTextForMushaf
 import com.nur.quran.ui.screens.TajweedRule
 import com.nur.quran.ui.screens.ContinuousReadingPageItem
 import com.nur.quran.ui.screens.fontFamilyMono
 import com.nur.quran.ui.screens.fontScheherazade
-import com.nur.quran.ui.screens.hBorderColor
 import com.nur.quran.ui.screens.hGold
 import com.nur.quran.ui.screens.hGoldLight
 import com.nur.quran.ui.screens.hInk
@@ -84,6 +87,12 @@ fun MushafPageView(
         lineMap.entries.sortedBy { it.key }
     }
 
+    val juz = remember(page) { getJuzByPage(page) }
+    val hizb = remember(page) { getHizbByPage(page) }
+    val startingSurahs = remember(verses) {
+        verses.filter { it.verseNumber == 1 }.distinctBy { it.chapterId }
+    }
+
     if (lines.isEmpty()) {
         // Fallback to continuous reading view if line numbers are unavailable
         ContinuousReadingPageItem(
@@ -105,18 +114,26 @@ fun MushafPageView(
     Surface(
         shape = RoundedCornerShape(24.dp),
         color = hSurface,
-        border = BorderStroke(1.dp, hBorderColor),
+        border = BorderStroke(1.dp, hGold.copy(alpha = 0.4f)),
         shadowElevation = 2.dp,
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 8.dp)
     ) {
+        // Inner frame — web parity double-border (MushafFlipBook.jsx:48,123):
+        // thin gold inner stroke inside the outer card border.
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(5.dp)
+                .border(1.dp, hGold.copy(alpha = 0.3f), RoundedCornerShape(18.dp))
+        ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 14.dp, vertical = 18.dp)
         ) {
-            // Header badge matching web: "{mushaf.name} · line-grouped page scaffolding"
+            // Header — web parity (MushafFlipBook.jsx:126-133): Juz + Hizb pills.
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -124,19 +141,98 @@ fun MushafPageView(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                Surface(
+                    shape = RoundedCornerShape(50.dp),
+                    color = hGold.copy(alpha = 0.06f),
+                    border = BorderStroke(0.75.dp, hGold.copy(alpha = 0.5f))
+                ) {
+                    Text(
+                        text = "الجزء ${juz.id}",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = fontFamilyArabic,
+                        color = hGold,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                    )
+                }
                 Text(
-                    text = "${mushaf.name} · line-grouped page scaffolding",
-                    fontSize = 11.sp,
+                    text = mushaf.name,
+                    fontSize = 10.sp,
                     fontFamily = fontFamilyMono,
                     color = hInkMuted,
                     letterSpacing = 0.5.sp
                 )
-                Text(
-                    text = "Page $page",
-                    fontSize = 11.sp,
-                    fontFamily = fontFamilyMono,
-                    color = hGold
-                )
+                Surface(
+                    shape = RoundedCornerShape(50.dp),
+                    color = hGold.copy(alpha = 0.06f),
+                    border = BorderStroke(0.75.dp, hGold.copy(alpha = 0.5f))
+                ) {
+                    Text(
+                        text = "Hizb ${hizb.id}",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = fontFamilyMono,
+                        color = hGold,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                    )
+                }
+            }
+
+            // Surah-title banner — web parity (MushafFlipBook.jsx:50-62):
+            // shown only when this page starts a new surah (verseNumber == 1 present).
+            startingSurahs.forEach { startVerse ->
+                val info = ChapterMetadata.findById(startVerse.chapterId)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 10.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = hGold.copy(alpha = 0.08f),
+                        border = BorderStroke(1.dp, hGold.copy(alpha = 0.6f))
+                    ) {
+                        Box(
+                            modifier = Modifier.padding(horizontal = 28.dp, vertical = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "سورة ${info?.nameArabic ?: startVerse.chapterId}",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = fontFamilyArabic,
+                                color = hGold
+                            )
+                            Text(
+                                text = "✦",
+                                fontSize = 8.sp,
+                                color = hGold.copy(alpha = 0.6f),
+                                modifier = Modifier
+                                    .align(Alignment.TopStart)
+                                    .padding(top = 0.dp, start = 0.dp)
+                            )
+                            Text(
+                                text = "✦",
+                                fontSize = 8.sp,
+                                color = hGold.copy(alpha = 0.6f),
+                                modifier = Modifier.align(Alignment.TopEnd)
+                            )
+                            Text(
+                                text = "✦",
+                                fontSize = 8.sp,
+                                color = hGold.copy(alpha = 0.6f),
+                                modifier = Modifier.align(Alignment.BottomStart)
+                            )
+                            Text(
+                                text = "✦",
+                                fontSize = 8.sp,
+                                color = hGold.copy(alpha = 0.6f),
+                                modifier = Modifier.align(Alignment.BottomEnd)
+                            )
+                        }
+                    }
+                }
             }
 
             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
@@ -188,6 +284,30 @@ fun MushafPageView(
                     }
                 }
             }
+
+            // Footer — web parity (MushafFlipBook.jsx:149-153): centered Page N pill.
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(50.dp),
+                    color = hGold.copy(alpha = 0.06f),
+                    border = BorderStroke(0.75.dp, hGold.copy(alpha = 0.5f))
+                ) {
+                    Text(
+                        text = "$page",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = fontFamilyMono,
+                        color = hGold,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 3.dp)
+                    )
+                }
+            }
+        }
         }
     }
 }

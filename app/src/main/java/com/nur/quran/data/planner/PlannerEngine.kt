@@ -117,6 +117,7 @@ data class PlannerOverview(
     val completedCount: Int,
     val remainingCount: Int,
     val currentDayNumber: Int,
+    val overdueDays: Int,
     val isUpcoming: Boolean,
     val isFinishedWindow: Boolean,
     val completionRatio: Float,
@@ -136,11 +137,7 @@ data class PlannerSuccessMetrics(
 object PlannerEngine {
 
     fun formatPlannerDate(date: Date = Date()): String {
-        return SimpleDateFormat("yyyy-MM-DD", Locale.US).apply {
-            // Note: Use upper 'yyyy-MM-dd' correctly
-        }.let {
-            SimpleDateFormat("yyyy-MM-dd", Locale.US).format(date)
-        }
+        return SimpleDateFormat("yyyy-MM-dd", Locale.US).format(date)
     }
 
     fun parsePlannerDate(dateStr: String): Date {
@@ -451,6 +448,7 @@ object PlannerEngine {
         val completedCount = plan.assignments.count { getAssignmentProgress(plan, it).isComplete }
         val remainingCount = max(plan.durationDays - completedCount, 0)
         val firstIncomplete = plan.assignments.find { !getAssignmentProgress(plan, it).isComplete } ?: plan.assignments.last()
+        val overdueDays = plan.assignments.count { it.date < today && !getAssignmentProgress(plan, it).isComplete }
 
         var totalPages = 0
         var readPages = 0
@@ -464,6 +462,7 @@ object PlannerEngine {
             completedCount = completedCount,
             remainingCount = remainingCount,
             currentDayNumber = currentDayNumber,
+            overdueDays = overdueDays,
             isUpcoming = elapsedDays < 0,
             isFinishedWindow = elapsedDays >= plan.durationDays,
             completionRatio = if (totalPages > 0) readPages.toFloat() / totalPages else 0f,

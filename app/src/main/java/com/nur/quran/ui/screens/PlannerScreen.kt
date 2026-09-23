@@ -270,7 +270,7 @@ fun PlannerScreen(
             }
 
             val todaySessionSeconds = sessionTotals[todayAssignment?.dayNumber ?: 1] ?: 0L
-            val overdueCount = plan.assignments.count { PlannerEngine.getAssignmentStatus(plan, it) == "overdue" }
+            val overdueCount = overview?.overdueDays ?: 0
 
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),

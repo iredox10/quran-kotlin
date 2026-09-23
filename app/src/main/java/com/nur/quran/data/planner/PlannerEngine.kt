@@ -813,43 +813,53 @@ object PlannerEngine {
     // ── Weekly Summary ──────────────────────────────────────────────────
     fun getWeeklySummary(plan: ReadingPlan): List<WeeklySummary> {
         val weeks = mutableListOf<WeeklySummary>()
-        val assignments = plan.assignments
-        val chunkSize = 7
+        val duration = plan.durationDays
         var weekNum = 1
-
-        for (i in assignments.indices step chunkSize) {
-            val weekAssignments = assignments.subList(i, min(i + chunkSize, assignments.size))
-            val completedCount = weekAssignments.count { plan.completedDays.contains(it.dayNumber) }
-            val totalCount = weekAssignments.size
-            weeks.add(WeeklySummary(
-                weekNumber = weekNum,
-                completedCount = completedCount,
-                totalCount = totalCount,
-                completionRatio = if (totalCount > 0) completedCount.toFloat() / totalCount else 0f
-            ))
+        var i = 0
+        while (i < duration) {
+            val weekAssignments = plan.assignments.slice(i until min(i + 7, plan.assignments.size))
+            if (weekAssignments.isEmpty()) break
+            var totalUnits = 0
+            var completedUnits = 0
+            weekAssignments.forEach { a ->
+                val prog = getAssignmentProgress(plan, a)
+                totalUnits += prog.totalPagesCount
+                completedUnits += prog.readPagesCount
+            }
+            weeks.add(
+                WeeklySummary(
+                    label = "Week $weekNum",
+                    completedUnits = completedUnits,
+                    totalUnits = if (totalUnits > 0) totalUnits else 1
+                )
+            )
             weekNum++
+            i += 7
         }
         return weeks
     }
 
     // ── Planner Analytics ───────────────────────────────────────────────
+    // Web parity (planner.js getPlannerAnalytics): catchUpDaysCount = lateCount,
+    // avgUnitsPerDay = totalReadPages / activeDays (assignments with readPages > 0).
     fun getPlannerAnalytics(plan: ReadingPlan, today: String = formatPlannerDate()): PlannerAnalytics {
         val metrics = getPlannerSuccessMetrics(plan, today)
-        val overview = getPlannerOverview(plan, today)
 
-        val totalReadPages = plan.assignmentReadPages.values.sumOf { it.size }
-        val elapsed = max(1, diffDays(plan.startDate, today))
-        val avgPagesPerDay = if (elapsed > 0) totalReadPages.toFloat() / elapsed else 0f
-
-        val catchUpDays = plan.assignments.count { a ->
-            val status = getAssignmentStatus(plan, a, today)
-            status == "overdue" || status == "partial"
+        var totalReadPages = 0
+        var activeDaysCount = 0
+        plan.assignments.forEach { a ->
+            val readPages = getAssignmentProgress(plan, a).readPagesCount
+            if (readPages > 0) activeDaysCount++
+            totalReadPages += readPages
         }
+        val avgUnitsPerDay = if (activeDaysCount > 0) totalReadPages.toFloat() / activeDaysCount else 0f
+
+        val elapsed = max(1, diffDays(plan.startDate, today))
 
         return PlannerAnalytics(
             onTimeRate = metrics?.successRate ?: 0,
-            catchUpDays = catchUpDays,
-            avgPagesPerDay = avgPagesPerDay,
+            catchUpDays = metrics?.lateCount ?: 0,
+            avgPagesPerDay = avgUnitsPerDay,
             totalReadPages = totalReadPages,
             elapsedDays = elapsed
         )
@@ -890,7 +900,7 @@ object PlannerEngine {
         completedPlan: ReadingPlan,
         chapters: List<ChapterEntity>
     ): ReadingPlan {
-        val halfDuration = max(1, completedPlan.durationDays / 2)
+        val halfDuration = max(1, (completedPlan.durationDays + 1) / 2)
         return buildReadingPlanner(
             unitType = completedPlan.unitType,
             durationDays = halfDuration,
@@ -915,11 +925,12 @@ object PlannerEngine {
 }
 
 // ── Additional Data Classes ─────────────────────────────────────────────
+// Web parity (planner.js getWeeklySummary): pages-based { label, completedUnits
+// (read pages), totalUnits (total pages) } per 7-day block.
 data class WeeklySummary(
-    val weekNumber: Int,
-    val completedCount: Int,
-    val totalCount: Int,
-    val completionRatio: Float
+    val label: String,
+    val completedUnits: Int,
+    val totalUnits: Int
 )
 
 data class PlannerAnalytics(

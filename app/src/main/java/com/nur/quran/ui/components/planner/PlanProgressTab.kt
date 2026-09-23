@@ -341,7 +341,9 @@ fun PlanProgressTab(
                         color = hInk
                     )
                     weeklySummary.takeLast(4).forEach { week ->
-                        val pct = Math.round(week.completionRatio * 100).coerceIn(0, 100)
+                        val pct = if (week.totalUnits > 0) {
+                            Math.round((week.completedUnits.toFloat() / week.totalUnits) * 100).coerceIn(0, 100)
+                        } else 0
                         val isComplete = pct == 100
                         Surface(
                             shape = RoundedCornerShape(14.dp),
@@ -357,7 +359,7 @@ fun PlanProgressTab(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "Week ${week.weekNumber}",
+                                    text = week.label,
                                     fontFamily = fontFamilyUi,
                                     fontSize = 13.5.sp,
                                     fontWeight = FontWeight.Bold,
@@ -368,7 +370,7 @@ fun PlanProgressTab(
                                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                                 ) {
                                     Text(
-                                        text = "${week.completedCount} / ${week.totalCount}",
+                                        text = "${week.completedUnits} / ${week.totalUnits}",
                                         fontFamily = fontFamilyMono,
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Medium,

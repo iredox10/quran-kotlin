@@ -12,7 +12,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -137,6 +140,10 @@ fun PlanProgressTab(
                                 val isSelected = selectedAssignment?.dayNumber == a.dayNumber
                                 val isDone = status == "completed"
                                 val isToday = status == "today"
+                                val dotProg = PlannerEngine.getAssignmentProgress(planner, a)
+                                val dotPct = if (dotProg.totalPagesCount > 0) {
+                                    (dotProg.readPagesCount.toFloat() / dotProg.totalPagesCount).coerceIn(0f, 1f)
+                                } else 0f
 
                                 Box(
                                     modifier = Modifier
@@ -150,6 +157,20 @@ fun PlanProgressTab(
                                                 else -> hWhite
                                             }
                                         )
+                                        .drawBehind {
+                                            // Partial-progress ring (web parity: conic-gradient overlay).
+                                            if (!isDone && dotPct > 0f) {
+                                                drawArc(
+                                                    color = hGold.copy(alpha = 0.35f),
+                                                    startAngle = -90f,
+                                                    sweepAngle = 360f * dotPct,
+                                                    useCenter = false,
+                                                    topLeft = Offset.Zero,
+                                                    size = size,
+                                                    style = Stroke(width = 3.dp.toPx())
+                                                )
+                                            }
+                                        }
                                         .border(
                                             width = if (isToday || isSelected) 2.dp else 1.dp,
                                             color = when {
@@ -178,6 +199,18 @@ fun PlanProgressTab(
                                             else -> hInkMuted
                                         }
                                     )
+                                    // Completed check (web parity).
+                                    if (isDone) {
+                                        Icon(
+                                            imageVector = NurIcons.Check,
+                                            contentDescription = null,
+                                            tint = Color.White,
+                                            modifier = Modifier
+                                                .align(Alignment.BottomEnd)
+                                                .offset(x = 2.dp, y = 2.dp)
+                                                .size(12.dp)
+                                        )
+                                    }
                                     // Difficulty dot (web parity: red for heavy >1.3×, green for light <0.7×)
                                     val dayDifficulty = difficulty[a.dayNumber]
                                     if (dayDifficulty != null && dayDifficulty.level != "moderate") {
@@ -229,6 +262,10 @@ fun PlanProgressTab(
                 if (selectedAssignment != null) {
                     val sel = selectedAssignment!!
                     val status = PlannerEngine.getAssignmentStatus(planner, sel)
+                    val selProg = PlannerEngine.getAssignmentProgress(planner, sel)
+                    val selPct = if (selProg.totalPagesCount > 0) {
+                        Math.round((selProg.readPagesCount.toFloat() / selProg.totalPagesCount) * 100)
+                    } else 0
                     Spacer(modifier = Modifier.height(12.dp))
                     Surface(
                         shape = RoundedCornerShape(14.dp),
@@ -251,8 +288,9 @@ fun PlanProgressTab(
                             Text(
                                 text = when (status) {
                                     "completed" -> "✓ Completed"
-                                    "today" -> "Today's Reading"
-                                    "overdue" -> "Missed day"
+                                    "today" -> if (selPct > 0) "Today's plan ($selPct%)" else "Today's Reading"
+                                    "partial" -> "Partially finished ($selPct%)"
+                                    "overdue" -> if (selPct > 0) "Missed ($selPct% done)" else "Missed completely"
                                     else -> "Scheduled for ${sel.date}"
                                 },
                                 fontFamily = fontFamilyMono,

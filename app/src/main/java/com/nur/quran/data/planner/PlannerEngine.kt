@@ -775,13 +775,39 @@ object PlannerEngine {
     }
 
     // ── Resume Page Number ──────────────────────────────────────────────
+    // Web parity (planner.js getAssignmentResumePageNumber): first unread page
+    // in range, accounting for item-level completedRangeValues; falls back to
+    // the next item's page bounds, then the assignment start.
     fun getAssignmentResumePageNumber(plan: ReadingPlan, assignment: PlannerAssignment): Int {
-        val readPages = plan.assignmentReadPages[assignment.dayNumber] ?: emptyList()
-        if (readPages.isEmpty()) return assignment.pageStart
-        for (page in assignment.pageStart..assignment.pageEnd) {
-            if (!readPages.contains(page)) return page
+        val prog = getAssignmentProgress(plan, assignment)
+        if (prog.isComplete) return assignment.pageStart
+        val explicitReadPages = plan.assignmentReadPages[assignment.dayNumber] ?: emptyList()
+        val start = assignment.pageStart
+        val end = assignment.pageEnd
+        for (p in start..end) {
+            if (explicitReadPages.contains(p)) continue
+            var coveredByItem = false
+            for (item in assignment.items) {
+                if (prog.completedRangeValues.contains(item.rangeValue)) {
+                    if (p in item.pageStart..item.pageEnd) {
+                        coveredByItem = true
+                        break
+                    }
+                }
+            }
+            if (!coveredByItem) return p
         }
-        return assignment.pageEnd
+        val nextItem = prog.nextItem
+        if (nextItem != null) {
+            val bounds = lookupItemPageBounds(nextItem, assignment.unitType)
+            if (bounds.first > 0) return bounds.first
+        }
+        return assignment.pageStart
+    }
+
+    private fun lookupItemPageBounds(item: PlannerItem, unitType: String): Pair<Int, Int> {
+        if (item.pageStart > 0 && item.pageEnd > 0) return item.pageStart to item.pageEnd
+        return 0 to 0
     }
 
     // ── Weekly Summary ──────────────────────────────────────────────────

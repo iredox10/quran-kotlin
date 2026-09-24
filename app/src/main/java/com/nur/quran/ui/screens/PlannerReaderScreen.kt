@@ -1316,11 +1316,15 @@ fun PlannerReaderScreen(
     }
 }
 
-// ── Helper: Format session time (web parity: MM:SS) ─────────────────────
+// ── Helper: Format session time (web parity: "1h 5m" / "5m 3s" / "12s") ──
 private fun formatSessionTime(seconds: Int): String {
-    val mins = seconds / 60
-    val secs = seconds % 60
-    return "%02d:%02d".format(mins, secs)
+    if (seconds <= 0) return "0s"
+    val h = seconds / 3600
+    val m = (seconds % 3600) / 60
+    val s = seconds % 60
+    if (h > 0) return "${h}h ${m}m"
+    if (m > 0) return "${m}m ${s}s"
+    return "${s}s"
 }
 
 /**

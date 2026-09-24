@@ -29,10 +29,11 @@ class PlannerUtilsTest {
 
     @Test
     fun `formatSessionTime formats various durations`() {
-        assertEquals("0m", PlannerUtils.formatSessionTime(0))
+        assertEquals("0s", PlannerUtils.formatSessionTime(0))
         assertEquals("45s", PlannerUtils.formatSessionTime(45))
-        assertEquals("12m", PlannerUtils.formatSessionTime(720))
-        assertEquals("1h 15m", PlannerUtils.formatSessionTime(4500))
+        assertEquals("12m 0s", PlannerUtils.formatSessionTime(720))
+        assertEquals("5m 3s", PlannerUtils.formatSessionTime(303))
+        assertEquals("1h 5m", PlannerUtils.formatSessionTime(3900))
     }
 
     @Test

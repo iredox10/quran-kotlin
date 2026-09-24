@@ -16,6 +16,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -42,6 +43,7 @@ fun PlanProgressTab(
     modifier: Modifier = Modifier
 ) {
     val today = remember { PlannerEngine.formatPlannerDate() }
+    val exportContext = LocalContext.current
     var selectedAssignment by remember { mutableStateOf<PlannerAssignment?>(null) }
     val analytics = remember(planner) { PlannerEngine.getPlannerAnalytics(planner) }
     val weeklySummary = remember(planner) { PlannerEngine.getWeeklySummary(planner) }
@@ -113,6 +115,23 @@ fun PlanProgressTab(
                         Icon(NurIcons.Sliders, contentDescription = null, tint = hInkMid, modifier = Modifier.size(13.dp))
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("Adjust", fontFamily = fontFamilyBody, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = hInk)
+                    }
+                }
+
+                // Export calendar button (web parity: handleExportCalendar .ics)
+                Surface(
+                    shape = RoundedCornerShape(100),
+                    color = hWhite,
+                    border = BorderStroke(1.5.dp, hBoneDark),
+                    modifier = Modifier.clickable { PlannerUtils.sharePlannerIcs(exportContext, planner) }
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                    ) {
+                        Icon(NurIcons.Share2, contentDescription = null, tint = hInkMid, modifier = Modifier.size(13.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Export", fontFamily = fontFamilyBody, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = hInk)
                     }
                 }
             }

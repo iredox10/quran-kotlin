@@ -425,8 +425,6 @@ fun SurahScreen(
     // audio-link agent; the build fixer aligns the ViewModel property.
     val linkedMap by viewModel.linkedState.collectAsState()
     val isDownloading by viewModel.isDownloading.collectAsState()
-    // Manual refresh indicator (web: isVersesFetching top progress bar).
-    val isRefreshing by viewModel.isRefreshing.collectAsState()
     val collections by viewModel.collections.collectAsState()
     val collectionItems by viewModel.collectionItems.collectAsState()
 
@@ -859,11 +857,6 @@ fun SurahScreen(
                     ) { isDarkThemeGlobal = !isDarkThemeGlobal; prefs.edit().putBoolean("is_dark_theme", isDarkThemeGlobal).apply() }
 
                     TopBarIconBtn(
-                        icon = NurIcons.RefreshCw,
-                        active = isRefreshing,
-                        label = "Refresh"
-                    ) { viewModel.refreshChapter(chapterId) }
-                    TopBarIconBtn(
                         icon = NurIcons.Settings,
                         active = showSettingsDrawer,
                         label = "Settings"
@@ -903,18 +896,6 @@ fun SurahScreen(
                     )
                 }
         ) {
-            // Web parity (Surah.jsx:534-538): thin top progress bar while the
-            // manual refresh revalidates verses in the background.
-            if (isRefreshing) {
-                LinearProgressIndicator(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(3.dp)
-                        .align(Alignment.TopCenter),
-                    color = hGold,
-                    trackColor = Color.Transparent
-                )
-            }
             when (val state = uiState) {
                 is SurahUiState.Loading -> {
                     Column(

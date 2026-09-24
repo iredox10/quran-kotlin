@@ -438,7 +438,8 @@ fun PlannerScreen(
             onCreatePlan = { built ->
                 plannerViewModel.setActivePlan(built)
                 viewMode = "dashboard"
-            }
+            },
+            isTitleTaken = { plannerViewModel.planTitleExists(it) }
         )
     }
 

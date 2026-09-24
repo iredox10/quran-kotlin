@@ -1,5 +1,6 @@
 package com.nur.quran.ui.components.planner
 
+import android.app.DatePickerDialog
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -13,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -24,6 +26,7 @@ import com.nur.quran.data.planner.PlannerEngine
 import com.nur.quran.data.planner.ReadingPlan
 import com.nur.quran.ui.components.NurIcons
 import com.nur.quran.ui.screens.*
+import java.util.Calendar
 
 /**
  * "Create Custom Plan" modal dialog matching web Planner.jsx lines 395-506.
@@ -33,7 +36,8 @@ import com.nur.quran.ui.screens.*
 fun CustomPlanModal(
     chapters: List<ChapterEntity>,
     onDismiss: () -> Unit,
-    onCreatePlan: (ReadingPlan) -> Unit
+    onCreatePlan: (ReadingPlan) -> Unit,
+    isTitleTaken: (String) -> Boolean = { false }
 ) {
     var unitType by remember { mutableStateOf("page") }
     var customTitle by remember { mutableStateOf("") }
@@ -42,6 +46,8 @@ fun CustomPlanModal(
     var pagesPerDay by remember { mutableStateOf(10) }
     var startDateText by remember { mutableStateOf(PlannerEngine.formatPlannerDate()) }
     var excludeDays by remember { mutableStateOf(setOf<Int>()) }
+    var buildError by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
 
     val daysList = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
     val maxUnit = PLANNER_UNITS[unitType]?.max ?: 604
@@ -244,6 +250,47 @@ fun CustomPlanModal(
                         }
                     }
 
+                    // Start Date (web parity: Planner.jsx startDate picker)
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            text = "START DATE",
+                            fontFamily = fontFamilyMono,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Medium,
+                            letterSpacing = 1.sp,
+                            color = hInkMuted
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(1.5.dp, hBoneDark),
+                            color = hCream,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    val parts = startDateText.split("-").mapNotNull { it.toIntOrNull() }
+                                    val cal = Calendar.getInstance()
+                                    if (parts.size == 3) cal.set(parts[0], parts[1] - 1, parts[2])
+                                    DatePickerDialog(
+                                        context,
+                                        { _, y, m, d ->
+                                            startDateText = "%04d-%02d-%02d".format(y, m + 1, d)
+                                        },
+                                        cal.get(Calendar.YEAR),
+                                        cal.get(Calendar.MONTH),
+                                        cal.get(Calendar.DAY_OF_MONTH)
+                                    ).show()
+                                }
+                        ) {
+                            Text(
+                                text = startDateText,
+                                fontFamily = fontFamilyBody,
+                                fontSize = 14.sp,
+                                color = hInk,
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)
+                            )
+                        }
+                    }
+
                     // Days Off (Exclude Days)
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
@@ -328,21 +375,63 @@ fun CustomPlanModal(
 
                     Spacer(modifier = Modifier.height(10.dp))
 
+                    val duplicateTitle = customTitle.isNotBlank() && isTitleTaken(customTitle)
+                    val surahNotReady = unitType == "surah" && chapters.isEmpty()
+                    if (duplicateTitle) {
+                        Text(
+                            text = "A plan with this title already exists.",
+                            fontFamily = fontFamilyBody,
+                            fontSize = 12.sp,
+                            color = Color(0xFFDC2626),
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                    }
+                    if (surahNotReady) {
+                        Text(
+                            text = "Surah data is still loading — please try again in a moment.",
+                            fontFamily = fontFamilyBody,
+                            fontSize = 12.sp,
+                            color = Color(0xFFDC2626),
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                    }
+                    if (buildError != null) {
+                        Text(
+                            text = buildError!!,
+                            fontFamily = fontFamilyBody,
+                            fontSize = 12.sp,
+                            color = Color(0xFFDC2626),
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                    }
+
                     Button(
                         onClick = {
-                            val built = PlannerEngine.buildReadingPlanner(
-                                unitType = unitType,
-                                durationDays = computedDuration,
-                                startDate = startDateText,
-                                startUnit = sUnit,
-                                endUnit = eUnit,
-                                customTitle = customTitle.ifBlank { "Custom Plan" },
-                                excludeDays = excludeDays.toList(),
-                                chapters = chapters
-                            )
-                            onCreatePlan(built)
-                            onDismiss()
+                            buildError = null
+                            try {
+                                val built = PlannerEngine.buildReadingPlanner(
+                                    unitType = unitType,
+                                    durationDays = computedDuration,
+                                    startDate = startDateText,
+                                    startUnit = sUnit,
+                                    endUnit = eUnit,
+                                    customTitle = customTitle.ifBlank { "Custom Plan" },
+                                    excludeDays = excludeDays.toList(),
+                                    chapters = chapters
+                                )
+                                onCreatePlan(built)
+                                onDismiss()
+                            } catch (e: IllegalArgumentException) {
+                                buildError = "Could not build plan: ${e.message}"
+                            }
                         },
+                        enabled = !duplicateTitle && !surahNotReady,
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = hTeal),
                         modifier = Modifier

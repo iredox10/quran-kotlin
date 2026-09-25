@@ -1,9 +1,6 @@
 package com.nur.quran.ui.screens
 
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Context
-import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
@@ -28,7 +25,6 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
@@ -53,8 +49,6 @@ import com.nur.quran.data.db.entities.RecentlyReadEntity
 import com.nur.quran.ui.components.Coachmark
 import com.nur.quran.ui.components.NurIcons
 import com.nur.quran.ui.components.PageTourModal
-import com.nur.quran.ui.components.ShareCardDialog
-import com.nur.quran.ui.components.ShareCardType
 import com.nur.quran.ui.components.TourStep
 import com.nur.quran.ui.viewmodels.HomeStats
 import com.nur.quran.ui.viewmodels.HomeUiState
@@ -84,24 +78,6 @@ val fontFamilyBody = FontFamily(
 val fontFamilyMono = FontFamily.Monospace
 val fontFamilyArabic = fontScheherazade
 
-// ── Curated Verses of the Day (identical to the web app) ────────────────
-private val DAILY_VERSES = listOf(
-    DailyVerse("بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ", "\"In the name of Allah, the Most Gracious, the Most Merciful.\"", "Al-Fatiha 1:1"),
-    DailyVerse("ٱهْدِنَا ٱلصِّرَٰطَ ٱلْمُسْتَقِيمَ", "\"Guide us to the straight path.\"", "Al-Fatiha 1:6"),
-    DailyVerse("إِنَّ مَعَ ٱلْعُسْرِ يُسْرًا", "\"Indeed, with hardship comes ease.\"", "Ash-Sharh 94:6"),
-    DailyVerse("وَلَسَوْفَ يُعْطِيكَ رَبُّكَ فَتَرْضَىٰ", "\"And your Lord is going to give you, and you will be satisfied.\"", "Ad-Duha 93:5"),
-    DailyVerse("فَٱذْكُرُونِىٓ أَذْكُرْكُمْ", "\"So remember Me; I will remember you.\"", "Al-Baqarah 2:152"),
-    DailyVerse("وَمَن يَتَوَكَّلْ عَلَى ٱللَّهِ فَهُوَ حَسْبُهُۥ", "\"Whoever puts their trust in Allah, He is sufficient for them.\"", "At-Talaq 65:3"),
-    DailyVerse("رَبِّ ٱشْرَحْ لِى صَدْرِى", "\"My Lord, expand for me my chest.\"", "Ta-Ha 20:25"),
-    DailyVerse("وَقُل رَّبِّ زِدْنِى عِلْمًا", "\"And say: My Lord, increase me in knowledge.\"", "Ta-Ha 20:114"),
-    DailyVerse("إِنَّ ٱللَّهَ مَعَ ٱلصَّـٰبِرِينَ", "\"Indeed, Allah is with the patient.\"", "Al-Baqarah 2:153"),
-    DailyVerse("وَنَحْنُ أَقْرَبُ إِلَيْهِ مِنْ حَبْلِ ٱلْوَرِيدِ", "\"And We are closer to him than his jugular vein.\"", "Qaf 50:16"),
-    DailyVerse("فَإِنَّ ذِكْرَىٰ تَنفَعُ ٱلْمُؤْمِنِينَ", "\"And remind, for indeed, the reminder benefits the believers.\"", "Adh-Dhariyat 51:55"),
-    DailyVerse("لَا يُكَلِّفُ ٱللَّهُ نَفْسًا إِلَّا وُسْعَهَا", "\"Allah does not burden a soul beyond that it can bear.\"", "Al-Baqarah 2:286")
-)
-
-data class DailyVerse(val arabic: String, val translation: String, val reference: String)
-
 // ── Browse item model (mirrors the web getBrowseItems output) ───────────
 private data class BrowseItem(
     val key: String,
@@ -114,28 +90,12 @@ private data class BrowseItem(
     val pageNumber: Int? = null
 )
 
-private const val APP_URL = "https://quran-nur.appwrite.network"
-private const val SHARE_DESCRIPTION =
-    "Elevate your spiritual journey with Quran Nur. Enjoy beautiful recitations, offline access, personalized reading planners, and a seamless ad-free experience. Start your daily habit today!"
-
 // ── Guided tours (identical steps to the web app's Home.jsx) ────────────
 private val HOME_TOUR_STEPS = listOf(
     TourStep(
         title = "Welcome to Quran Nur",
         description = "This is your personal companion for reading, memorizing, and studying the Quran.",
         icon = NurIcons.Sparkles
-    ),
-    TourStep(
-        title = "Daily Progress",
-        description = "Track your reading streak, daily minutes, and total hours right from the dashboard.",
-        icon = NurIcons.Flame,
-        target = "stats"
-    ),
-    TourStep(
-        title = "Verse of the Day",
-        description = "Start your day with a selected Ayah. You can copy or share it easily.",
-        icon = NurIcons.BookOpen,
-        target = "verse"
     ),
     TourStep(
         title = "Resume Reading",
@@ -198,7 +158,6 @@ fun HomeScreen(
     val isOnline by viewModel.isOnline.collectAsState()
     val completedTours by viewModel.completedTours.collectAsState()
     val homeVisits by viewModel.homeVisits.collectAsState()
-    val dismissedCoachmarks by viewModel.dismissedCoachmarks.collectAsState()
     val context = LocalContext.current
 
     // Page-visit analytics (feeds the tour visit thresholds, like the web app)
@@ -218,14 +177,11 @@ fun HomeScreen(
         )
     }
 
-    var shareDialogState by remember { mutableStateOf<ShareCardType?>(null) }
     var showSettingsDrawer by remember { mutableStateOf(false) }
     val greeting = remember { getGreeting() }
-    val dailyVerse = remember { getDailyVerse() }
     val todayDate = remember {
         SimpleDateFormat("EEEE, MMMM d, yyyy", Locale.ENGLISH).format(Date()).uppercase()
     }
-    var copied by remember { mutableStateOf(false) }
 
     val defaultArabicFontName = remember {
         context.getSharedPreferences("HifdhPrefs", Context.MODE_PRIVATE)
@@ -236,24 +192,9 @@ fun HomeScreen(
         getArabicFontFamily(activeArabicFontName)
     }
 
-    // Reset the copied state after 2s (same as the web app)
-    LaunchedEffect(copied) {
-        if (copied) {
-            kotlinx.coroutines.delay(2000)
-            copied = false
-        }
-    }
-
     // Entrance animation
     var visible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { visible = true }
-
-    shareDialogState?.let { shareType ->
-        ShareCardDialog(
-            type = shareType,
-            onDismiss = { shareDialogState = null }
-        )
-    }
 
     Column(modifier = Modifier.fillMaxSize().background(hWhite)) {
         // Top Header matching Web App Layout.jsx header
@@ -433,120 +374,9 @@ fun HomeScreen(
                         }
                     }
 
-                    // ─── Stats Row + Share Progress ───
-                    item {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .onGloballyPositioned { targetRects["stats"] = it.boundsInWindow() },
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            StatCard(
-                                modifier = Modifier.weight(1f),
-                                icon = NurIcons.Flame,
-                                iconTint = if (stats.streak > 0) hRed else hInkMuted,
-                                value = stats.streak.toString(),
-                                unit = " days",
-                                label = "STREAK"
-                            )
-                            StatCard(
-                                modifier = Modifier.weight(1f),
-                                icon = NurIcons.Clock,
-                                iconTint = hTeal,
-                                value = stats.todayMinutes.toString(),
-                                unit = " min",
-                                label = "TODAY"
-                            )
-                            StatCard(
-                                modifier = Modifier.weight(1f),
-                                icon = NurIcons.BarChart3,
-                                iconTint = hGold,
-                                value = stats.totalHours,
-                                unit = " hrs",
-                                label = "TOTAL"
-                            )
-                        }
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 12.dp, bottom = 28.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Surface(
-                                onClick = {
-                                    shareDialogState = ShareCardType.Progress(
-                                        streak = stats.streak,
-                                        todayMinutes = stats.todayMinutes,
-                                        totalHours = stats.totalHours
-                                    )
-                                },
-                                shape = RoundedCornerShape(20.dp),
-                                color = hTeal
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = NurIcons.Share2,
-                                        contentDescription = null,
-                                        tint = Color.White,
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = "Share Progress",
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = Color.White
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    // ─── Verse of the Day ───
-                    item {
-                        VerseOfDayCard(
-                            verse = dailyVerse,
-                            copied = copied,
-                            coachmarkDismissed = "home-copy-verse" in dismissedCoachmarks,
-                            onCoachmarkDismiss = { viewModel.dismissCoachmark("home-copy-verse") },
-                            onCopy = {
-                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                clipboard.setPrimaryClip(
-                                    ClipData.newPlainText(
-                                        "Verse",
-                                        "${dailyVerse.arabic}\n\n${dailyVerse.translation}\n— ${dailyVerse.reference}"
-                                    )
-                                )
-                                copied = true
-                                viewModel.dismissCoachmark("home-copy-verse")
-                            },
-                            onShare = {
-                                shareDialogState = ShareCardType.Verse(
-                                    arabic = dailyVerse.arabic,
-                                    translation = dailyVerse.translation,
-                                    reference = dailyVerse.reference
-                                )
-                            },
-                            fontFamilyArabic = fontFamilyArabic,
-                            modifier = Modifier.onGloballyPositioned { targetRects["verse"] = it.boundsInWindow() }
-                        )
-                        Spacer(modifier = Modifier.height(28.dp))
-                    }
-
                     // ─── Weekly Heatmap ───
                     item {
                         WeeklyHeatmapCard(stats = stats)
-                        Spacer(modifier = Modifier.height(28.dp))
-                    }
-
-                    // ─── Invite Friends ───
-                    item {
-                        InviteFriendsCard(
-                            onInvite = { shareText(context, "$SHARE_DESCRIPTION $APP_URL") }
-                        )
                         Spacer(modifier = Modifier.height(28.dp))
                     }
 
@@ -1108,232 +938,6 @@ private fun ZeroStateContinueCard(onClick: () -> Unit) {
     }
 }
 
-// ── Stat Card (bordered, cream bg, matching web) ────────────────────────
-@Composable
-private fun StatCard(
-    modifier: Modifier = Modifier,
-    icon: ImageVector,
-    iconTint: Color,
-    value: String,
-    unit: String,
-    label: String
-) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(14.dp),
-        color = hCream,
-        border = androidx.compose.foundation.BorderStroke(1.5.dp, hBoneDark)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 13.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = iconTint,
-                modifier = Modifier.size(18.dp)
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Row(
-                verticalAlignment = Alignment.Bottom,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    text = value,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = hInk,
-                    fontFamily = fontFamilyUi,
-                    lineHeight = 29.sp
-                )
-                Text(
-                    text = unit,
-                    fontSize = 11.sp,
-                    color = hInkMuted,
-                    modifier = Modifier.padding(bottom = 3.dp)
-                )
-            }
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = label,
-                fontSize = 9.sp,
-                color = hInkMuted,
-                fontFamily = fontFamilyMono,
-                letterSpacing = 1.sp
-            )
-        }
-    }
-}
-
-// ── Verse of the Day Card ───────────────────────────────────────────────
-@Composable
-private fun VerseOfDayCard(
-    verse: DailyVerse,
-    copied: Boolean,
-    coachmarkDismissed: Boolean,
-    onCoachmarkDismiss: () -> Unit,
-    onCopy: () -> Unit,
-    onShare: () -> Unit,
-    fontFamilyArabic: FontFamily = fontScheherazade,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        color = hCream,
-        border = androidx.compose.foundation.BorderStroke(1.5.dp, hBoneDark)
-    ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
-            // Bismillah watermark
-            Text(
-                text = "﷽",
-                fontSize = 96.sp,
-                color = hGold.copy(alpha = 0.03f),
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .offset(x = 10.dp, y = (-16).dp)
-            )
-
-            Column(modifier = Modifier.padding(24.dp)) {
-                // Label (left-aligned, matching web)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = NurIcons.Sparkles,
-                        contentDescription = null,
-                        tint = hGold,
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "VERSE OF THE DAY",
-                        fontSize = 10.sp,
-                        color = hGold,
-                        fontFamily = fontFamilyMono,
-                        letterSpacing = 1.5.sp
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Arabic text
-                Text(
-                    text = verse.arabic,
-                    fontFamily = fontFamilyArabic,
-                    fontSize = 26.sp,
-                    color = hInk,
-                    textAlign = TextAlign.Center,
-                    lineHeight = 56.sp,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Translation
-                Text(
-                    text = verse.translation,
-                    fontFamily = fontFamilyBody,
-                    fontSize = 14.sp,
-                    color = hInkMid,
-                    fontStyle = FontStyle.Italic,
-                    textAlign = TextAlign.Center,
-                    lineHeight = 23.sp,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Reference
-                Text(
-                    text = "— ${verse.reference}",
-                    fontSize = 11.sp,
-                    color = hInkMuted,
-                    fontFamily = fontFamilyMono,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Action buttons
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Copy button (wrapped in a Coachmark hint, like the web app)
-                    Coachmark(
-                        id = "home-copy-verse",
-                        label = "Share the Ayah",
-                        isDismissed = coachmarkDismissed,
-                        onDismiss = onCoachmarkDismiss
-                    ) {
-                        Surface(
-                            onClick = onCopy,
-                            shape = RoundedCornerShape(20.dp),
-                            color = if (copied) hGreen.copy(alpha = 0.1f) else Color.Transparent,
-                            border = androidx.compose.foundation.BorderStroke(
-                                1.5.dp,
-                                if (copied) hGreen else hBoneDark
-                            )
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = if (copied) NurIcons.Check else NurIcons.Copy,
-                                    contentDescription = null,
-                                    tint = if (copied) hGreen else hInkMid,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = if (copied) "Copied" else "Copy",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = if (copied) hGreen else hInkMid
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    // Share button
-                    Surface(
-                        onClick = onShare,
-                        shape = RoundedCornerShape(20.dp),
-                        color = Color.Transparent,
-                        border = androidx.compose.foundation.BorderStroke(1.5.dp, hBoneDark)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = NurIcons.Share2,
-                                contentDescription = null,
-                                tint = hInkMid,
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "Share",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = hInkMid
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
 // ── Weekly Heatmap ("This Week") ────────────────────────────────────────
 @Composable
 private fun WeeklyHeatmapCard(stats: HomeStats) {
@@ -1426,93 +1030,6 @@ private fun WeeklyHeatmapCard(stats: HomeStats) {
                             fontFamily = fontFamilyMono,
                             fontWeight = if (day.isToday) FontWeight.Bold else FontWeight.Normal,
                             color = if (day.isToday) hTeal else hInkMuted
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-// ── Invite Friends Card (teal gradient) ─────────────────────────────────
-@Composable
-private fun InviteFriendsCard(onInvite: () -> Unit) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        color = Color.Transparent
-    ) {
-        Box(
-            modifier = Modifier
-                .background(Brush.horizontalGradient(listOf(hTeal, hTealMid)))
-                .padding(24.dp)
-        ) {
-            // Decorative blurred circles (matching web)
-            Box(
-                modifier = Modifier
-                    .size(128.dp)
-                    .align(Alignment.TopEnd)
-                    .offset(x = 40.dp, y = (-40).dp)
-                    .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.05f))
-            )
-            Box(
-                modifier = Modifier
-                    .size(96.dp)
-                    .align(Alignment.BottomStart)
-                    .offset(x = (-32.dp), y = 32.dp)
-                    .clip(CircleShape)
-                    .background(hGold.copy(alpha = 0.10f))
-            )
-
-            Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = NurIcons.Sparkles,
-                        contentDescription = null,
-                        tint = hGold,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Invite Friends",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        fontFamily = fontFamilyUi
-                    )
-                }
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Inspire others to build a daily Quran habit. Share the app and grow together!",
-                    fontSize = 14.sp,
-                    color = Color.White.copy(alpha = 0.9f),
-                    fontFamily = fontFamilyBody,
-                    lineHeight = 21.sp
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Surface(
-                    onClick = onInvite,
-                    shape = RoundedCornerShape(12.dp),
-                    color = Color.White,
-                    shadowElevation = 4.dp
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = NurIcons.Share2,
-                            contentDescription = null,
-                            tint = hTeal,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Send Invite",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = hTeal
                         )
                     }
                 }
@@ -1825,12 +1342,6 @@ private fun getGreeting(): Pair<String, String> {
     }
 }
 
-private fun getDailyVerse(): DailyVerse {
-    // Same day-of-year rotation as the web app (Jan 1 → index 1)
-    val day = Calendar.getInstance().get(Calendar.DAY_OF_YEAR)
-    return DAILY_VERSES[day % DAILY_VERSES.size]
-}
-
 /** Mirrors the web app's timeAgo(). */
 private fun timeAgo(timestamp: Long): String {
     val diff = System.currentTimeMillis() - timestamp
@@ -1840,16 +1351,6 @@ private fun timeAgo(timestamp: Long): String {
     if (hrs < 24) return "${hrs}h ago"
     return "${hrs / 24}d ago"
 }
-
-private fun shareText(context: Context, text: String) {
-    val sendIntent = Intent().apply {
-        action = Intent.ACTION_SEND
-        putExtra(Intent.EXTRA_TEXT, text)
-        type = "text/plain"
-    }
-    context.startActivity(Intent.createChooser(sendIntent, null))
-}
-
 
 // ── Quick Action Mobile Shortcuts (2-Column Grid) ───────────────────────
 @Composable

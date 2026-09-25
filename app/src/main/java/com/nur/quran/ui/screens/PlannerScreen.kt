@@ -270,7 +270,7 @@ fun PlannerScreen(
             }
 
             val todaySessionSeconds = sessionTotals[todayAssignment?.dayNumber ?: 1] ?: 0L
-            val overdueCount = plan.assignments.count { PlannerEngine.getAssignmentStatus(plan, it) == "overdue" }
+            val overdueCount = overview?.overdueDays ?: 0
 
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
@@ -345,6 +345,7 @@ fun PlannerScreen(
                                     val shareText = "📖 Quran Reading Progress\n" +
                                         "${plan.title}: $overallPct% complete\n" +
                                         "Completed ${overview?.completedCount ?: 0} days of my ${plan.durationDays}-day plan • Day $currentDay • ${metrics?.consistencyStreak ?: 0}d streak\n" +
+                                        "https://quran-nur.appwrite.network\n" +
                                         "#QuranNur"
                                     val intent = Intent(Intent.ACTION_SEND).apply {
                                         type = "text/plain"
@@ -437,7 +438,8 @@ fun PlannerScreen(
             onCreatePlan = { built ->
                 plannerViewModel.setActivePlan(built)
                 viewMode = "dashboard"
-            }
+            },
+            isTitleTaken = { plannerViewModel.planTitleExists(it) }
         )
     }
 

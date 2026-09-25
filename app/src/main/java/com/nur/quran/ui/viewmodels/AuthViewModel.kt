@@ -46,7 +46,9 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             _authState.value = _authState.value.copy(busy = true, error = null, message = null)
             runCatching {
-                appwrite.account.createSession(email.trim(), password)
+                // NOTE: createSession(userId, secret) is the token/OTP endpoint —
+                // email login must use createEmailPasswordSession (as the web app does).
+                appwrite.account.createEmailPasswordSession(email.trim(), password)
                 appwrite.account.get()
             }.onSuccess { user ->
                 _authState.value = AuthState(signedIn = true, email = user.email, busy = false, error = null)
@@ -69,7 +71,7 @@ class AuthViewModel @Inject constructor(
             _authState.value = _authState.value.copy(busy = true, error = null, message = null)
             runCatching {
                 appwrite.account.create(ID.unique(), email.trim(), password)
-                appwrite.account.createSession(email.trim(), password)
+                appwrite.account.createEmailPasswordSession(email.trim(), password)
                 appwrite.account.get()
             }.onSuccess { user ->
                 _authState.value = AuthState(signedIn = true, email = user.email, busy = false, error = null)

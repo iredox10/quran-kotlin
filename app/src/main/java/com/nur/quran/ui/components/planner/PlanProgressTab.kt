@@ -12,7 +12,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -39,6 +43,7 @@ fun PlanProgressTab(
     modifier: Modifier = Modifier
 ) {
     val today = remember { PlannerEngine.formatPlannerDate() }
+    val exportContext = LocalContext.current
     var selectedAssignment by remember { mutableStateOf<PlannerAssignment?>(null) }
     val analytics = remember(planner) { PlannerEngine.getPlannerAnalytics(planner) }
     val weeklySummary = remember(planner) { PlannerEngine.getWeeklySummary(planner) }
@@ -112,6 +117,23 @@ fun PlanProgressTab(
                         Text("Adjust", fontFamily = fontFamilyBody, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = hInk)
                     }
                 }
+
+                // Export calendar button (web parity: handleExportCalendar .ics)
+                Surface(
+                    shape = RoundedCornerShape(100),
+                    color = hWhite,
+                    border = BorderStroke(1.5.dp, hBoneDark),
+                    modifier = Modifier.clickable { PlannerUtils.sharePlannerIcs(exportContext, planner) }
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                    ) {
+                        Icon(NurIcons.Share2, contentDescription = null, tint = hInkMid, modifier = Modifier.size(13.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Export", fontFamily = fontFamilyBody, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = hInk)
+                    }
+                }
             }
         }
 
@@ -137,6 +159,10 @@ fun PlanProgressTab(
                                 val isSelected = selectedAssignment?.dayNumber == a.dayNumber
                                 val isDone = status == "completed"
                                 val isToday = status == "today"
+                                val dotProg = PlannerEngine.getAssignmentProgress(planner, a)
+                                val dotPct = if (dotProg.totalPagesCount > 0) {
+                                    (dotProg.readPagesCount.toFloat() / dotProg.totalPagesCount).coerceIn(0f, 1f)
+                                } else 0f
 
                                 Box(
                                     modifier = Modifier
@@ -150,6 +176,20 @@ fun PlanProgressTab(
                                                 else -> hWhite
                                             }
                                         )
+                                        .drawBehind {
+                                            // Partial-progress ring (web parity: conic-gradient overlay).
+                                            if (!isDone && dotPct > 0f) {
+                                                drawArc(
+                                                    color = hGold.copy(alpha = 0.35f),
+                                                    startAngle = -90f,
+                                                    sweepAngle = 360f * dotPct,
+                                                    useCenter = false,
+                                                    topLeft = Offset.Zero,
+                                                    size = size,
+                                                    style = Stroke(width = 3.dp.toPx())
+                                                )
+                                            }
+                                        }
                                         .border(
                                             width = if (isToday || isSelected) 2.dp else 1.dp,
                                             color = when {
@@ -178,6 +218,18 @@ fun PlanProgressTab(
                                             else -> hInkMuted
                                         }
                                     )
+                                    // Completed check (web parity).
+                                    if (isDone) {
+                                        Icon(
+                                            imageVector = NurIcons.Check,
+                                            contentDescription = null,
+                                            tint = Color.White,
+                                            modifier = Modifier
+                                                .align(Alignment.BottomEnd)
+                                                .offset(x = 2.dp, y = 2.dp)
+                                                .size(12.dp)
+                                        )
+                                    }
                                     // Difficulty dot (web parity: red for heavy >1.3×, green for light <0.7×)
                                     val dayDifficulty = difficulty[a.dayNumber]
                                     if (dayDifficulty != null && dayDifficulty.level != "moderate") {
@@ -229,6 +281,10 @@ fun PlanProgressTab(
                 if (selectedAssignment != null) {
                     val sel = selectedAssignment!!
                     val status = PlannerEngine.getAssignmentStatus(planner, sel)
+                    val selProg = PlannerEngine.getAssignmentProgress(planner, sel)
+                    val selPct = if (selProg.totalPagesCount > 0) {
+                        Math.round((selProg.readPagesCount.toFloat() / selProg.totalPagesCount) * 100)
+                    } else 0
                     Spacer(modifier = Modifier.height(12.dp))
                     Surface(
                         shape = RoundedCornerShape(14.dp),
@@ -251,8 +307,9 @@ fun PlanProgressTab(
                             Text(
                                 text = when (status) {
                                     "completed" -> "✓ Completed"
-                                    "today" -> "Today's Reading"
-                                    "overdue" -> "Missed day"
+                                    "today" -> if (selPct > 0) "Today's plan ($selPct%)" else "Today's Reading"
+                                    "partial" -> "Partially finished ($selPct%)"
+                                    "overdue" -> if (selPct > 0) "Missed ($selPct% done)" else "Missed completely"
                                     else -> "Scheduled for ${sel.date}"
                                 },
                                 fontFamily = fontFamilyMono,
@@ -341,7 +398,9 @@ fun PlanProgressTab(
                         color = hInk
                     )
                     weeklySummary.takeLast(4).forEach { week ->
-                        val pct = Math.round(week.completionRatio * 100).coerceIn(0, 100)
+                        val pct = if (week.totalUnits > 0) {
+                            Math.round((week.completedUnits.toFloat() / week.totalUnits) * 100).coerceIn(0, 100)
+                        } else 0
                         val isComplete = pct == 100
                         Surface(
                             shape = RoundedCornerShape(14.dp),
@@ -357,7 +416,7 @@ fun PlanProgressTab(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "Week ${week.weekNumber}",
+                                    text = week.label,
                                     fontFamily = fontFamilyUi,
                                     fontSize = 13.5.sp,
                                     fontWeight = FontWeight.Bold,
@@ -368,7 +427,7 @@ fun PlanProgressTab(
                                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                                 ) {
                                     Text(
-                                        text = "${week.completedCount} / ${week.totalCount}",
+                                        text = "${week.completedUnits} / ${week.totalUnits}",
                                         fontFamily = fontFamilyMono,
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Medium,

@@ -179,12 +179,6 @@ class MainActivity : ComponentActivity() {
                                 onPageClick = { pageNum ->
                                     navController.navigate(Screen.PageDetail.createRoute(pageNum))
                                 },
-                                onNavigateToSauka = {
-                                    navController.navigate(Screen.Planner.route)
-                                },
-                                onNavigateToBookmarks = {
-                                    navController.navigate(Screen.Library.route)
-                                },
                                 onNavigateToRoute = { route ->
                                     when (route) {
                                         "planner" -> navController.navigate(Screen.Planner.route)

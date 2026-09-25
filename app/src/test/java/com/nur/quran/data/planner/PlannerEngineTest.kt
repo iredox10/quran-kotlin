@@ -251,6 +251,27 @@ class PlannerEngineTest {
         assertEquals(p, PlannerEngine.rebalancePlanner(p, "nope"))
     }
 
+    @Test
+    fun `spread with more remaining days than unread pages does not crash`() {
+        // Regression: subList(from > size) threw IllegalArgumentException
+        // (app crash on Spread); JS slice() clamps to [] instead.
+        val today = PlannerEngine.formatPlannerDate()
+        val farFuture = PlannerEngine.addDays(today, 29)
+        val done = assignment(1, today, 1..10).copy(date = today)
+        val todo = assignment(2, farFuture, 11..33)
+        val p = plan(
+            listOf(done, todo),
+            readPages = mapOf(1 to (1..10).toList()),
+            completedDays = listOf(1),
+            startDate = today
+        )
+        val out = PlannerEngine.rebalancePlanner(p, "spread")
+        // 23 unread pages spread 1/day over the remaining window.
+        assertTrue(out.assignments.size > 1)
+        val totalUnread = out.assignments.drop(1).sumOf { it.pageEnd - it.pageStart + 1 }
+        assertEquals(23, totalUnread)
+    }
+
     // ── misc ────────────────────────────────────────────────────────
 
     @Test

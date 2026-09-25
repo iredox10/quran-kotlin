@@ -668,8 +668,13 @@ object PlannerEngine {
             if (remainingDays <= 0) remainingDays = 1
             val pagesPerDay = ceil(unreadPagePool.size.toDouble() / remainingDays).toInt()
             for (idx in 0 until remainingDays) {
+                // Web parity: JS slice() clamps out-of-range to [] (then break);
+                // Kotlin subList() throws when fromIndex > size, which happens
+                // once remaining days outnumber unread pages.
+                val from = idx * pagesPerDay
+                if (from >= unreadPagePool.size) break
                 val chunk = unreadPagePool.subList(
-                    idx * pagesPerDay, min((idx + 1) * pagesPerDay, unreadPagePool.size)
+                    from, min((idx + 1) * pagesPerDay, unreadPagePool.size)
                 )
                 if (chunk.isEmpty()) break
                 newChunkAssignments.add(chunkToAssignment(chunk.toList()))

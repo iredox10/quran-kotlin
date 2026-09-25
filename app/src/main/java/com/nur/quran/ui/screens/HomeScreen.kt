@@ -144,8 +144,6 @@ fun HomeScreen(
     surahViewModel: SurahViewModel? = null,
     onChapterClick: (Int, String?) -> Unit,
     onPageClick: (Int) -> Unit,
-    onNavigateToSauka: (() -> Unit)? = null,
-    onNavigateToBookmarks: (() -> Unit)? = null,
     onNavigateToRoute: (String) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -340,15 +338,6 @@ fun HomeScreen(
                                 )
                             }
                         }
-                    }
-
-                    // ─── Quick Action Mobile Shortcuts ───
-                    item {
-                        QuickActionGrid(
-                            onNavigateToSauka = { onNavigateToSauka?.invoke() },
-                            onNavigateToBookmarks = { onNavigateToBookmarks?.invoke() }
-                        )
-                        Spacer(modifier = Modifier.height(20.dp))
                     }
 
                     // ─── Onboarding Progress Checklist ───
@@ -1350,96 +1339,6 @@ private fun timeAgo(timestamp: Long): String {
     val hrs = mins / 60
     if (hrs < 24) return "${hrs}h ago"
     return "${hrs / 24}d ago"
-}
-
-// ── Quick Action Mobile Shortcuts (2-Column Grid) ───────────────────────
-@Composable
-private fun QuickActionGrid(
-    onNavigateToSauka: () -> Unit,
-    onNavigateToBookmarks: () -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        // Sauka Groups Card
-        Surface(
-            onClick = onNavigateToSauka,
-            modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(18.dp),
-            color = hWhite,
-            border = androidx.compose.foundation.BorderStroke(1.5.dp, hBoneDark)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(hTealSoft),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = NurIcons.Users,
-                        contentDescription = null,
-                        tint = hTeal,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Sauka Groups",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = hInk,
-                    fontFamily = fontFamilyUi
-                )
-            }
-        }
-
-        // Bookmarks Card
-        Surface(
-            onClick = onNavigateToBookmarks,
-            modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(18.dp),
-            color = hWhite,
-            border = androidx.compose.foundation.BorderStroke(1.5.dp, hBoneDark)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(hInk.copy(alpha = 0.05f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = NurIcons.Bookmark,
-                        contentDescription = null,
-                        tint = hInk,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Bookmarks",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = hInk,
-                    fontFamily = fontFamilyUi
-                )
-            }
-        }
-    }
 }
 
 // ── Onboarding Progress Checklist (5 tours, matching web OnboardingProgress.jsx) ─

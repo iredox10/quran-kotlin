@@ -17,6 +17,26 @@ class TourPrefs(context: Context) {
         prefs.edit().putBoolean("tour_$id", true).apply()
     }
 
+    /**
+     * Every persisted completed tour id. The completed-tours flow must seed
+     * from this (not just the onboarding ROWS list), otherwise tours whose id
+     * is not a ROW — e.g. "home-tour-advanced" — resurrect on every launch
+     * even though their flag is true.
+     */
+    fun completedTourIds(): Set<String> =
+        prefs.all.mapNotNull { (key, value) ->
+            if (key.startsWith("tour_") && value == true) key.removePrefix("tour_") else null
+        }.toSet()
+
+    /** Clears all tour/coachmark flags (profile "Replay All Tours"). */
+    fun resetTours() {
+        val editor = prefs.edit()
+        prefs.all.keys
+            .filter { it.startsWith("tour_") || it.startsWith("coachmark_") }
+            .forEach { editor.remove(it) }
+        editor.apply()
+    }
+
     fun isCoachmarkDismissed(id: String): Boolean = prefs.getBoolean("coachmark_$id", false)
 
     fun dismissCoachmark(id: String) {

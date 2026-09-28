@@ -54,6 +54,7 @@ data class OnboardingTourRow(val id: String, val emoji: String, val label: Strin
 
 object OnboardingTours {
     const val HOME = "home-tour"
+    const val HOME_ADVANCED = "home-tour-advanced"
     const val SURAH = "surah-tour"
     const val MEMORIZATION = "memorization-tour"
     const val PLANNER = "planner-tour"
@@ -66,6 +67,14 @@ object OnboardingTours {
         OnboardingTourRow(PLANNER, "📅", "Study Planner"),
         OnboardingTourRow(LIBRARY, "📚", "Library")
     )
+
+    /**
+     * Every tour id the UI can show. The completed-tours flow seeds from ALL
+     * persisted flags (TourPrefs.completedTourIds), so ids outside ROWS —
+     * like HOME_ADVANCED — must be listed here for the integrity test and
+     * future wiring.
+     */
+    val KNOWN_TOUR_IDS: Set<String> = (ROWS.map { it.id } + HOME_ADVANCED).toSet()
 }
 
 /** Onboarding progress state for first-time mobile setup. */
@@ -88,7 +97,12 @@ class HomeViewModel @Inject constructor(
     // ─── Tour / coachmark / page-visit state (persisted, mirrors web store) ──
 
     private val _completedTours = MutableStateFlow(
-        OnboardingTours.ROWS.map { it.id }.filter(tourPrefs::isTourCompleted).toSet()
+        // Seed from EVERY persisted flag, not just ROWS: tour ids outside the
+        // onboarding list (e.g. home-tour-advanced) otherwise resurrect on
+        // every launch even after being completed.
+        (OnboardingTours.KNOWN_TOUR_IDS + tourPrefs.completedTourIds())
+            .filter(tourPrefs::isTourCompleted)
+            .toSet()
     )
     val completedTours: StateFlow<Set<String>> = _completedTours.asStateFlow()
 
@@ -128,6 +142,13 @@ class HomeViewModel @Inject constructor(
     fun dismissOnboarding() {
         _onboardingDismissed.value = true
         tourPrefs.dismissOnboarding()
+    }
+
+    /** Clears all tour/coachmark flags so every tour can replay (profile "Replay All Tours"). */
+    fun resetTours() {
+        tourPrefs.resetTours()
+        _completedTours.value = emptySet()
+        _dismissedCoachmarks.value = emptySet()
     }
 
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)

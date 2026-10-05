@@ -131,4 +131,45 @@ object AnalyticsStats {
             else -> 3
         }
     }
+
+    /** Web parity: Today/Week/Month calendar ranges (week starts Sunday). */
+    enum class FlowRange(val id: String, val label: String) {
+        TODAY("today", "Today"), WEEK("week", "Week"), MONTH("month", "Month");
+    }
+
+    private fun dayKeyOf(cal: Calendar): String = DAY_FMT.format(cal.time)
+
+    /** Calendar keys: today=[today], week Sunday-start 7 days, month=calendar month. */
+    fun rangeKeys(range: FlowRange, today: Date = Date()): List<String> {
+        val cal = Calendar.getInstance().apply { time = today }
+        return when (range) {
+            FlowRange.TODAY -> listOf(dayKeyOf(cal))
+            FlowRange.WEEK -> {
+                val diff = (cal.get(Calendar.DAY_OF_WEEK) - Calendar.SUNDAY + 7) % 7
+                cal.add(Calendar.DATE, -diff)
+                val start = cal.timeInMillis
+                (0 until 7).map { i ->
+                    cal.timeInMillis = start
+                    cal.add(Calendar.DATE, i)
+                    dayKeyOf(cal)
+                }
+            }
+            FlowRange.MONTH -> {
+                val month = cal.get(Calendar.MONTH)
+                cal.set(Calendar.DAY_OF_MONTH, 1)
+                buildList {
+                    while (cal.get(Calendar.MONTH) == month) {
+                        add(dayKeyOf(cal))
+                        cal.add(Calendar.DATE, 1)
+                    }
+                }
+            }
+        }
+    }
+
+    /** Sessions whose date falls in the calendar range. */
+    fun filterByRange(sessions: List<Session>, range: FlowRange, today: Date = Date()): List<Session> {
+        val keys = rangeKeys(range, today).toSet()
+        return sessions.filter { it.date in keys }
+    }
 }

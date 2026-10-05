@@ -48,6 +48,12 @@ fun AnalyticsScreen(
     val chapters by surahViewModel.allChapters.collectAsState()
 
     var chartMode by remember { mutableStateOf("flow") } // "flow" or "heatmap"
+    var flowRange by remember { mutableStateOf(AnalyticsStats.FlowRange.TODAY) }
+
+    // Flow card range filtering (web ActivityFlow parity; charts consume it next).
+    val flowRangeSessions = remember(statsSessions, flowRange) {
+        AnalyticsStats.filterByRange(statsSessions, flowRange)
+    }
 
     val todayStr = remember {
         SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
@@ -236,6 +242,11 @@ fun AnalyticsScreen(
                                 border = BorderStroke(1.5.dp, hBoneDark)
                             ) {
                                 Column(modifier = Modifier.padding(20.dp)) {
+                                    ActivityFlowPeriodTabs(
+                                        flowRange = flowRange,
+                                        onFlowRangeChange = { flowRange = it }
+                                    )
+                                    Spacer(modifier = Modifier.height(12.dp))
                                     ActivityFlowHeader(
                                         chartMode = chartMode,
                                         onChartModeChange = { chartMode = it }
@@ -269,6 +280,11 @@ fun AnalyticsScreen(
                                 border = BorderStroke(1.5.dp, hBoneDark)
                             ) {
                                 Column(modifier = Modifier.padding(20.dp)) {
+                                    ActivityFlowPeriodTabs(
+                                        flowRange = flowRange,
+                                        onFlowRangeChange = { flowRange = it }
+                                    )
+                                    Spacer(modifier = Modifier.height(12.dp))
                                     ActivityFlowHeader(
                                         chartMode = chartMode,
                                         onChartModeChange = { chartMode = it }
@@ -386,7 +402,7 @@ private fun ActivityFlowHeader(
                     .padding(horizontal = 10.dp, vertical = 5.dp)
             ) {
                 Text(
-                    text = "7 DAYS",
+                    text = "CHART",
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = fontFamilyMono,
@@ -409,6 +425,27 @@ private fun ActivityFlowHeader(
                     letterSpacing = 1.sp,
                     color = if (chartMode == "heatmap") hInk else hInkMuted
                 )
+            }
+        }
+    }
+}
+
+/** Today/Week/Month pill selector — web PeriodTabs parity for the Flow card. */
+@Composable
+private fun ActivityFlowPeriodTabs(
+    flowRange: AnalyticsStats.FlowRange,
+    onFlowRangeChange: (AnalyticsStats.FlowRange) -> Unit
+) {
+    Row(Modifier.clip(RoundedCornerShape(20.dp)).background(hSurface).padding(3.dp)) {
+        AnalyticsStats.FlowRange.entries.forEach { range ->
+            val active = range == flowRange
+            Box(Modifier.clip(RoundedCornerShape(16.dp))
+                .background(if (active) hWhite else Color.Transparent)
+                .clickable { onFlowRangeChange(range) }
+                .padding(horizontal = 10.dp, vertical = 5.dp)) {
+                Text(range.label.uppercase(Locale.getDefault()), fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold, fontFamily = fontFamilyMono,
+                    letterSpacing = 1.sp, color = if (active) hInk else hInkMuted)
             }
         }
     }

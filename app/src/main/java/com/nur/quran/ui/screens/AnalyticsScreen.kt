@@ -281,6 +281,16 @@ fun AnalyticsScreen(
                 }
             }
 
+            // 6. Log activity (web ActivityFlow "Log activity" form parity)
+            item {
+                AnalyticsLogActivityCard(
+                    chapters = chapters,
+                    onLog = { durationSec, type, chapterId ->
+                        homeViewModel.logReadingSession(durationSec, type, chapterId)
+                    }
+                )
+            }
+
             // 6. Achievements & Recent Activity Row (Web lines 450-536)
             item {
                 BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {

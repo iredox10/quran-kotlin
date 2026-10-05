@@ -19,7 +19,6 @@ import com.nur.quran.ui.components.profile.*
 import com.nur.quran.ui.navigation.Screen
 import com.nur.quran.ui.viewmodels.AuthViewModel
 import com.nur.quran.ui.viewmodels.HomeViewModel
-import com.nur.quran.ui.viewmodels.OnboardingTours
 import com.nur.quran.ui.viewmodels.PackViewModel
 import com.nur.quran.ui.viewmodels.PlannerViewModel
 import com.nur.quran.ui.viewmodels.SurahViewModel
@@ -173,20 +172,13 @@ fun ProfileScreen(
             }
 
             // 5. Onboarding & Tours — mirrors web Profile.jsx "Replay All Tours" -> resetAllTours().
-            // NOTE: HomeViewModel.resetTours() does not exist yet (parallel worker owns
-            // TourPrefs/HomeViewModel). Reset TourPrefs tour flags directly here so tours
-            // replay on next trigger; swap to homeViewModel.resetTours() once available
-            // (which will also refresh completedTours StateFlow in-memory).
+            // Delegates to HomeViewModel.resetTours() so persisted tour/coachmark
+            // flags clear AND completedTours/coachmark flows refresh in-memory.
             item {
                 OnboardingGroup(
                     completedToursCount = completedTours.size,
                     onReplayTours = {
-                        context.getSharedPreferences("tour_prefs", Context.MODE_PRIVATE)
-                            .edit()
-                            .apply {
-                                OnboardingTours.ROWS.forEach { remove("tour_${it.id}") }
-                                apply()
-                            }
+                        homeViewModel.resetTours()
                         hifdhPrefs.edit()
                             .remove("has_seen_surah_tour")
                             .remove("has_seen_swipe_tip")

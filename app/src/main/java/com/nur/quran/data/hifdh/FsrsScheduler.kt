@@ -55,7 +55,11 @@ data class HifdhGoal(
     val createdAt: Long = System.currentTimeMillis()
 ) {
     val daysLeft: Long
-        get() = kotlin.math.max(0, (targetDate - System.currentTimeMillis()) / (24 * 60 * 60 * 1000))
+        // Web: Math.ceil((targetDate - now) / 86400000), clamped at 0.
+        get() = kotlin.math.max(
+            0,
+            kotlin.math.ceil((targetDate - System.currentTimeMillis()) / 86_400_000.0).toLong()
+        )
 }
 
 private const val S_MIN = 1e-3

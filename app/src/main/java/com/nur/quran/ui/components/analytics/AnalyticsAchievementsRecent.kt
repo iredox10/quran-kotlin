@@ -30,6 +30,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import android.content.Context
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -237,6 +239,46 @@ private fun LockedBadgeRow(badge: AnalyticsStats.AchievementBadge, modifier: Mod
             Spacer(modifier = Modifier.height(6.dp))
             Box(modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)).background(hSurface)) {
                 Box(modifier = Modifier.fillMaxHeight().fillMaxWidth(badge.progress.coerceIn(0f, 1f)).clip(RoundedCornerShape(3.dp)).background(hGold))
+            }
+        }
+    }
+}
+
+private const val ACHV_SEEN_PREFS = "quran-nur-achv-seen"
+private const val ACHV_SEEN_KEY = "seen_ids"
+
+/**
+ * Web-parity celebration: persists seen badge ids in prefs and shows a simple
+ * in-app banner only for fresh unlocks (no confetti lib — card UI pattern).
+ * Mirrors web: celebrate only when fresh unlock exists && todaySessions > 1.
+ */
+@Composable
+fun FreshUnlockCelebration(
+    badges: List<AnalyticsStats.AchievementBadge>,
+    todaySessions: Int,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    // Best-effort like web readSeen/writeSeen: fold every unlock into seen so
+    // old badges never re-celebrate; never break the card over storage.
+    val freshTitles = remember(badges) {
+        runCatching {
+            val prefs = context.getSharedPreferences(ACHV_SEEN_PREFS, Context.MODE_PRIVATE)
+            val seen = prefs.getStringSet(ACHV_SEEN_KEY, emptySet()).orEmpty()
+            val unlocked = badges.filter { it.unlocked }
+            val fresh = unlocked.filter { it.id !in seen }.map { it.title }
+            prefs.edit().putStringSet(ACHV_SEEN_KEY, (seen + unlocked.map { it.id }).toSet()).apply()
+            fresh
+        }.getOrDefault(emptyList())
+    }
+    if (freshTitles.isNotEmpty() && todaySessions > 1) {
+        Card(modifier = modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = hGoldSoft), border = BorderStroke(1.5.dp, hGold)) {
+            Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(text = "🎉", fontSize = 26.sp, textAlign = TextAlign.Center)
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = "New badge unlocked!", fontSize = 14.sp, fontWeight = FontWeight.Bold, fontFamily = fontFamilyUi, color = hInk)
+                    Text(text = freshTitles.take(3).joinToString(", "), fontSize = 12.sp, color = hInkMuted, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                }
             }
         }
     }

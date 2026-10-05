@@ -132,9 +132,10 @@ fun ProfileScreen(
                 ProfileHero(
                     signedIn = authState.signedIn,
                     email = authState.email,
-                    displayName = authState.email?.substringBefore("@")?.replaceFirstChar {
-                        if (it.isLowerCase()) it.titlecase(java.util.Locale.US) else it.toString()
-                    },
+                    // Web parity: user.name as hero title, email as subtitle.
+                    // ProfileHero falls back to email-prefix / "Quran Student"
+                    // when displayName is null, and to greeting for guests.
+                    displayName = authState.displayName,
                     greeting = greeting,
                     modifier = Modifier.fillMaxWidth()
                 )

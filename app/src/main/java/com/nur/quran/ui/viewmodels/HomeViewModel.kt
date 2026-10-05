@@ -169,6 +169,13 @@ class HomeViewModel @Inject constructor(
     val readingSessions: StateFlow<List<ReadingSessionEntity>> = repository.getReadingSessionsFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    /** Manual "Log activity" write path reusing the Room reading_sessions store. */
+    fun logReadingSession(durationSeconds: Int, type: String = "reading", chapterId: Int? = null) {
+        viewModelScope.launch {
+            repository.logReadingSession(durationSeconds, type, chapterId)
+        }
+    }
+
     val bookmarks: StateFlow<List<BookmarkEntity>> = repository.getAllBookmarksFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 

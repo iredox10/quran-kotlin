@@ -62,7 +62,8 @@ private data class JuzProgress(
 fun MemorizeScreen(
     homeViewModel: HomeViewModel,
     surahViewModel: SurahViewModel,
-    onSurahClick: (Int) -> Unit
+    onSurahClick: (Int) -> Unit,
+    onGoalResume: (chapterId: Int, verseKey: String?) -> Unit = { c, _ -> onSurahClick(c) }
 ) {
     val homeState by homeViewModel.uiState.collectAsState()
     val memorizedAyahs by surahViewModel.memorizedAyahs.collectAsState()
@@ -422,12 +423,14 @@ fun MemorizeScreen(
                             val totalVerses = ch?.versesCount ?: 1
                             val pct = Math.round((memCount.toFloat() / totalVerses) * 100)
                             val daysLeft = goal.daysLeft
+                            val resumeAyah = firstUnmemorizedAyah(memorizedAyahs, goal.targetId, totalVerses)
+                            val resumeKey = resumeAyah?.let { "${goal.targetId}:$it" }
 
                             Card(
                                 shape = RoundedCornerShape(20.dp),
                                 colors = CardDefaults.cardColors(containerColor = hCream),
                                 border = androidx.compose.foundation.BorderStroke(1.5.dp, hGold.copy(alpha = 0.4f)),
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth().clickable { onGoalResume(goal.targetId, resumeKey) }
                             ) {
                                 Row(
                                     modifier = Modifier
@@ -445,6 +448,14 @@ fun MemorizeScreen(
                                             fontSize = 12.sp,
                                             color = if (daysLeft == 0L && pct < 100) Color(0xFFEF4444) else hInkMuted
                                         )
+                                        if (resumeAyah != null) {
+                                            Text(
+                                                text = "→ Continue from Ayah $resumeAyah",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = hGold
+                                            )
+                                        }
                                     }
 
                                     Box(
@@ -790,6 +801,12 @@ fun MemorizeScreen(
             wordProgressByTafsir = wordProgress
         )
     }
+}
+
+/** Web getResumeVerseKey: first ayah number in chapter not yet memorized, else null. */
+private fun firstUnmemorizedAyah(memorizedAyahs: Set<String>, chapterId: Int, versesCount: Int): Int? {
+    for (a in 1..versesCount) if (!memorizedAyahs.contains("$chapterId:$a")) return a
+    return null
 }
 
 private fun buildQueueData(

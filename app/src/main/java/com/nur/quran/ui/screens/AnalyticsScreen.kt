@@ -71,11 +71,6 @@ fun AnalyticsScreen(
         sessions.map { AnalyticsStats.Session(it.date, it.duration, it.type, it.chapterId, it.timestamp) }
     }
 
-    // 7 Days Labels and Totals (web parity: Math.round like Progress.jsx dailyActivity)
-    val last7DaysData = remember(statsSessions) {
-        AnalyticsStats.last7Days(statsSessions)
-    }
-
     // Last-7 yyyy-MM-dd keys for the web-parity weekly total (round AFTER summing raw secs).
     val last7Keys = remember {
         val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
@@ -253,7 +248,7 @@ fun AnalyticsScreen(
                                     )
                                     Spacer(modifier = Modifier.height(16.dp))
                                     if (chartMode == "flow") {
-                                        AnalyticsFlowChart(dailyActivity = last7DaysData)
+                                        AnalyticsFlowChartForRange(range = flowRange, sessions = flowRangeSessions)
                                     } else {
                                         AnalyticsHeatmap(heatmapData = heatmap35Days)
                                     }
@@ -291,7 +286,7 @@ fun AnalyticsScreen(
                                     )
                                     Spacer(modifier = Modifier.height(16.dp))
                                     if (chartMode == "flow") {
-                                        AnalyticsFlowChart(dailyActivity = last7DaysData)
+                                        AnalyticsFlowChartForRange(range = flowRange, sessions = flowRangeSessions)
                                     } else {
                                         AnalyticsHeatmap(heatmapData = heatmap35Days)
                                     }

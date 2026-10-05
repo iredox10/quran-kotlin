@@ -172,4 +172,29 @@ object AnalyticsStats {
         val keys = rangeKeys(range, today).toSet()
         return sessions.filter { it.date in keys }
     }
+
+    data class DayBucket(val key: String, val label: String, val dayNum: String, val minutes: Int)
+    data class HourBucket(val hour: Int, val label: String, val minutes: Int)
+
+    /** One point per date key, oldest first — web bucketByDay parity. */
+    fun bucketByDay(sessions: List<Session>, keys: List<String>): List<DayBucket> {
+        val secs = sessions.groupBy { it.date }.mapValues { e -> e.value.sumOf { it.durationSec } }
+        return keys.map { k ->
+            val mins = Math.round((secs[k] ?: 0L) / 60.0f).toInt()
+            val date = runCatching { DAY_FMT.parse(k) }.getOrNull() ?: Date()
+            DayBucket(k, LABEL_FMT.format(date), k.substring(8).trimStart('0').ifEmpty { "0" }, mins)
+        }
+    }
+
+    /** 24 local-hour buckets for one day — web bucketByHour parity. */
+    fun bucketByHour(sessions: List<Session>, dayKey: String): List<HourBucket> {
+        val secs = LongArray(24)
+        sessions.filter { it.date == dayKey }.forEach { s ->
+            val ts = if (s.timestamp > 0L) s.timestamp else runCatching { DAY_FMT.parse(s.date)?.time ?: 0L }.getOrDefault(0L)
+            secs[Calendar.getInstance().apply { timeInMillis = ts }.get(Calendar.HOUR_OF_DAY)] += s.durationSec
+        }
+        return (0 until 24).map { h ->
+            HourBucket(h, if (h == 0) "12a" else if (h < 12) "${h}a" else if (h == 12) "12p" else "${h - 12}p", Math.round(secs[h] / 60.0f).toInt())
+        }
+    }
 }

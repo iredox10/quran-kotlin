@@ -295,14 +295,16 @@ fun FreshUnlockCelebration(
 fun RecentActivityTimeline(
     sessions: List<ReadingSessionEntity>,
     chapters: List<ChapterEntity>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    limit: Int = 5,
+    onSeeAllClick: (() -> Unit)? = null
 ) {
-    val recentSessions = remember(sessions) {
+    val recentSessions = remember(sessions, limit) {
         sessions.sortedWith(
             compareByDescending<ReadingSessionEntity> { it.timestamp }
                 .thenByDescending { it.date }
                 .thenByDescending { it.id }
-        ).take(5)
+        ).take(limit.coerceAtLeast(1))
     }
 
     Card(
@@ -312,25 +314,22 @@ fun RecentActivityTimeline(
         border = BorderStroke(1.5.dp, hBoneDark)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
-            // Header with BookOpen / History icon in hGold
+            // Header with BookOpen icon in hGold + optional See-all (no activity route in Screen.kt yet)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(bottom = 16.dp)
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
             ) {
-                Icon(
-                    imageVector = NurIcons.BookOpen,
-                    contentDescription = null,
-                    tint = hGold,
-                    modifier = Modifier.size(18.dp)
-                )
-                Text(
-                    text = "Recent Activity",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = fontFamilyUi,
-                    color = hInk
-                )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Icon(imageVector = NurIcons.BookOpen, contentDescription = null, tint = hGold, modifier = Modifier.size(18.dp))
+                    Text(text = "Recent Activity", fontSize = 18.sp, fontWeight = FontWeight.Bold, fontFamily = fontFamilyUi, color = hInk)
+                }
+                if (onSeeAllClick != null) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.clip(CircleShape).background(hWhite).border(BorderStroke(1.5.dp, hBoneDark), CircleShape).clickable(onClick = onSeeAllClick).padding(horizontal = 10.dp, vertical = 6.dp)) {
+                        Text(text = "SEE ALL", fontSize = 10.sp, fontFamily = fontFamilyMono, color = hInkMuted)
+                        Icon(imageVector = NurIcons.ChevronRight, contentDescription = "See all activity", tint = hInkMuted, modifier = Modifier.size(13.dp))
+                    }
+                }
             }
 
             if (recentSessions.isNotEmpty()) {
@@ -402,7 +401,7 @@ private fun resolveSessionVisual(type: String): SessionVisualConfig {
             baseTitle = "Memorization"
         )
         "pomodoro", "focus" -> SessionVisualConfig(
-            icon = NurIcons.Award,
+            icon = NurIcons.Target,
             bg = Color(0x1A8B5CF6),
             tint = Color(0xFF8B5CF6),
             baseTitle = "Focus Session"
@@ -411,7 +410,7 @@ private fun resolveSessionVisual(type: String): SessionVisualConfig {
             icon = NurIcons.Volume2,
             bg = Color(0x1AF59E0B),
             tint = Color(0xFFF59E0B),
-            baseTitle = "Listening Session"
+            baseTitle = "Listening"
         )
         else -> SessionVisualConfig(
             icon = NurIcons.BookOpen,

@@ -197,4 +197,40 @@ object AnalyticsStats {
             HourBucket(h, if (h == 0) "12a" else if (h < 12) "${h}a" else if (h == 12) "12p" else "${h - 12}p", Math.round(secs[h] / 60.0f).toInt())
         }
     }
+
+    data class FlowSummary(val seconds: Long, val count: Int, val activeDays: Int, val avgPerDayMin: Int)
+
+    /** Totals for a session list — web summarize() parity. */
+    fun summarize(sessions: List<Session>): FlowSummary {
+        val secs = sessions.sumOf { it.durationSec }
+        val active = sessions.filter { it.durationSec > 0 }.map { it.date }.toSet().size
+        return FlowSummary(secs, sessions.size, active, if (active > 0) Math.round(secs / active / 60.0f).toInt() else 0)
+    }
+
+    /** % change vs previous window; null = no baseline, 0 = no data. */
+    fun deltaPercent(currentSec: Long, previousSec: Long): Int? {
+        if (previousSec <= 0L) return if (currentSec > 0L) null else 0
+        return Math.round((currentSec - previousSec) / previousSec.toFloat() * 100f)
+    }
+
+    /** Equal-length window right before `range` — for delta comparisons. */
+    fun previousRangeKeys(range: FlowRange, today: Date = Date()): List<String> {
+        val keys = rangeKeys(range, today)
+        if (keys.isEmpty()) return emptyList()
+        val start = Calendar.getInstance().apply {
+            time = DAY_FMT.parse(keys.first()) ?: Date(); add(Calendar.DATE, -keys.size) }.timeInMillis
+        return keys.indices.map { i ->
+            Calendar.getInstance().apply { timeInMillis = start; add(Calendar.DATE, i) }.let { dayKeyOf(it) } }
+    }
+
+    private val TITLE_FMT = SimpleDateFormat("MMM d", Locale.US)
+
+    /** Human range title, e.g. "Oct 5" / "Oct 1 – 7" — web rangeTitle parity. */
+    fun rangeTitle(range: FlowRange, today: Date = Date()): String {
+        val keys = rangeKeys(range, today)
+        if (keys.size <= 1) return keys.firstOrNull()?.let { TITLE_FMT.format(DAY_FMT.parse(it) ?: Date()) } ?: ""
+        val sameMonth = keys.last().substring(0, 7) == keys.first().substring(0, 7)
+        val last = if (sameMonth) keys.last().substring(8).trimStart('0').ifEmpty { "0" } else TITLE_FMT.format(DAY_FMT.parse(keys.last()) ?: Date())
+        return "${TITLE_FMT.format(DAY_FMT.parse(keys.first()) ?: Date())} – $last"
+    }
 }

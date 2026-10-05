@@ -4,11 +4,10 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,7 +21,10 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,6 +36,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nur.quran.analytics.AnalyticsStats
 import com.nur.quran.ui.components.NurIcons
 import com.nur.quran.ui.screens.fontFamilyMono
 import com.nur.quran.ui.screens.fontFamilyUi
@@ -111,26 +114,37 @@ fun calculateActivityMixSegments(
 }
 
 /**
- * Activity Mix Multi-Segment Donut Chart component matching web Progress.jsx lines 398-446.
+ * Activity Mix donut with Today/Week/Month/All tabs (web ActivityMix.jsx parity,
+ * default Week). Donut per type (rounded minutes, share %), center shows total +
+ * session count, legend rows show Nm + %.
  *
- * @param activityMix Category breakdown: Name, Minutes, Color (e.g. Reading, Memorizing, Focus, Listening)
- * @param allTimeTotalMins Total minutes across all time displayed in the donut center hole
- * @param modifier Card layout modifier
+ * @param sessions raw sessions; filtering + aggregation happen here via AnalyticsStats
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AnalyticsActivityMix(
-    activityMix: List<Triple<String, Int, Color>>,
-    allTimeTotalMins: Int,
+    sessions: List<AnalyticsStats.Session>,
+    initialRange: String = AnalyticsStats.MixRange.WEEK,
     modifier: Modifier = Modifier
 ) {
-    val validSegments = remember(activityMix) {
-        activityMix.filter { it.second > 0 }
+    var range by remember { mutableStateOf(initialRange) }
+    val rangeSessions = remember(sessions, range) {
+        AnalyticsStats.filterByMixRange(sessions, range)
     }
-    val totalMixMins = remember(validSegments) {
-        validSegments.sumOf { it.second }
+    val totalSeconds = remember(rangeSessions) { rangeSessions.sumOf { it.durationSec } }
+    val sessionCount = rangeSessions.size
+    // Web parity: donut value = rounded minutes per type.
+    val activityMix = remember(rangeSessions) {
+        val byType = AnalyticsStats.minutesByType(rangeSessions)
+        listOf(
+            Triple("Reading", byType["reading"] ?: 0, Color(0xFF10B981)),
+            Triple("Memorizing", byType["memorizing"] ?: 0, Color(0xFF3B82F6)),
+            Triple("Listening", byType["listening"] ?: 0, Color(0xFFF59E0B)),
+            Triple("Focus", byType["focus"] ?: 0, Color(0xFF8B5CF6))
+        ).filter { it.second > 0 }
     }
-    val isEmpty = allTimeTotalMins <= 0 || validSegments.isEmpty() || totalMixMins <= 0
+    val validSegments = remember(activityMix) { activityMix.filter { it.second > 0 } }
+    val totalMixMins = remember(validSegments) { validSegments.sumOf { it.second } }
+    val isEmpty = totalSeconds <= 0 || validSegments.isEmpty() || totalMixMins <= 0
 
     val segments = remember(validSegments) {
         calculateActivityMixSegments(validSegments, paddingAngle = 6f)
@@ -172,29 +186,49 @@ fun AnalyticsActivityMix(
                     )
                 }
 
-                Box(
+                // Range tabs (web MIX_TABS parity, default Week)
+                Row(
                     modifier = Modifier
                         .clip(CircleShape)
                         .background(hSurface)
-                        .border(BorderStroke(0.5.dp, hBorderColor.copy(alpha = 0.5f)), CircleShape)
-                        .padding(horizontal = 12.dp, vertical = 4.dp),
-                    contentAlignment = Alignment.Center
+                        .padding(3.dp),
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    Text(
-                        text = "ALL TIME",
-                        fontFamily = fontFamilyMono,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.5.sp,
-                        color = hInkMuted
-                    )
+                    AnalyticsStats.MixRange.TABS.forEach { tab ->
+                        val selected = tab == range
+                        Box(
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(if (selected) hWhite else Color.Transparent)
+                                .clickable { range = tab }
+                                .padding(horizontal = 10.dp, vertical = 4.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = AnalyticsStats.MixRange.label(tab).uppercase(),
+                                fontFamily = fontFamilyMono,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.sp,
+                                color = if (selected) hInk else hInkMuted
+                            )
+                        }
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = AnalyticsStats.MixRange.label(range).uppercase(),
+                fontFamily = fontFamilyMono,
+                fontSize = 10.sp,
+                letterSpacing = 1.5.sp,
+                color = hInkMuted
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             if (isEmpty) {
-                // Empty state matching web Progress.jsx line 426
+                // Empty state (web: "No activity in this period yet.")
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -202,7 +236,7 @@ fun AnalyticsActivityMix(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "No activity data yet.",
+                        text = "No activity in this period yet.",
                         fontFamily = fontFamilyUi,
                         fontSize = 14.sp,
                         color = hInkMuted
@@ -273,20 +307,20 @@ fun AnalyticsActivityMix(
                         }
                     }
 
-                    // Center Hole matching web Progress.jsx lines 428-433
+                    // Center: total + session count (web ActivityMix.jsx parity)
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
                         Text(
-                            text = "$allTimeTotalMins",
+                            text = AnalyticsStats.formatMinutes(totalSeconds),
                             fontFamily = fontFamilyUi,
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
                             color = hInk
                         )
                         Text(
-                            text = "Mins Total",
+                            text = "$sessionCount Session${if (sessionCount == 1) "" else "s"}",
                             fontFamily = fontFamilyMono,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Medium,
@@ -296,18 +330,18 @@ fun AnalyticsActivityMix(
                     }
                 }
 
-                // Legend below matching web Progress.jsx lines 435-445
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
+                // Legend rows: dot + name + Nm + share % (web ActivityMix.jsx parity)
+                Column(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 16.dp)
                 ) {
                     validSegments.forEach { (name, mins, color) ->
+                        val share = if (totalMixMins > 0) Math.round(mins * 100f / totalMixMins).toInt() else 0
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Box(
                                 modifier = Modifier
@@ -319,7 +353,8 @@ fun AnalyticsActivityMix(
                                 text = name,
                                 fontFamily = fontFamilyUi,
                                 fontSize = 13.sp,
-                                color = hInkMuted
+                                color = hInkMuted,
+                                modifier = Modifier.weight(1f)
                             )
                             Text(
                                 text = "${mins}m",
@@ -327,6 +362,13 @@ fun AnalyticsActivityMix(
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = hInk
+                            )
+                            Text(
+                                text = "$share%",
+                                fontFamily = fontFamilyMono,
+                                fontSize = 10.sp,
+                                color = hInkMuted,
+                                modifier = Modifier.padding(start = 4.dp)
                             )
                         }
                     }

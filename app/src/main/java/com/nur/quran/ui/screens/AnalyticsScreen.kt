@@ -100,16 +100,7 @@ fun AnalyticsScreen(
         AnalyticsStats.weeklyGoalPercent(weeklyTotalMins, weeklyGoalMins)
     }
 
-    // Activity breakdown mix (Reading, Memorizing, Focus, Listening)
-    val activityMix = remember(statsSessions) {
-        val byType = AnalyticsStats.minutesByType(statsSessions)
-        listOf(
-            Triple("Reading", byType["reading"] ?: 0, Color(0xFF10B981)),
-            Triple("Memorizing", byType["memorizing"] ?: 0, Color(0xFF3B82F6)),
-            Triple("Focus", byType["focus"] ?: 0, Color(0xFF8B5CF6)),
-            Triple("Listening", byType["listening"] ?: 0, Color(0xFFF59E0B))
-        ).filter { it.second > 0 }
-    }
+    // Activity Mix range filtering lives in AnalyticsActivityMix (default Week).
 
     // Smart Insight (single source: duration-weighted per weekday, web parity)
     val smartInsight = remember(statsSessions) {
@@ -251,8 +242,7 @@ fun AnalyticsScreen(
 
                             // Activity Mix Card (50% width on tablet/desktop)
                             AnalyticsActivityMix(
-                                activityMix = activityMix,
-                                allTimeTotalMins = allTimeTotalMins,
+                                sessions = statsSessions,
                                 modifier = Modifier.weight(1f)
                             )
                         }
@@ -284,8 +274,7 @@ fun AnalyticsScreen(
 
                             // Activity Mix Card
                             AnalyticsActivityMix(
-                                activityMix = activityMix,
-                                allTimeTotalMins = allTimeTotalMins
+                                sessions = statsSessions
                             )
                         }
                     }

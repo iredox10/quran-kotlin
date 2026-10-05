@@ -61,6 +61,13 @@ fun ProfileScreen(
     val packVm: PackViewModel = hiltViewModel()
     val syncUi by packVm.syncUiState.collectAsState()
 
+    // Persisted last-sync epoch (SyncService "sync_state" prefs, key
+    // "last_sync_at"): survives process death, unlike the in-memory syncUi
+    // flow which starts null on cold start. Shown web-style via timeAgo.
+    val syncPrefs = remember { context.getSharedPreferences("sync_state", Context.MODE_PRIVATE) }
+    val persistedLastSync = remember { syncPrefs.getLong("last_sync_at", 0L).takeIf { it > 0 } }
+    val lastSyncAt = syncUi.lastSync ?: persistedLastSync
+
     val reciterId by surahViewModel.currentReciterId.collectAsState()
     val translationId by surahViewModel.currentTranslationId.collectAsState()
     val completedTours by homeViewModel.completedTours.collectAsState()
@@ -230,7 +237,7 @@ fun ProfileScreen(
                     busy = authState.busy,
                     error = authState.error,
                     message = authState.message,
-                    lastSyncAt = syncUi.lastSync,
+                    lastSyncAt = lastSyncAt,
                     isSyncing = syncUi.syncing,
                     syncStatusMessage = syncStatusMessage,
                     isSyncSuccess = showSyncSuccess,

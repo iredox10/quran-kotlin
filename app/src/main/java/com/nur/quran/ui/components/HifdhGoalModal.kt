@@ -147,9 +147,16 @@ fun HifdhGoalModal(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    val daysUntil = ((targetDateMillis - System.currentTimeMillis()) / 86_400_000L).toInt()
+                    val daysUntil = kotlin.math.max(
+                        0,
+                        kotlin.math.ceil((targetDateMillis - System.currentTimeMillis()) / 86_400_000.0).toInt()
+                    )
+                    val targetDateLabel = remember(targetDateMillis) {
+                        java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault())
+                            .format(Date(targetDateMillis))
+                    }
                     Text(
-                        text = if (daysUntil >= 0) "Complete by ${Date(targetDateMillis).toString().take(10)} • ~$daysUntil days away"
+                        text = if (daysUntil >= 0) "Complete by $targetDateLabel • ~$daysUntil days away"
                         else "Pick a future date",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,

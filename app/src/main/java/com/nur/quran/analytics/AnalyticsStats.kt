@@ -329,4 +329,15 @@ object AnalyticsStats {
         val set = keys.toSet()
         return sessions.filter { it.date in set }
     }
+
+    /** Human title for a Mix range — web rangeTitle parity ("All time" for all). */
+    fun mixRangeTitle(range: String, today: Date = Date()): String {
+        if (range == MixRange.ALL) return "All time"
+        val keys = mixRangeKeys(range, today) ?: return "All time"
+        if (keys.size <= 1) return keys.firstOrNull()?.let { TITLE_FMT.format(DAY_FMT.parse(it) ?: Date()) } ?: ""
+        val sameMonth = keys.last().substring(0, 7) == keys.first().substring(0, 7)
+        val last = if (sameMonth) keys.last().substring(8).trimStart('0').ifEmpty { "0" }
+            else TITLE_FMT.format(DAY_FMT.parse(keys.last()) ?: Date())
+        return "${TITLE_FMT.format(DAY_FMT.parse(keys.first()) ?: Date())} – $last"
+    }
 }

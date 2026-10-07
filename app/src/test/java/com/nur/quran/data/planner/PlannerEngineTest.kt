@@ -330,4 +330,39 @@ class PlannerEngineTest {
         assertEquals(50, m.successRate)
         assertEquals(1, m.consistencyStreak)
     }
+
+    @Test
+    fun `legacy cached plan missing newer keys parses with defaults and copy is safe`() {
+        // Real-world shape: cached before assignmentReflections existed. Gson
+        // leaves absent keys null (Unsafe alloc skips Kotlin defaults), which
+        // crashed Planner open via rebalance copy() NPE on assignmentReflections.
+        val gson = com.google.gson.Gson()
+        val legacyJson = """
+            {"id":"plan-1","unitType":"page","title":"routine","durationDays":2,
+             "startDate":"2026-08-10","startUnit":1,"endUnit":2,
+             "assignments":[
+               {"dayNumber":1,"date":"2026-08-10","unitType":"page","title":"Day 1",
+                "subtitle":"","startUnit":1,"endUnit":1,"primaryRoute":"",
+                "pageStart":1,"pageEnd":1,
+                "items":[{"id":1,"title":"Page 1","subtitle":"","route":"",
+                          "rangeValue":"1","pageStart":1,"pageEnd":1}]},
+               {"dayNumber":2,"date":"2026-08-11","unitType":"page","title":"Day 2",
+                "subtitle":"","startUnit":2,"endUnit":2,"primaryRoute":"",
+                "pageStart":2,"pageEnd":2,
+                "items":[{"id":2,"title":"Page 2","subtitle":"","route":"",
+                          "rangeValue":"2","pageStart":2,"pageEnd":2}]}]}
+        """.trimIndent()
+        val plan = PlannerEngine.parseReadingPlan(legacyJson, gson)
+        assertNotNull(plan)
+        assertEquals(emptyMap<Int, String>(), plan!!.assignmentReflections)
+        assertEquals(emptyMap<Int, Int>(), plan.assignmentProgress)
+        assertEquals(emptyList<Int>(), plan.completedDays)
+        assertEquals(emptyList<Int>(), plan.excludeDays)
+        // The exact crashing call: copy() without overriding the field.
+        val copied = plan.copy(durationDays = plan.assignments.size)
+        assertEquals(2, copied.durationDays)
+        // Malformed input degrades gracefully.
+        assertNull(PlannerEngine.parseReadingPlan("not json", gson))
+        assertEquals(emptyList<ReadingPlan>(), PlannerEngine.parseReadingPlans("not json", gson))
+    }
 }

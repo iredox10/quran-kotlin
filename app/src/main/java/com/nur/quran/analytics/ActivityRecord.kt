@@ -20,12 +20,14 @@ object ActivityRecord {
     fun normalizeLogType(type: String?): String =
         if (LOG_TYPES.contains(type)) type!! else "reading"
 
-    /** Coerce a chapter/surah id to 1..114, or null when unusable. */
+    /** Coerce a chapter/surah id to 1..114, or null when unusable (web: integer-valued). */
     fun normalizeChapterId(value: String?): Int? {
         val raw = value?.trim().orEmpty()
         if (raw.isEmpty()) return null
-        val num = raw.toIntOrNull() ?: return null
-        return if (num in 1..114) num else null
+        // Web Number("3.0")==3 is accepted; only whole values in 1..114 pass.
+        val num = raw.toDoubleOrNull() ?: return null
+        if (num < 1 || num > 114 || num != Math.floor(num)) return null
+        return num.toInt()
     }
 
     data class MinutesResult(val valid: Boolean, val minutes: Int?, val capped: Boolean, val error: String?)

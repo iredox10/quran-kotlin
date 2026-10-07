@@ -29,6 +29,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -53,6 +54,7 @@ import com.nur.quran.ui.screens.hInk
 import com.nur.quran.ui.screens.hInkMuted
 import com.nur.quran.ui.screens.hSurface
 import com.nur.quran.ui.screens.hWhite
+import kotlinx.coroutines.delay
 
 private data class LogTypeOption(val storeType: String, val label: String, val color: Color)
 
@@ -82,6 +84,16 @@ fun AnalyticsLogActivityCard(
     var confirm by remember { mutableStateOf<String?>(null) }
     var surahExpanded by remember { mutableStateOf(false) }
 
+    // Web parity: confirm toast auto-clears after 3.5s.
+    LaunchedEffect(confirm) {
+        if (confirm != null) { delay(3500); confirm = null }
+    }
+    // Web closeLogForm parity: closing the form resets type/minutes/surah.
+    fun resetForm() {
+        logType = "reading"; minutes = ""; chapterId = ""
+        error = null; confirm = null
+    }
+
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
@@ -97,7 +109,7 @@ fun AnalyticsLogActivityCard(
                 Text("Log activity", fontFamily = fontFamilyUi, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = hInk)
                 Box(
                     modifier = Modifier.clip(CircleShape).background(if (open) hSurface else hWhite)
-                        .clickable { open = !open }.padding(horizontal = 12.dp, vertical = 6.dp),
+                        .clickable { if (open) resetForm(); open = !open }.padding(horizontal = 12.dp, vertical = 6.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {

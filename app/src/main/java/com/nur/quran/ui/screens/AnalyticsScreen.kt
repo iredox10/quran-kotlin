@@ -111,6 +111,14 @@ fun AnalyticsScreen(
         AnalyticsStats.smartInsight(statsSessions)
     }
 
+    // Web-parity 20-badge engine: stats snapshot -> evaluated badges (board orders them).
+    val achievementStats = remember(statsSessions, recentlyRead) {
+        AnalyticsStats.computeAchievementStats(statsSessions, recentlyRead.map { it.chapterId })
+    }
+    val achievementBadges = remember(achievementStats) {
+        AnalyticsStats.evaluateAchievements(achievementStats)
+    }
+
     // Dynamic Achievements / Badges (single source: union sessions+recentlyRead, newest first)
     val achievements = remember(streak, allTimeTotalMins, sessions, recentlyRead) {
         AnalyticsStats.achievements(
@@ -327,10 +335,10 @@ fun AnalyticsScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            AchievementsSection(
-                                achievements = achievements,
-                                modifier = Modifier.weight(1f)
-                            )
+                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                FreshUnlockCelebration(badges = achievementBadges, todaySessions = achievementStats.todaySessions)
+                                AchievementsBoard(badges = achievementBadges, hasSessions = sessions.isNotEmpty())
+                            }
                             RecentActivityTimeline(
                                 sessions = sessions,
                                 chapters = chapters,
@@ -342,7 +350,9 @@ fun AnalyticsScreen(
                             modifier = Modifier.fillMaxWidth(),
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            AchievementsSection(achievements = achievements)
+                            FreshUnlockCelebration(badges = achievementBadges, todaySessions = achievementStats.todaySessions)
+                            AchievementsBoard(badges = achievementBadges, hasSessions = sessions.isNotEmpty())
+                            // No activity route in Screen.kt, so See-all stays hidden (onSeeAllClick = null).
                             RecentActivityTimeline(sessions = sessions, chapters = chapters)
                         }
                     }

@@ -122,6 +122,62 @@ object AnalyticsStats {
         return badges.takeLast(3).reversed()
     }
 
+    // ── 20-badge web-parity engine (additive; legacy achievements() kept intact) ──
+    const val TOTAL_SURAHS = 114
+    const val COLLAPSED_BADGE_COUNT = 4
+    data class AchievementDef(val id: String, val icon: String, val title: String, val desc: String, val metric: String, val target: Int)
+    data class AchievementStats(val totalMinutes: Int, val sessionCount: Int, val activeDays: Int, val activeDaysLast7: Int, val currentStreak: Int, val memorizingMinutes: Int, val listeningMinutes: Int, val focusSessions: Int, val uniqueSurahs: Int, val todaySessions: Int)
+    data class AchievementBadge(val id: String, val icon: String, val title: String, val desc: String, val unlocked: Boolean, val current: Int, val target: Int, val progress: Float)
+    val ACHIEVEMENT_CATALOG = listOf(
+        AchievementDef("streak-3", "🔥", "Kindled", "Active 3 days in a row.", "currentStreak", 3),
+        AchievementDef("streak-7", "🔥", "Steady Flame", "A full week without a gap.", "currentStreak", 7),
+        AchievementDef("streak-14", "🔥", "Two Weeks of Light", "14 days unbroken.", "currentStreak", 14),
+        AchievementDef("streak-30", "🔥", "A Month Steadfast", "30 consecutive days in the Quran.", "currentStreak", 30),
+        AchievementDef("streak-100", "🔥", "Hundred Days of Nur", "100 days without slipping.", "currentStreak", 100),
+        AchievementDef("minutes-100", "⏱️", "First 100 Minutes", "100 minutes of quiet effort.", "totalMinutes", 100),
+        AchievementDef("minutes-500", "⏱️", "500 Minutes", "A real habit taking root.", "totalMinutes", 500),
+        AchievementDef("minutes-1000", "⏱️", "1,000 Minutes", "Over 16 hours with the Book.", "totalMinutes", 1000),
+        AchievementDef("minutes-5000", "⏱️", "5,000 Minutes", "A deep well of time invested.", "totalMinutes", 5000),
+        AchievementDef("surahs-5", "🗺️", "Curious Traveler", "Opened 5 different surahs.", "uniqueSurahs", 5),
+        AchievementDef("surahs-30", "🗺️", "Many Paths", "Explored 30 different surahs.", "uniqueSurahs", 30),
+        AchievementDef("khatm", "👑", "Khatm", "All 114 surahs — a complete journey.", "uniqueSurahs", TOTAL_SURAHS),
+        AchievementDef("memorize-500", "📖", "Carried in the Heart", "500 minutes of memorization.", "memorizingMinutes", 500),
+        AchievementDef("listening-100", "🎧", "Listening Ears", "100 minutes of recitation listened to.", "listeningMinutes", 100),
+        AchievementDef("focus-10", "🎯", "Deep Focus", "10 focus sessions completed.", "focusSessions", 10),
+        AchievementDef("focus-50", "🎯", "Unshaken Attention", "50 focus sessions completed.", "focusSessions", 50),
+        AchievementDef("active-7", "📅", "Seven Days Present", "Active on 7 different days.", "activeDays", 7),
+        AchievementDef("active-30", "📅", "Regular Rhythm", "Active on 30 different days.", "activeDays", 30),
+        AchievementDef("active-100", "📅", "Centurion of Days", "Active on 100 different days.", "activeDays", 100),
+        AchievementDef("perfect-week", "🌟", "Perfect Week", "Active every day for the last 7 days.", "activeDaysLast7", 7)
+    )
+    fun computeAchievementStats(sessions: List<Session>, recentlyReadIds: Collection<Int> = emptyList(), now: Date = Date()): AchievementStats {
+        val todayKey = DAY_FMT.format(now)
+        val activeDates = sessions.mapNotNull { it.date.takeIf { d -> d.isNotBlank() } }.toSet()
+        val surahIds = (sessions.mapNotNull { it.chapterId }.filter { it > 0 } + recentlyReadIds.filter { it > 0 }).toSet()
+        var memSec = 0L; var lisSec = 0L; var focusCount = 0
+        sessions.forEach { s ->
+            val sec = s.durationSec.coerceAtLeast(0L)
+            when (s.type.lowercase().trim()) { "memorizing" -> memSec += sec; "listening" -> lisSec += sec; "pomodoro", "focus" -> focusCount++ }
+        }
+        // Web counts pomodoro sessions only; Kotlin also records "focus" — count both.
+        val cal = Calendar.getInstance().apply { time = now }
+        var last7 = 0
+        repeat(7) { if (DAY_FMT.format(cal.time) in activeDates) last7++; cal.add(Calendar.DATE, -1) }
+        fun mins(sec: Long) = Math.round(sec / 60.0f).toInt()
+        return AchievementStats(mins(sessions.sumOf { it.durationSec.coerceAtLeast(0L) }), sessions.size, activeDates.size, last7, streak(activeDates, now), mins(memSec), mins(lisSec), focusCount, surahIds.size, sessions.count { it.date == todayKey })
+    }
+    private fun metricValue(stats: AchievementStats, metric: String): Int = when (metric) {
+        "currentStreak" -> stats.currentStreak; "totalMinutes" -> stats.totalMinutes; "uniqueSurahs" -> stats.uniqueSurahs
+        "memorizingMinutes" -> stats.memorizingMinutes; "listeningMinutes" -> stats.listeningMinutes; "focusSessions" -> stats.focusSessions
+        "activeDays" -> stats.activeDays; "activeDaysLast7" -> stats.activeDaysLast7; else -> 0
+    }
+    fun evaluateAchievements(stats: AchievementStats): List<AchievementBadge> = ACHIEVEMENT_CATALOG.map { def ->
+        val cur = metricValue(stats, def.metric).coerceAtLeast(0)
+        AchievementBadge(def.id, def.icon, def.title, def.desc, cur >= def.target, cur, def.target, if (def.target > 0) (cur.toFloat() / def.target).coerceIn(0f, 1f) else 0f)
+    }
+    fun orderBadges(badges: List<AchievementBadge>): List<AchievementBadge> =
+        badges.filter { it.unlocked }.reversed() + badges.filter { !it.unlocked }.sortedWith(compareByDescending<AchievementBadge> { it.progress }.thenBy { it.target })
+
     fun heatmapLevel(active: Boolean, durationSec: Long): Int {
         if (!active) return 0
         val mins = Math.round(durationSec / 60.0f).toInt()

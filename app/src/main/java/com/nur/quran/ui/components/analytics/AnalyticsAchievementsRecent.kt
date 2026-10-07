@@ -3,6 +3,7 @@ package com.nur.quran.ui.components.analytics
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,10 +22,16 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import android.content.Context
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -174,6 +181,109 @@ fun AchievementBadgeRow(
     }
 }
 
+private fun formatBadgeCount(n: Int): String =
+    if (n >= 1000) String.format(Locale.US, "%,d", n) else n.toString()
+
+/** Web-parity board: unlocked/total header, locked rows with current/target + bar, collapsed-4 + expand. */
+@Composable
+fun AchievementsBoard(
+    badges: List<AnalyticsStats.AchievementBadge>,
+    hasSessions: Boolean = true,
+    modifier: Modifier = Modifier
+) {
+    val ordered = remember(badges) { AnalyticsStats.orderBadges(badges) }
+    var expanded by remember { mutableStateOf(false) }
+    val visible = if (expanded) ordered else ordered.take(AnalyticsStats.COLLAPSED_BADGE_COUNT)
+    Card(modifier = modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = hCream), border = BorderStroke(1.5.dp, hBoneDark)) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Icon(imageVector = NurIcons.Award, contentDescription = null, tint = hGold, modifier = Modifier.size(18.dp))
+                    Text(text = "Achievements", fontSize = 18.sp, fontWeight = FontWeight.Bold, fontFamily = fontFamilyUi, color = hInk)
+                }
+                Text(text = "${badges.count { it.unlocked }} / ${badges.size}", fontSize = 10.sp, fontFamily = fontFamilyMono, color = hInkMuted, modifier = Modifier.clip(CircleShape).background(hSurface).padding(horizontal = 10.dp, vertical = 4.dp))
+            }
+            if (!hasSessions) {
+                Box(modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
+                    Text(text = "Read consistently to unlock badges!", fontSize = 13.sp, color = hInkMuted, textAlign = TextAlign.Center)
+                }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    visible.forEach { badge ->
+                        if (badge.unlocked) AchievementBadgeRow(badge = BadgeItem(badge.icon, badge.title, badge.desc))
+                        else LockedBadgeRow(badge = badge)
+                    }
+                }
+                if (ordered.size > AnalyticsStats.COLLAPSED_BADGE_COUNT) {
+                    Box(modifier = Modifier.fillMaxWidth().padding(top = 12.dp).clip(RoundedCornerShape(20.dp)).background(hWhite).border(BorderStroke(1.5.dp, hBoneDark), RoundedCornerShape(20.dp)).clickable { expanded = !expanded }.padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
+                        Text(text = if (expanded) "SHOW LESS" else "SHOW ALL", fontSize = 10.sp, fontFamily = fontFamilyMono, color = hInkMuted)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LockedBadgeRow(badge: AnalyticsStats.AchievementBadge, modifier: Modifier = Modifier) {
+    Row(modifier = modifier.fillMaxWidth().alpha(0.75f).clip(RoundedCornerShape(16.dp)).background(hWhite).border(BorderStroke(1.5.dp, hBoneDark), RoundedCornerShape(16.dp)).padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        Box(modifier = Modifier.size(48.dp).alpha(0.55f).clip(RoundedCornerShape(12.dp)).background(hWhite).border(BorderStroke(1.dp, hBoneDark.copy(alpha = 0.5f)), RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
+            Text(text = badge.icon, fontSize = 24.sp, textAlign = TextAlign.Center)
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text(text = badge.title, fontSize = 14.sp, fontWeight = FontWeight.Bold, fontFamily = fontFamilyUi, color = hInk)
+                Text(text = "${formatBadgeCount(badge.current)} / ${formatBadgeCount(badge.target)}", fontSize = 10.sp, fontFamily = fontFamilyMono, color = hInkMuted)
+            }
+            Text(text = badge.desc, fontSize = 12.sp, color = hInkMuted)
+            Spacer(modifier = Modifier.height(6.dp))
+            Box(modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)).background(hSurface)) {
+                Box(modifier = Modifier.fillMaxHeight().fillMaxWidth(badge.progress.coerceIn(0f, 1f)).clip(RoundedCornerShape(3.dp)).background(hGold))
+            }
+        }
+    }
+}
+
+private const val ACHV_SEEN_PREFS = "quran-nur-achv-seen"
+private const val ACHV_SEEN_KEY = "seen_ids"
+
+/**
+ * Web-parity celebration: persists seen badge ids in prefs and shows a simple
+ * in-app banner only for fresh unlocks (no confetti lib — card UI pattern).
+ * Mirrors web: celebrate only when fresh unlock exists && todaySessions > 1.
+ */
+@Composable
+fun FreshUnlockCelebration(
+    badges: List<AnalyticsStats.AchievementBadge>,
+    todaySessions: Int,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    // Best-effort like web readSeen/writeSeen: fold every unlock into seen so
+    // old badges never re-celebrate; never break the card over storage.
+    val freshTitles = remember(badges) {
+        runCatching {
+            val prefs = context.getSharedPreferences(ACHV_SEEN_PREFS, Context.MODE_PRIVATE)
+            val seen = prefs.getStringSet(ACHV_SEEN_KEY, emptySet()).orEmpty()
+            val unlocked = badges.filter { it.unlocked }
+            val fresh = unlocked.filter { it.id !in seen }.map { it.title }
+            prefs.edit().putStringSet(ACHV_SEEN_KEY, (seen + unlocked.map { it.id }).toSet()).apply()
+            fresh
+        }.getOrDefault(emptyList())
+    }
+    if (freshTitles.isNotEmpty() && todaySessions > 1) {
+        Card(modifier = modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = hGoldSoft), border = BorderStroke(1.5.dp, hGold)) {
+            Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(text = "🎉", fontSize = 26.sp, textAlign = TextAlign.Center)
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = "New badge unlocked!", fontSize = 14.sp, fontWeight = FontWeight.Bold, fontFamily = fontFamilyUi, color = hInk)
+                    Text(text = freshTitles.take(3).joinToString(", "), fontSize = 12.sp, color = hInkMuted, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
+    }
+}
+
 /**
  * Timeline-Style Recent Activity component matching web Progress.jsx lines 475-536.
  *
@@ -185,14 +295,16 @@ fun AchievementBadgeRow(
 fun RecentActivityTimeline(
     sessions: List<ReadingSessionEntity>,
     chapters: List<ChapterEntity>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    limit: Int = 5,
+    onSeeAllClick: (() -> Unit)? = null
 ) {
-    val recentSessions = remember(sessions) {
+    val recentSessions = remember(sessions, limit) {
         sessions.sortedWith(
             compareByDescending<ReadingSessionEntity> { it.timestamp }
                 .thenByDescending { it.date }
                 .thenByDescending { it.id }
-        ).take(5)
+        ).take(limit.coerceAtLeast(1))
     }
 
     Card(
@@ -202,25 +314,22 @@ fun RecentActivityTimeline(
         border = BorderStroke(1.5.dp, hBoneDark)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
-            // Header with BookOpen / History icon in hGold
+            // Header with BookOpen icon in hGold + optional See-all (no activity route in Screen.kt yet)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(bottom = 16.dp)
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
             ) {
-                Icon(
-                    imageVector = NurIcons.BookOpen,
-                    contentDescription = null,
-                    tint = hGold,
-                    modifier = Modifier.size(18.dp)
-                )
-                Text(
-                    text = "Recent Activity",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = fontFamilyUi,
-                    color = hInk
-                )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Icon(imageVector = NurIcons.BookOpen, contentDescription = null, tint = hGold, modifier = Modifier.size(18.dp))
+                    Text(text = "Recent Activity", fontSize = 18.sp, fontWeight = FontWeight.Bold, fontFamily = fontFamilyUi, color = hInk)
+                }
+                if (onSeeAllClick != null) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.clip(CircleShape).background(hWhite).border(BorderStroke(1.5.dp, hBoneDark), CircleShape).clickable(onClick = onSeeAllClick).padding(horizontal = 10.dp, vertical = 6.dp)) {
+                        Text(text = "SEE ALL", fontSize = 10.sp, fontFamily = fontFamilyMono, color = hInkMuted)
+                        Icon(imageVector = NurIcons.ChevronRight, contentDescription = "See all activity", tint = hInkMuted, modifier = Modifier.size(13.dp))
+                    }
+                }
             }
 
             if (recentSessions.isNotEmpty()) {
@@ -292,7 +401,7 @@ private fun resolveSessionVisual(type: String): SessionVisualConfig {
             baseTitle = "Memorization"
         )
         "pomodoro", "focus" -> SessionVisualConfig(
-            icon = NurIcons.Award,
+            icon = NurIcons.Target,
             bg = Color(0x1A8B5CF6),
             tint = Color(0xFF8B5CF6),
             baseTitle = "Focus Session"
@@ -301,7 +410,7 @@ private fun resolveSessionVisual(type: String): SessionVisualConfig {
             icon = NurIcons.Volume2,
             bg = Color(0x1AF59E0B),
             tint = Color(0xFFF59E0B),
-            baseTitle = "Listening Session"
+            baseTitle = "Listening"
         )
         else -> SessionVisualConfig(
             icon = NurIcons.BookOpen,

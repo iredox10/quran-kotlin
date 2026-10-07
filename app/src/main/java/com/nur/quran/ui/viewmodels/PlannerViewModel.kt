@@ -185,8 +185,8 @@ class PlannerViewModel @Inject constructor(
             // plan's embedded assignmentReflections (source before this change),
             // so current active-plan data appears in the new maps on first run.
             val seededReflections = all
-                .filter { it.assignmentReflections.isNotEmpty() }
-                .associate { it.id to it.assignmentReflections.toMap() }
+                .filter { it.assignmentReflections.orEmpty().isNotEmpty() }
+                .associate { it.id to it.assignmentReflections.orEmpty().toMap() }
             if (seededReflections.isNotEmpty()) {
                 _plannerReflectionsByPlan.value = seededReflections
             }
@@ -476,7 +476,7 @@ class PlannerViewModel @Inject constructor(
     fun saveReflection(dayNumber: Int, note: String) {
         val planId = _activePlannerId.value
         val current = _activePlan.value ?: return
-        val updatedMap = current.assignmentReflections.toMutableMap()
+        val updatedMap = current.assignmentReflections.orEmpty().toMutableMap()
         if (note.isNotBlank()) {
             updatedMap[dayNumber] = note
         } else {
@@ -501,7 +501,7 @@ class PlannerViewModel @Inject constructor(
             return
         }
         val plan = _allPlans.value.find { it.id == planId } ?: return
-        val updatedEmbedded = plan.assignmentReflections.toMutableMap()
+        val updatedEmbedded = plan.assignmentReflections.orEmpty().toMutableMap()
         if (note.isNotBlank()) {
             updatedEmbedded[dayNumber] = note
         } else {

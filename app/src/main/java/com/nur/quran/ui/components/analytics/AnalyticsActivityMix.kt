@@ -161,11 +161,11 @@ fun AnalyticsActivityMix(
                 .fillMaxWidth()
                 .padding(24.dp)
         ) {
-            // Header matching web Progress.jsx lines 399-404
-            Row(
+            // Header matching web Progress.jsx lines 399-404; tabs on their own
+            // row so TODAY/WEEK/MONTH/ALL TIME never squeeze or wrap on phones.
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,

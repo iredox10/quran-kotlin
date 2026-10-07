@@ -372,7 +372,7 @@ fun PlannerScreen(
 
                         PlannerTab.JOURNAL -> {
                             PlanJournalTab(
-                                reflections = plan.assignmentReflections.mapKeys { it.key.toString() },
+                                reflections = plan.assignmentReflections.orEmpty().mapKeys { it.key.toString() },
                                 bookmarks = plannerBookmarks,
                                 onNavigateToVerse = { surah, _ ->
                                     val targetAssign = plan.assignments.find { a ->

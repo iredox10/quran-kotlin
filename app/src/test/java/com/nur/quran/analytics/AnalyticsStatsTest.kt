@@ -122,4 +122,74 @@ class AnalyticsStatsTest {
         assertEquals("2h", AnalyticsStats.formatMinutes(120 * 60L))
         assertEquals("2h 5m", AnalyticsStats.formatMinutes(125 * 60L))
     }
+
+    @Test
+    fun `achievement catalog matches web 20 badges`() {
+        val ids = AnalyticsStats.ACHIEVEMENT_CATALOG.map { it.id }
+        assertEquals(
+            listOf(
+                "streak-3", "streak-7", "streak-14", "streak-30", "streak-100",
+                "minutes-100", "minutes-500", "minutes-1000", "minutes-5000",
+                "surahs-5", "surahs-30", "khatm",
+                "memorize-500", "listening-100", "focus-10", "focus-50",
+                "active-7", "active-30", "active-100", "perfect-week"
+            ),
+            ids
+        )
+        val targets = AnalyticsStats.ACHIEVEMENT_CATALOG.associate { it.id to it.target }
+        assertEquals(100, targets["streak-100"])
+        assertEquals(5000, targets["minutes-5000"])
+        assertEquals(114, targets["khatm"])
+        assertEquals(7, targets["perfect-week"])
+    }
+
+    @Test
+    fun `evaluate unlocks at threshold with clamped progress`() {
+        val stats = AnalyticsStats.AchievementStats(
+            totalMinutes = 100, sessionCount = 3, activeDays = 7, activeDaysLast7 = 7,
+            currentStreak = 7, memorizingMinutes = 0, listeningMinutes = 0,
+            focusSessions = 0, uniqueSurahs = 5, todaySessions = 2
+        )
+        val byId = AnalyticsStats.evaluateAchievements(stats).associateBy { it.id }
+        assertTrue(byId.getValue("streak-7").unlocked)
+        assertTrue(byId.getValue("minutes-100").unlocked)
+        assertTrue(byId.getValue("surahs-5").unlocked)
+        assertTrue(byId.getValue("perfect-week").unlocked)
+        assertTrue(!byId.getValue("streak-14").unlocked)
+        assertEquals(0.5f, byId.getValue("streak-14").progress)
+        assertEquals(0f, byId.getValue("streak-100").progress)
+    }
+
+    @Test
+    fun `orderBadges unlocked first then locked by progress desc`() {
+        val stats = AnalyticsStats.AchievementStats(
+            totalMinutes = 150, sessionCount = 2, activeDays = 3, activeDaysLast7 = 3,
+            currentStreak = 3, memorizingMinutes = 0, listeningMinutes = 0,
+            focusSessions = 0, uniqueSurahs = 1, todaySessions = 1
+        )
+        val ordered = AnalyticsStats.orderBadges(AnalyticsStats.evaluateAchievements(stats))
+        assertTrue(ordered.take(2).all { it.unlocked })
+        val locked = ordered.dropWhile { it.unlocked }
+        assertTrue(locked.zipWithNext().all { (a, b) -> a.progress >= b.progress })
+    }
+
+    @Test
+    fun `computeAchievementStats derives web metrics`() {
+        val d0 = dateStr(0)
+        val d1 = dateStr(-1)
+        val sessions = listOf(
+            AnalyticsStats.Session(d0, 3600, "reading", 1, 3L),
+            AnalyticsStats.Session(d0, 1800, "memorizing", 2, 2L),
+            AnalyticsStats.Session(d1, 600, "pomodoro", null, 1L),
+            AnalyticsStats.Session(d1, 600, "listening", 2, 0L)
+        )
+        val stats = AnalyticsStats.computeAchievementStats(sessions, listOf(3))
+        assertEquals(110, stats.totalMinutes)
+        assertEquals(4, stats.sessionCount)
+        assertEquals(2, stats.activeDays)
+        assertEquals(1, stats.focusSessions)
+        assertEquals(30, stats.memorizingMinutes)
+        assertEquals(10, stats.listeningMinutes)
+        assertEquals(3, stats.uniqueSurahs)
+    }
 }

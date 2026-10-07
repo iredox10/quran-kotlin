@@ -17,6 +17,8 @@ import com.nur.quran.data.db.entities.ReadingSessionEntity
 import com.nur.quran.data.db.entities.RecentlyReadEntity
 import com.nur.quran.data.db.entities.VerseEntity
 import com.nur.quran.data.db.entities.WordEntity
+import com.nur.quran.data.db.isLoggableReadingSession
+import com.nur.quran.data.db.utcDateKey
 import com.nur.quran.data.words.WordPackManager
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -778,9 +780,11 @@ class QuranRepository @Inject constructor(
     fun getReadingSessionsFlow(): Flow<List<ReadingSessionEntity>> = quranDao.getReadingSessions()
 
     suspend fun logReadingSession(durationSeconds: Int, type: String = "reading", chapterId: Int? = null) {
-        if (durationSeconds < 10) return  // Only log sessions >= 10 seconds
+        // Web parity: drop sessions < 10s (Memorization.jsx unmount guard)
+        if (!isLoggableReadingSession(durationSeconds.toLong())) return
         withContext(Dispatchers.IO) {
-            val today = java.time.LocalDate.now().toString()
+            // Web parity: UTC date key (toISOString().split('T')[0]), not device-local
+            val today = utcDateKey()
             quranDao.insertReadingSession(
                 ReadingSessionEntity(
                     date = today,

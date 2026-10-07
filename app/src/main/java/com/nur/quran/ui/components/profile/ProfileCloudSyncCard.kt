@@ -42,7 +42,7 @@ fun ProfileCloudSyncCard(
     isSyncSuccess: Boolean,
     isSyncError: Boolean,
     onLogin: (email: String, pass: String) -> Unit,
-    onRegister: (email: String, pass: String) -> Unit,
+    onRegister: (email: String, pass: String, name: String) -> Unit,
     onForgot: (email: String) -> Unit,
     onBackup: () -> Unit,
     onRestore: () -> Unit,
@@ -240,7 +240,7 @@ fun ProfileCloudSyncCard(
                                 onClick = {
                                     when (authMode) {
                                         AuthFormMode.LOGIN -> onLogin(email.trim(), password)
-                                        AuthFormMode.REGISTER -> onRegister(email.trim(), password)
+                                        AuthFormMode.REGISTER -> onRegister(email.trim(), password, name.trim())
                                         AuthFormMode.FORGOT -> onForgot(email.trim())
                                     }
                                 },

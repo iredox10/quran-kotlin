@@ -15,6 +15,7 @@ import javax.inject.Inject
 data class AuthState(
     val signedIn: Boolean = false,
     val email: String? = null,
+    val displayName: String? = null,
     val busy: Boolean = false,
     val error: String? = null,
     val message: String? = null
@@ -51,14 +52,20 @@ class AuthViewModel @Inject constructor(
                 appwrite.account.createEmailPasswordSession(email.trim(), password)
                 appwrite.account.get()
             }.onSuccess { user ->
-                _authState.value = AuthState(signedIn = true, email = user.email, busy = false, error = null)
+                _authState.value = AuthState(
+                    signedIn = true,
+                    email = user.email,
+                    displayName = user.name.takeIf { it.isNotBlank() },
+                    busy = false,
+                    error = null
+                )
             }.onFailure { e ->
                 _authState.value = _authState.value.copy(busy = false, error = e.message ?: "Login failed")
             }
         }
     }
 
-    fun register(email: String, password: String) {
+    fun register(email: String, password: String, name: String = "") {
         if (!isPasswordValid(password)) {
             _authState.value = _authState.value.copy(
                 busy = false,
@@ -70,11 +77,17 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             _authState.value = _authState.value.copy(busy = true, error = null, message = null)
             runCatching {
-                appwrite.account.create(ID.unique(), email.trim(), password)
+                appwrite.account.create(ID.unique(), email.trim(), password, name.trim())
                 appwrite.account.createEmailPasswordSession(email.trim(), password)
                 appwrite.account.get()
             }.onSuccess { user ->
-                _authState.value = AuthState(signedIn = true, email = user.email, busy = false, error = null)
+                _authState.value = AuthState(
+                    signedIn = true,
+                    email = user.email,
+                    displayName = user.name.takeIf { it.isNotBlank() },
+                    busy = false,
+                    error = null
+                )
             }.onFailure { e ->
                 _authState.value = _authState.value.copy(busy = false, error = e.message ?: "Registration failed")
             }
@@ -126,7 +139,13 @@ class AuthViewModel @Inject constructor(
             runCatching {
                 appwrite.account.get()
             }.onSuccess { user ->
-                _authState.value = AuthState(signedIn = true, email = user.email, busy = false, error = null)
+                _authState.value = AuthState(
+                    signedIn = true,
+                    email = user.email,
+                    displayName = user.name.takeIf { it.isNotBlank() },
+                    busy = false,
+                    error = null
+                )
             }.onFailure {
                 _authState.value = AuthState(signedIn = false, email = null, busy = false, error = null)
             }

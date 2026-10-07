@@ -19,7 +19,6 @@ import com.nur.quran.ui.components.profile.*
 import com.nur.quran.ui.navigation.Screen
 import com.nur.quran.ui.viewmodels.AuthViewModel
 import com.nur.quran.ui.viewmodels.HomeViewModel
-import com.nur.quran.ui.viewmodels.OnboardingTours
 import com.nur.quran.ui.viewmodels.PackViewModel
 import com.nur.quran.ui.viewmodels.PlannerViewModel
 import com.nur.quran.ui.viewmodels.SurahViewModel
@@ -61,6 +60,13 @@ fun ProfileScreen(
     // Hoisted so Cloud Sync and SettingsDrawer share the same packVm instance
     val packVm: PackViewModel = hiltViewModel()
     val syncUi by packVm.syncUiState.collectAsState()
+
+    // Persisted last-sync epoch (SyncService "sync_state" prefs, key
+    // "last_sync_at"): survives process death, unlike the in-memory syncUi
+    // flow which starts null on cold start. Shown web-style via timeAgo.
+    val syncPrefs = remember { context.getSharedPreferences("sync_state", Context.MODE_PRIVATE) }
+    val persistedLastSync = remember { syncPrefs.getLong("last_sync_at", 0L).takeIf { it > 0 } }
+    val lastSyncAt = syncUi.lastSync ?: persistedLastSync
 
     val reciterId by surahViewModel.currentReciterId.collectAsState()
     val translationId by surahViewModel.currentTranslationId.collectAsState()
@@ -132,9 +138,10 @@ fun ProfileScreen(
                 ProfileHero(
                     signedIn = authState.signedIn,
                     email = authState.email,
-                    displayName = authState.email?.substringBefore("@")?.replaceFirstChar {
-                        if (it.isLowerCase()) it.titlecase(java.util.Locale.US) else it.toString()
-                    },
+                    // Web parity: user.name as hero title, email as subtitle.
+                    // ProfileHero falls back to email-prefix / "Quran Student"
+                    // when displayName is null, and to greeting for guests.
+                    displayName = authState.displayName,
                     greeting = greeting,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -172,20 +179,13 @@ fun ProfileScreen(
             }
 
             // 5. Onboarding & Tours — mirrors web Profile.jsx "Replay All Tours" -> resetAllTours().
-            // NOTE: HomeViewModel.resetTours() does not exist yet (parallel worker owns
-            // TourPrefs/HomeViewModel). Reset TourPrefs tour flags directly here so tours
-            // replay on next trigger; swap to homeViewModel.resetTours() once available
-            // (which will also refresh completedTours StateFlow in-memory).
+            // Delegates to HomeViewModel.resetTours() so persisted tour/coachmark
+            // flags clear AND completedTours/coachmark flows refresh in-memory.
             item {
                 OnboardingGroup(
                     completedToursCount = completedTours.size,
                     onReplayTours = {
-                        context.getSharedPreferences("tour_prefs", Context.MODE_PRIVATE)
-                            .edit()
-                            .apply {
-                                OnboardingTours.ROWS.forEach { remove("tour_${it.id}") }
-                                apply()
-                            }
+                        homeViewModel.resetTours()
                         hifdhPrefs.edit()
                             .remove("has_seen_surah_tour")
                             .remove("has_seen_swipe_tip")
@@ -237,7 +237,7 @@ fun ProfileScreen(
                     busy = authState.busy,
                     error = authState.error,
                     message = authState.message,
-                    lastSyncAt = syncUi.lastSync,
+                    lastSyncAt = lastSyncAt,
                     isSyncing = syncUi.syncing,
                     syncStatusMessage = syncStatusMessage,
                     isSyncSuccess = showSyncSuccess,

@@ -301,8 +301,7 @@ fun RecentActivityTimeline(
 ) {
     val recentSessions = remember(sessions, limit) {
         sessions.sortedWith(
-            compareByDescending<ReadingSessionEntity> { it.timestamp }
-                .thenByDescending { it.date }
+            compareByDescending<ReadingSessionEntity> { effectiveTime(it) }
                 .thenByDescending { it.id }
         ).take(limit.coerceAtLeast(1))
     }
@@ -422,14 +421,22 @@ private fun resolveSessionVisual(type: String): SessionVisualConfig {
 }
 
 /**
- * Subtitle: formatted date & time ("Sep 12 • 10:30 AM" or date if timestamp 0).
+ * Web parity (RecentActivity.jsx): sort key is `timestamp || date-millis`,
+ * so legacy sessions without a timestamp interleave by day.
+ */
+private fun effectiveTime(session: ReadingSessionEntity): Long {
+    if (session.timestamp > 0L) return session.timestamp
+    return runCatching {
+        SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(session.date)?.time ?: 0L
+    }.getOrDefault(0L)
+}
+
+/**
+ * Subtitle: "Sep 12 • 10:30 AM", or "Sep 12 • Logged" without a timestamp (web parity).
  */
 private fun formatSessionSubtitle(timestamp: Long, dateString: String): String {
-    return if (timestamp > 0L) {
-        val date = Date(timestamp)
-        val datePart = SimpleDateFormat("MMM d", Locale.US).format(date)
-        val timePart = SimpleDateFormat("h:mm a", Locale.US).format(date)
-        "$datePart • $timePart"
+    val datePart = if (timestamp > 0L) {
+        SimpleDateFormat("MMM d", Locale.US).format(Date(timestamp))
     } else {
         try {
             val parsed = SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(dateString)
@@ -442,6 +449,12 @@ private fun formatSessionSubtitle(timestamp: Long, dateString: String): String {
             dateString
         }
     }
+    val timePart = if (timestamp > 0L) {
+        SimpleDateFormat("h:mm a", Locale.US).format(Date(timestamp))
+    } else {
+        "Logged"
+    }
+    return "$datePart • $timePart"
 }
 
 @Composable

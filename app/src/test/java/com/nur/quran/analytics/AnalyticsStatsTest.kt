@@ -157,7 +157,7 @@ class AnalyticsStatsTest {
         assertTrue(byId.getValue("perfect-week").unlocked)
         assertTrue(!byId.getValue("streak-14").unlocked)
         assertEquals(0.5f, byId.getValue("streak-14").progress)
-        assertEquals(0f, byId.getValue("streak-100").progress)
+        assertEquals(0.07f, byId.getValue("streak-100").progress, 0.001f)
     }
 
     @Test

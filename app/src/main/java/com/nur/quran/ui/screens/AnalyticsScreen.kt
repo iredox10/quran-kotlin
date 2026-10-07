@@ -462,7 +462,7 @@ private fun FlowDeltaBadge(delta: Int?, hasData: Boolean) {
 }
 @Composable
 private fun FlowStatCells(summary: AnalyticsStats.FlowSummary, daysInRange: Int) {
-    val cells = listOf("Total time" to AnalyticsStats.formatMinutes(summary.seconds), "Sessions" to "${summary.count}",
+    val cells = listOf("Total time" to AnalyticsStats.formatDuration(summary.seconds), "Sessions" to "${summary.count}",
         "Active days" to "${summary.activeDays}/$daysInRange", "Avg / day" to "${summary.avgPerDayMin}m")
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         cells.chunked(2).forEach { row ->

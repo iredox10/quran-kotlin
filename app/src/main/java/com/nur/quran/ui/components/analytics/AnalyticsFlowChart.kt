@@ -93,7 +93,9 @@ import java.util.Locale
 @Composable
 fun AnalyticsFlowChart(
     dailyActivity: List<Pair<String, Int>>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** Web parity: month LineChart uses XAxis interval=4, i.e. every 5th label. */
+    xLabelEvery: Int = 1
 ) {
     val textMeasurer = rememberTextMeasurer()
     val density = LocalDensity.current
@@ -236,9 +238,9 @@ fun AnalyticsFlowChart(
                 )
             }
 
-            // 2. Bottom X-axis day labels ("Mon", "Tue", etc.) in hInkMuted 11sp
+            // 2. Bottom X-axis labels in hInkMuted 11sp (thinned for long ranges).
             points.forEachIndexed { i, pt ->
-                if (i in dailyActivity.indices) {
+                if (i in dailyActivity.indices && i % xLabelEvery.coerceAtLeast(1) == 0) {
                     val (dayLabel, _) = dailyActivity[i]
                     val isSelected = (i == selectedIndex)
                     val labelLayout = textMeasurer.measure(
@@ -541,7 +543,7 @@ fun AnalyticsFlowChartForRange(range: AnalyticsStats.FlowRange, sessions: List<A
     when (range) {
         AnalyticsStats.FlowRange.TODAY -> AnalyticsFlowBarChart(hourly.map { it.label to it.minutes })
         AnalyticsStats.FlowRange.WEEK -> AnalyticsFlowBarChart(daily.map { it.label to it.minutes })
-        AnalyticsStats.FlowRange.MONTH -> AnalyticsFlowChart(daily.map { it.dayNum to it.minutes })
+        AnalyticsStats.FlowRange.MONTH -> AnalyticsFlowChart(daily.map { it.dayNum to it.minutes }, xLabelEvery = 5)
     }
 }
 

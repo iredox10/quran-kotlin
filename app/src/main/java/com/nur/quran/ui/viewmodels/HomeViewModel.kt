@@ -147,6 +147,13 @@ class HomeViewModel @Inject constructor(
     /** Clears all tour/coachmark flags so every tour can replay (profile "Replay All Tours"). */
     fun resetTours() {
         tourPrefs.resetTours()
+        // Legacy surah/swipe-tip flags live in hifdh_settings (read by SurahScreen),
+        // outside TourPrefs scope — clear here so callers need only this VM call.
+        context.getSharedPreferences("hifdh_settings", Context.MODE_PRIVATE)
+            .edit()
+            .remove("has_seen_surah_tour")
+            .remove("has_seen_swipe_tip")
+            .apply()
         _completedTours.value = emptySet()
         _dismissedCoachmarks.value = emptySet()
     }

@@ -195,6 +195,9 @@ class MainActivity : ComponentActivity() {
                                 surahViewModel = surahViewModel,
                                 onSurahClick = { chapterId ->
                                     navController.navigate(Screen.MemorizeDetail.createRoute(chapterId))
+                                },
+                                onGoalResume = { chapterId, verseKey ->
+                                    navController.navigate(Screen.MemorizeDetail.createRoute(chapterId, verseKey))
                                 }
                             )
                         }
@@ -203,6 +206,7 @@ class MainActivity : ComponentActivity() {
                             HifdhReaderScreen(
                                 surahViewModel = surahViewModel,
                                 chapterId = chapterId,
+                                startVerseKey = backStackEntry.arguments?.getString("verseKey"),
                                 onBackClick = { navController.popBackStack() }
                             )
                         }

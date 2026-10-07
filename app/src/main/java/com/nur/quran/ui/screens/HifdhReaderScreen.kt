@@ -53,7 +53,8 @@ import kotlinx.coroutines.launch
 fun HifdhReaderScreen(
     surahViewModel: SurahViewModel,
     chapterId: Int,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    startVerseKey: String? = null
 ) {
     val uiState by surahViewModel.uiState.collectAsState()
     val memorizedAyahs by surahViewModel.memorizedAyahs.collectAsState()
@@ -140,6 +141,15 @@ fun HifdhReaderScreen(
 
     LaunchedEffect(chapterId) {
         surahViewModel.loadChapterDetails(chapterId)
+    }
+
+    // Web ?verse= deep link: resume from first unmemorized ayah.
+    val loadedVerses = (uiState as? SurahUiState.Success)?.verses
+    LaunchedEffect(startVerseKey, loadedVerses) {
+        if (startVerseKey != null && loadedVerses != null) {
+            val idx = loadedVerses.indexOfFirst { it.verseKey == startVerseKey }
+            if (idx >= 0) currentVerseIndex = idx
+        }
     }
 
     DisposableEffect(chapterId) {

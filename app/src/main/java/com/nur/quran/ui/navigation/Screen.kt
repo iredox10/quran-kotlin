@@ -14,8 +14,9 @@ sealed class Screen(val route: String, val label: String) {
         fun createRoute(chapterId: Int, verseKey: String? = null) =
             if (!verseKey.isNullOrBlank()) "surah/$chapterId?verseKey=$verseKey" else "surah/$chapterId"
     }
-    object MemorizeDetail : Screen("memorize/{chapterId}", "Memorize") {
-        fun createRoute(chapterId: Int) = "memorize/$chapterId"
+    object MemorizeDetail : Screen("memorize/{chapterId}?verseKey={verseKey}", "Memorize") {
+        fun createRoute(chapterId: Int, verseKey: String? = null) =
+            if (!verseKey.isNullOrBlank()) "memorize/$chapterId?verseKey=$verseKey" else "memorize/$chapterId"
     }
     object PageDetail : Screen("page/{pageNumber}", "Page") {
         fun createRoute(pageNumber: Int) = "page/$pageNumber"

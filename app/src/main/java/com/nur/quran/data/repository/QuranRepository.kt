@@ -868,7 +868,7 @@ class QuranRepository @Inject constructor(
         val entry = quranDao.getCacheEntry("planner_active_plan")
         if (entry != null && entry.dataJson.isNotBlank()) {
             try {
-                gson.fromJson(entry.dataJson, com.nur.quran.data.planner.ReadingPlan::class.java)
+                com.nur.quran.data.planner.PlannerEngine.parseReadingPlan(entry.dataJson, gson)
             } catch (e: Exception) {
                 null
             }
@@ -888,8 +888,7 @@ class QuranRepository @Inject constructor(
         val entry = quranDao.getCacheEntry("planner_archived_plans")
         if (entry != null && entry.dataJson.isNotBlank()) {
             try {
-                val type = object : TypeToken<List<com.nur.quran.data.planner.ReadingPlan>>() {}.type
-                gson.fromJson<List<com.nur.quran.data.planner.ReadingPlan>>(entry.dataJson, type) ?: emptyList()
+                com.nur.quran.data.planner.PlannerEngine.parseReadingPlans(entry.dataJson, gson)
             } catch (e: Exception) {
                 emptyList()
             }
@@ -905,8 +904,7 @@ class QuranRepository @Inject constructor(
         val entry = quranDao.getCacheEntry("planner_all_plans")
         if (entry != null && entry.dataJson.isNotBlank()) {
             try {
-                val type = object : TypeToken<List<com.nur.quran.data.planner.ReadingPlan>>() {}.type
-                gson.fromJson<List<com.nur.quran.data.planner.ReadingPlan>>(entry.dataJson, type) ?: emptyList()
+                com.nur.quran.data.planner.PlannerEngine.parseReadingPlans(entry.dataJson, gson)
             } catch (e: Exception) {
                 emptyList()
             }

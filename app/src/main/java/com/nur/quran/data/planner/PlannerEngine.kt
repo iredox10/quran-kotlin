@@ -1,5 +1,9 @@
 package com.nur.quran.data.planner
 
+import com.google.gson.Gson
+import com.google.gson.JsonElement
+import com.google.gson.JsonObject
+import com.google.gson.JsonParser
 import com.nur.quran.data.HIZB_STARTS
 import com.nur.quran.data.JUZ_STARTS
 import com.nur.quran.data.PAGE_GROUPS
@@ -135,6 +139,67 @@ data class PlannerSuccessMetrics(
 )
 
 object PlannerEngine {
+
+    /**
+     * Gson allocates Kotlin data classes via Unsafe, so JSON keys absent from
+     * legacy cached plans land as null in non-null fields (Kotlin defaults are
+     * skipped). Any later copy()/access then throws — e.g. opening Planner
+     * auto-rebalances and crashed on missing assignmentReflections.
+     * Backfill every defaulted collection/scalar before parsing.
+     */
+    private val PLAN_MAP_KEYS = setOf(
+        "assignmentProgress", "assignmentReadPages", "assignmentCompletedItems",
+        "assignmentCompletedAt", "assignmentReflections"
+    )
+    private val PLAN_LIST_KEYS = setOf("completedDays", "excludeDays")
+
+    private fun backfillPlan(obj: JsonObject): JsonObject {
+        for (key in PLAN_MAP_KEYS) {
+            if (!obj.has(key) || obj.get(key).isJsonNull) obj.add(key, JsonObject())
+        }
+        for (key in PLAN_LIST_KEYS) {
+            if (!obj.has(key) || obj.get(key).isJsonNull) {
+                obj.add(key, com.google.gson.JsonArray())
+            }
+        }
+        if (!obj.has("isCustomRange") || obj.get("isCustomRange").isJsonNull) {
+            obj.addProperty("isCustomRange", false)
+        }
+        if (!obj.has("createdAt") || obj.get("createdAt").isJsonNull) {
+            val start = obj.get("startDate")?.takeIf { it.isJsonPrimitive }?.asString
+            obj.addProperty("createdAt", (start ?: "1970-01-01") + "T00:00:00Z")
+        }
+        return obj
+    }
+
+    /** Parse one cached plan, tolerating legacy JSON missing newer keys. */
+    fun parseReadingPlan(json: String, gson: Gson): ReadingPlan? {
+        return try {
+            val el = JsonParser.parseString(json)
+            if (!el.isJsonObject) return null
+            gson.fromJson(backfillPlan(el.asJsonObject), ReadingPlan::class.java)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    /** Parse a cached plan list, dropping entries that still fail. */
+    fun parseReadingPlans(json: String, gson: Gson): List<ReadingPlan> {
+        return try {
+            val el = JsonParser.parseString(json)
+            if (!el.isJsonArray) return emptyList()
+            el.asJsonArray.mapNotNull { item ->
+                try {
+                    if (!item.isJsonObject) null
+                    else gson.fromJson(backfillPlan(item.asJsonObject), ReadingPlan::class.java)
+                } catch (e: Exception) {
+                    null
+                }
+            }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
 
     fun formatPlannerDate(date: Date = Date()): String {
         return SimpleDateFormat("yyyy-MM-dd", Locale.US).format(date)

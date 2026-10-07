@@ -132,7 +132,15 @@ fun AnalyticsActivityMix(
     }
     val totalSeconds = remember(rangeSessions) { rangeSessions.sumOf { it.durationSec } }
     val sessionCount = rangeSessions.size
-    // Web parity: donut value = rounded minutes per type.
+    // Web parity: donut value = rounded minutes per type; share = seconds ratio.
+    val secondsByType = remember(rangeSessions) {
+        mapOf(
+            "Reading" to rangeSessions.filter { it.type == "reading" || it.type.isEmpty() }.sumOf { it.durationSec },
+            "Memorizing" to rangeSessions.filter { it.type == "memorizing" }.sumOf { it.durationSec },
+            "Listening" to rangeSessions.filter { it.type == "listening" }.sumOf { it.durationSec },
+            "Focus" to rangeSessions.filter { it.type == "pomodoro" || it.type == "focus" }.sumOf { it.durationSec }
+        )
+    }
     val activityMix = remember(rangeSessions) {
         val byType = AnalyticsStats.minutesByType(rangeSessions)
         listOf(
@@ -218,7 +226,7 @@ fun AnalyticsActivityMix(
             }
 
             Text(
-                text = AnalyticsStats.MixRange.label(range).uppercase(),
+                text = AnalyticsStats.mixRangeTitle(range),
                 fontFamily = fontFamilyMono,
                 fontSize = 10.sp,
                 letterSpacing = 1.5.sp,
@@ -338,7 +346,8 @@ fun AnalyticsActivityMix(
                         .padding(top = 16.dp)
                 ) {
                     validSegments.forEach { (name, mins, color) ->
-                        val share = if (totalMixMins > 0) Math.round(mins * 100f / totalMixMins).toInt() else 0
+                        // Web parity: share = seconds / totals.seconds (not rounded mins).
+                        val share = if (totalSeconds > 0) Math.round((secondsByType[name] ?: 0L) * 100f / totalSeconds).toInt() else 0
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)

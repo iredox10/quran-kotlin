@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nur.quran.analytics.AnalyticsStats
@@ -257,7 +258,11 @@ fun AnalyticsScreen(
                                     FlowStatCells(flowSummary, AnalyticsStats.rangeKeys(flowRange).size)
                                     Spacer(modifier = Modifier.height(16.dp))
                                     if (chartMode == "flow") {
-                                        AnalyticsFlowChartForRange(range = flowRange, sessions = flowRangeSessions)
+                                        if (flowSummary.count == 0) {
+                                            FlowEmptyState(flowRange)
+                                        } else {
+                                            AnalyticsFlowChartForRange(range = flowRange, sessions = flowRangeSessions)
+                                        }
                                     } else {
                                         AnalyticsHeatmap(heatmapData = heatmap35Days)
                                     }
@@ -301,7 +306,11 @@ fun AnalyticsScreen(
                                     FlowStatCells(flowSummary, AnalyticsStats.rangeKeys(flowRange).size)
                                     Spacer(modifier = Modifier.height(16.dp))
                                     if (chartMode == "flow") {
-                                        AnalyticsFlowChartForRange(range = flowRange, sessions = flowRangeSessions)
+                                        if (flowSummary.count == 0) {
+                                            FlowEmptyState(flowRange)
+                                        } else {
+                                            AnalyticsFlowChartForRange(range = flowRange, sessions = flowRangeSessions)
+                                        }
                                     } else {
                                         AnalyticsHeatmap(heatmapData = heatmap35Days)
                                     }
@@ -451,10 +460,51 @@ private fun ActivityFlowHeader(
     }
 }
 
+/**
+ * Web ActivityFlow empty state parity: when the range has no sessions the
+ * chart area shows guidance instead of bare empty axes ("Nothing logged
+ * {today|this week|this month} yet").
+ */
+@Composable
+private fun FlowEmptyState(range: AnalyticsStats.FlowRange) {
+    val period = when (range) {
+        AnalyticsStats.FlowRange.TODAY -> "today"
+        AnalyticsStats.FlowRange.WEEK -> "this week"
+        AnalyticsStats.FlowRange.MONTH -> "this month"
+    }
+    Column(
+        modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 220.dp).padding(horizontal = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = NurIcons.TrendingUp,
+            contentDescription = null,
+            tint = hGold.copy(alpha = 0.5f),
+            modifier = Modifier.size(34.dp)
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            text = "Nothing logged $period yet",
+            fontFamily = fontFamilyUi,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            color = hInk
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "Every session you record adds to your flow. Log one above, or open a Surah and let the time track itself.",
+            fontFamily = fontFamilyUi,
+            fontSize = 13.sp,
+            color = hInkMuted,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
 /** % delta pill vs previous window + Total/Sessions/Active/Avg cells — web parity. */
 @Composable
-private fun FlowDeltaBadge(delta: Int?, hasData: Boolean) {
-    val text = if (!hasData) "No data" else if (delta == null) "No baseline" else if (delta == 0) "0%" else if (delta > 0) "+$delta%" else "$delta%"
+private fun FlowDeltaBadge(delta: Int?, hasData: Boolean) {    val text = if (!hasData) "No data" else if (delta == null) "No baseline" else if (delta == 0) "0%" else if (delta > 0) "+$delta%" else "$delta%"
     val color = if (text.startsWith("+")) Color(0xFF10B981) else if (text.startsWith("-")) Color(0xFFE75344) else hInkMuted
     Surface(color = if (color == hInkMuted) hSurface else color.copy(alpha = 0.12f), shape = RoundedCornerShape(20.dp)) {
         Text(text.uppercase(Locale.getDefault()), color = color, fontFamily = fontFamilyMono, fontSize = 10.sp, letterSpacing = 1.sp, modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp))

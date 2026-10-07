@@ -132,6 +132,7 @@ object AnalyticsStats {
         }
     }
 
+    // ── ActivityFlow parity (web utils/activity.js calendar ranges + bucketing) ──
     /** Web parity: Today/Week/Month calendar ranges (week starts Sunday). */
     enum class FlowRange(val id: String, val label: String) {
         TODAY("today", "Today"), WEEK("week", "Week"), MONTH("month", "Month");
@@ -232,5 +233,44 @@ object AnalyticsStats {
         val sameMonth = keys.last().substring(0, 7) == keys.first().substring(0, 7)
         val last = if (sameMonth) keys.last().substring(8).trimStart('0').ifEmpty { "0" } else TITLE_FMT.format(DAY_FMT.parse(keys.last()) ?: Date())
         return "${TITLE_FMT.format(DAY_FMT.parse(keys.first()) ?: Date())} – $last"
+    }
+
+    // ── ActivityMix parity (web utils/activity.js range + summarize) ──
+    object MixRange {
+        const val TODAY = "today"
+        const val WEEK = "week"
+        const val MONTH = "month"
+        const val ALL = "all"
+        val TABS = listOf(TODAY, WEEK, MONTH, ALL)
+        fun label(range: String) = when (range) {
+            TODAY -> "Today"; MONTH -> "Month"; ALL -> "All Time"; else -> "Week"
+        }
+    }
+
+    /** Date keys for a range, or null for "all time" (web rangeKeys parity, Sun-start week). */
+    fun mixRangeKeys(range: String, today: Date = Date()): List<String>? {
+        val cal = Calendar.getInstance().apply { time = today }
+        return when (range) {
+            MixRange.TODAY -> listOf(DAY_FMT.format(today))
+            MixRange.WEEK -> {
+                val diff = (cal.get(Calendar.DAY_OF_WEEK) - Calendar.SUNDAY + 7) % 7
+                cal.add(Calendar.DATE, -diff)
+                (0 until 7).map { DAY_FMT.format(cal.time).also { cal.add(Calendar.DATE, 1) } }
+            }
+            MixRange.MONTH -> {
+                val y = cal.get(Calendar.YEAR)
+                val m = cal.get(Calendar.MONTH)
+                val days = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
+                (1..days).map { d -> cal.set(y, m, d); DAY_FMT.format(cal.time) }
+            }
+            else -> null
+        }
+    }
+
+    /** Filter sessions to a range; "all" returns input unchanged (web filterByRange parity). */
+    fun filterByMixRange(sessions: List<Session>, range: String, today: Date = Date()): List<Session> {
+        val keys = mixRangeKeys(range, today) ?: return sessions
+        val set = keys.toSet()
+        return sessions.filter { it.date in set }
     }
 }

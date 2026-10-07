@@ -31,6 +31,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -77,22 +79,8 @@ fun AnalyticsLogActivityCard(
     modifier: Modifier = Modifier
 ) {
     var open by remember { mutableStateOf(false) }
-    var logType by remember { mutableStateOf("reading") }
-    var minutes by remember { mutableStateOf("") }
-    var chapterId by remember { mutableStateOf("") }
-    var error by remember { mutableStateOf<String?>(null) }
-    var confirm by remember { mutableStateOf<String?>(null) }
-    var surahExpanded by remember { mutableStateOf(false) }
-
-    // Web parity: confirm toast auto-clears after 3.5s.
-    LaunchedEffect(confirm) {
-        if (confirm != null) { delay(3500); confirm = null }
-    }
-    // Web closeLogForm parity: closing the form resets type/minutes/surah.
-    fun resetForm() {
-        logType = "reading"; minutes = ""; chapterId = ""
-        error = null; confirm = null
-    }
+    // Bump to drop form state on close (web closeLogForm reset parity).
+    var resetGen by remember { mutableIntStateOf(0) }
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -109,7 +97,7 @@ fun AnalyticsLogActivityCard(
                 Text("Log activity", fontFamily = fontFamilyUi, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = hInk)
                 Box(
                     modifier = Modifier.clip(CircleShape).background(if (open) hSurface else hWhite)
-                        .clickable { if (open) resetForm(); open = !open }.padding(horizontal = 12.dp, vertical = 6.dp),
+                        .clickable { if (open) resetGen++; open = !open }.padding(horizontal = 12.dp, vertical = 6.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -119,7 +107,38 @@ fun AnalyticsLogActivityCard(
                 }
             }
             AnimatedVisibility(visible = open) {
-                Column(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
+                key(resetGen) {
+                    AnalyticsLogActivityForm(chapters = chapters, onLog = onLog)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * The log-activity form body without card chrome, so the Analytics Flow card
+ * can host it inline like web ActivityFlow (collapsible under the header).
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AnalyticsLogActivityForm(
+    chapters: List<ChapterEntity>,
+    onLog: (durationSec: Int, type: String, chapterId: Int?) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var logType by remember { mutableStateOf("reading") }
+    var minutes by remember { mutableStateOf("") }
+    var chapterId by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+    var confirm by remember { mutableStateOf<String?>(null) }
+    var surahExpanded by remember { mutableStateOf(false) }
+
+    // Web parity: confirm toast auto-clears after 3.5s.
+    LaunchedEffect(confirm) {
+        if (confirm != null) { delay(3500); confirm = null }
+    }
+
+    Column(modifier = modifier.fillMaxWidth()) {
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
                         LOG_TYPE_OPTIONS.forEach { opt ->
                             val selected = logType == opt.storeType
@@ -194,8 +213,5 @@ fun AnalyticsLogActivityCard(
                             Text("LOG SESSION", fontFamily = fontFamilyMono, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
                     }
-                }
-            }
-        }
     }
 }

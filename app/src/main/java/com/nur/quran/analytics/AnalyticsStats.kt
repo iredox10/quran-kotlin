@@ -82,13 +82,16 @@ object AnalyticsStats {
     fun weeklyGoalPercent(weeklyMins: Int, goalMins: Int = 180): Int =
         ((weeklyMins.toFloat() / goalMins.toFloat()) * 100f).coerceAtMost(100f).toInt()
 
-    fun formatMinutes(seconds: Long): String {
+    /** `1h 05m` / `42m` label — web formatDuration parity (formatMinutes kept as alias). */
+    fun formatDuration(seconds: Long): String {
         val mins = Math.round(seconds / 60.0f).toInt()
         if (mins < 60) return "${mins}m"
         val hrs = mins / 60
         val rem = mins % 60
         return if (rem > 0) "${hrs}h ${rem}m" else "${hrs}h"
     }
+
+    fun formatMinutes(seconds: Long): String = formatDuration(seconds)
 
     /** Best weekday by duration seconds — mirrors web smartInsight text. */
     fun smartInsight(sessions: List<Session>): String {
@@ -255,13 +258,24 @@ object AnalyticsStats {
         }
     }
 
-    data class FlowSummary(val seconds: Long, val count: Int, val activeDays: Int, val avgPerDayMin: Int)
+    data class FlowSummary(
+        val seconds: Long,
+        val count: Int,
+        val activeDays: Int,
+        val avgPerDayMin: Int,
+        val minutes: Int = 0,
+        val byType: Map<String, Long> = emptyMap()
+    )
 
     /** Totals for a session list — web summarize() parity. */
     fun summarize(sessions: List<Session>): FlowSummary {
         val secs = sessions.sumOf { it.durationSec }
         val active = sessions.filter { it.durationSec > 0 }.map { it.date }.toSet().size
-        return FlowSummary(secs, sessions.size, active, if (active > 0) Math.round(secs / active / 60.0f).toInt() else 0)
+        val byType = sessions.groupBy { it.type.ifEmpty { "reading" } }
+            .mapValues { e -> e.value.sumOf { it.durationSec } }
+        return FlowSummary(secs, sessions.size, active,
+            if (active > 0) Math.round(secs / active / 60.0f).toInt() else 0,
+            Math.round(secs / 60.0f).toInt(), byType)
     }
 
     /** % change vs previous window; null = no baseline, 0 = no data. */

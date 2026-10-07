@@ -50,14 +50,6 @@ fun AnalyticsScreen(
     var chartMode by remember { mutableStateOf("flow") } // "flow" or "heatmap"
     var flowRange by remember { mutableStateOf(AnalyticsStats.FlowRange.TODAY) }
 
-    // Flow card range filtering (web ActivityFlow parity; charts consume it next).
-    val flowRangeSessions = remember(statsSessions, flowRange) {
-        AnalyticsStats.filterByRange(statsSessions, flowRange)
-    }
-
-    val flowSummary = remember(flowRangeSessions) { AnalyticsStats.summarize(flowRangeSessions) }
-    val flowPrevSec = remember(statsSessions, flowRange) { statsSessions.filter { it.date in AnalyticsStats.previousRangeKeys(flowRange).toSet() }.sumOf { it.durationSec } }
-
     val todayStr = remember {
         SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
     }
@@ -73,6 +65,14 @@ fun AnalyticsScreen(
     val statsSessions = remember(sessions) {
         sessions.map { AnalyticsStats.Session(it.date, it.duration, it.type, it.chapterId, it.timestamp) }
     }
+
+    // Flow card range filtering (web ActivityFlow parity; charts consume it next).
+    val flowRangeSessions = remember(statsSessions, flowRange) {
+        AnalyticsStats.filterByRange(statsSessions, flowRange)
+    }
+
+    val flowSummary = remember(flowRangeSessions) { AnalyticsStats.summarize(flowRangeSessions) }
+    val flowPrevSec = remember(statsSessions, flowRange) { statsSessions.filter { it.date in AnalyticsStats.previousRangeKeys(flowRange).toSet() }.sumOf { it.durationSec } }
 
     // Last-7 yyyy-MM-dd keys for the web-parity weekly total (round AFTER summing raw secs).
     val last7Keys = remember {

@@ -534,7 +534,7 @@ internal fun buildMonotoneCubicPath(points: List<Offset>): Path {
  * Range-aware Flow content: hourly bars (Today), daily bars (Week), daily line (Month).
  */
 @Composable
-fun ActivityFlowChartForRange(range: AnalyticsStats.FlowRange, sessions: List<AnalyticsStats.Session>) {
+fun AnalyticsFlowChartForRange(range: AnalyticsStats.FlowRange, sessions: List<AnalyticsStats.Session>) {
     val keys = remember(range) { AnalyticsStats.rangeKeys(range) }
     val daily = remember(sessions, keys) { AnalyticsStats.bucketByDay(sessions, keys) }
     val hourly = remember(sessions, keys) { AnalyticsStats.bucketByHour(sessions, keys.firstOrNull() ?: "") }
@@ -565,7 +565,7 @@ fun AnalyticsFlowBarChart(values: List<Pair<String, Int>>, modifier: Modifier = 
                 val layout = measurer.measure(label, style = TextStyle(
                     fontFamily = fontFamilyUi, fontSize = 10.sp, color = hInkMuted,
                     textAlign = TextAlign.Center))
-                drawText(layout, Offset(i * slot + (slot - layout.size.width) / 2, plotH + 6.dp.toPx()))
+                drawText(textLayoutResult = layout, topLeft = Offset(i * slot + (slot - layout.size.width) / 2, plotH + 6.dp.toPx()))
             }
         }
     }

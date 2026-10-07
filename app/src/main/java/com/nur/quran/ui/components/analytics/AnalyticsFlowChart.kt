@@ -29,7 +29,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -51,6 +53,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nur.quran.analytics.AnalyticsStats
 import com.nur.quran.ui.screens.fontFamilyMono
 import com.nur.quran.ui.screens.fontFamilyUi
 import com.nur.quran.ui.screens.hBoneDark
@@ -525,6 +528,47 @@ internal fun buildMonotoneCubicPath(points: List<Offset>): Path {
     }
 
     return path
+}
+
+/**
+ * Range-aware Flow content: hourly bars (Today), daily bars (Week), daily line (Month).
+ */
+@Composable
+fun ActivityFlowChartForRange(range: AnalyticsStats.FlowRange, sessions: List<AnalyticsStats.Session>) {
+    val keys = remember(range) { AnalyticsStats.rangeKeys(range) }
+    val daily = remember(sessions, keys) { AnalyticsStats.bucketByDay(sessions, keys) }
+    val hourly = remember(sessions, keys) { AnalyticsStats.bucketByHour(sessions, keys.firstOrNull() ?: "") }
+    when (range) {
+        AnalyticsStats.FlowRange.TODAY -> AnalyticsFlowBarChart(hourly.map { it.label to it.minutes })
+        AnalyticsStats.FlowRange.WEEK -> AnalyticsFlowBarChart(daily.map { it.label to it.minutes })
+        AnalyticsStats.FlowRange.MONTH -> AnalyticsFlowChart(daily.map { it.dayNum to it.minutes })
+    }
+}
+
+/** Bar chart for Today (24 local-hour buckets) and Week (daily buckets). */
+@Composable
+fun AnalyticsFlowBarChart(values: List<Pair<String, Int>>, modifier: Modifier = Modifier) {
+    val measurer = rememberTextMeasurer()
+    val maxMins = (values.maxOfOrNull { it.second } ?: 0).coerceAtLeast(1)
+    Canvas(modifier = modifier.fillMaxWidth().height(220.dp)) {
+        val n = values.size
+        if (n == 0 || size.width <= 0f) return@Canvas
+        val plotH = size.height - 22.dp.toPx()
+        val slot = size.width / n
+        val barW = (slot * 0.62f).coerceAtMost(36.dp.toPx()).coerceAtLeast(2f)
+        val every = if (n > 12) 4 else 1
+        values.forEachIndexed { i, (label, mins) ->
+            val h = mins.toFloat() / maxMins * plotH
+            drawRoundRect(hGold, Offset(i * slot + (slot - barW) / 2, plotH - h),
+                Size(barW, h), CornerRadius(4.dp.toPx()))
+            if (i % every == 0) {
+                val layout = measurer.measure(label, style = TextStyle(
+                    fontFamily = fontFamilyUi, fontSize = 10.sp, color = hInkMuted,
+                    textAlign = TextAlign.Center))
+                drawText(layout, Offset(i * slot + (slot - layout.size.width) / 2, plotH + 6.dp.toPx()))
+            }
+        }
+    }
 }
 
 /**

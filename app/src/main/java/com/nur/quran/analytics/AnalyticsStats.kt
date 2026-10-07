@@ -131,4 +131,106 @@ object AnalyticsStats {
             else -> 3
         }
     }
+
+    /** Web parity: Today/Week/Month calendar ranges (week starts Sunday). */
+    enum class FlowRange(val id: String, val label: String) {
+        TODAY("today", "Today"), WEEK("week", "Week"), MONTH("month", "Month");
+    }
+
+    private fun dayKeyOf(cal: Calendar): String = DAY_FMT.format(cal.time)
+
+    /** Calendar keys: today=[today], week Sunday-start 7 days, month=calendar month. */
+    fun rangeKeys(range: FlowRange, today: Date = Date()): List<String> {
+        val cal = Calendar.getInstance().apply { time = today }
+        return when (range) {
+            FlowRange.TODAY -> listOf(dayKeyOf(cal))
+            FlowRange.WEEK -> {
+                val diff = (cal.get(Calendar.DAY_OF_WEEK) - Calendar.SUNDAY + 7) % 7
+                cal.add(Calendar.DATE, -diff)
+                val start = cal.timeInMillis
+                (0 until 7).map { i ->
+                    cal.timeInMillis = start
+                    cal.add(Calendar.DATE, i)
+                    dayKeyOf(cal)
+                }
+            }
+            FlowRange.MONTH -> {
+                val month = cal.get(Calendar.MONTH)
+                cal.set(Calendar.DAY_OF_MONTH, 1)
+                buildList {
+                    while (cal.get(Calendar.MONTH) == month) {
+                        add(dayKeyOf(cal))
+                        cal.add(Calendar.DATE, 1)
+                    }
+                }
+            }
+        }
+    }
+
+    /** Sessions whose date falls in the calendar range. */
+    fun filterByRange(sessions: List<Session>, range: FlowRange, today: Date = Date()): List<Session> {
+        val keys = rangeKeys(range, today).toSet()
+        return sessions.filter { it.date in keys }
+    }
+
+    data class DayBucket(val key: String, val label: String, val dayNum: String, val minutes: Int)
+    data class HourBucket(val hour: Int, val label: String, val minutes: Int)
+
+    /** One point per date key, oldest first — web bucketByDay parity. */
+    fun bucketByDay(sessions: List<Session>, keys: List<String>): List<DayBucket> {
+        val secs = sessions.groupBy { it.date }.mapValues { e -> e.value.sumOf { it.durationSec } }
+        return keys.map { k ->
+            val mins = Math.round((secs[k] ?: 0L) / 60.0f).toInt()
+            val date = runCatching { DAY_FMT.parse(k) }.getOrNull() ?: Date()
+            DayBucket(k, LABEL_FMT.format(date), k.substring(8).trimStart('0').ifEmpty { "0" }, mins)
+        }
+    }
+
+    /** 24 local-hour buckets for one day — web bucketByHour parity. */
+    fun bucketByHour(sessions: List<Session>, dayKey: String): List<HourBucket> {
+        val secs = LongArray(24)
+        sessions.filter { it.date == dayKey }.forEach { s ->
+            val ts = if (s.timestamp > 0L) s.timestamp else runCatching { DAY_FMT.parse(s.date)?.time ?: 0L }.getOrDefault(0L)
+            secs[Calendar.getInstance().apply { timeInMillis = ts }.get(Calendar.HOUR_OF_DAY)] += s.durationSec
+        }
+        return (0 until 24).map { h ->
+            HourBucket(h, if (h == 0) "12a" else if (h < 12) "${h}a" else if (h == 12) "12p" else "${h - 12}p", Math.round(secs[h] / 60.0f).toInt())
+        }
+    }
+
+    data class FlowSummary(val seconds: Long, val count: Int, val activeDays: Int, val avgPerDayMin: Int)
+
+    /** Totals for a session list — web summarize() parity. */
+    fun summarize(sessions: List<Session>): FlowSummary {
+        val secs = sessions.sumOf { it.durationSec }
+        val active = sessions.filter { it.durationSec > 0 }.map { it.date }.toSet().size
+        return FlowSummary(secs, sessions.size, active, if (active > 0) Math.round(secs / active / 60.0f).toInt() else 0)
+    }
+
+    /** % change vs previous window; null = no baseline, 0 = no data. */
+    fun deltaPercent(currentSec: Long, previousSec: Long): Int? {
+        if (previousSec <= 0L) return if (currentSec > 0L) null else 0
+        return Math.round((currentSec - previousSec) / previousSec.toFloat() * 100f)
+    }
+
+    /** Equal-length window right before `range` — for delta comparisons. */
+    fun previousRangeKeys(range: FlowRange, today: Date = Date()): List<String> {
+        val keys = rangeKeys(range, today)
+        if (keys.isEmpty()) return emptyList()
+        val start = Calendar.getInstance().apply {
+            time = DAY_FMT.parse(keys.first()) ?: Date(); add(Calendar.DATE, -keys.size) }.timeInMillis
+        return keys.indices.map { i ->
+            Calendar.getInstance().apply { timeInMillis = start; add(Calendar.DATE, i) }.let { dayKeyOf(it) } }
+    }
+
+    private val TITLE_FMT = SimpleDateFormat("MMM d", Locale.US)
+
+    /** Human range title, e.g. "Oct 5" / "Oct 1 – 7" — web rangeTitle parity. */
+    fun rangeTitle(range: FlowRange, today: Date = Date()): String {
+        val keys = rangeKeys(range, today)
+        if (keys.size <= 1) return keys.firstOrNull()?.let { TITLE_FMT.format(DAY_FMT.parse(it) ?: Date()) } ?: ""
+        val sameMonth = keys.last().substring(0, 7) == keys.first().substring(0, 7)
+        val last = if (sameMonth) keys.last().substring(8).trimStart('0').ifEmpty { "0" } else TITLE_FMT.format(DAY_FMT.parse(keys.last()) ?: Date())
+        return "${TITLE_FMT.format(DAY_FMT.parse(keys.first()) ?: Date())} – $last"
+    }
 }

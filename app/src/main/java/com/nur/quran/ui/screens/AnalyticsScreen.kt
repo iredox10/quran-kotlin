@@ -48,6 +48,15 @@ fun AnalyticsScreen(
     val chapters by surahViewModel.allChapters.collectAsState()
 
     var chartMode by remember { mutableStateOf("flow") } // "flow" or "heatmap"
+    var flowRange by remember { mutableStateOf(AnalyticsStats.FlowRange.TODAY) }
+
+    // Flow card range filtering (web ActivityFlow parity; charts consume it next).
+    val flowRangeSessions = remember(statsSessions, flowRange) {
+        AnalyticsStats.filterByRange(statsSessions, flowRange)
+    }
+
+    val flowSummary = remember(flowRangeSessions) { AnalyticsStats.summarize(flowRangeSessions) }
+    val flowPrevSec = remember(statsSessions, flowRange) { statsSessions.filter { it.date in AnalyticsStats.previousRangeKeys(flowRange).toSet() }.sumOf { it.durationSec } }
 
     val todayStr = remember {
         SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
@@ -63,11 +72,6 @@ fun AnalyticsScreen(
     // Single-source stats input for AnalyticsStats delegation (web parity).
     val statsSessions = remember(sessions) {
         sessions.map { AnalyticsStats.Session(it.date, it.duration, it.type, it.chapterId, it.timestamp) }
-    }
-
-    // 7 Days Labels and Totals (web parity: Math.round like Progress.jsx dailyActivity)
-    val last7DaysData = remember(statsSessions) {
-        AnalyticsStats.last7Days(statsSessions)
     }
 
     // Last-7 yyyy-MM-dd keys for the web-parity weekly total (round AFTER summing raw secs).
@@ -236,13 +240,25 @@ fun AnalyticsScreen(
                                 border = BorderStroke(1.5.dp, hBoneDark)
                             ) {
                                 Column(modifier = Modifier.padding(20.dp)) {
+                                    ActivityFlowPeriodTabs(
+                                        flowRange = flowRange,
+                                        onFlowRangeChange = { flowRange = it }
+                                    )
+                                    Spacer(modifier = Modifier.height(12.dp))
                                     ActivityFlowHeader(
                                         chartMode = chartMode,
                                         onChartModeChange = { chartMode = it }
                                     )
                                     Spacer(modifier = Modifier.height(16.dp))
+                                    Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                                        Text(AnalyticsStats.rangeTitle(flowRange), fontFamily = fontFamilyMono, fontSize = 10.sp, letterSpacing = 1.sp, color = hInkMuted)
+                                        FlowDeltaBadge(AnalyticsStats.deltaPercent(flowSummary.seconds, flowPrevSec), flowSummary.seconds > 0L || flowPrevSec > 0L)
+                                    }
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    FlowStatCells(flowSummary, AnalyticsStats.rangeKeys(flowRange).size)
+                                    Spacer(modifier = Modifier.height(16.dp))
                                     if (chartMode == "flow") {
-                                        AnalyticsFlowChart(dailyActivity = last7DaysData)
+                                        AnalyticsFlowChartForRange(range = flowRange, sessions = flowRangeSessions)
                                     } else {
                                         AnalyticsHeatmap(heatmapData = heatmap35Days)
                                     }
@@ -269,13 +285,25 @@ fun AnalyticsScreen(
                                 border = BorderStroke(1.5.dp, hBoneDark)
                             ) {
                                 Column(modifier = Modifier.padding(20.dp)) {
+                                    ActivityFlowPeriodTabs(
+                                        flowRange = flowRange,
+                                        onFlowRangeChange = { flowRange = it }
+                                    )
+                                    Spacer(modifier = Modifier.height(12.dp))
                                     ActivityFlowHeader(
                                         chartMode = chartMode,
                                         onChartModeChange = { chartMode = it }
                                     )
                                     Spacer(modifier = Modifier.height(16.dp))
+                                    Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                                        Text(AnalyticsStats.rangeTitle(flowRange), fontFamily = fontFamilyMono, fontSize = 10.sp, letterSpacing = 1.sp, color = hInkMuted)
+                                        FlowDeltaBadge(AnalyticsStats.deltaPercent(flowSummary.seconds, flowPrevSec), flowSummary.seconds > 0L || flowPrevSec > 0L)
+                                    }
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    FlowStatCells(flowSummary, AnalyticsStats.rangeKeys(flowRange).size)
+                                    Spacer(modifier = Modifier.height(16.dp))
                                     if (chartMode == "flow") {
-                                        AnalyticsFlowChart(dailyActivity = last7DaysData)
+                                        AnalyticsFlowChartForRange(range = flowRange, sessions = flowRangeSessions)
                                     } else {
                                         AnalyticsHeatmap(heatmapData = heatmap35Days)
                                     }
@@ -386,7 +414,7 @@ private fun ActivityFlowHeader(
                     .padding(horizontal = 10.dp, vertical = 5.dp)
             ) {
                 Text(
-                    text = "7 DAYS",
+                    text = "CHART",
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = fontFamilyMono,
@@ -409,6 +437,54 @@ private fun ActivityFlowHeader(
                     letterSpacing = 1.sp,
                     color = if (chartMode == "heatmap") hInk else hInkMuted
                 )
+            }
+        }
+    }
+}
+
+/** % delta pill vs previous window + Total/Sessions/Active/Avg cells — web parity. */
+@Composable
+private fun FlowDeltaBadge(delta: Int?, hasData: Boolean) {
+    val text = if (!hasData) "No data" else if (delta == null) "No baseline" else if (delta == 0) "0%" else if (delta > 0) "+$delta%" else "$delta%"
+    val color = if (text.startsWith("+")) Color(0xFF10B981) else if (text.startsWith("-")) Color(0xFFE75344) else hInkMuted
+    Surface(color = if (color == hInkMuted) hSurface else color.copy(alpha = 0.12f), shape = RoundedCornerShape(20.dp)) {
+        Text(text.uppercase(Locale.getDefault()), color = color, fontFamily = fontFamilyMono, fontSize = 10.sp, letterSpacing = 1.sp, modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp))
+    }
+}
+@Composable
+private fun FlowStatCells(summary: AnalyticsStats.FlowSummary, daysInRange: Int) {
+    val cells = listOf("Total time" to AnalyticsStats.formatMinutes(summary.seconds), "Sessions" to "${summary.count}",
+        "Active days" to "${summary.activeDays}/$daysInRange", "Avg / day" to "${summary.avgPerDayMin}m")
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        cells.chunked(2).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                row.forEach { (label, value) ->
+                    Column(Modifier.weight(1f).clip(RoundedCornerShape(16.dp)).background(hSurface)
+                        .padding(horizontal = 12.dp, vertical = 8.dp)) {
+                        Text(label.uppercase(Locale.getDefault()), fontFamily = fontFamilyMono, fontSize = 9.sp, letterSpacing = 1.sp, color = hInkMuted)
+                        Text(value, fontFamily = fontFamilyUi, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = hInk)
+                    }
+                }
+            }
+        }
+    }
+}
+/** Today/Week/Month pill selector — web PeriodTabs parity for the Flow card. */
+@Composable
+private fun ActivityFlowPeriodTabs(
+    flowRange: AnalyticsStats.FlowRange,
+    onFlowRangeChange: (AnalyticsStats.FlowRange) -> Unit
+) {
+    Row(Modifier.clip(RoundedCornerShape(20.dp)).background(hSurface).padding(3.dp)) {
+        AnalyticsStats.FlowRange.entries.forEach { range ->
+            val active = range == flowRange
+            Box(Modifier.clip(RoundedCornerShape(16.dp))
+                .background(if (active) hWhite else Color.Transparent)
+                .clickable { onFlowRangeChange(range) }
+                .padding(horizontal = 10.dp, vertical = 5.dp)) {
+                Text(range.label.uppercase(Locale.getDefault()), fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold, fontFamily = fontFamilyMono,
+                    letterSpacing = 1.sp, color = if (active) hInk else hInkMuted)
             }
         }
     }

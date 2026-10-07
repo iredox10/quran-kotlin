@@ -481,9 +481,13 @@ fun SurahScreen(
         mutableStateOf(!prefs.getBoolean("has_seen_swipe_tip", false))
     }
 
-    // Persist dark mode preference (web: Zustand persist middleware)
+    // Persist dark mode preference (web: Zustand persist middleware).
+    // NOTE: must read the "Settings" file — Profile toggle + sync both use it.
+    // Reading "hifdh_settings" here used to reset the theme to light on every
+    // Surah visit (that key is never written), clobbering the saved choice.
     LaunchedEffect(Unit) {
-        isDarkThemeGlobal = prefs.getBoolean("is_dark_theme", false)
+        isDarkThemeGlobal = context.getSharedPreferences("Settings", android.content.Context.MODE_PRIVATE)
+            .getBoolean("is_dark_theme", false)
     }
 
     val listState = rememberLazyListState()

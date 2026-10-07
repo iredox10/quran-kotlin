@@ -48,7 +48,6 @@ fun ProfileScreen(
 ) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("Settings", Context.MODE_PRIVATE) }
-    val hifdhPrefs = remember { context.getSharedPreferences("hifdh_settings", Context.MODE_PRIVATE) }
 
     var isDarkTheme by remember { mutableStateOf(isDarkThemeGlobal) }
     var dailyGoalMins by remember { mutableIntStateOf(prefs.getInt("daily_reading_goal", 20)) }
@@ -179,18 +178,12 @@ fun ProfileScreen(
             }
 
             // 5. Onboarding & Tours — mirrors web Profile.jsx "Replay All Tours" -> resetAllTours().
-            // Delegates to HomeViewModel.resetTours() so persisted tour/coachmark
-            // flags clear AND completedTours/coachmark flows refresh in-memory.
+            // Pure VM call: HomeViewModel.resetTours() clears persisted tour/coachmark
+            // flags (incl. legacy hifdh tour flags) AND refreshes in-memory flows.
             item {
                 OnboardingGroup(
                     completedToursCount = completedTours.size,
-                    onReplayTours = {
-                        homeViewModel.resetTours()
-                        hifdhPrefs.edit()
-                            .remove("has_seen_surah_tour")
-                            .remove("has_seen_swipe_tip")
-                            .apply()
-                    },
+                    onReplayTours = { homeViewModel.resetTours() },
                     modifier = Modifier.fillMaxWidth()
                 )
             }

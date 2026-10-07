@@ -49,6 +49,9 @@ fun AnalyticsScreen(
     val chapters by surahViewModel.allChapters.collectAsState()
 
     var chartMode by remember { mutableStateOf("flow") } // "flow" or "heatmap"
+    // In-card log-activity form (web ActivityFlow parity); gen resets form on close.
+    var logOpen by remember { mutableStateOf(false) }
+    var logResetGen by remember { mutableIntStateOf(0) }
     var flowRange by remember { mutableStateOf(AnalyticsStats.FlowRange.TODAY) }
 
     val todayStr = remember {
@@ -247,9 +250,25 @@ fun AnalyticsScreen(
                                     Spacer(modifier = Modifier.height(12.dp))
                                     ActivityFlowHeader(
                                         chartMode = chartMode,
-                                        onChartModeChange = { chartMode = it }
+                                        onChartModeChange = { chartMode = it },
+                                        logOpen = logOpen,
+                                        onToggleLog = { if (logOpen) logResetGen++; logOpen = !logOpen }
                                     )
                                     Spacer(modifier = Modifier.height(16.dp))
+                                    // Collapsible log-activity form hosted in-card (web parity).
+                                    AnimatedVisibility(visible = logOpen) {
+                                        key(logResetGen) {
+                                            AnalyticsLogActivityForm(
+                                                chapters = chapters,
+                                                onLog = { durationSec, type, chapterId ->
+                                                    homeViewModel.logReadingSession(durationSec, type, chapterId)
+                                                }
+                                            )
+                                        }
+                                    }
+                                    if (logOpen) {
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                    }
                                     Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                                         Text(AnalyticsStats.rangeTitle(flowRange), fontFamily = fontFamilyMono, fontSize = 10.sp, letterSpacing = 1.sp, color = hInkMuted)
                                         FlowDeltaBadge(AnalyticsStats.deltaPercent(flowSummary.seconds, flowPrevSec), flowSummary.seconds > 0L || flowPrevSec > 0L)
@@ -295,9 +314,25 @@ fun AnalyticsScreen(
                                     Spacer(modifier = Modifier.height(12.dp))
                                     ActivityFlowHeader(
                                         chartMode = chartMode,
-                                        onChartModeChange = { chartMode = it }
+                                        onChartModeChange = { chartMode = it },
+                                        logOpen = logOpen,
+                                        onToggleLog = { if (logOpen) logResetGen++; logOpen = !logOpen }
                                     )
                                     Spacer(modifier = Modifier.height(16.dp))
+                                    // Collapsible log-activity form hosted in-card (web parity).
+                                    AnimatedVisibility(visible = logOpen) {
+                                        key(logResetGen) {
+                                            AnalyticsLogActivityForm(
+                                                chapters = chapters,
+                                                onLog = { durationSec, type, chapterId ->
+                                                    homeViewModel.logReadingSession(durationSec, type, chapterId)
+                                                }
+                                            )
+                                        }
+                                    }
+                                    if (logOpen) {
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                    }
                                     Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                                         Text(AnalyticsStats.rangeTitle(flowRange), fontFamily = fontFamilyMono, fontSize = 10.sp, letterSpacing = 1.sp, color = hInkMuted)
                                         FlowDeltaBadge(AnalyticsStats.deltaPercent(flowSummary.seconds, flowPrevSec), flowSummary.seconds > 0L || flowPrevSec > 0L)
@@ -326,15 +361,7 @@ fun AnalyticsScreen(
                 }
             }
 
-            // 6. Log activity (web ActivityFlow "Log activity" form parity)
-            item {
-                AnalyticsLogActivityCard(
-                    chapters = chapters,
-                    onLog = { durationSec, type, chapterId ->
-                        homeViewModel.logReadingSession(durationSec, type, chapterId)
-                    }
-                )
-            }
+            // (Log-activity form now lives inside the Flow card, web parity.)
 
             // 6. Achievements & Recent Activity Row (Web lines 450-536)
             item {
@@ -391,7 +418,9 @@ fun AnalyticsScreen(
 @Composable
 private fun ActivityFlowHeader(
     chartMode: String,
-    onChartModeChange: (String) -> Unit
+    onChartModeChange: (String) -> Unit,
+    logOpen: Boolean,
+    onToggleLog: () -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -417,20 +446,51 @@ private fun ActivityFlowHeader(
             )
         }
 
-        // Tab Selector (7 Days / Heatmap) matching web Progress.jsx lines 322-335
+        // "+ Log activity" toggle (web ActivityFlow header parity) + Chart/Heatmap tabs.
         Row(
-            modifier = Modifier
-                .clip(RoundedCornerShape(20.dp))
-                .background(hSurface)
-                .padding(3.dp)
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(if (chartMode == "flow") hWhite else Color.Transparent)
-                    .clickable { onChartModeChange("flow") }
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(if (logOpen) hGoldSoft else hSurface)
+                    .clickable { onToggleLog() }
                     .padding(horizontal = 10.dp, vertical = 5.dp)
             ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        imageVector = NurIcons.Plus,
+                        contentDescription = null,
+                        tint = hGold,
+                        modifier = Modifier.size(12.dp)
+                    )
+                    Text(
+                        text = if (logOpen) "CLOSE" else "+ LOG",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = fontFamilyMono,
+                        letterSpacing = 1.sp,
+                        color = hInk
+                    )
+                }
+            }
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(hSurface)
+                    .padding(3.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(if (chartMode == "flow") hWhite else Color.Transparent)
+                        .clickable { onChartModeChange("flow") }
+                        .padding(horizontal = 10.dp, vertical = 5.dp)
+                ) {
                 Text(
                     text = "CHART",
                     fontSize = 10.sp,
@@ -458,6 +518,7 @@ private fun ActivityFlowHeader(
             }
         }
     }
+}
 }
 
 /**

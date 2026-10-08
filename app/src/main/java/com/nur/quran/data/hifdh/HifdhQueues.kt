@@ -64,3 +64,9 @@ fun buildHifdhQueueData(
         manzilAll = manzilAll, manzilDue = dueKeys(manzilAll)
     )
 }
+
+/** Web Memorization.jsx: (currentVerseIndex + currentVerses.length) / total. */
+fun hifdhSessionProgress(currentVerseIndex: Int, shownCount: Int, total: Int): Float {
+    if (total <= 0) return 0f
+    return ((currentVerseIndex + shownCount).toFloat() / total).coerceIn(0f, 1f)
+}

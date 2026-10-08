@@ -45,6 +45,7 @@ import com.nur.quran.ui.viewmodels.PackViewModel
 import com.nur.quran.ui.viewmodels.SurahUiState
 import com.nur.quran.ui.viewmodels.SurahViewModel
 import com.nur.quran.utils.TajweedProcessor
+import com.nur.quran.data.hifdh.hifdhSessionProgress
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -173,12 +174,9 @@ fun HifdhReaderScreen(
         when (val state = uiState) {
             is SurahUiState.Success -> {
                 val total = state.verses.size
-                val progressEnd = if (ayahsPerChunk == -1) {
-                    currentVerseIndex + currentVersesOf(state.verses, currentVerseIndex, -1).size
-                } else {
-                    currentVerseIndex + ayahsPerChunk
-                }
-                val sessionPct = if (total > 0) (progressEnd.toFloat() / total).coerceIn(0f, 1f) else 0f
+                // Web Memorization.jsx: (currentVerseIndex + currentVerses.length) / total.
+                val shown = currentVersesOf(state.verses, currentVerseIndex, ayahsPerChunk).size
+                val sessionPct = hifdhSessionProgress(currentVerseIndex, shown, total)
                 LinearProgressIndicator(
                     progress = sessionPct,
                     modifier = Modifier.fillMaxWidth().height(3.dp),

@@ -201,12 +201,21 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                         }
-                        composable(Screen.MemorizeDetail.route) { backStackEntry ->
-                            val chapterId = backStackEntry.arguments?.getString("chapterId")?.toIntOrNull() ?: 1
+                        composable(
+                            route = Screen.MemorizeDetail.route,
+                            arguments = listOf(
+                                androidx.navigation.navArgument("chapterId") { type = androidx.navigation.NavType.IntType },
+                                androidx.navigation.navArgument("verseKey") { type = androidx.navigation.NavType.StringType; nullable = true; defaultValue = null }
+                            )
+                        ) { backStackEntry ->
+                            val args = backStackEntry.arguments
+                            val chapterId = runCatching { args?.getInt("chapterId") }.getOrNull()
+                                ?.takeIf { it != 0 }
+                                ?: args?.getString("chapterId")?.toIntOrNull() ?: 1
                             HifdhReaderScreen(
                                 surahViewModel = surahViewModel,
                                 chapterId = chapterId,
-                                startVerseKey = backStackEntry.arguments?.getString("verseKey"),
+                                startVerseKey = args?.getString("verseKey"),
                                 onBackClick = { navController.popBackStack() }
                             )
                         }

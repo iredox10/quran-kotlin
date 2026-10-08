@@ -307,6 +307,17 @@ fun PlannerReaderScreen(
 
     val isDayCompleted = activePlan?.completedDays?.contains(dayNumber) == true
 
+    // ── Auto-celebrate on completion (web parity: PlannerReader.jsx:378-413)
+    // Web pops the confetti/reflection card as soon as progress.isComplete
+    // flips true — not only on the manual Finish tap. Fire once per day.
+    var celebrationShownForDay by remember(dayNumber) { mutableStateOf(false) }
+    LaunchedEffect(isDayCompleted) {
+        if (isDayCompleted && !celebrationShownForDay) {
+            celebrationShownForDay = true
+            showCelebrationDialog = true
+        }
+    }
+
     // ── Completion progress tracking ────────────────────────────────
     val totalPages = (pageEnd - pageStart + 1)
     val readPages = activePlan?.assignmentReadPages?.get(dayNumber)?.size ?: 0

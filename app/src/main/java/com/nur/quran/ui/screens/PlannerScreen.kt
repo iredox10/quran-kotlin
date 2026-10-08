@@ -33,7 +33,8 @@ fun PlannerScreen(
     homeViewModel: HomeViewModel,
     surahViewModel: SurahViewModel,
     plannerViewModel: PlannerViewModel,
-    onReadAssignment: (Int) -> Unit
+    onReadAssignment: (Int) -> Unit,
+    onOpenVerse: (Int, String) -> Unit = { _, _ -> }
 ) {
     val activePlan by plannerViewModel.activePlan.collectAsState()
     val allPlans by plannerViewModel.allPlans.collectAsState()
@@ -43,6 +44,7 @@ fun PlannerScreen(
     val chapters by plannerViewModel.chapters.collectAsState()
     val bookmarks by plannerViewModel.bookmarks.collectAsState()
     val plannerBookmarks by plannerViewModel.plannerBookmarks.collectAsState()
+    val reflectionsByPlan by plannerViewModel.plannerReflectionsByPlan.collectAsState()
     val useIntentionPrompt by plannerViewModel.useIntentionPrompt.collectAsState()
     val sessionTotals by plannerViewModel.sessionTotals.collectAsState()
     val activePrayers by plannerViewModel.activePrayers.collectAsState()
@@ -372,18 +374,14 @@ fun PlannerScreen(
 
                         PlannerTab.JOURNAL -> {
                             PlanJournalTab(
-                                reflections = plan.assignmentReflections.orEmpty().mapKeys { it.key.toString() },
+                                // PlanId-keyed map is the parity source; embedded plan map is fallback.
+                                reflections = (reflectionsByPlan[plan.id] ?: plan.assignmentReflections.orEmpty())
+                                    .mapKeys { it.key.toString() },
                                 bookmarks = plannerBookmarks,
                                 onDeleteReflection = { day -> plannerViewModel.saveReflection(day, "") },
-                                onNavigateToVerse = { surah, _ ->
-                                    val targetAssign = plan.assignments.find { a ->
-                                        a.items.any { it.rangeValue == "$surah" }
-                                    }
-                                    if (targetAssign != null) {
-                                        onReadAssignment(targetAssign.dayNumber)
-                                    } else {
-                                        onReadAssignment(currentDay)
-                                    }
+                                onNavigateToVerse = { surah, ayah ->
+                                    // Web parity: highlights link to /surah/{surah}?ayah={ayah}.
+                                    onOpenVerse(surah, "$surah:$ayah")
                                 }
                             )
                         }

@@ -231,7 +231,7 @@ fun MemorizeScreen(
                     MetricStatCard(
                         countText = "${memorizedSurahIds.size}",
                         totalText = "/114",
-                        label = "SURAHS",
+                        label = "Surahs",
                         modifier = Modifier.weight(1f),
                         onClick = {
                             activeBreakdownModal = "Memorized Surahs (${memorizedSurahIds.size})" to
@@ -241,14 +241,14 @@ fun MemorizeScreen(
                     MetricStatCard(
                         countText = "${memorizedAyahs.size}",
                         totalText = "/6236",
-                        label = "AYAHS",
+                        label = "Ayahs",
                         modifier = Modifier.weight(1f),
                         onClick = { activeBreakdownModal = "Memorized Ayahs (${memorizedAyahs.size})" to ayahRangeSections }
                     )
                     MetricStatCard(
                         countText = "${if (memorizedAyahs.isNotEmpty()) Math.round((memorizedAyahs.size.toFloat() / 6236f) * 100) else 0}",
                         totalText = "%",
-                        label = "PROGRESS",
+                        label = "Progress",
                         modifier = Modifier.weight(1f),
                         onClick = {}
                     )
@@ -570,7 +570,7 @@ fun MemorizeScreen(
                             Icon(imageVector = NurIcons.Award, contentDescription = null, tint = if (showMemorizedOnly) hGreen else hInkMid, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = if (showMemorizedOnly) "Memorized Only" else "Filter",
+                                text = if (showMemorizedOnly) "Memorized Only" else "Filter Memorized",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = if (showMemorizedOnly) hGreen else hInkMid

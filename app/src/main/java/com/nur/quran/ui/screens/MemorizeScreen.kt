@@ -149,29 +149,32 @@ fun MemorizeScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    val recentlyRead by homeViewModel.recentlyRead.collectAsState()
-                    val lastReadItem = recentlyRead.firstOrNull()
-
-                    // Web: Continue card = last memorizing session, else last read.
+                    // Web MemorizeIndex.jsx: Continue = last memorizing session resuming
+                    // at the first unmemorized ayah (?verse=); hidden when none exists.
                     val lastMemSession = readingSessions
                         .filter { it.type == "memorizing" && it.chapterId != null }
                         .maxByOrNull { it.timestamp }
-                    val continueChapterId = lastMemSession?.chapterId ?: lastReadItem?.chapterId ?: 67
+                    val continueChapterId = lastMemSession?.chapterId
                     val continueChapter = chapters.find { it.id == continueChapterId }
-                    val continueName = continueChapter?.nameSimple ?: lastReadItem?.chapterName ?: "Al-Mulk"
+                    val continueResumeKey = if (continueChapterId != null && continueChapter != null) {
+                        firstUnmemorizedAyah(memorizedAyahs, continueChapterId, continueChapter.versesCount)
+                            ?.let { "$continueChapterId:$it" }
+                    } else null
+                    val continueName = continueChapter?.nameSimple ?: ""
                     val continueMemCount = memorizedAyahs.count { it.startsWith("$continueChapterId:") }
                     val continueMemPct = if (continueChapter != null) {
                         Math.round((continueMemCount.toFloat() / continueChapter.versesCount) * 100)
                     } else 0
 
                     // Continue Last Session Banner Card
+                    if (continueChapterId != null && continueChapter != null) {
                     Card(
                         shape = RoundedCornerShape(20.dp),
                         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
                         modifier = Modifier
                             .fillMaxWidth()
                             .widthIn(max = 460.dp)
-                            .clickable { onSurahClick(continueChapterId) }
+                            .clickable { onGoalResume(continueChapterId, continueResumeKey) }
                     ) {
                         Box(
                             modifier = Modifier
@@ -198,7 +201,7 @@ fun MemorizeScreen(
                                     Column {
                                         Text("Continue: $continueName", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.White, fontFamily = fontFamilyUi)
                                         Text(
-                                            text = if (lastMemSession != null) "Memorizing • $continueMemPct% memorized" else "Last practiced recently",
+                                            text = "Memorizing • $continueMemPct% memorized",
                                             fontSize = 11.sp,
                                             color = Color.White.copy(alpha = 0.8f),
                                             fontFamily = fontFamilyMono
@@ -211,13 +214,14 @@ fun MemorizeScreen(
                                         .size(38.dp)
                                         .clip(CircleShape)
                                         .background(Color.White.copy(alpha = 0.2f))
-                                        .clickable { onSurahClick(continueChapterId) },
+                                        .clickable { onGoalResume(continueChapterId, continueResumeKey) },
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(imageVector = NurIcons.PlayFilled, contentDescription = "Play", tint = Color.White, modifier = Modifier.size(16.dp))
                                 }
                             }
                         }
+                    }
                     }
                 }
             }

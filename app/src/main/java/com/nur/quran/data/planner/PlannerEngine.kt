@@ -1047,7 +1047,10 @@ fun buildPrayerSlots(
     val items = todayAssignment.items
     val total = items.size
     val numSlots = sortedPrayers.size.coerceAtLeast(1)
-    val completedRangeValues = plan.assignmentCompletedItems[todayAssignment.dayNumber] ?: emptyList()
+    // Web parity (Planner.jsx buildPrayerSlots): slot progress comes from the
+    // merged getAssignmentProgress set (explicit items + count + read pages),
+    // not the raw completed-items map alone.
+    val completedRangeValues = getAssignmentProgress(plan, todayAssignment).completedRangeValues
 
     return sortedPrayers.mapIndexed { i, name ->
         val slotStart = ceil((i.toDouble() / numSlots) * total).toInt()

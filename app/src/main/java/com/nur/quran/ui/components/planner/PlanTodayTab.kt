@@ -129,7 +129,7 @@ fun PlanTodayTab(
                 ) {
                     Icon(
                         imageVector = NurIcons.Share2,
-                        contentDescription = "Share",
+                        contentDescription = "Share Progress",
                         tint = hInkMid,
                         modifier = Modifier.size(15.dp)
                     )

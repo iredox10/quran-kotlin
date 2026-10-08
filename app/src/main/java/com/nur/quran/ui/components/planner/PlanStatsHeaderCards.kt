@@ -29,19 +29,19 @@ fun PlanStatsHeaderCards(
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         StatCard(
-            label = "OVERALL",
+            label = "Overall",
             value = "$overallPct%",
             icon = NurIcons.TrendingUp,
             modifier = Modifier.weight(1f)
         )
         StatCard(
-            label = "FINISH BY",
+            label = "Finish by",
             value = completionDate,
             icon = NurIcons.CalendarDays,
             modifier = Modifier.weight(1f)
         )
         StatCard(
-            label = "STREAK",
+            label = "Streak",
             value = "$streakDays Day${if (streakDays != 1) "s" else ""}",
             icon = NurIcons.Flame,
             modifier = Modifier.weight(1f)

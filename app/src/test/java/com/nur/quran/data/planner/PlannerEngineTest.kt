@@ -272,6 +272,38 @@ class PlannerEngineTest {
         assertEquals(23, totalUnread)
     }
 
+    // ── status web parity (planner.js:625-643) ───────────────────────
+
+    @Test
+    fun `status complete via progress even without completedDays entry`() {
+        val p = plan(
+            listOf(assignment(1, "2026-01-01", 1..2)),
+            readPages = mapOf(1 to listOf(1, 2)),
+            startDate = "2026-01-01"
+        )
+        assertEquals("completed", PlannerEngine.getAssignmentStatus(p, p.assignments[0], "2026-06-10"))
+    }
+
+    @Test
+    fun `status today with progress is still today`() {
+        val p = plan(
+            listOf(assignment(1, "2026-06-01", 1..2)),
+            readPages = mapOf(1 to listOf(1)),
+            startDate = "2026-06-01"
+        )
+        // Web has no partial branch for today (planner.js:638-640).
+        assertEquals("today", PlannerEngine.getAssignmentStatus(p, p.assignments[0], "2026-06-01"))
+    }
+
+    @Test
+    fun `status overdue with item-derived progress is partial`() {
+        // Completed via item tap: no explicit read pages, but progress
+        // readPagesCount > 0 (planner.js:631-636).
+        val base = plan(listOf(assignment(1, "2026-01-01", 1..2)), startDate = "2026-01-01")
+        val p = base.copy(assignmentCompletedItems = mapOf(1 to listOf("1")))
+        assertEquals("partial", PlannerEngine.getAssignmentStatus(p, p.assignments[0], "2026-06-10"))
+    }
+
     // ── misc ────────────────────────────────────────────────────────
 
     @Test

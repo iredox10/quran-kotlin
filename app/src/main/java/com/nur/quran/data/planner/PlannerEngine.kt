@@ -829,18 +829,17 @@ object PlannerEngine {
         )
     }
 
-    // ── Assignment Status Helper ────────────────────────────────────────
+    // Web parity (planner.js:625-643): completion comes from progress
+    // (not completedDays); overdue+any-read-pages (incl. item-derived) is
+    // 'partial'; date==today is always 'today' — web has no partial branch
+    // for today and checks overdue before today.
     fun getAssignmentStatus(plan: ReadingPlan, assignment: PlannerAssignment, today: String = formatPlannerDate()): String {
-        val isComplete = plan.completedDays.contains(assignment.dayNumber)
-        if (isComplete) return "completed"
-        if (assignment.date == today) {
-            val readPages = plan.assignmentReadPages[assignment.dayNumber]?.size ?: 0
-            return if (readPages > 0) "partial" else "today"
-        }
+        val progress = getAssignmentProgress(plan, assignment)
+        if (progress.isComplete) return "completed"
         if (assignment.date < today) {
-            val readPages = plan.assignmentReadPages[assignment.dayNumber]?.size ?: 0
-            return if (readPages > 0) "partial" else "overdue"
+            return if (progress.readPagesCount > 0) "partial" else "overdue"
         }
+        if (assignment.date == today) return "today"
         return "upcoming"
     }
 

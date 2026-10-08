@@ -903,20 +903,8 @@ private fun buildAyahRangeSections(memorizedAyahs: Set<String>, chapters: List<C
         val chapter = chapters.find { it.id == cid.toIntOrNull() } ?: return@mapNotNull null
         val nums = keys.mapNotNull { it.substringAfter(":").toIntOrNull() }.sorted()
         if (nums.isEmpty()) return@mapNotNull null
-        val ranges = mutableListOf<String>()
-        var start = nums[0]
-        var prev = nums[0]
-        for (i in 1 until nums.size) {
-            if (nums[i] == prev + 1) {
-                prev = nums[i]
-            } else {
-                ranges.add(if (start == prev) "$start" else "$start-$prev")
-                start = nums[i]
-                prev = nums[i]
-            }
-        }
-        ranges.add(if (start == prev) "$start" else "$start-$prev")
-        "${chapter.id}. ${chapter.nameSimple}" to "Verses: ${ranges.joinToString(", ")} • ${nums.size} ayahs"
+        val collapsed = collapseAyahRanges(nums)
+        "${chapter.id}. ${chapter.nameSimple}" to "Verses: $collapsed • ${nums.size} ayahs"
     }
 }
 

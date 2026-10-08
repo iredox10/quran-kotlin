@@ -117,6 +117,12 @@ class SurahViewModel @Inject constructor(
     private val _memorizedAyahs = MutableStateFlow<Set<String>>(hifdhPrefs.getStringSet("memorized_ayahs", emptySet()) ?: emptySet())
     val memorizedAyahs: StateFlow<Set<String>> = _memorizedAyahs.asStateFlow()
 
+    // Web: memorizedSurahs number[] — persisted surah ids toggled with the full ayah range.
+    private val _memorizedSurahs = MutableStateFlow<Set<Int>>(
+        hifdhPrefs.getStringSet("memorized_surahs", emptySet())?.mapNotNull { it.toIntOrNull() }?.toSet() ?: emptySet()
+    )
+    val memorizedSurahs: StateFlow<Set<Int>> = _memorizedSurahs.asStateFlow()
+
     private val _arabicFontScale = MutableStateFlow(hifdhPrefs.getFloat("arabic_scale", 1f))
     val arabicFontScale: StateFlow<Float> = _arabicFontScale.asStateFlow()
 
@@ -1852,6 +1858,19 @@ class SurahViewModel @Inject constructor(
         }
         hifdhPrefs.edit().putStringSet("memorized_ayahs", current).apply()
         _memorizedAyahs.value = current
+    }
+
+    /** Web: toggleMemorizedSurah — flips the surah id and its full ayah range. */
+    fun toggleMemorizedSurah(chapterId: Int, totalVerses: Int? = null) {
+        val result = com.nur.quran.data.hifdh.toggleMemorizedSurah(
+            _memorizedSurahs.value, _memorizedAyahs.value, chapterId, totalVerses
+        )
+        hifdhPrefs.edit()
+            .putStringSet("memorized_surahs", result.surahs.map { it.toString() }.toSet())
+            .putStringSet("memorized_ayahs", result.ayahs)
+            .apply()
+        _memorizedSurahs.value = result.surahs
+        _memorizedAyahs.value = result.ayahs
     }
 
     fun updateArabicFontScale(delta: Float) {

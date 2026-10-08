@@ -147,6 +147,16 @@ fun HifdhGoalModal(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
+                    // Web parity: date input has min=today, so past dates can't create goals.
+                    val startOfToday = remember {
+                        Calendar.getInstance().apply {
+                            set(Calendar.HOUR_OF_DAY, 0)
+                            set(Calendar.MINUTE, 0)
+                            set(Calendar.SECOND, 0)
+                            set(Calendar.MILLISECOND, 0)
+                        }.timeInMillis
+                    }
+                    val isPastDate = targetDateMillis < startOfToday
                     val daysUntil = kotlin.math.max(
                         0,
                         kotlin.math.ceil((targetDateMillis - System.currentTimeMillis()) / 86_400_000.0).toInt()
@@ -156,11 +166,11 @@ fun HifdhGoalModal(
                             .format(Date(targetDateMillis))
                     }
                     Text(
-                        text = if (daysUntil >= 0) "Complete by $targetDateLabel • ~$daysUntil days away"
-                        else "Pick a future date",
+                        text = if (isPastDate) "Pick a future date"
+                        else "Complete by $targetDateLabel • ~$daysUntil days away",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (daysUntil >= 0) hGreen else hInkMuted,
+                        color = if (!isPastDate) hGreen else hInkMuted,
                         fontFamily = fontFamilyMono
                     )
 

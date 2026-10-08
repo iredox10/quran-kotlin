@@ -421,7 +421,7 @@ fun CustomPlanModal(
                                     startDate = startDateText,
                                     startUnit = sUnit,
                                     endUnit = eUnit,
-                                    customTitle = customTitle.ifBlank { "Custom Plan" },
+                                    customTitle = customTitle,
                                     excludeDays = excludeDays.toList(),
                                     chapters = chapters
                                 )

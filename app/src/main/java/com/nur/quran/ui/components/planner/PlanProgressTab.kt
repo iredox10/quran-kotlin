@@ -263,6 +263,7 @@ fun PlanProgressTab(
                 ) {
                     LegendItem(color = hGold, label = "Done")
                     LegendItem(color = hGoldSoft, label = "Today")
+                    LegendItem(color = hInk, label = "Partial")
                     LegendItem(color = Color(0xFFDC2626), label = "Missed")
                     LegendItem(color = hInkMuted, label = "Upcoming")
                 }
@@ -310,7 +311,7 @@ fun PlanProgressTab(
                                     "today" -> if (selPct > 0) "Today's plan ($selPct%)" else "Today's Reading"
                                     "partial" -> "Partially finished ($selPct%)"
                                     "overdue" -> if (selPct > 0) "Missed ($selPct% done)" else "Missed completely"
-                                    else -> "Scheduled for ${sel.date}"
+                                    else -> "Upcoming"
                                 },
                                 fontFamily = fontFamilyMono,
                                 fontSize = 11.sp,
@@ -360,20 +361,20 @@ fun PlanProgressTab(
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     InsightBox(
-                        label = "ON-TIME RATE",
+                        label = "On-Time Completion",
                         value = "${analytics?.onTimeRate ?: 0}%",
                         valueColor = Color(0xFF10B981),
                         modifier = Modifier.weight(1f)
                     )
                     InsightBox(
-                        label = "CATCH-UPS",
+                        label = "Catch-ups Used",
                         value = "${analytics?.catchUpDays ?: 0}",
                         valueColor = hGold,
                         modifier = Modifier.weight(1f)
                     )
                     InsightBox(
-                        label = "PACE",
-                        value = "${Math.round(analytics?.avgPagesPerDay ?: 0f)} u/d",
+                        label = "Current Pace",
+                        value = "${Math.round(analytics?.avgPagesPerDay ?: 0f)} u/day",
                         valueColor = hInk,
                         modifier = Modifier.weight(1f)
                     )

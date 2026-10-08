@@ -116,6 +116,8 @@ class FsrsScheduler(
      * Runs the full BasicScheduler flow for the given rating.
      */
     fun next(card: FsrsCard, nowMs: Long, rating: Int): FsrsCard {
+        // ts-fsrs BasicScheduler.checkGrade: grades outside 1-4 throw (never become Easy).
+        require(rating in FsrsRating.AGAIN..FsrsRating.EASY) { "Invalid grade \"$rating\",expected 1-4" }
         val elapsedDays: Double =
             if (card.state != FsrsState.NEW && card.lastReview != null) {
                 (utcDay(nowMs) - utcDay(card.lastReview)).toDouble()

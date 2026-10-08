@@ -69,6 +69,7 @@ fun MemorizeScreen(
     val memorizedAyahs by surahViewModel.memorizedAyahs.collectAsState()
     val hifdhHistory by surahViewModel.hifdhHistory.collectAsState()
     val hifdhGoals by surahViewModel.hifdhGoals.collectAsState()
+    val transitionLinks by surahViewModel.transitionLinks.collectAsState()
     val readingSessions by homeViewModel.readingSessions.collectAsState()
     val context = LocalContext.current
 
@@ -773,7 +774,8 @@ fun MemorizeScreen(
             chapters = chapters,
             onDismiss = { activeTestQueue = null },
             onLogReview = { verseKey, rating -> surahViewModel.logHifdhReview(verseKey, rating) },
-            loadVerses = { keys -> surahViewModel.getVerseTexts(keys) }
+            loadVerses = { keys -> surahViewModel.getVerseTexts(keys) },
+            weakTransitions = transitionLinks
         )
     }
 

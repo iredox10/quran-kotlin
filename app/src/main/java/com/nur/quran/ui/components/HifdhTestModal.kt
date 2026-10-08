@@ -38,7 +38,8 @@ fun HifdhTestModal(
     chapters: List<ChapterEntity>,
     onDismiss: () -> Unit,
     onLogReview: (verseKey: String, rating: Int) -> Unit,
-    loadVerses: suspend (List<String>) -> Map<String, VerseEntity>
+    loadVerses: suspend (List<String>) -> Map<String, VerseEntity>,
+    weakTransitions: Set<String> = emptySet()
 ) {
     var remainingKeys by remember(testQueue) { mutableStateOf(testQueue.toMutableList()) }
     var currentVerseKey by remember { mutableStateOf<String?>(null) }
@@ -57,16 +58,21 @@ fun HifdhTestModal(
 
     val previousVerseKey = remember(currentVerseKey) { previousVerseKeyFor(currentVerseKey, chapters) }
 
+    // Web: weak-transition cue needs the previous ayah loaded pre-reveal
+    // whenever transitionLinks[key] is set (same-surah, ayahNum > 1).
     val verses by produceState<Map<String, VerseEntity>>(
         initialValue = emptyMap(),
         key1 = currentVerseKey,
-        key2 = showPreviousAyah
+        key2 = previousVerseKey
     ) {
-        value = loadVerses(listOfNotNull(currentVerseKey, if (showPreviousAyah) previousVerseKey else null))
+        value = loadVerses(listOfNotNull(currentVerseKey, previousVerseKey))
     }
 
     val currentVerse = currentVerseKey?.let { verses[it] }
     val previousVerse = previousVerseKey?.let { verses[it] }
+    val ayahNumForCue = currentVerseKey?.split(":")?.getOrNull(1)?.toIntOrNull() ?: 0
+    val hasWeakTransition = currentVerseKey != null &&
+        ayahNumForCue > 1 && weakTransitions.contains(currentVerseKey)
 
     fun handleRating(rating: Int) {
         val key = currentVerseKey ?: return
@@ -190,6 +196,47 @@ fun HifdhTestModal(
                     } else if (currentVerseKey != null) {
                         val chapter = chapters.find { it.id == currentVerseKey?.split(":")?.getOrNull(0)?.toIntOrNull() }
                         val ayahNum = currentVerseKey?.split(":")?.getOrNull(1)?.toIntOrNull() ?: 0
+
+                        // Web: pre-reveal weak-transition cue — tail of previous ayah.
+                        if (hasWeakTransition && !isRevealed && previousVerse?.textUthmani != null) {
+                            Card(
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF7ED)),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFDBA74)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(
+                                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = "Weak Transition Detected",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFFEA580C),
+                                        fontFamily = fontFamilyMono,
+                                        letterSpacing = 1.sp
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "Start reciting from the end of the previous Ayah:",
+                                        fontSize = 11.sp,
+                                        color = hInkMuted,
+                                        textAlign = TextAlign.Center
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = previousAyahTail(previousVerse.textUthmani),
+                                        fontSize = 22.sp,
+                                        lineHeight = 36.sp,
+                                        color = hInk,
+                                        textAlign = TextAlign.Center,
+                                        fontFamily = fontFamilyArabic
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
 
                         // Prompt Card
                         Card(
@@ -409,8 +456,13 @@ fun HifdhTestModal(
     }
 }
 
-private fun previousVerseKeyFor(current: String?, chapters: List<ChapterEntity>): String? {
-    if (current == null) return null
+/** Web: `...` + last 4 words of the previous ayah's Arabic text. */
+private fun previousAyahTail(arabicText: String?): String {
+    if (arabicText.isNullOrBlank()) return "..."
+    return "..." + arabicText.trim().split(Regex("\\s+")).takeLast(4).joinToString(" ")
+}
+
+private fun previousVerseKeyFor(current: String?, chapters: List<ChapterEntity>): String? {    if (current == null) return null
     val parts = current.split(":")
     val chapterId = parts.getOrNull(0)?.toIntOrNull() ?: return null
     val verseNumber = parts.getOrNull(1)?.toIntOrNull() ?: return null

@@ -293,7 +293,7 @@ fun MemorizeScreen(
                                     .background(Color.White.copy(alpha = 0.15f)),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(imageVector = NurIcons.Brain, contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
+                                Icon(imageVector = NurIcons.RefreshCw, contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
                             }
                             Spacer(modifier = Modifier.height(8.dp))
                             Text("Test My Hifdh", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White, fontFamily = fontFamilyUi)
@@ -326,7 +326,7 @@ fun MemorizeScreen(
                                     .background(hBone),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(imageVector = NurIcons.Sparkles, contentDescription = null, tint = hInkMid, modifier = Modifier.size(24.dp))
+                                Icon(imageVector = NurIcons.Target, contentDescription = null, tint = hInkMid, modifier = Modifier.size(24.dp))
                             }
                             Spacer(modifier = Modifier.height(8.dp))
                             Text("Set Goal", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = hInk, fontFamily = fontFamilyUi)

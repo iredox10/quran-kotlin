@@ -38,13 +38,13 @@ fun HifdhTestModal(
     chapters: List<ChapterEntity>,
     onDismiss: () -> Unit,
     onLogReview: (verseKey: String, rating: Int) -> Unit,
-    loadVerses: suspend (List<String>) -> Map<String, VerseEntity>
+    loadVerses: suspend (List<String>) -> Map<String, VerseEntity>,
+    weakTransitions: Set<String> = emptySet()
 ) {
     var remainingKeys by remember(testQueue) { mutableStateOf(testQueue.toMutableList()) }
     var currentVerseKey by remember { mutableStateOf<String?>(null) }
     var isRevealed by remember { mutableStateOf(false) }
     var lastRating by remember { mutableStateOf<Int?>(null) }
-    var showPreviousAyah by remember { mutableStateOf(false) }
     var reviewedCount by remember { mutableStateOf(0) }
     var isCompleted by remember { mutableStateOf(testQueue.isEmpty()) }
 
@@ -57,33 +57,36 @@ fun HifdhTestModal(
 
     val previousVerseKey = remember(currentVerseKey) { previousVerseKeyFor(currentVerseKey, chapters) }
 
+    // Web: weak-transition cue needs the previous ayah loaded pre-reveal
+    // whenever transitionLinks[key] is set (same-surah, ayahNum > 1).
     val verses by produceState<Map<String, VerseEntity>>(
         initialValue = emptyMap(),
         key1 = currentVerseKey,
-        key2 = showPreviousAyah
+        key2 = previousVerseKey
     ) {
-        value = loadVerses(listOfNotNull(currentVerseKey, if (showPreviousAyah) previousVerseKey else null))
+        value = loadVerses(listOfNotNull(currentVerseKey, previousVerseKey))
     }
 
     val currentVerse = currentVerseKey?.let { verses[it] }
     val previousVerse = previousVerseKey?.let { verses[it] }
+    val ayahNumForCue = currentVerseKey?.split(":")?.getOrNull(1)?.toIntOrNull() ?: 0
+    val hasWeakTransition = currentVerseKey != null &&
+        ayahNumForCue > 1 && weakTransitions.contains(currentVerseKey)
 
     fun handleRating(rating: Int) {
         val key = currentVerseKey ?: return
+        // Web handleResult: log AFTER reveal; Again flags the transition link
+        // (surfaced as the pre-reveal cue next time), Easy/Good clears it.
         onLogReview(key, rating)
         lastRating = rating
         reviewedCount++
         isRevealed = false
-        if (rating == 1) {
-            showPreviousAyah = true
-        }
         if (remainingKeys.isEmpty()) {
             isCompleted = true
         }
     }
 
     fun pickNext() {
-        showPreviousAyah = false
         lastRating = null
         if (remainingKeys.isNotEmpty()) {
             val idx = Random.nextInt(remainingKeys.size)
@@ -191,6 +194,47 @@ fun HifdhTestModal(
                         val chapter = chapters.find { it.id == currentVerseKey?.split(":")?.getOrNull(0)?.toIntOrNull() }
                         val ayahNum = currentVerseKey?.split(":")?.getOrNull(1)?.toIntOrNull() ?: 0
 
+                        // Web: pre-reveal weak-transition cue — tail of previous ayah.
+                        if (hasWeakTransition && !isRevealed && previousVerse?.textUthmani != null) {
+                            Card(
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF7ED)),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFDBA74)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(
+                                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = "Weak Transition Detected",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFFEA580C),
+                                        fontFamily = fontFamilyMono,
+                                        letterSpacing = 1.sp
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "Start reciting from the end of the previous Ayah:",
+                                        fontSize = 11.sp,
+                                        color = hInkMuted,
+                                        textAlign = TextAlign.Center
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = previousAyahTail(previousVerse.textUthmani),
+                                        fontSize = 22.sp,
+                                        lineHeight = 36.sp,
+                                        color = hInk,
+                                        textAlign = TextAlign.Center,
+                                        fontFamily = fontFamilyArabic
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+
                         // Prompt Card
                         Card(
                             shape = RoundedCornerShape(16.dp),
@@ -280,18 +324,31 @@ fun HifdhTestModal(
                                     letterSpacing = 1.sp,
                                     modifier = Modifier.padding(bottom = 8.dp)
                                 )
-                                Row(
+                                // Web HifdhTestModal: 2x2 grid — Complete Blank/Again (red),
+                                // Needed Prompt/Hard (orange), Hesitated/Good (blue), Perfect/Easy (green).
+                                Column(
                                     modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    RatingButton(label = "Again", color = Color(0xFFEF4444), modifier = Modifier.weight(1f)) { handleRating(1) }
-                                    RatingButton(label = "Hard", color = Color(0xFFF59E0B), modifier = Modifier.weight(1f)) { handleRating(2) }
-                                    RatingButton(label = "Good", color = Color(0xFF10B981), modifier = Modifier.weight(1f)) { handleRating(3) }
-                                    RatingButton(label = "Easy", color = Color(0xFF3B82F6), modifier = Modifier.weight(1f)) { handleRating(4) }
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        RatingButton(label = "Complete Blank", sublabel = "Again", color = Color(0xFFEF4444), modifier = Modifier.weight(1f)) { handleRating(1) }
+                                        RatingButton(label = "Needed Prompt", sublabel = "Hard", color = Color(0xFFF59E0B), modifier = Modifier.weight(1f)) { handleRating(2) }
+                                    }
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        RatingButton(label = "Hesitated", sublabel = "Good", color = Color(0xFF3B82F6), modifier = Modifier.weight(1f)) { handleRating(3) }
+                                        RatingButton(label = "Perfect", sublabel = "Easy", color = Color(0xFF10B981), modifier = Modifier.weight(1f)) { handleRating(4) }
+                                    }
                                 }
                             }
                         } else {
-                            // Rated — feedback, optional transition link, then continue
+                            // Rated — feedback (web: Mashallah vs keep practicing), then continue.
+                            // The weak link (if Any Again) surfaces as the pre-reveal cue next time.
                             Spacer(modifier = Modifier.height(16.dp))
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -313,80 +370,29 @@ fun HifdhTestModal(
                                 )
                             }
 
-                            if (showPreviousAyah && previousVerse != null) {
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Card(
-                                    shape = RoundedCornerShape(16.dp),
-                                    colors = CardDefaults.cardColors(containerColor = hGoldSoft.copy(alpha = 0.5f)),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, hGold.copy(alpha = 0.5f)),
-                                    modifier = Modifier.fillMaxWidth()
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Button(
+                                    onClick = { pickNext() },
+                                    enabled = remainingKeys.isNotEmpty() || !isCompleted,
+                                    colors = ButtonDefaults.buttonColors(containerColor = hGold),
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier.weight(1f).height(44.dp)
                                 ) {
-                                    Column(
-                                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        Text(
-                                            text = "TRANSITION LINK — PREVIOUS AYAH",
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = hGold,
-                                            fontFamily = fontFamilyMono,
-                                            letterSpacing = 1.sp
-                                        )
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        Text(
-                                            text = "Tie ${currentVerseKey} to ${previousVerseKey} for smooth recall.",
-                                            fontSize = 11.sp,
-                                            color = hInkMuted,
-                                            textAlign = TextAlign.Center
-                                        )
-                                        Spacer(modifier = Modifier.height(10.dp))
-                                        Text(
-                                            text = previousVerse.textUthmani ?: previousVerse.verseKey,
-                                            fontSize = 22.sp,
-                                            lineHeight = 36.sp,
-                                            color = hInk,
-                                            textAlign = TextAlign.Center,
-                                            fontFamily = fontFamilyArabic
-                                        )
-                                        Spacer(modifier = Modifier.height(12.dp))
-                                        Button(
-                                            onClick = { showPreviousAyah = false },
-                                            colors = ButtonDefaults.buttonColors(containerColor = hGold),
-                                            shape = RoundedCornerShape(10.dp),
-                                            modifier = Modifier.fillMaxWidth(0.7f)
-                                        ) {
-                                            Text("Got it", color = Color.White, fontWeight = FontWeight.Bold)
-                                        }
-                                    }
+                                    Icon(imageVector = NurIcons.RefreshCw, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Test Another", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                 }
-                            }
-
-                            if (!showPreviousAyah || previousVerse == null) {
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                Button(
+                                    onClick = onDismiss,
+                                    colors = ButtonDefaults.buttonColors(containerColor = hBoneDark),
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier.weight(0.8f).height(44.dp)
                                 ) {
-                                    Button(
-                                        onClick = { pickNext() },
-                                        enabled = remainingKeys.isNotEmpty() || !isCompleted,
-                                        colors = ButtonDefaults.buttonColors(containerColor = hGold),
-                                        shape = RoundedCornerShape(12.dp),
-                                        modifier = Modifier.weight(1f).height(44.dp)
-                                    ) {
-                                        Icon(imageVector = NurIcons.RefreshCw, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text("Test Another", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                    }
-                                    Button(
-                                        onClick = onDismiss,
-                                        colors = ButtonDefaults.buttonColors(containerColor = hBoneDark),
-                                        shape = RoundedCornerShape(12.dp),
-                                        modifier = Modifier.weight(0.8f).height(44.dp)
-                                    ) {
-                                        Text("Done", color = hInk, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                    }
+                                    Text("Done", color = hInk, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                 }
                             }
                         }
@@ -395,6 +401,12 @@ fun HifdhTestModal(
             }
         }
     }
+}
+
+/** Web: `...` + last 4 words of the previous ayah's Arabic text. */
+private fun previousAyahTail(arabicText: String?): String {
+    if (arabicText.isNullOrBlank()) return "..."
+    return "..." + arabicText.trim().split(Regex("\\s+")).takeLast(4).joinToString(" ")
 }
 
 private fun previousVerseKeyFor(current: String?, chapters: List<ChapterEntity>): String? {
@@ -410,24 +422,33 @@ private fun previousVerseKeyFor(current: String?, chapters: List<ChapterEntity>)
 @Composable
 private fun RatingButton(
     label: String,
+    sublabel: String,
     color: Color,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
     Surface(
         onClick = onClick,
-        modifier = modifier.height(44.dp),
+        modifier = modifier.height(56.dp),
         shape = RoundedCornerShape(10.dp),
         color = color.copy(alpha = 0.15f),
         border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.4f))
     ) {
         Box(contentAlignment = Alignment.Center) {
-            Text(
-                text = label,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = color
-            )
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = label,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = color
+                )
+                Text(
+                    text = sublabel,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Normal,
+                    color = color.copy(alpha = 0.7f)
+                )
+            }
         }
     }
 }

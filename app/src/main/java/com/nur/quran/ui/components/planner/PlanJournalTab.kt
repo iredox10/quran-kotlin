@@ -61,7 +61,10 @@ fun PlanJournalTab(
 
                 if (reflections.isNotEmpty()) {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        reflections.forEach { (dayId, text) ->
+                        // Web parity (Planner.jsx): newest day first.
+                        reflections.toList()
+                            .sortedByDescending { (dayId, _) -> dayId.toIntOrNull() ?: 0 }
+                            .forEach { (dayId, text) ->
                             Surface(
                                 shape = RoundedCornerShape(14.dp),
                                 color = hWhite,
@@ -166,7 +169,8 @@ fun PlanJournalTab(
 
                 if (bookmarks.isNotEmpty()) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        bookmarks.forEach { bm ->
+                        // Web parity (Planner.jsx): most recently highlighted first.
+                        bookmarks.sortedByDescending { it.createdAt }.forEach { bm ->
                             val parts = bm.verseKey.split(":")
                             val surahNum = parts.getOrNull(0)?.toIntOrNull() ?: 1
                             val ayahNum = parts.getOrNull(1)?.toIntOrNull() ?: 1

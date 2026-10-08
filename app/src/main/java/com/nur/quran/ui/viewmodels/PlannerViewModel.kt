@@ -537,10 +537,12 @@ class PlannerViewModel @Inject constructor(
             val updatedAll = _allPlans.value.filter { it.id != current.id }
             
             val finalAll = updatedAll + revision
+            _allPlans.value = finalAll
             _activePlannerId.value = revision.id
             _activePlan.value = revision
             repository.saveAllPlans(finalAll)
             repository.saveActivePlannerId(revision.id)
+            loadPlanExtras(revision.id)
         }
     }
 

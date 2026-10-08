@@ -450,7 +450,7 @@ fun MemorizeScreen(
                                         )
                                         if (resumeAyah != null) {
                                             Text(
-                                                text = "→ Continue from Ayah $resumeAyah",
+                                                text = "Continue from Ayah $resumeAyah",
                                                 fontSize = 11.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 color = hGold
@@ -732,7 +732,7 @@ fun MemorizeScreen(
                                 )
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(
-                                    text = "${jp.memAyahs} / ${jp.totalAyahs} ayahs memorized ($memPct%)",
+                                    text = "${jp.memAyahs} / ${jp.totalAyahs} Ayahs ($memPct%)",
                                     fontSize = 11.sp,
                                     color = hInkMuted,
                                     fontFamily = fontFamilyMono
@@ -960,7 +960,7 @@ private fun RevisionQueueCard(
                 Text(text = "$dueCount", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = textColor, fontFamily = fontFamilyMono)
             }
             Spacer(modifier = Modifier.height(4.dp))
-            Text(text = "$totalCount TOTAL", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = textColor.copy(alpha = 0.7f), fontFamily = fontFamilyMono)
+            Text(text = "$totalCount total", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = textColor.copy(alpha = 0.7f), fontFamily = fontFamilyMono)
             Spacer(modifier = Modifier.height(12.dp))
             Surface(
                 shape = RoundedCornerShape(10.dp),

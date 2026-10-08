@@ -85,9 +85,14 @@ fun PlannerReaderScreen(
     val pageStart = assignment.pageStart
     val pageEnd = assignment.pageEnd
 
-    // ── Auto-resume: start at first unread page ──────────────────────
+    // ── Auto-resume (web parity: PlannerReader.jsx:99-108) ─────────
+    // Prefer the exact last-read page when it sits inside this
+    // assignment; otherwise fall back to the first unread page.
     val resumePage = remember(activePlan, assignment) {
-        activePlan?.let { PlannerEngine.getAssignmentResumePageNumber(it, assignment) } ?: pageStart
+        val plan = activePlan
+        val lastPage = plan?.lastReadPage
+        if (plan != null && lastPage != null && lastPage in pageStart..pageEnd) lastPage
+        else plan?.let { PlannerEngine.getAssignmentResumePageNumber(it, assignment) } ?: pageStart
     }
     var currentPage by remember { mutableStateOf(resumePage) }
 

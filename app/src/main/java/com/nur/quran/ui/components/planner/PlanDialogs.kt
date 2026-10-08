@@ -192,7 +192,7 @@ fun PlannerSettingsDialog(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
 
-                listOf("after" to "After Prayer", "before" to "Before Prayer", "around" to "Around Prayer").forEach { (key, label) ->
+                listOf("after" to "Read After Prayer", "before" to "Read Before Prayer", "split" to "Split Before & After").forEach { (key, label) ->
                     val isSelected = readingPreference == key
                     Surface(
                         shape = RoundedCornerShape(12.dp),

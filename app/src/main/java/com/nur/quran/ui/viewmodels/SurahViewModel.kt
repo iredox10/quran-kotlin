@@ -389,6 +389,9 @@ class SurahViewModel @Inject constructor(
     private var playlist: List<VerseEntity> = emptyList()
     private var playlistChapterId: Int = 0
 
+    // Web: GlobalAudioPlayer flushListening — log >=10s playback as `listening`.
+    private val listeningTracker = com.nur.quran.data.audio.ListeningSessionTracker()
+
     init {
         if (hifdhPrefs.getInt("translation_id", 20) == 131) {
             hifdhPrefs.edit().putInt("translation_id", 20).apply()
@@ -879,6 +882,9 @@ class SurahViewModel @Inject constructor(
     private val playerListener = object : Player.Listener {
         override fun onIsPlayingChanged(playing: Boolean) {
             _isPlaying.value = playing
+            val chapterId = if (playlistChapterId > 0) playlistChapterId else null
+            val segment = listeningTracker.onPlayingChanged(playing, chapterId, System.currentTimeMillis())
+            if (segment != null) logReadingSession(segment.durationSeconds.toInt(), "listening", segment.chapterId)
         }
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
@@ -1987,6 +1993,11 @@ class SurahViewModel @Inject constructor(
             }
         }
         mediaController?.removeListener(playerListener)
+        listeningTracker.flush(System.currentTimeMillis())?.let { segment ->
+            kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
+                repository.logReadingSession(segment.durationSeconds.toInt(), "listening", segment.chapterId)
+            }
+        }
         controllerFuture?.let { MediaController.releaseFuture(it) }
         controllerFuture = null
         mediaController = null

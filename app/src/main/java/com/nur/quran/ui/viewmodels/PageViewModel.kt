@@ -305,9 +305,16 @@ class PageViewModel @Inject constructor(
         return mediaController
     }
 
+    // Web: GlobalAudioPlayer flushListening — log >=10s playback as `listening`.
+    private val listeningTracker = com.nur.quran.data.audio.ListeningSessionTracker()
+
     private val playerListener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             _isPlaying.value = isPlaying
+            // Web: GlobalAudioPlayer flushListening — log >=10s playback as `listening`.
+            listeningTracker.onPlayingChanged(isPlaying, null, System.currentTimeMillis())?.let { segment ->
+                logReadingSession(segment.durationSeconds.toInt(), "listening", null)
+            }
         }
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             _playingVerseKey.value = mediaItem?.mediaId

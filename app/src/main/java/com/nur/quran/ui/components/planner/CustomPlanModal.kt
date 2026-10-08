@@ -243,7 +243,8 @@ fun CustomPlanModal(
                             Slider(
                                 value = pagesPerDay.toFloat(),
                                 onValueChange = { pagesPerDay = it.toInt().coerceAtLeast(1) },
-                                valueRange = 1f..50f,
+                                // Web parity: slider max is min(totalUnits, 50).
+                                valueRange = 1f..totalSelectedUnits.coerceAtMost(50).coerceAtLeast(1).toFloat(),
                                 modifier = Modifier.weight(1f),
                                 colors = SliderDefaults.colors(thumbColor = hTeal, activeTrackColor = hTeal)
                             )

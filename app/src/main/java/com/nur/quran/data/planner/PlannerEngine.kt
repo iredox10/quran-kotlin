@@ -1010,49 +1010,12 @@ object PlannerEngine {
             dateStr
         }
     }
-}
-
-// ── Additional Data Classes ─────────────────────────────────────────────
-// Web parity (planner.js getWeeklySummary): pages-based { label, completedUnits
-// (read pages), totalUnits (total pages) } per 7-day block.
-data class WeeklySummary(
-    val label: String,
-    val completedUnits: Int,
-    val totalUnits: Int
-)
-
-data class PlannerAnalytics(
-    val onTimeRate: Int,
-    val catchUpDays: Int,
-    val avgPagesPerDay: Float,
-    val totalReadPages: Int,
-    val elapsedDays: Int
-)
-
-// ── Prayer Integration ──────────────────────────────────────────────────
-val PRAYER_NAMES = listOf("Fajr", "Dhuhr", "Asr", "Maghrib", "Isha")
-
-data class PrayerTimings(
-    val date: String,
-    val timings: Map<String, String> // e.g. "Fajr" -> "05:30"
-)
-
-data class PrayerSlot(
-    val name: String,
-    val time: String?,        // Formatted label e.g. "After 5:30 AM"
-    val count: Int,           // Total items in this slot
-    val doneInSlot: Int,      // Items completed in this slot
-    val slotStart: Int,       // Start index into items list
-    val slotEnd: Int,         // End index into items list
-    val status: String        // "completed", "current", "upcoming", "empty", "locked"
-)
-
-fun buildPrayerSlots(
-    plan: ReadingPlan,
-    todayAssignment: PlannerAssignment?,
-    prayerTimings: PrayerTimings?,
-    readPreference: String = "after",         // "before", "after", "split"
-    activePrayers: List<String> = PRAYER_NAMES
+    fun buildPrayerSlots(
+        plan: ReadingPlan,
+        todayAssignment: PlannerAssignment?,
+        prayerTimings: PrayerTimings?,
+        readPreference: String = "after",         // "before", "after", "split"
+        activePrayers: List<String> = PRAYER_NAMES
 ): List<PrayerSlot> {
     val sortedPrayers = activePrayers.sortedBy { PRAYER_NAMES.indexOf(it) }
 
@@ -1126,4 +1089,39 @@ fun buildPrayerSlots(
         )
     }
 }
+}
 
+// ── Additional Data Classes ─────────────────────────────────────────────
+// Web parity (planner.js getWeeklySummary): pages-based { label, completedUnits
+// (read pages), totalUnits (total pages) } per 7-day block.
+data class WeeklySummary(
+    val label: String,
+    val completedUnits: Int,
+    val totalUnits: Int
+)
+
+data class PlannerAnalytics(
+    val onTimeRate: Int,
+    val catchUpDays: Int,
+    val avgPagesPerDay: Float,
+    val totalReadPages: Int,
+    val elapsedDays: Int
+)
+
+// ── Prayer Integration ──────────────────────────────────────────────────
+val PRAYER_NAMES = listOf("Fajr", "Dhuhr", "Asr", "Maghrib", "Isha")
+
+data class PrayerTimings(
+    val date: String,
+    val timings: Map<String, String> // e.g. "Fajr" -> "05:30"
+)
+
+data class PrayerSlot(
+    val name: String,
+    val time: String?,        // Formatted label e.g. "After 5:30 AM"
+    val count: Int,           // Total items in this slot
+    val doneInSlot: Int,      // Items completed in this slot
+    val slotStart: Int,       // Start index into items list
+    val slotEnd: Int,         // End index into items list
+    val status: String        // "completed", "current", "upcoming", "empty", "locked"
+)

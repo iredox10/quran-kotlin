@@ -220,7 +220,7 @@ fun PlannerScreen(
             val todayPct = Math.round((todayDone.toFloat() / todayTotal) * 100).coerceIn(0, 100)
 
             val prayerSlots = remember(plan, todayAssignment, prayerTimings, readPreference, activePrayers) {
-                buildPrayerSlots(
+                PlannerEngine.buildPrayerSlots(
                     plan = plan,
                     todayAssignment = todayAssignment,
                     prayerTimings = prayerTimings,

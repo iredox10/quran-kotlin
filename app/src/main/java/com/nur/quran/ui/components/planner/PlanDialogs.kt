@@ -445,7 +445,7 @@ fun DeletePlanConfirmDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Delete Plan?",
+                text = "Delete this plan?",
                 fontFamily = fontFamilyUi,
                 fontWeight = FontWeight.Bold,
                 fontSize = 19.sp,
@@ -454,7 +454,7 @@ fun DeletePlanConfirmDialog(
         },
         text = {
             Text(
-                text = "Are you sure you want to delete \"$planTitle\"? All reading progress for this plan will be removed.",
+                text = "All progress will be permanently lost. This cannot be undone.",
                 fontSize = 13.5.sp,
                 fontFamily = fontFamilyBody,
                 color = hInkMid

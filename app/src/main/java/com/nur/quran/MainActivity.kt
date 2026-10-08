@@ -182,7 +182,8 @@ class MainActivity : ComponentActivity() {
                                 onNavigateToRoute = { route ->
                                     when (route) {
                                         "planner" -> navController.navigate(Screen.Planner.route)
-                                        "memorize" -> navController.navigate(Screen.Memorize.route)
+                                        // Web OnboardingProgress + Home tour: Hifdh entry opens /memorize/1.
+                                        "memorize" -> navController.navigate(Screen.MemorizeDetail.createRoute(1))
                                         "surah" -> navController.navigate(Screen.SurahDetail.createRoute(1))
                                         "library" -> navController.navigate(Screen.Library.route)
                                     }

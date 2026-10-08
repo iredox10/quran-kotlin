@@ -464,8 +464,10 @@ object PlannerEngine {
         val allReadPages = explicitReadPages.toMutableSet()
 
         assignment.items.forEach { item ->
-            val pStart = item.pageStart
-            val pEnd = item.pageEnd
+            // Web parity (planner.js:670-671): `item.pageStart || 1`,
+            // `item.pageEnd || pStart` — 0 counts as missing.
+            val pStart = item.pageStart.takeIf { it != 0 } ?: 1
+            val pEnd = item.pageEnd.takeIf { it != 0 } ?: pStart
             totalPagesCount += (pEnd - pStart + 1)
 
             var allItemPagesRead = true
@@ -583,8 +585,10 @@ object PlannerEngine {
         val unreadPages = mutableListOf<Int>()
 
         assignment.items.forEach { item ->
-            val pStart = item.pageStart.takeIf { it > 0 } ?: assignment.pageStart.takeIf { it > 0 } ?: 1
-            val pEnd = item.pageEnd.takeIf { it > 0 } ?: pStart
+            // Web parity (planner.js:339-340): item bounds only, no
+            // assignment.pageStart fallback; 0 counts as missing.
+            val pStart = item.pageStart.takeIf { it != 0 } ?: 1
+            val pEnd = item.pageEnd.takeIf { it != 0 } ?: pStart
             for (p in pStart..pEnd) {
                 if (explicitReadPages.contains(p) || completedSet.contains(item.rangeValue.toString())) {
                     readPages.add(p)
@@ -851,8 +855,9 @@ object PlannerEngine {
         val prog = getAssignmentProgress(plan, assignment)
         if (prog.isComplete) return assignment.pageStart
         val explicitReadPages = plan.assignmentReadPages[assignment.dayNumber] ?: emptyList()
-        val start = assignment.pageStart
-        val end = assignment.pageEnd
+        // Web parity (planner.js:758-759): `pageStart || 1`, `pageEnd || start`.
+        val start = assignment.pageStart.takeIf { it != 0 } ?: 1
+        val end = assignment.pageEnd.takeIf { it != 0 } ?: start
         for (p in start..end) {
             if (explicitReadPages.contains(p)) continue
             var coveredByItem = false

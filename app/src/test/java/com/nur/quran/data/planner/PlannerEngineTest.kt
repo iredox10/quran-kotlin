@@ -304,6 +304,23 @@ class PlannerEngineTest {
         assertEquals("partial", PlannerEngine.getAssignmentStatus(p, p.assignments[0], "2026-06-10"))
     }
 
+    // ── zero page-bound parity (planner.js:339-340,670-671,758-759) ──
+
+    @Test
+    fun `zero item bounds fall back to 1 not assignment start`() {
+        val zeroItem = item(1, 0).copy(pageStart = 0, pageEnd = 0)
+        val a = assignment(1, "2026-01-01", 1..1).copy(
+            pageStart = 50, pageEnd = 50, items = listOf(zeroItem)
+        )
+        val p = plan(listOf(a), startDate = "2026-01-01")
+        val (read, unread) = PlannerEngine.splitAssignmentReadPages(p, a)
+        assertTrue(read.isEmpty())
+        assertEquals(listOf(1), unread)
+        val prog = PlannerEngine.getAssignmentProgress(p, a)
+        assertEquals(1, prog.totalPagesCount)
+        assertFalse(prog.isComplete)
+    }
+
     // ── misc ────────────────────────────────────────────────────────
 
     @Test

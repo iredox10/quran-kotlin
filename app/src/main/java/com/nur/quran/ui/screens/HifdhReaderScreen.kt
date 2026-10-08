@@ -1,6 +1,7 @@
 package com.nur.quran.ui.screens
 
 import android.content.Context
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.*
@@ -70,6 +71,9 @@ fun HifdhReaderScreen(
     val fontFamilyArabic = remember(selectedArabicFontName) {
         getArabicFontFamily(selectedArabicFontName)
     }
+
+    // Web parity: system back from memorize detail lands on /memorize index.
+    BackHandler { onBackClick() }
 
     var currentVerseIndex by remember { mutableStateOf(0) }
     var ayahsPerChunk by remember { mutableStateOf(1) } // 1, 3, 5, -1 (Page)

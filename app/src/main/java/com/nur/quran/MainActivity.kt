@@ -216,7 +216,13 @@ class MainActivity : ComponentActivity() {
                                 surahViewModel = surahViewModel,
                                 chapterId = chapterId,
                                 startVerseKey = args?.getString("verseKey"),
-                                onBackClick = { navController.popBackStack() }
+                                // Web Layout.jsx: memorize-detail back always lands on /memorize.
+                                onBackClick = {
+                                    navController.navigate(Screen.Memorize.route) {
+                                        popUpTo(Screen.Memorize.route) { inclusive = false }
+                                        launchSingleTop = true
+                                    }
+                                }
                             )
                         }
                         composable(Screen.Planner.route) {

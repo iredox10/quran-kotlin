@@ -233,6 +233,9 @@ class MainActivity : ComponentActivity() {
                                 plannerViewModel = plannerViewModel,
                                 onReadAssignment = { dayNumber ->
                                     navController.navigate(Screen.PlannerReaderDetail.createRoute(dayNumber))
+                                },
+                                onOpenVerse = { surah, verseKey ->
+                                    navController.navigate(Screen.SurahDetail.createRoute(surah, verseKey))
                                 }
                             )
                         }

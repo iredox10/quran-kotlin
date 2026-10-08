@@ -142,14 +142,14 @@ fun HifdhTestModal(
                             Spacer(modifier = Modifier.width(10.dp))
                             Column {
                                 Text(
-                                    text = "$queueType Review Test",
+                                    text = "Hifdh Test",
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = hInk,
                                     fontFamily = fontFamilyUi
                                 )
                                 Text(
-                                    text = if (testQueue.isEmpty()) "Queue empty" else "Reviewed $reviewedCount of ${testQueue.size} Verses",
+                                    text = if (testQueue.isEmpty()) "Queue empty" else "Reviewed $reviewedCount of ${testQueue.size} ayahs",
                                     fontSize = 11.sp,
                                     color = hInkMuted,
                                     fontFamily = fontFamilyMono
@@ -176,7 +176,7 @@ fun HifdhTestModal(
                             Text("Queue Completed!", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = hInk, fontFamily = fontFamilyUi)
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = if (testQueue.isEmpty()) "This queue has no ayahs to review."
+                                text = if (testQueue.isEmpty()) "You have no more ayahs to review in this queue right now."
                                 else "You've reviewed all ${testQueue.size} ayahs in this queue.",
                                 fontSize = 12.sp,
                                 color = hInkMuted,
@@ -205,7 +205,7 @@ fun HifdhTestModal(
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 Text(
-                                    text = "SURAH ${chapter?.id ?: "?"} • ${(chapter?.nameSimple ?: "").uppercase()}",
+                                    text = chapter?.nameSimple ?: "Surah ${chapter?.id ?: "?"}",
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = hGold,
@@ -253,7 +253,7 @@ fun HifdhTestModal(
                                     ) {
                                         Icon(imageVector = NurIcons.Eye, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
                                         Spacer(modifier = Modifier.width(8.dp))
-                                        Text("Tap to Reveal Verse", color = Color.White, fontWeight = FontWeight.Bold)
+                                        Text("Tap to Reveal", color = Color.White, fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }
@@ -263,7 +263,7 @@ fun HifdhTestModal(
                             // Not yet rated — show recall + rating buttons
                             Spacer(modifier = Modifier.height(12.dp))
                             Text(
-                                text = "Recite the ayah from memory, then tap reveal to verify.",
+                                text = "Recite this ayah from memory, then tap to verify.",
                                 fontSize = 11.sp,
                                 color = hInkMuted,
                                 textAlign = TextAlign.Center,
@@ -272,7 +272,7 @@ fun HifdhTestModal(
                             if (isRevealed) {
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Text(
-                                    text = "HOW WELL DID YOU RECALL THIS AYAH?",
+                                    text = "How well did you remember this?",
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = hInkMuted,
@@ -306,7 +306,7 @@ fun HifdhTestModal(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = if (lastRating!! >= 3) "Good recall! Review scheduled." else "Marked for review.",
+                                    text = if (lastRating!! >= 3) "Mashallah! Keep it up." else "Keep practicing!",
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = if (lastRating!! >= 3) hGreen else Color(0xFFEF4444)
@@ -326,7 +326,7 @@ fun HifdhTestModal(
                                         horizontalAlignment = Alignment.CenterHorizontally
                                     ) {
                                         Text(
-                                            text = "TRANSITION LINK — PREVIOUS AYAH",
+                                            text = "Weak Transition Detected",
                                             fontSize = 10.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = hGold,
@@ -335,7 +335,7 @@ fun HifdhTestModal(
                                         )
                                         Spacer(modifier = Modifier.height(8.dp))
                                         Text(
-                                            text = "Tie ${currentVerseKey} to ${previousVerseKey} for smooth recall.",
+                                            text = "Start reciting from the end of the previous Ayah:",
                                             fontSize = 11.sp,
                                             color = hInkMuted,
                                             textAlign = TextAlign.Center
@@ -377,7 +377,7 @@ fun HifdhTestModal(
                                     ) {
                                         Icon(imageVector = NurIcons.RefreshCw, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
                                         Spacer(modifier = Modifier.width(6.dp))
-                                        Text("Test Another", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                        Text("Test Another Ayah", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                     }
                                     Button(
                                         onClick = onDismiss,

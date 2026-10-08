@@ -28,8 +28,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.nur.quran.data.JUZ_STARTS
 import com.nur.quran.data.db.entities.ChapterEntity
-import com.nur.quran.data.hifdh.FsrsState
-import com.nur.quran.data.hifdh.HifdhHistoryEntry
+import com.nur.quran.data.hifdh.HifdhQueueData
+import com.nur.quran.data.hifdh.buildHifdhQueueData
 import com.nur.quran.ui.components.HifdhBreakdownModal
 import com.nur.quran.ui.components.HifdhGoalModal
 import com.nur.quran.ui.components.HifdhTestModal
@@ -809,39 +809,18 @@ private fun firstUnmemorizedAyah(memorizedAyahs: Set<String>, chapterId: Int, ve
     return null
 }
 
+/** Shared pure rules in data/hifdh/HifdhQueues.kt (web MemorizeIndex.jsx parity). */
 private fun buildQueueData(
     memorizedAyahs: Set<String>,
-    hifdhHistory: Map<String, HifdhHistoryEntry>,
+    hifdhHistory: Map<String, com.nur.quran.data.hifdh.HifdhHistoryEntry>,
     lastMemChapterId: Int?,
     now: Long
 ): QueueData {
-    val sortedKeys = memorizedAyahs.sortedBy { key ->
-        val parts = key.split(":")
-        (parts.getOrNull(0)?.toIntOrNull() ?: 0) * 10000 + (parts.getOrNull(1)?.toIntOrNull() ?: 0)
-    }
-    val sabaqAll = mutableListOf<String>()
-    val sabqiAll = mutableListOf<String>()
-    val manzilAll = mutableListOf<String>()
-    for (key in sortedKeys) {
-        val card = hifdhHistory[key]?.card
-        val isNewish = card == null ||
-            card.state == FsrsState.NEW ||
-            card.state == FsrsState.LEARNING ||
-            card.reps < 3
-        when {
-            isNewish -> sabaqAll.add(key)
-            lastMemChapterId != null && key.startsWith("$lastMemChapterId:") -> sabqiAll.add(key)
-            else -> manzilAll.add(key)
-        }
-    }
-    fun dueKeys(all: List<String>): List<String> = all.filter { key ->
-        val card = hifdhHistory[key]?.card
-        card == null || card.due <= now
-    }
+    val q: HifdhQueueData = buildHifdhQueueData(memorizedAyahs, hifdhHistory, lastMemChapterId, now)
     return QueueData(
-        sabaqAll = sabaqAll, sabaqDue = dueKeys(sabaqAll),
-        sabqiAll = sabqiAll, sabqiDue = dueKeys(sabqiAll),
-        manzilAll = manzilAll, manzilDue = dueKeys(manzilAll)
+        sabaqAll = q.sabaqAll, sabaqDue = q.sabaqDue,
+        sabqiAll = q.sabqiAll, sabqiDue = q.sabqiDue,
+        manzilAll = q.manzilAll, manzilDue = q.manzilDue
     )
 }
 

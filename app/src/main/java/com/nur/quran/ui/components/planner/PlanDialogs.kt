@@ -288,7 +288,7 @@ fun RebalancePlanDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Smart Rebalance",
+                text = "Rebalance Plan",
                 fontFamily = fontFamilyUi,
                 fontWeight = FontWeight.Bold,
                 fontSize = 19.sp,
@@ -298,7 +298,7 @@ fun RebalancePlanDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    text = "If you have missed some assignments, choose how you would like to recalibrate your remaining days.",
+                    text = "You missed some pages from past assignments. How would you like to catch up?",
                     fontSize = 13.5.sp,
                     fontFamily = fontFamilyBody,
                     color = hInkMid,
@@ -312,16 +312,30 @@ fun RebalancePlanDialog(
                     border = BorderStroke(1.5.dp, hBoneDark),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Shift Deadlines (Extend Plan)", fontFamily = fontFamilyUi, fontWeight = FontWeight.SemiBold, color = hInk)
+                    Text("Extend Plan", fontFamily = fontFamilyUi, fontWeight = FontWeight.SemiBold, color = hInk)
                 }
+                Text(
+                    text = "Keep your daily reading amount exactly the same, but add extra days to the end of your plan.",
+                    fontSize = 12.sp,
+                    fontFamily = fontFamilyBody,
+                    color = hInkMid,
+                    lineHeight = 17.sp
+                )
                 Button(
                     onClick = { onSpread(); onDismiss() },
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = hGold),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Redistribute Missed Pages", fontFamily = fontFamilyUi, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text("Spread Pages", fontFamily = fontFamilyUi, fontWeight = FontWeight.Bold, color = Color.White)
                 }
+                Text(
+                    text = "Keep your original deadline, but evenly distribute the missed pages across your remaining days.",
+                    fontSize = 12.sp,
+                    fontFamily = fontFamilyBody,
+                    color = hInkMid,
+                    lineHeight = 17.sp
+                )
             }
         },
         confirmButton = {},

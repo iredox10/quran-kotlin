@@ -236,7 +236,7 @@ fun MemorizeScreen(
                     MetricStatCard(
                         countText = "${memorizedSurahIds.size}",
                         totalText = "/114",
-                        label = "SURAHS",
+                        label = "Surahs",
                         modifier = Modifier.weight(1f),
                         onClick = {
                             activeBreakdownModal = "Memorized Surahs (${memorizedSurahIds.size})" to
@@ -246,14 +246,14 @@ fun MemorizeScreen(
                     MetricStatCard(
                         countText = "${memorizedAyahs.size}",
                         totalText = "/6236",
-                        label = "AYAHS",
+                        label = "Ayahs",
                         modifier = Modifier.weight(1f),
                         onClick = { activeBreakdownModal = "Memorized Ayahs (${memorizedAyahs.size})" to ayahRangeSections }
                     )
                     MetricStatCard(
                         countText = "${if (memorizedAyahs.isNotEmpty()) Math.round((memorizedAyahs.size.toFloat() / 6236f) * 100) else 0}",
                         totalText = "%",
-                        label = "PROGRESS",
+                        label = "Progress",
                         modifier = Modifier.weight(1f),
                         onClick = {}
                     )
@@ -298,7 +298,7 @@ fun MemorizeScreen(
                                     .background(Color.White.copy(alpha = 0.15f)),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(imageVector = NurIcons.Brain, contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
+                                Icon(imageVector = NurIcons.RefreshCw, contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
                             }
                             Spacer(modifier = Modifier.height(8.dp))
                             Text("Test My Hifdh", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White, fontFamily = fontFamilyUi)
@@ -331,7 +331,7 @@ fun MemorizeScreen(
                                     .background(hBone),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(imageVector = NurIcons.Sparkles, contentDescription = null, tint = hInkMid, modifier = Modifier.size(24.dp))
+                                Icon(imageVector = NurIcons.Target, contentDescription = null, tint = hInkMid, modifier = Modifier.size(24.dp))
                             }
                             Spacer(modifier = Modifier.height(8.dp))
                             Text("Set Goal", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = hInk, fontFamily = fontFamilyUi)
@@ -455,7 +455,7 @@ fun MemorizeScreen(
                                         )
                                         if (resumeAyah != null) {
                                             Text(
-                                                text = "→ Continue from Ayah $resumeAyah",
+                                                text = "Continue from Ayah $resumeAyah",
                                                 fontSize = 11.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 color = hGold
@@ -575,7 +575,7 @@ fun MemorizeScreen(
                             Icon(imageVector = NurIcons.Award, contentDescription = null, tint = if (showMemorizedOnly) hGreen else hInkMid, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = if (showMemorizedOnly) "Memorized Only" else "Filter",
+                                text = if (showMemorizedOnly) "Memorized Only" else "Filter Memorized",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = if (showMemorizedOnly) hGreen else hInkMid
@@ -754,7 +754,7 @@ fun MemorizeScreen(
                                 )
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(
-                                    text = "${jp.memAyahs} / ${jp.totalAyahs} ayahs memorized ($memPct%)",
+                                    text = "${jp.memAyahs} / ${jp.totalAyahs} Ayahs ($memPct%)",
                                     fontSize = 11.sp,
                                     color = hInkMuted,
                                     fontFamily = fontFamilyMono
@@ -959,7 +959,7 @@ private fun RevisionQueueCard(
                 Text(text = "$dueCount", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = textColor, fontFamily = fontFamilyMono)
             }
             Spacer(modifier = Modifier.height(4.dp))
-            Text(text = "$totalCount TOTAL", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = textColor.copy(alpha = 0.7f), fontFamily = fontFamilyMono)
+            Text(text = "$totalCount total", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = textColor.copy(alpha = 0.7f), fontFamily = fontFamilyMono)
             Spacer(modifier = Modifier.height(12.dp))
             Surface(
                 shape = RoundedCornerShape(10.dp),

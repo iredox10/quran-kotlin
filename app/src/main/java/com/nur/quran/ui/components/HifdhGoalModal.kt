@@ -79,7 +79,7 @@ fun HifdhGoalModal(
                                 Icon(imageVector = NurIcons.Brain, contentDescription = null, tint = hGold, modifier = Modifier.size(16.dp))
                             }
                             Spacer(modifier = Modifier.width(10.dp))
-                            Text("Set Memorization Goal", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = hInk, fontFamily = fontFamilyUi)
+                            Text("Set Hifdh Goal", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = hInk, fontFamily = fontFamilyUi)
                         }
 
                         IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
@@ -89,7 +89,7 @@ fun HifdhGoalModal(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    Text("SELECT SURAH", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = hInkMuted, fontFamily = fontFamilyMono)
+                    Text("Target Surah", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = hInkMuted, fontFamily = fontFamilyMono)
                     Spacer(modifier = Modifier.height(6.dp))
 
                     Box(
@@ -124,7 +124,7 @@ fun HifdhGoalModal(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    Text("TARGET DATE", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = hInkMuted, fontFamily = fontFamilyMono)
+                    Text("Target Date", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = hInkMuted, fontFamily = fontFamilyMono)
                     Spacer(modifier = Modifier.height(6.dp))
 
                     Surface(

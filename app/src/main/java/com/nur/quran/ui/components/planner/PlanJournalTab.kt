@@ -27,6 +27,7 @@ fun PlanJournalTab(
     reflections: Map<String, String>,
     bookmarks: List<PlannerBookmark>,
     onNavigateToVerse: (Int, Int) -> Unit,
+    onDeleteReflection: (Int) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(18.dp)) {
@@ -61,7 +62,10 @@ fun PlanJournalTab(
 
                 if (reflections.isNotEmpty()) {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        reflections.forEach { (dayId, text) ->
+                        // Web parity (Planner.jsx): newest day first.
+                        reflections.toList()
+                            .sortedByDescending { (dayId, _) -> dayId.toIntOrNull() ?: 0 }
+                            .forEach { (dayId, text) ->
                             Surface(
                                 shape = RoundedCornerShape(14.dp),
                                 color = hWhite,
@@ -71,7 +75,8 @@ fun PlanJournalTab(
                                 Column(modifier = Modifier.padding(14.dp)) {
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        modifier = Modifier.fillMaxWidth()
                                     ) {
                                         Box(
                                             modifier = Modifier
@@ -95,6 +100,22 @@ fun PlanJournalTab(
                                             fontWeight = FontWeight.Medium,
                                             color = hInkMuted
                                         )
+                                        Spacer(modifier = Modifier.weight(1f))
+                                        // Blank text clears the day entry (ViewModel parity).
+                                        val dayNum = dayId.toIntOrNull()
+                                        if (dayNum != null) {
+                                            IconButton(
+                                                onClick = { onDeleteReflection(dayNum) },
+                                                modifier = Modifier.size(28.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = NurIcons.Trash2,
+                                                    contentDescription = "Delete reflection",
+                                                    tint = hInkMuted,
+                                                    modifier = Modifier.size(15.dp)
+                                                )
+                                            }
+                                        }
                                     }
                                     Spacer(modifier = Modifier.height(6.dp))
                                     Text(
@@ -166,7 +187,8 @@ fun PlanJournalTab(
 
                 if (bookmarks.isNotEmpty()) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        bookmarks.forEach { bm ->
+                        // Web parity (Planner.jsx): most recently highlighted first.
+                        bookmarks.sortedByDescending { it.createdAt }.forEach { bm ->
                             val parts = bm.verseKey.split(":")
                             val surahNum = parts.getOrNull(0)?.toIntOrNull() ?: 1
                             val ayahNum = parts.getOrNull(1)?.toIntOrNull() ?: 1

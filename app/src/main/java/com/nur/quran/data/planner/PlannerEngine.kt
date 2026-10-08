@@ -125,7 +125,7 @@ data class PlannerOverview(
     val isUpcoming: Boolean,
     val isFinishedWindow: Boolean,
     val completionRatio: Float,
-    val firstIncomplete: PlannerAssignment
+    val firstIncomplete: PlannerAssignment?
 )
 
 data class PlannerSuccessMetrics(
@@ -509,6 +509,18 @@ object PlannerEngine {
 
     fun getPlannerOverview(plan: ReadingPlan?, today: String = formatPlannerDate()): PlannerOverview? {
         if (plan == null) return null
+        // Web parity (planner.js:621): empty plan has no last assignment —
+        // web yields undefined instead of throwing on .last().
+        if (plan.assignments.isEmpty()) return PlannerOverview(
+            completedCount = 0,
+            remainingCount = 0,
+            currentDayNumber = 0,
+            overdueDays = 0,
+            isUpcoming = diffDays(plan.startDate, today) < 0,
+            isFinishedWindow = diffDays(plan.startDate, today) >= plan.durationDays,
+            completionRatio = 0f,
+            firstIncomplete = null
+        )
 
         val elapsedDays = diffDays(plan.startDate, today)
         val currentDayNumber = min(max(elapsedDays + 1, 1), plan.durationDays)
@@ -521,7 +533,8 @@ object PlannerEngine {
         var readPages = 0
         plan.assignments.forEach { a ->
             val prog = getAssignmentProgress(plan, a)
-            totalPages += prog.totalPagesCount
+            // Web parity (planner.js:609): `prog?.totalPagesCount || 1`.
+            totalPages += prog.totalPagesCount.takeIf { it != 0 } ?: 1
             readPages += prog.readPagesCount
         }
 
@@ -897,7 +910,8 @@ object PlannerEngine {
             var completedUnits = 0
             weekAssignments.forEach { a ->
                 val prog = getAssignmentProgress(plan, a)
-                totalUnits += prog.totalPagesCount
+                // Web parity (planner.js:841): `prog?.totalPagesCount || 1`.
+                totalUnits += prog.totalPagesCount.takeIf { it != 0 } ?: 1
                 completedUnits += prog.readPagesCount
             }
             weeks.add(

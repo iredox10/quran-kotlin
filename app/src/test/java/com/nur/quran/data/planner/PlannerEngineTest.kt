@@ -321,6 +321,31 @@ class PlannerEngineTest {
         assertFalse(prog.isComplete)
     }
 
+    // ── overview edge cases (planner.js:593-623) ────────────────────
+
+    @Test
+    fun `overview empty plan does not crash`() {
+        val p = plan(emptyList(), startDate = "2026-01-01")
+        val o = PlannerEngine.getPlannerOverview(p, "2026-01-05")!!
+        assertEquals(0, o.overdueDays)
+        assertEquals(0, o.remainingCount)
+        assertNull(o.firstIncomplete)
+    }
+
+    @Test
+    fun `overview counts fallback page for itemless assignment`() {
+        val empty = PlannerAssignment(
+            dayNumber = 1, date = "2026-01-01", unitType = "page",
+            title = "Empty", subtitle = "", startUnit = 1, endUnit = 1,
+            primaryRoute = "", pageStart = 1, pageEnd = 1, items = emptyList()
+        )
+        val p = plan(listOf(empty), startDate = "2026-01-01")
+        val o = PlannerEngine.getPlannerOverview(p, "2026-01-01")!!
+        // Web: totalPages += (0 || 1) -> ratio 0/1 = 0 (planner.js:609,620).
+        assertEquals(0f, o.completionRatio)
+        assertEquals(1, o.firstIncomplete?.dayNumber)
+    }
+
     // ── misc ────────────────────────────────────────────────────────
 
     @Test

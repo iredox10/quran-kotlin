@@ -89,6 +89,9 @@ fun HifdhReaderScreen(
     var showSettingsDrawer by remember { mutableStateOf(false) }
     var newCollectionName by remember { mutableStateOf("") }
     var sessionSeconds by remember { mutableStateOf(0) }
+    // Web parity: Memorization.jsx surah-complete confetti (count hits verses_count).
+    var showSurahComplete by remember { mutableStateOf(false) }
+    var prevSurahMemCount by remember(chapterId) { mutableIntStateOf(0) }
     val lazyListState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     var isAutoScrollActive by remember { mutableStateOf(false) }
@@ -320,6 +323,16 @@ fun HifdhReaderScreen(
             is SurahUiState.Success -> {
                 val versesList = state.verses
                 val chapterObj = state.chapter
+                // Web: fire confetti on the below->= verses_count transition (also on
+                // mount if already complete — prev starts at 0, like the web ref).
+                val surahMemCount = memorizedAyahs.count { it.startsWith("$chapterId:") }
+                LaunchedEffect(surahMemCount, versesList.size) {
+                    if (versesList.isNotEmpty() && surahMemCount >= versesList.size &&
+                        prevSurahMemCount < versesList.size) {
+                        showSurahComplete = true
+                    }
+                    prevSurahMemCount = surahMemCount
+                }
                 val tajweedMap = state.tajweedMap
                 val wordsMap = state.wordsMap
                 val currentVerses = remember(currentVerseIndex, ayahsPerChunk, versesList) {
@@ -1053,6 +1066,15 @@ fun HifdhReaderScreen(
                                     Icon(imageVector = NurIcons.ArrowRight, contentDescription = "Next", tint = if (canNext) hInkMid else hInkMuted.copy(alpha = 0.3f))
                                 }
                             }
+                        }
+                    }
+
+                    // Web parity: surah-complete confetti burst; stays on page, no dialog.
+                    if (showSurahComplete) {
+                        ConfettiOverlay()
+                        LaunchedEffect(Unit) {
+                            delay(3000)
+                            showSurahComplete = false
                         }
                     }
 

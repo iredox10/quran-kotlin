@@ -192,7 +192,7 @@ fun PlannerSettingsDialog(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
 
-                listOf("after" to "After Prayer", "before" to "Before Prayer", "around" to "Around Prayer").forEach { (key, label) ->
+                listOf("after" to "Read After Prayer", "before" to "Read Before Prayer", "split" to "Split Before & After").forEach { (key, label) ->
                     val isSelected = readingPreference == key
                     Surface(
                         shape = RoundedCornerShape(12.dp),
@@ -288,7 +288,7 @@ fun RebalancePlanDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Smart Rebalance",
+                text = "Rebalance Plan",
                 fontFamily = fontFamilyUi,
                 fontWeight = FontWeight.Bold,
                 fontSize = 19.sp,
@@ -298,7 +298,7 @@ fun RebalancePlanDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    text = "If you have missed some assignments, choose how you would like to recalibrate your remaining days.",
+                    text = "You missed some pages from past assignments. How would you like to catch up?",
                     fontSize = 13.5.sp,
                     fontFamily = fontFamilyBody,
                     color = hInkMid,
@@ -312,16 +312,30 @@ fun RebalancePlanDialog(
                     border = BorderStroke(1.5.dp, hBoneDark),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Shift Deadlines (Extend Plan)", fontFamily = fontFamilyUi, fontWeight = FontWeight.SemiBold, color = hInk)
+                    Text("Extend Plan", fontFamily = fontFamilyUi, fontWeight = FontWeight.SemiBold, color = hInk)
                 }
+                Text(
+                    text = "Keep your daily reading amount exactly the same, but add extra days to the end of your plan.",
+                    fontSize = 12.sp,
+                    fontFamily = fontFamilyBody,
+                    color = hInkMid,
+                    lineHeight = 17.sp
+                )
                 Button(
                     onClick = { onSpread(); onDismiss() },
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = hGold),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Redistribute Missed Pages", fontFamily = fontFamilyUi, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text("Spread Pages", fontFamily = fontFamilyUi, fontWeight = FontWeight.Bold, color = Color.White)
                 }
+                Text(
+                    text = "Keep your original deadline, but evenly distribute the missed pages across your remaining days.",
+                    fontSize = 12.sp,
+                    fontFamily = fontFamilyBody,
+                    color = hInkMid,
+                    lineHeight = 17.sp
+                )
             }
         },
         confirmButton = {},
@@ -387,6 +401,7 @@ fun ArchivesDialog(
                         )
                     } else {
                         archivedPlans.forEach { plan ->
+                            val isCompleted = plan.completedDays.size >= plan.durationDays
                             Surface(
                                 shape = RoundedCornerShape(14.dp),
                                 color = hWhite,
@@ -394,13 +409,33 @@ fun ArchivesDialog(
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Column(modifier = Modifier.padding(14.dp)) {
-                                    Text(
-                                        text = plan.title,
-                                        fontFamily = fontFamilyUi,
-                                        fontSize = 15.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = hInk
-                                    )
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = plan.title,
+                                            fontFamily = fontFamilyUi,
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = hInk,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        Surface(
+                                            shape = RoundedCornerShape(20.dp),
+                                            color = if (isCompleted) Color(0x26B8924A) else hBone
+                                        ) {
+                                            Text(
+                                                text = if (isCompleted) "Completed" else "Ended",
+                                                fontFamily = fontFamilyMono,
+                                                fontSize = 9.5.sp,
+                                                fontWeight = FontWeight.Medium,
+                                                color = if (isCompleted) hGold else hInkMuted,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                    }
                                     Spacer(modifier = Modifier.height(2.dp))
                                     Text(
                                         text = "${plan.durationDays} days · ${plan.completedDays.size} days finished",
@@ -431,7 +466,7 @@ fun DeletePlanConfirmDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Delete Plan?",
+                text = "Delete this plan?",
                 fontFamily = fontFamilyUi,
                 fontWeight = FontWeight.Bold,
                 fontSize = 19.sp,
@@ -440,7 +475,7 @@ fun DeletePlanConfirmDialog(
         },
         text = {
             Text(
-                text = "Are you sure you want to delete \"$planTitle\"? All reading progress for this plan will be removed.",
+                text = "All progress will be permanently lost. This cannot be undone.",
                 fontSize = 13.5.sp,
                 fontFamily = fontFamilyBody,
                 color = hInkMid

@@ -61,6 +61,7 @@ fun PlannerScreen(
     var showPlannerSettingsDialog by remember { mutableStateOf(false) }
     var showArchivesDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    var pendingListDeleteId by remember { mutableStateOf<String?>(null) }
     var showCustomModal by remember { mutableStateOf(false) }
 
     val todayStr = remember { PlannerEngine.formatPlannerDate() }
@@ -150,7 +151,8 @@ fun PlannerScreen(
                             viewMode = "dashboard"
                         },
                         onDeletePlan = { planId ->
-                            plannerViewModel.deletePlan(planId)
+                            // Web parity: Planner.jsx handleDeletePlan confirms before delete.
+                            pendingListDeleteId = planId
                         },
                         onOpenCustomPlanModal = { showCustomModal = true },
                         onOpenArchivesModal = { showArchivesDialog = true }
@@ -514,6 +516,19 @@ fun PlannerScreen(
                 viewMode = "intention"
             },
             onDismiss = { showDeleteConfirmDialog = false }
+        )
+    }
+
+    // Delete Confirmation Modal (intention list — web: window.confirm before delete)
+    val pendingListDeletePlan = pendingListDeleteId?.let { id -> allPlans.find { it.id == id } }
+    if (pendingListDeletePlan != null) {
+        DeletePlanConfirmDialog(
+            planTitle = pendingListDeletePlan.title,
+            onConfirmDelete = {
+                plannerViewModel.deletePlan(pendingListDeletePlan.id)
+                pendingListDeleteId = null
+            },
+            onDismiss = { pendingListDeleteId = null }
         )
     }
 

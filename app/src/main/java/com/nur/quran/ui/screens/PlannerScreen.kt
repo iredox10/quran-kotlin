@@ -374,6 +374,7 @@ fun PlannerScreen(
                             PlanJournalTab(
                                 reflections = plan.assignmentReflections.orEmpty().mapKeys { it.key.toString() },
                                 bookmarks = plannerBookmarks,
+                                onDeleteReflection = { day -> plannerViewModel.saveReflection(day, "") },
                                 onNavigateToVerse = { surah, _ ->
                                     val targetAssign = plan.assignments.find { a ->
                                         a.items.any { it.rangeValue == "$surah" }

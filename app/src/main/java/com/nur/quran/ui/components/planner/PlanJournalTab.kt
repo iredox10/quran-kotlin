@@ -27,6 +27,7 @@ fun PlanJournalTab(
     reflections: Map<String, String>,
     bookmarks: List<PlannerBookmark>,
     onNavigateToVerse: (Int, Int) -> Unit,
+    onDeleteReflection: (Int) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(18.dp)) {
@@ -74,7 +75,8 @@ fun PlanJournalTab(
                                 Column(modifier = Modifier.padding(14.dp)) {
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        modifier = Modifier.fillMaxWidth()
                                     ) {
                                         Box(
                                             modifier = Modifier
@@ -98,6 +100,22 @@ fun PlanJournalTab(
                                             fontWeight = FontWeight.Medium,
                                             color = hInkMuted
                                         )
+                                        Spacer(modifier = Modifier.weight(1f))
+                                        // Blank text clears the day entry (ViewModel parity).
+                                        val dayNum = dayId.toIntOrNull()
+                                        if (dayNum != null) {
+                                            IconButton(
+                                                onClick = { onDeleteReflection(dayNum) },
+                                                modifier = Modifier.size(28.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = NurIcons.Trash2,
+                                                    contentDescription = "Delete reflection",
+                                                    tint = hInkMuted,
+                                                    modifier = Modifier.size(15.dp)
+                                                )
+                                            }
+                                        }
                                     }
                                     Spacer(modifier = Modifier.height(6.dp))
                                     Text(

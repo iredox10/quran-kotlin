@@ -94,7 +94,7 @@ fun PlanJournalTab(
                                             )
                                         }
                                         Text(
-                                            text = "REFLECTION",
+                                            text = "Reflection",
                                             fontFamily = fontFamilyMono,
                                             fontSize = 9.sp,
                                             fontWeight = FontWeight.Medium,

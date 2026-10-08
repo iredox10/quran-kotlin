@@ -173,7 +173,7 @@ fun MyPlansSection(
                                         color = Color(0x24B8924A)
                                     ) {
                                         Text(
-                                            text = "ACTIVE",
+                                            text = "Active",
                                             fontFamily = fontFamilyMono,
                                             fontSize = 9.sp,
                                             fontWeight = FontWeight.Bold,

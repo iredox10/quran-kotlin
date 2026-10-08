@@ -51,7 +51,7 @@ fun AdjustPaceDialog(
                     lineHeight = 19.sp
                 )
                 Text(
-                    text = "NEW TOTAL DAYS",
+                    text = "New Total Days",
                     fontFamily = fontFamilyMono,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
@@ -136,7 +136,7 @@ fun PlannerSettingsDialog(
 
                 // Daily Prayers Section
                 Text(
-                    text = "DAILY PRAYERS",
+                    text = "Daily Prayers",
                     fontFamily = fontFamilyMono,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
@@ -183,7 +183,7 @@ fun PlannerSettingsDialog(
 
                 // Reading Preference
                 Text(
-                    text = "READING PREFERENCE",
+                    text = "Reading Preference",
                     fontFamily = fontFamilyMono,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
@@ -232,7 +232,7 @@ fun PlannerSettingsDialog(
                     ) {
                         Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
                             Text(
-                                text = "RENEWAL OF INTENTION",
+                                text = "Intention Prompts",
                                 fontFamily = fontFamilyMono,
                                 fontSize = 9.5.sp,
                                 fontWeight = FontWeight.Bold,
@@ -241,7 +241,7 @@ fun PlannerSettingsDialog(
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "Remind to pause and renew intention before reading.",
+                                text = "Show a mindfulness prompt before reading.",
                                 fontFamily = fontFamilyBody,
                                 fontSize = 12.sp,
                                 color = hInkMid

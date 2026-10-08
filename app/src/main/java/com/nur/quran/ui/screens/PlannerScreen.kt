@@ -188,7 +188,7 @@ fun PlannerScreen(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "PROPHETIC WISDOM",
+                            text = "Prophetic Wisdom",
                             fontFamily = fontFamilyMono,
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Bold,

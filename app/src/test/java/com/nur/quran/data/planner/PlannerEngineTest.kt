@@ -153,6 +153,48 @@ class PlannerEngineTest {
         assertEquals(49, p.assignments[1].pageEnd)
     }
 
+    // ── create-flow parity: web PLAN_TEMPLATES + blank-title fallback ──
+
+    @Test
+    fun `plan templates match web spec parameters`() {
+        val byId = PLAN_TEMPLATES.associateBy { it.id }
+        assertEquals(6, byId.size)
+        assertEquals(PlanTemplate("ramadan-last-10", "Ramadan Last 10", 10, "page", 542, 604, "Complete the last 3 Ajza in the last 10 days", listOf("Ramadan")), byId["ramadan-last-10"])
+        assertEquals(PlanTemplate("juz-amma", "Juz Amma Focus", 15, "page", 582, 604, "Take 15 days to master the 30th Juz", listOf("Juz 30")), byId["juz-amma"])
+        assertEquals(PlanTemplate("al-kahf", "Surah Al-Kahf", 1, "surah", 18, 18, "The recommended Friday reading — a single-day focus", listOf("Friday")), byId["al-kahf"])
+        assertEquals(PlanTemplate("tafsir-deep-dive", "Tafsir Deep Dive", 114, "surah", 1, 114, "One Surah per day — a 114-day deep dive through the Quran", listOf("Study")), byId["tafsir-deep-dive"])
+        assertEquals(PlanTemplate("daily-juz", "Daily Juz", 30, "juz", 1, 30, "One Juz per day — complete the Quran in a month", listOf("Juz")), byId["daily-juz"])
+        assertEquals(PlanTemplate("quick-revision", "Quick Revision", 10, "juz", 1, 30, "Full Quran in 10 days for intense revision", listOf("Review")), byId["quick-revision"])
+    }
+
+    @Test
+    fun `each page-juz template builds with its own duration`() {
+        PLAN_TEMPLATES.filter { it.unitType == "page" || it.unitType == "juz" }.forEach { tmpl ->
+            val p = PlannerEngine.buildReadingPlanner(
+                unitType = tmpl.unitType, durationDays = tmpl.durationDays,
+                startDate = "2026-01-01", startUnit = tmpl.startUnit, endUnit = tmpl.endUnit,
+                customTitle = tmpl.title, chapters = emptyList()
+            )
+            assertEquals(tmpl.id, tmpl.durationDays, p.assignments.size)
+            assertEquals(tmpl.title, p.title)
+        }
+    }
+
+    @Test
+    fun `blank custom title falls back to auto title like web`() {
+        val p = PlannerEngine.buildReadingPlanner(
+            unitType = "page", durationDays = 2, startDate = "2026-01-01",
+            startUnit = 1, endUnit = 10, customTitle = "", chapters = emptyList()
+        )
+        assertEquals("Pages 1-10 Plan", p.title)
+        val full = PlannerEngine.buildReadingPlanner(
+            unitType = "page", durationDays = 30, startDate = "2026-01-01",
+            startUnit = 1, endUnit = 604, customTitle = "  ", chapters = emptyList()
+        )
+        assertEquals("Pages 1-604 Plan", full.title)
+        assertFalse(full.isCustomRange)
+    }
+
     // ── progress / status / overview ────────────────────────────────
 
     @Test

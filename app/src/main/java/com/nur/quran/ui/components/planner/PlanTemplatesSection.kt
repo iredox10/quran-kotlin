@@ -31,6 +31,7 @@ fun PlanTemplatesSection(
     modifier: Modifier = Modifier
 ) {
     var previewTemplate by remember { mutableStateOf<PlanTemplate?>(null) }
+    var templateBuildError by remember { mutableStateOf<String?>(null) }
 
     Column(modifier = modifier.fillMaxWidth()) {
         // Section Header Row
@@ -64,6 +65,9 @@ fun PlanTemplatesSection(
                 val unitCount = (tmpl.endUnit - tmpl.startUnit + 1).coerceAtLeast(1)
                 val unitsPerDay = Math.ceil(unitCount.toDouble() / tmpl.durationDays).toInt().coerceAtLeast(1)
                 val unitPlural = PLANNER_UNITS[tmpl.unitType]?.plural ?: "units"
+                // Web parity (Planner.jsx handleTemplateSelect): surah templates need
+                // loaded chapters — tapping early alerts instead of building.
+                val surahNotReady = tmpl.unitType == "surah" && chapters.isEmpty()
 
                 Card(
                     shape = RoundedCornerShape(16.dp),
@@ -71,7 +75,10 @@ fun PlanTemplatesSection(
                     border = BorderStroke(1.5.dp, hBoneDark),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { previewTemplate = tmpl }
+                        .clickable(enabled = !surahNotReady) {
+                            templateBuildError = null
+                            previewTemplate = tmpl
+                        }
                 ) {
                     Column(modifier = Modifier.padding(18.dp)) {
                         Text(
@@ -119,7 +126,7 @@ fun PlanTemplatesSection(
                             }
 
                             Text(
-                                text = "$unitsPerDay $unitPlural/day",
+                                text = if (surahNotReady) "Loading surahs…" else "$unitsPerDay $unitPlural/day",
                                 fontFamily = fontFamilyMono,
                                 fontSize = 10.5.sp,
                                 color = hInkMuted
@@ -185,12 +192,23 @@ fun PlanTemplatesSection(
                             StatBox(label = "PACE", value = "$perDay ${PLANNER_UNITS[tmpl.unitType]?.plural ?: "units"}/day", modifier = Modifier.weight(1f))
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            StatBox(label = "STARTS", value = "Today", modifier = Modifier.weight(1f))
+                            StatBox(label = "STARTS", value = PlannerEngine.formatPlannerDateLabel(PlannerEngine.formatPlannerDate()), modifier = Modifier.weight(1f))
                             StatBox(label = "DONE BY", value = stats.endLabel, modifier = Modifier.weight(1f))
                         }
                     }
 
                     Spacer(modifier = Modifier.height(20.dp))
+
+                    if (templateBuildError != null) {
+                        Text(
+                            text = templateBuildError!!,
+                            fontFamily = fontFamilyBody,
+                            fontSize = 12.sp,
+                            color = Color(0xFFDC2626),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -207,18 +225,22 @@ fun PlanTemplatesSection(
 
                         Button(
                             onClick = {
-                                val built = PlannerEngine.buildReadingPlanner(
-                                    unitType = tmpl.unitType,
-                                    durationDays = tmpl.durationDays,
-                                    startDate = PlannerEngine.formatPlannerDate(),
-                                    startUnit = tmpl.startUnit,
-                                    endUnit = tmpl.endUnit,
-                                    customTitle = tmpl.title,
-                                    excludeDays = emptyList(),
-                                    chapters = chapters
-                                )
-                                previewTemplate = null
-                                onSelectTemplate(built)
+                                try {
+                                    val built = PlannerEngine.buildReadingPlanner(
+                                        unitType = tmpl.unitType,
+                                        durationDays = tmpl.durationDays,
+                                        startDate = PlannerEngine.formatPlannerDate(),
+                                        startUnit = tmpl.startUnit,
+                                        endUnit = tmpl.endUnit,
+                                        customTitle = tmpl.title,
+                                        excludeDays = emptyList(),
+                                        chapters = chapters
+                                    )
+                                    previewTemplate = null
+                                    onSelectTemplate(built)
+                                } catch (e: IllegalArgumentException) {
+                                    templateBuildError = "Could not build template plan: ${e.message}"
+                                }
                             },
                             shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = hTeal),

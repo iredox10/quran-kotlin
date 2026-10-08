@@ -92,7 +92,15 @@ fun PlannerReaderScreen(
     var currentPage by remember { mutableStateOf(resumePage) }
 
     val existingReflection = activePlan?.assignmentReflections?.get(dayNumber) ?: ""
-    var reflectionNote by remember(existingReflection) { mutableStateOf(existingReflection) }
+    // Key on plan+day identity: rekeying on the text value would wipe in-progress
+    // edits when the plan loads async after first composition.
+    var reflectionNote by remember(activePlan?.id, dayNumber) { mutableStateOf(existingReflection) }
+    // Prefill once the stored reflection arrives; never clobber user edits.
+    LaunchedEffect(existingReflection) {
+        if (reflectionNote.isBlank() && existingReflection.isNotBlank()) {
+            reflectionNote = existingReflection
+        }
+    }
     var showCelebrationDialog by remember { mutableStateOf(false) }
 
     val selectedArabicFontName by surahViewModel.selectedArabicFontName.collectAsState(initial = "KFGQPC Hafs")

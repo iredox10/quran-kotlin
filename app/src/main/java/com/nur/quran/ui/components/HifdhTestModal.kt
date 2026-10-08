@@ -45,7 +45,6 @@ fun HifdhTestModal(
     var currentVerseKey by remember { mutableStateOf<String?>(null) }
     var isRevealed by remember { mutableStateOf(false) }
     var lastRating by remember { mutableStateOf<Int?>(null) }
-    var showPreviousAyah by remember { mutableStateOf(false) }
     var reviewedCount by remember { mutableStateOf(0) }
     var isCompleted by remember { mutableStateOf(testQueue.isEmpty()) }
 
@@ -76,20 +75,18 @@ fun HifdhTestModal(
 
     fun handleRating(rating: Int) {
         val key = currentVerseKey ?: return
+        // Web handleResult: log AFTER reveal; Again flags the transition link
+        // (surfaced as the pre-reveal cue next time), Easy/Good clears it.
         onLogReview(key, rating)
         lastRating = rating
         reviewedCount++
         isRevealed = false
-        if (rating == 1) {
-            showPreviousAyah = true
-        }
         if (remainingKeys.isEmpty()) {
             isCompleted = true
         }
     }
 
     fun pickNext() {
-        showPreviousAyah = false
         lastRating = null
         if (remainingKeys.isNotEmpty()) {
             val idx = Random.nextInt(remainingKeys.size)
@@ -350,7 +347,8 @@ fun HifdhTestModal(
                                 }
                             }
                         } else {
-                            // Rated — feedback, optional transition link, then continue
+                            // Rated — feedback (web: Mashallah vs keep practicing), then continue.
+                            // The weak link (if Any Again) surfaces as the pre-reveal cue next time.
                             Spacer(modifier = Modifier.height(16.dp))
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -372,80 +370,29 @@ fun HifdhTestModal(
                                 )
                             }
 
-                            if (showPreviousAyah && previousVerse != null) {
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Card(
-                                    shape = RoundedCornerShape(16.dp),
-                                    colors = CardDefaults.cardColors(containerColor = hGoldSoft.copy(alpha = 0.5f)),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, hGold.copy(alpha = 0.5f)),
-                                    modifier = Modifier.fillMaxWidth()
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Button(
+                                    onClick = { pickNext() },
+                                    enabled = remainingKeys.isNotEmpty() || !isCompleted,
+                                    colors = ButtonDefaults.buttonColors(containerColor = hGold),
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier.weight(1f).height(44.dp)
                                 ) {
-                                    Column(
-                                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        Text(
-                                            text = "TRANSITION LINK — PREVIOUS AYAH",
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = hGold,
-                                            fontFamily = fontFamilyMono,
-                                            letterSpacing = 1.sp
-                                        )
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        Text(
-                                            text = "Tie ${currentVerseKey} to ${previousVerseKey} for smooth recall.",
-                                            fontSize = 11.sp,
-                                            color = hInkMuted,
-                                            textAlign = TextAlign.Center
-                                        )
-                                        Spacer(modifier = Modifier.height(10.dp))
-                                        Text(
-                                            text = previousVerse.textUthmani ?: previousVerse.verseKey,
-                                            fontSize = 22.sp,
-                                            lineHeight = 36.sp,
-                                            color = hInk,
-                                            textAlign = TextAlign.Center,
-                                            fontFamily = fontFamilyArabic
-                                        )
-                                        Spacer(modifier = Modifier.height(12.dp))
-                                        Button(
-                                            onClick = { showPreviousAyah = false },
-                                            colors = ButtonDefaults.buttonColors(containerColor = hGold),
-                                            shape = RoundedCornerShape(10.dp),
-                                            modifier = Modifier.fillMaxWidth(0.7f)
-                                        ) {
-                                            Text("Got it", color = Color.White, fontWeight = FontWeight.Bold)
-                                        }
-                                    }
+                                    Icon(imageVector = NurIcons.RefreshCw, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Test Another", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                 }
-                            }
-
-                            if (!showPreviousAyah || previousVerse == null) {
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                Button(
+                                    onClick = onDismiss,
+                                    colors = ButtonDefaults.buttonColors(containerColor = hBoneDark),
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier.weight(0.8f).height(44.dp)
                                 ) {
-                                    Button(
-                                        onClick = { pickNext() },
-                                        enabled = remainingKeys.isNotEmpty() || !isCompleted,
-                                        colors = ButtonDefaults.buttonColors(containerColor = hGold),
-                                        shape = RoundedCornerShape(12.dp),
-                                        modifier = Modifier.weight(1f).height(44.dp)
-                                    ) {
-                                        Icon(imageVector = NurIcons.RefreshCw, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text("Test Another", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                    }
-                                    Button(
-                                        onClick = onDismiss,
-                                        colors = ButtonDefaults.buttonColors(containerColor = hBoneDark),
-                                        shape = RoundedCornerShape(12.dp),
-                                        modifier = Modifier.weight(0.8f).height(44.dp)
-                                    ) {
-                                        Text("Done", color = hInk, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                    }
+                                    Text("Done", color = hInk, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                 }
                             }
                         }
@@ -462,7 +409,8 @@ private fun previousAyahTail(arabicText: String?): String {
     return "..." + arabicText.trim().split(Regex("\\s+")).takeLast(4).joinToString(" ")
 }
 
-private fun previousVerseKeyFor(current: String?, chapters: List<ChapterEntity>): String? {    if (current == null) return null
+private fun previousVerseKeyFor(current: String?, chapters: List<ChapterEntity>): String? {
+    if (current == null) return null
     val parts = current.split(":")
     val chapterId = parts.getOrNull(0)?.toIntOrNull() ?: return null
     val verseNumber = parts.getOrNull(1)?.toIntOrNull() ?: return null

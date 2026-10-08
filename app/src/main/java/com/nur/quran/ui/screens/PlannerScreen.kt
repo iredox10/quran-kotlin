@@ -202,9 +202,9 @@ fun PlannerScreen(
             val currentDay = overview?.currentDayNumber ?: 1
 
             val todayAssignment = remember(plan, todayStr) {
+                // Web parity (Planner.jsx): date match, else current-day fallback, else null.
                 plan.assignments.find { it.date == todayStr }
                     ?: plan.assignments.getOrNull(currentDay - 1)
-                    ?: plan.assignments.firstOrNull()
             }
 
             val todayProgress = remember(plan, todayAssignment) {
@@ -261,11 +261,14 @@ fun PlannerScreen(
                 else -> "All done for today! ✓"
             }
 
+            // Web parity (Planner.jsx): started = any progress OR a saved reader position.
+            val hasStartedReading = todayDone > 0 || plan.lastReadPage != null
+
             val ctaLabel = when {
                 planDone -> "Plan Complete ✓"
                 todayComplete && nextAssignment != null -> "Continue to Day ${nextAssignment.dayNumber}"
                 todayComplete -> "All Caught Up"
-                todayDone > 0 -> "Resume Reading"
+                hasStartedReading -> "Resume Reading"
                 else -> "Open Al-Quran"
             }
 
@@ -326,9 +329,16 @@ fun PlannerScreen(
                                 unitsLabel = unitsLabel,
                                 todaySessionSeconds = todaySessionSeconds,
                                 prayerSlots = prayerSlots,
-                                hasStartedReading = todayDone > 0,
+                                hasStartedReading = hasStartedReading,
                                 onStartReading = {
-                                    val targetDay = todayAssignment?.dayNumber ?: currentDay
+                                    // Web parity: Resume routes to firstIncomplete
+                                    // (resumeRoute), Start routes to today's slot route.
+                                    val targetDay = if (hasStartedReading) {
+                                        overview?.firstIncomplete?.dayNumber
+                                            ?: todayAssignment?.dayNumber ?: currentDay
+                                    } else {
+                                        todayAssignment?.dayNumber ?: currentDay
+                                    }
                                     onReadAssignment(targetDay)
                                 },
                                 onMarkPrayerDone = { slot ->
@@ -337,7 +347,8 @@ fun PlannerScreen(
                                     }
                                 },
                                 onUndoPrayer = { slot ->
-                                    if (todayAssignment != null) {
+                                    // Web parity (handleUndoPrayer): only completed slots undo.
+                                    if (todayAssignment != null && slot.status == "completed") {
                                         plannerViewModel.setPlannerAssignmentProgress(todayAssignment.dayNumber, slot.slotStart)
                                     }
                                 },

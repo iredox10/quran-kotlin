@@ -401,6 +401,7 @@ fun ArchivesDialog(
                         )
                     } else {
                         archivedPlans.forEach { plan ->
+                            val isCompleted = plan.completedDays.size >= plan.durationDays
                             Surface(
                                 shape = RoundedCornerShape(14.dp),
                                 color = hWhite,
@@ -408,13 +409,33 @@ fun ArchivesDialog(
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Column(modifier = Modifier.padding(14.dp)) {
-                                    Text(
-                                        text = plan.title,
-                                        fontFamily = fontFamilyUi,
-                                        fontSize = 15.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = hInk
-                                    )
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = plan.title,
+                                            fontFamily = fontFamilyUi,
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = hInk,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        Surface(
+                                            shape = RoundedCornerShape(20.dp),
+                                            color = if (isCompleted) Color(0x26B8924A) else hBone
+                                        ) {
+                                            Text(
+                                                text = if (isCompleted) "Completed" else "Ended",
+                                                fontFamily = fontFamilyMono,
+                                                fontSize = 9.5.sp,
+                                                fontWeight = FontWeight.Medium,
+                                                color = if (isCompleted) hGold else hInkMuted,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                    }
                                     Spacer(modifier = Modifier.height(2.dp))
                                     Text(
                                         text = "${plan.durationDays} days · ${plan.completedDays.size} days finished",

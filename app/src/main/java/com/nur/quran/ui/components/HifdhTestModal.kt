@@ -280,14 +280,26 @@ fun HifdhTestModal(
                                     letterSpacing = 1.sp,
                                     modifier = Modifier.padding(bottom = 8.dp)
                                 )
-                                Row(
+                                // Web HifdhTestModal: 2x2 grid — Complete Blank/Again (red),
+                                // Needed Prompt/Hard (orange), Hesitated/Good (blue), Perfect/Easy (green).
+                                Column(
                                     modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    RatingButton(label = "Again", color = Color(0xFFEF4444), modifier = Modifier.weight(1f)) { handleRating(1) }
-                                    RatingButton(label = "Hard", color = Color(0xFFF59E0B), modifier = Modifier.weight(1f)) { handleRating(2) }
-                                    RatingButton(label = "Good", color = Color(0xFF10B981), modifier = Modifier.weight(1f)) { handleRating(3) }
-                                    RatingButton(label = "Easy", color = Color(0xFF3B82F6), modifier = Modifier.weight(1f)) { handleRating(4) }
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        RatingButton(label = "Complete Blank", sublabel = "Again", color = Color(0xFFEF4444), modifier = Modifier.weight(1f)) { handleRating(1) }
+                                        RatingButton(label = "Needed Prompt", sublabel = "Hard", color = Color(0xFFF59E0B), modifier = Modifier.weight(1f)) { handleRating(2) }
+                                    }
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        RatingButton(label = "Hesitated", sublabel = "Good", color = Color(0xFF3B82F6), modifier = Modifier.weight(1f)) { handleRating(3) }
+                                        RatingButton(label = "Perfect", sublabel = "Easy", color = Color(0xFF10B981), modifier = Modifier.weight(1f)) { handleRating(4) }
+                                    }
                                 }
                             }
                         } else {
@@ -410,24 +422,33 @@ private fun previousVerseKeyFor(current: String?, chapters: List<ChapterEntity>)
 @Composable
 private fun RatingButton(
     label: String,
+    sublabel: String,
     color: Color,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
     Surface(
         onClick = onClick,
-        modifier = modifier.height(44.dp),
+        modifier = modifier.height(56.dp),
         shape = RoundedCornerShape(10.dp),
         color = color.copy(alpha = 0.15f),
         border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.4f))
     ) {
         Box(contentAlignment = Alignment.Center) {
-            Text(
-                text = label,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = color
-            )
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = label,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = color
+                )
+                Text(
+                    text = sublabel,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Normal,
+                    color = color.copy(alpha = 0.7f)
+                )
+            }
         }
     }
 }

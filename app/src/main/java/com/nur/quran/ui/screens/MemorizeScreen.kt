@@ -94,8 +94,7 @@ fun MemorizeScreen(
 
     val memorizedSurahIds = remember(memorizedAyahs, chapters) {
         chapters.filter { chapter ->
-            val count = memorizedAyahs.count { it.startsWith("${chapter.id}:") }
-            count >= chapter.versesCount
+            surahMemCount(memorizedAyahs, chapter.id) >= chapter.versesCount
         }.map { it.id to it.nameSimple }
     }
 
@@ -589,13 +588,13 @@ fun MemorizeScreen(
                         chapter.translatedName.contains(searchQuery, ignoreCase = true) ||
                         chapter.id.toString() == searchQuery.trim()
                     if (showMemorizedOnly) {
-                        val memCount = memorizedAyahs.count { it.startsWith("${chapter.id}:") }
+                        val memCount = surahMemCount(memorizedAyahs, chapter.id)
                         matchesSearch && memCount >= chapter.versesCount
                     } else matchesSearch
                 }
 
                 items(filteredChapters, key = { it.id }) { chapter ->
-                    val memCount = memorizedAyahs.count { it.startsWith("${chapter.id}:") }
+                    val memCount = surahMemCount(memorizedAyahs, chapter.id)
                     val isMemorized = memCount >= chapter.versesCount
                     val memPct = Math.round((memCount.toFloat() / chapter.versesCount) * 100)
 
@@ -639,7 +638,24 @@ fun MemorizeScreen(
                                                 Icon(imageVector = NurIcons.CheckCircle2, contentDescription = null, tint = hGreen, modifier = Modifier.size(16.dp))
                                             }
                                         }
-                                        Text(text = "${chapter.versesCount} Ayahs", fontSize = 12.sp, color = hInkMuted)
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            Text(text = "${chapter.versesCount} Ayahs", fontSize = 12.sp, color = hInkMuted)
+                                            if (!isMemorized && memCount > 0) {
+                                                Text(
+                                                    text = "$memCount done",
+                                                    fontSize = 10.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = hGold,
+                                                    modifier = Modifier
+                                                        .clip(RoundedCornerShape(8.dp))
+                                                        .background(hGoldSoft)
+                                                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                                                )
+                                            }
+                                        }
                                     }
                                 }
 

@@ -160,6 +160,11 @@ fun MemorizeScreen(
                     val continueName = continueChapter?.nameSimple ?: lastReadItem?.chapterName
                     val continueTimestamp = lastMemSession?.timestamp ?: lastReadItem?.timestamp
                     val continueTimeSince = continueTimestamp?.let { memorizeTimeSince(it, System.currentTimeMillis()) }.orEmpty()
+                    // Resume deep-link: first unmemorized ayah (web ?verse= parity).
+                    val continueResumeKey = if (continueChapterId != null && continueChapter != null) {
+                        firstUnmemorizedAyah(memorizedAyahs, continueChapterId, continueChapter.versesCount)
+                            ?.let { "$continueChapterId:$it" }
+                    } else null
 
                     // Continue Last Session Banner Card (Web: only when a session/read exists)
                     if (continueChapterId != null && continueName != null) {
@@ -169,7 +174,7 @@ fun MemorizeScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .widthIn(max = 460.dp)
-                            .clickable { onSurahClick(continueChapterId) }
+                            .clickable { onGoalResume(continueChapterId, continueResumeKey) }
                     ) {
                         Box(
                             modifier = Modifier
@@ -209,7 +214,7 @@ fun MemorizeScreen(
                                         .size(38.dp)
                                         .clip(CircleShape)
                                         .background(Color.White.copy(alpha = 0.2f))
-                                        .clickable { onSurahClick(continueChapterId) },
+                                        .clickable { onGoalResume(continueChapterId, continueResumeKey) },
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(imageVector = NurIcons.PlayFilled, contentDescription = "Play", tint = Color.White, modifier = Modifier.size(16.dp))

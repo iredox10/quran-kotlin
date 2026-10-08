@@ -182,7 +182,8 @@ class MainActivity : ComponentActivity() {
                                 onNavigateToRoute = { route ->
                                     when (route) {
                                         "planner" -> navController.navigate(Screen.Planner.route)
-                                        "memorize" -> navController.navigate(Screen.Memorize.route)
+                                        // Web OnboardingProgress + Home tour: Hifdh entry opens /memorize/1.
+                                        "memorize" -> navController.navigate(Screen.MemorizeDetail.createRoute(1))
                                         "surah" -> navController.navigate(Screen.SurahDetail.createRoute(1))
                                         "library" -> navController.navigate(Screen.Library.route)
                                     }
@@ -201,13 +202,28 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                         }
-                        composable(Screen.MemorizeDetail.route) { backStackEntry ->
-                            val chapterId = backStackEntry.arguments?.getString("chapterId")?.toIntOrNull() ?: 1
+                        composable(
+                            route = Screen.MemorizeDetail.route,
+                            arguments = listOf(
+                                androidx.navigation.navArgument("chapterId") { type = androidx.navigation.NavType.IntType },
+                                androidx.navigation.navArgument("verseKey") { type = androidx.navigation.NavType.StringType; nullable = true; defaultValue = null }
+                            )
+                        ) { backStackEntry ->
+                            val args = backStackEntry.arguments
+                            val chapterId = runCatching { args?.getInt("chapterId") }.getOrNull()
+                                ?.takeIf { it != 0 }
+                                ?: args?.getString("chapterId")?.toIntOrNull() ?: 1
                             HifdhReaderScreen(
                                 surahViewModel = surahViewModel,
                                 chapterId = chapterId,
-                                startVerseKey = backStackEntry.arguments?.getString("verseKey"),
-                                onBackClick = { navController.popBackStack() }
+                                startVerseKey = args?.getString("verseKey"),
+                                // Web Layout.jsx: memorize-detail back always lands on /memorize.
+                                onBackClick = {
+                                    navController.navigate(Screen.Memorize.route) {
+                                        popUpTo(Screen.Memorize.route) { inclusive = false }
+                                        launchSingleTop = true
+                                    }
+                                }
                             )
                         }
                         composable(Screen.Planner.route) {

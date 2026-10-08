@@ -282,7 +282,7 @@ class PlannerEngineTest {
         assertEquals(2, o.overdueDays)
         assertEquals(2, o.currentDayNumber)
         assertEquals(2, o.remainingCount)
-        assertEquals(1, o.firstIncomplete.dayNumber)
+        assertEquals(1, o.firstIncomplete!!.dayNumber)
     }
 
     // ── rebalance (mirrors planner.test.js guard + spread) ──────────

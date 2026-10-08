@@ -200,6 +200,36 @@ class PlannerEngineTest {
     }
 
     @Test
+    fun `status uses progress completion without completedDays entry`() {
+        // Web parity: isComplete comes from getAssignmentProgress, so a fully
+        // read assignment reports completed even if completedDays lags.
+        val p = plan(
+            listOf(assignment(1, "2026-01-01", 1..2)),
+            readPages = mapOf(1 to listOf(1, 2))
+        )
+        assertEquals("completed", PlannerEngine.getAssignmentStatus(p, p.assignments[0], "2026-06-10"))
+    }
+
+    @Test
+    fun `status today stays today with partial progress`() {
+        // Web parity: date == today always maps to today (never partial).
+        val p = plan(
+            listOf(assignment(1, "2026-06-01", 1..2)),
+            readPages = mapOf(1 to listOf(1))
+        )
+        assertEquals("today", PlannerEngine.getAssignmentStatus(p, p.assignments[0], "2026-06-01"))
+    }
+
+    @Test
+    fun `status partial counts item-level completion`() {
+        // Web parity: readPagesCount includes item-completion pages, so an
+        // overdue day finished via items (no explicit read pages) is partial.
+        val base = plan(listOf(assignment(1, "2026-01-01", 1..2)))
+        val p = base.copy(assignmentCompletedItems = mapOf(1 to listOf("1")))
+        assertEquals("partial", PlannerEngine.getAssignmentStatus(p, p.assignments[0], "2026-06-10"))
+    }
+
+    @Test
     fun `overview counts overdue and current day`() {
         val p = plan(
             listOf(assignment(1, "2026-01-01", 1..2), assignment(2, "2026-01-02", 3..4)),

@@ -94,8 +94,7 @@ fun MemorizeScreen(
 
     val memorizedSurahIds = remember(memorizedAyahs, chapters) {
         chapters.filter { chapter ->
-            val count = memorizedAyahs.count { it.startsWith("${chapter.id}:") }
-            count >= chapter.versesCount
+            surahMemCount(memorizedAyahs, chapter.id) >= chapter.versesCount
         }.map { it.id to it.nameSimple }
     }
 
@@ -589,13 +588,13 @@ fun MemorizeScreen(
                         chapter.translatedName.contains(searchQuery, ignoreCase = true) ||
                         chapter.id.toString() == searchQuery.trim()
                     if (showMemorizedOnly) {
-                        val memCount = memorizedAyahs.count { it.startsWith("${chapter.id}:") }
+                        val memCount = surahMemCount(memorizedAyahs, chapter.id)
                         matchesSearch && memCount >= chapter.versesCount
                     } else matchesSearch
                 }
 
                 items(filteredChapters, key = { it.id }) { chapter ->
-                    val memCount = memorizedAyahs.count { it.startsWith("${chapter.id}:") }
+                    val memCount = surahMemCount(memorizedAyahs, chapter.id)
                     val isMemorized = memCount >= chapter.versesCount
                     val memPct = Math.round((memCount.toFloat() / chapter.versesCount) * 100)
 
@@ -639,7 +638,24 @@ fun MemorizeScreen(
                                                 Icon(imageVector = NurIcons.CheckCircle2, contentDescription = null, tint = hGreen, modifier = Modifier.size(16.dp))
                                             }
                                         }
-                                        Text(text = "${chapter.versesCount} Ayahs", fontSize = 12.sp, color = hInkMuted)
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            Text(text = "${chapter.versesCount} Ayahs", fontSize = 12.sp, color = hInkMuted)
+                                            if (!isMemorized && memCount > 0) {
+                                                Text(
+                                                    text = "$memCount done",
+                                                    fontSize = 10.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = hGold,
+                                                    modifier = Modifier
+                                                        .clip(RoundedCornerShape(8.dp))
+                                                        .background(hGoldSoft)
+                                                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                                                )
+                                            }
+                                        }
                                     }
                                 }
 
@@ -866,20 +882,8 @@ private fun buildAyahRangeSections(memorizedAyahs: Set<String>, chapters: List<C
         val chapter = chapters.find { it.id == cid.toIntOrNull() } ?: return@mapNotNull null
         val nums = keys.mapNotNull { it.substringAfter(":").toIntOrNull() }.sorted()
         if (nums.isEmpty()) return@mapNotNull null
-        val ranges = mutableListOf<String>()
-        var start = nums[0]
-        var prev = nums[0]
-        for (i in 1 until nums.size) {
-            if (nums[i] == prev + 1) {
-                prev = nums[i]
-            } else {
-                ranges.add(if (start == prev) "$start" else "$start-$prev")
-                start = nums[i]
-                prev = nums[i]
-            }
-        }
-        ranges.add(if (start == prev) "$start" else "$start-$prev")
-        "${chapter.id}. ${chapter.nameSimple}" to "Verses: ${ranges.joinToString(", ")} • ${nums.size} ayahs"
+        val collapsed = collapseAyahRanges(nums)
+        "${chapter.id}. ${chapter.nameSimple}" to "Verses: $collapsed • ${nums.size} ayahs"
     }
 }
 

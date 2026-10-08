@@ -117,6 +117,12 @@ class SurahViewModel @Inject constructor(
     private val _memorizedAyahs = MutableStateFlow<Set<String>>(hifdhPrefs.getStringSet("memorized_ayahs", emptySet()) ?: emptySet())
     val memorizedAyahs: StateFlow<Set<String>> = _memorizedAyahs.asStateFlow()
 
+    // Web: memorizedSurahs number[] — persisted surah ids toggled with the full ayah range.
+    private val _memorizedSurahs = MutableStateFlow<Set<Int>>(
+        hifdhPrefs.getStringSet("memorized_surahs", emptySet())?.mapNotNull { it.toIntOrNull() }?.toSet() ?: emptySet()
+    )
+    val memorizedSurahs: StateFlow<Set<Int>> = _memorizedSurahs.asStateFlow()
+
     private val _arabicFontScale = MutableStateFlow(hifdhPrefs.getFloat("arabic_scale", 1f))
     val arabicFontScale: StateFlow<Float> = _arabicFontScale.asStateFlow()
 
@@ -382,6 +388,9 @@ class SurahViewModel @Inject constructor(
     private var controllerFuture: ListenableFuture<MediaController>? = null
     private var playlist: List<VerseEntity> = emptyList()
     private var playlistChapterId: Int = 0
+
+    // Web: GlobalAudioPlayer flushListening — log >=10s playback as `listening`.
+    private val listeningTracker = com.nur.quran.data.audio.ListeningSessionTracker()
 
     init {
         if (hifdhPrefs.getInt("translation_id", 20) == 131) {
@@ -873,6 +882,9 @@ class SurahViewModel @Inject constructor(
     private val playerListener = object : Player.Listener {
         override fun onIsPlayingChanged(playing: Boolean) {
             _isPlaying.value = playing
+            val chapterId = if (playlistChapterId > 0) playlistChapterId else null
+            val segment = listeningTracker.onPlayingChanged(playing, chapterId, System.currentTimeMillis())
+            if (segment != null) logReadingSession(segment.durationSeconds.toInt(), "listening", segment.chapterId)
         }
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
@@ -1854,6 +1866,19 @@ class SurahViewModel @Inject constructor(
         _memorizedAyahs.value = current
     }
 
+    /** Web: toggleMemorizedSurah — flips the surah id and its full ayah range. */
+    fun toggleMemorizedSurah(chapterId: Int, totalVerses: Int? = null) {
+        val result = com.nur.quran.data.hifdh.toggleMemorizedSurah(
+            _memorizedSurahs.value, _memorizedAyahs.value, chapterId, totalVerses
+        )
+        hifdhPrefs.edit()
+            .putStringSet("memorized_surahs", result.surahs.map { it.toString() }.toSet())
+            .putStringSet("memorized_ayahs", result.ayahs)
+            .apply()
+        _memorizedSurahs.value = result.surahs
+        _memorizedAyahs.value = result.ayahs
+    }
+
     fun updateArabicFontScale(delta: Float) {
         _arabicFontScale.value = (_arabicFontScale.value + delta).coerceIn(0.5f, 3.0f)
         hifdhPrefs.edit().putFloat("arabic_scale", _arabicFontScale.value).apply()
@@ -1968,6 +1993,11 @@ class SurahViewModel @Inject constructor(
             }
         }
         mediaController?.removeListener(playerListener)
+        listeningTracker.flush(System.currentTimeMillis())?.let { segment ->
+            kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
+                repository.logReadingSession(segment.durationSeconds.toInt(), "listening", segment.chapterId)
+            }
+        }
         controllerFuture?.let { MediaController.releaseFuture(it) }
         controllerFuture = null
         mediaController = null

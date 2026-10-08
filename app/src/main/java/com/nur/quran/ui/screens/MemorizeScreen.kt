@@ -151,19 +151,18 @@ fun MemorizeScreen(
                     val recentlyRead by homeViewModel.recentlyRead.collectAsState()
                     val lastReadItem = recentlyRead.firstOrNull()
 
-                    // Web: Continue card = last memorizing session, else last read.
+                    // Web MemorizeIndex.jsx: Continue = last memorizing session, else last read; hidden when neither.
                     val lastMemSession = readingSessions
                         .filter { it.type == "memorizing" && it.chapterId != null }
                         .maxByOrNull { it.timestamp }
-                    val continueChapterId = lastMemSession?.chapterId ?: lastReadItem?.chapterId ?: 67
+                    val continueChapterId = lastMemSession?.chapterId ?: lastReadItem?.chapterId
                     val continueChapter = chapters.find { it.id == continueChapterId }
-                    val continueName = continueChapter?.nameSimple ?: lastReadItem?.chapterName ?: "Al-Mulk"
-                    val continueMemCount = memorizedAyahs.count { it.startsWith("$continueChapterId:") }
-                    val continueMemPct = if (continueChapter != null) {
-                        Math.round((continueMemCount.toFloat() / continueChapter.versesCount) * 100)
-                    } else 0
+                    val continueName = continueChapter?.nameSimple ?: lastReadItem?.chapterName
+                    val continueTimestamp = lastMemSession?.timestamp ?: lastReadItem?.timestamp
+                    val continueTimeSince = continueTimestamp?.let { memorizeTimeSince(it, System.currentTimeMillis()) }.orEmpty()
 
-                    // Continue Last Session Banner Card
+                    // Continue Last Session Banner Card (Web: only when a session/read exists)
+                    if (continueChapterId != null && continueName != null) {
                     Card(
                         shape = RoundedCornerShape(20.dp),
                         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
@@ -197,7 +196,7 @@ fun MemorizeScreen(
                                     Column {
                                         Text("Continue: $continueName", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.White, fontFamily = fontFamilyUi)
                                         Text(
-                                            text = if (lastMemSession != null) "Memorizing • $continueMemPct% memorized" else "Last practiced recently",
+                                            text = "Last practiced $continueTimeSince",
                                             fontSize = 11.sp,
                                             color = Color.White.copy(alpha = 0.8f),
                                             fontFamily = fontFamilyMono
@@ -214,11 +213,12 @@ fun MemorizeScreen(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(imageVector = NurIcons.PlayFilled, contentDescription = "Play", tint = Color.White, modifier = Modifier.size(16.dp))
-                                }
                             }
                         }
                     }
+                    } // hide Continue card when no session/read exists
                 }
+            }
             }
 
             // ── Top 3 Metric Cards Row (Surahs / Ayahs / Progress %) ──
@@ -817,6 +817,15 @@ fun MemorizeScreen(
             wordProgressByTafsir = wordProgress
         )
     }
+}
+
+/** Web MemorizeIndex.jsx timeSince: mins<60 → "Xm ago", hrs<24 → "Xh ago", else "Xd ago". */
+internal fun memorizeTimeSince(sessionTimestamp: Long, now: Long = System.currentTimeMillis()): String {
+    val mins = ((now - sessionTimestamp) / 60000).coerceAtLeast(0)
+    if (mins < 60) return "${mins}m ago"
+    val hrs = mins / 60
+    if (hrs < 24) return "${hrs}h ago"
+    return "${hrs / 24}d ago"
 }
 
 /** Web getResumeVerseKey: first ayah number in chapter not yet memorized, else null. */

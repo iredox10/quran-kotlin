@@ -49,7 +49,7 @@ fun PlanTemplatesSection(
                 color = hInk
             )
             Text(
-                text = "CURATED PATHS",
+                text = "Curated paths",
                 fontFamily = fontFamilyMono,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Normal,
@@ -181,12 +181,12 @@ fun PlanTemplatesSection(
                     // 4 Stat Grid Cards
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            StatBox(label = "DURATION", value = "${tmpl.durationDays} days", modifier = Modifier.weight(1f))
-                            StatBox(label = "PACE", value = "$perDay ${PLANNER_UNITS[tmpl.unitType]?.plural ?: "units"}/day", modifier = Modifier.weight(1f))
+                            StatBox(label = "Duration", value = "${tmpl.durationDays} days", modifier = Modifier.weight(1f))
+                            StatBox(label = "Pace", value = "$perDay ${PLANNER_UNITS[tmpl.unitType]?.plural ?: "units"}/day", modifier = Modifier.weight(1f))
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            StatBox(label = "STARTS", value = "Today", modifier = Modifier.weight(1f))
-                            StatBox(label = "DONE BY", value = stats.endLabel, modifier = Modifier.weight(1f))
+                            StatBox(label = "Starts", value = "Today", modifier = Modifier.weight(1f))
+                            StatBox(label = "Done by", value = stats.endLabel, modifier = Modifier.weight(1f))
                         }
                     }
 
@@ -224,7 +224,7 @@ fun PlanTemplatesSection(
                             colors = ButtonDefaults.buttonColors(containerColor = hTeal),
                             modifier = Modifier.weight(1.5f)
                         ) {
-                            Text("Start This Plan", fontFamily = fontFamilyUi, fontWeight = FontWeight.Bold, color = Color.White)
+                            Text("Create Plan", fontFamily = fontFamilyUi, fontWeight = FontWeight.Bold, color = Color.White)
                         }
                     }
                 }

@@ -112,7 +112,7 @@ fun CustomPlanModal(
                     // Plan name
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
-                            text = "PLAN NAME (OPTIONAL)",
+                            text = "Plan name (optional)",
                             fontFamily = fontFamilyMono,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Medium,
@@ -132,7 +132,7 @@ fun CustomPlanModal(
                     // Reading Unit Pills
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
-                            text = "READING UNIT",
+                            text = "Reading unit",
                             fontFamily = fontFamilyMono,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Medium,
@@ -170,7 +170,7 @@ fun CustomPlanModal(
                     val unitPlural = PLANNER_UNITS[unitType]?.plural ?: "Pages"
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
-                            text = "$unitLabel RANGE".uppercase(),
+                            text = "$unitLabel range",
                             fontFamily = fontFamilyMono,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Medium,
@@ -214,7 +214,7 @@ fun CustomPlanModal(
                     // Units per day slider + number
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
-                            text = "$unitPlural PER DAY".uppercase(),
+                            text = "$unitPlural per day",
                             fontFamily = fontFamilyMono,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Medium,
@@ -253,7 +253,7 @@ fun CustomPlanModal(
                     // Start Date (web parity: Planner.jsx startDate picker)
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
-                            text = "START DATE",
+                            text = "Start date",
                             fontFamily = fontFamilyMono,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Medium,
@@ -294,7 +294,7 @@ fun CustomPlanModal(
                     // Days Off (Exclude Days)
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
-                            text = "DAYS OFF (OPTIONAL)",
+                            text = "Days Off (Optional)",
                             fontFamily = fontFamilyMono,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Medium,

@@ -773,7 +773,12 @@ fun PlannerReaderScreen(
                         }
                     }
 
-                    if (currentMushaf.renderMode == com.nur.quran.data.mushaf.MushafRenderMode.QCF_PAGE && !isReadingMode) {
+                    if (assignedVerses.isEmpty()) {
+                        // Day filter removed every verse on this page.
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("No verses found for this page.", color = hInkMuted)
+                        }
+                    } else if (currentMushaf.renderMode == com.nur.quran.data.mushaf.MushafRenderMode.QCF_PAGE && !isReadingMode) {
                         LazyColumn(
                             state = lazyListState,
                             modifier = Modifier.fillMaxSize(),

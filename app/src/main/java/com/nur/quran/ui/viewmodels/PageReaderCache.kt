@@ -25,6 +25,11 @@ class PageReaderCache<T> {
         entries[page] = params to value
     }
 
+    /** Drops all cached pages (e.g. mushaf/translation switch). */
+    fun clear() {
+        entries.clear()
+    }
+
     /** Starts a load generation; invalidates every previously started load. */
     fun beginLoad(): Long {
         generation += 1

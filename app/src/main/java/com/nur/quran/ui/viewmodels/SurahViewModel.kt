@@ -1986,7 +1986,7 @@ class SurahViewModel @Inject constructor(
         }
         // Bust caches so line numbers + script are refetched for the new mushaf.
         chapterMemoryCache.clear()
-        pageMemoryCache.clear()
+        pageReaderCache.clear()
         loadedMushafByChapter.clear()
         val chapterToReload = currentChapterId
         if (chapterToReload > 0) {

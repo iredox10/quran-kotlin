@@ -1047,7 +1047,7 @@ fun PlannerReaderScreen(
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Column {
-                                    Text("PREV", fontSize = 9.sp, color = hInkMuted, fontFamily = fontFamilyMono, letterSpacing = 0.5.sp)
+                                    Text("Prev", fontSize = 9.sp, color = hInkMuted, fontFamily = fontFamilyMono, letterSpacing = 0.5.sp)
                                     Text("Page ${if (currentPage > pageStart) currentPage - 1 else pageStart}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (currentPage > pageStart) hInk else hInkMuted.copy(alpha = 0.4f))
                                 }
                             }
@@ -1078,7 +1078,7 @@ fun PlannerReaderScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Column(horizontalAlignment = Alignment.End) {
-                                        Text("NEXT", fontSize = 9.sp, color = Color.White.copy(alpha = 0.8f), fontFamily = fontFamilyMono, letterSpacing = 0.5.sp)
+                                        Text("Next", fontSize = 9.sp, color = Color.White.copy(alpha = 0.8f), fontFamily = fontFamilyMono, letterSpacing = 0.5.sp)
                                         Text("Page ${currentPage + 1}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
                                     }
                                     Spacer(modifier = Modifier.width(6.dp))

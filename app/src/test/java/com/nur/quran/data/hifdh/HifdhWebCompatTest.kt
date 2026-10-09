@@ -95,4 +95,21 @@ class HifdhWebCompatTest {
         assertEquals("strong", entry.strength)
         assertEquals(1777593600000L, entry.lastReviewed)
     }
+
+    @Test
+    fun `one corrupt entry does not kill the history map`() {
+        val raw = """
+            {"1:1":{"card":$webCardJson,"lastReviewed":1777627800123,"strength":"strong"},
+             "2:5":42,
+             "3:7":{"lastReviewed":1777593600000,"strength":"good"}}
+        """.trimIndent()
+
+        val map = parseWebHistoryMap(parse(raw))
+
+        assertEquals(2, map.size)
+        assertEquals("strong", map["1:1"]?.strength)
+        assertEquals(1777627800123L, map["1:1"]?.lastReviewed)
+        assertEquals("medium", map["3:7"]?.strength)
+        assertNull(map["2:5"])
+    }
 }

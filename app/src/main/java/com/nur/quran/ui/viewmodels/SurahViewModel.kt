@@ -1545,8 +1545,6 @@ class SurahViewModel @Inject constructor(
                     if (_uiState.value !is SurahUiState.Success) _uiState.value = SurahUiState.Error("No verses found for page $pageNumber")
                     return@launch
                 }
-                    return@launch
-                }
                 val chapterId = bundle.verses.firstOrNull()?.chapterId ?: 1
                 val chapter = repository.getChapterById(chapterId)
                     ?: ChapterEntity(chapterId, "Surah $chapterId", "سورة", "Surah $chapterId", "Chapter", "makkah", 1, 10, pageNumber, pageNumber)
@@ -1560,7 +1558,6 @@ class SurahViewModel @Inject constructor(
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 if (!pageReaderCache.isCurrent(gen)) return@launch
                 if (_uiState.value !is SurahUiState.Success) _uiState.value = SurahUiState.Error(e.localizedMessage ?: "Failed to load page verses")
-            }
             }
         }
     }

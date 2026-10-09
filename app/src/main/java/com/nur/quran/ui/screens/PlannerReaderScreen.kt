@@ -1004,12 +1004,11 @@ fun PlannerReaderScreen(
             }
         }
 
-        // Bottom Dock Bar: Navigation between pages (web parity: PlannerReader.jsx lines 832-869)
+        // Bottom Dock Bar: Navigation between pages (web parity: PlannerReader.jsx lines 832-869).
+        // Transparent: no background fill, border or elevation — buttons float over content.
         if (!isFocusMode) {
             Surface(
-                color = hWhite,
-                tonalElevation = 4.dp,
-                border = androidx.compose.foundation.BorderStroke(1.dp, hBoneDark.copy(alpha = 0.7f)),
+                color = Color.Transparent,
                 shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
             ) {
                 Column(
@@ -1055,47 +1054,7 @@ fun PlannerReaderScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Prev Page Button
-                        Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = if (currentPage > pageStart) hBone.copy(alpha = 0.6f) else hBone.copy(alpha = 0.2f),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, hBoneDark.copy(alpha = 0.5f)),
-                            modifier = Modifier.clickable(enabled = currentPage > pageStart) {
-                                currentPage--
-                            }
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = NurIcons.ChevronLeft,
-                                    contentDescription = "Prev",
-                                    tint = if (currentPage > pageStart) hInk else hInkMuted.copy(alpha = 0.4f),
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Column {
-                                    Text("Prev", fontSize = 9.sp, color = hInkMuted, fontFamily = fontFamilyMono, letterSpacing = 0.5.sp)
-                                    Text("Page ${if (currentPage > pageStart) currentPage - 1 else pageStart}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (currentPage > pageStart) hInk else hInkMuted.copy(alpha = 0.4f))
-                                }
-                            }
-                        }
-
-                        // Center: page progress indicator
-                        Text(
-                            text = "$currentPage / $pageEnd",
-                            fontSize = 13.sp,
-                            fontFamily = fontFamilyMono,
-                            fontWeight = FontWeight.Bold,
-                            color = hInkMuted,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .clickable { showPageJumpDialog = true }
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
-
-                        // Next / Complete Assignment Button
+                        // Next / Complete Assignment Button (left)
                         if (currentPage < pageEnd) {
                             Surface(
                                 shape = RoundedCornerShape(16.dp),
@@ -1135,6 +1094,46 @@ fun PlannerReaderScreen(
                                     Icon(imageVector = NurIcons.CheckCircle2, contentDescription = "Finish", tint = Color.White, modifier = Modifier.size(18.dp))
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text("Finish Day", fontSize = 13.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+
+                        // Center: page progress indicator
+                        Text(
+                            text = "$currentPage / $pageEnd",
+                            fontSize = 13.sp,
+                            fontFamily = fontFamilyMono,
+                            fontWeight = FontWeight.Bold,
+                            color = hInkMuted,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .clickable { showPageJumpDialog = true }
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+
+                        // Prev Page Button (right)
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = if (currentPage > pageStart) hBone.copy(alpha = 0.6f) else hBone.copy(alpha = 0.2f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, hBoneDark.copy(alpha = 0.5f)),
+                            modifier = Modifier.clickable(enabled = currentPage > pageStart) {
+                                currentPage--
+                            }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = NurIcons.ChevronLeft,
+                                    contentDescription = "Prev",
+                                    tint = if (currentPage > pageStart) hInk else hInkMuted.copy(alpha = 0.4f),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Column {
+                                    Text("Prev", fontSize = 9.sp, color = hInkMuted, fontFamily = fontFamilyMono, letterSpacing = 0.5.sp)
+                                    Text("Page ${if (currentPage > pageStart) currentPage - 1 else pageStart}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (currentPage > pageStart) hInk else hInkMuted.copy(alpha = 0.4f))
                                 }
                             }
                         }

@@ -1,5 +1,10 @@
 package com.nur.quran.data.sync
 
+import com.nur.quran.data.db.entities.BookmarkEntity
+import com.nur.quran.data.db.entities.CollectionEntity
+import com.nur.quran.data.db.entities.CollectionItemEntity
+import com.nur.quran.data.db.entities.ReadingSessionEntity
+import com.nur.quran.data.db.entities.RecentlyReadEntity
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -130,5 +135,103 @@ class SyncSnapshotMappingsTest {
             "onboarding_dismissed" to true
         )
         assertEquals(mapOf("home" to 3), pageVisitCounts(prefs))
+    }
+
+    @Test
+    fun `bookmark is shaped like a web bookmark entry`() {
+        assertEquals(
+            mapOf(
+                "verseKey" to "2:255",
+                "surahName" to "Al-Baqarah",
+                "chapterId" to 2,
+                "createdAt" to 1700L
+            ),
+            webBookmark(
+                BookmarkEntity(
+                    verseKey = "2:255",
+                    chapterId = 2,
+                    surahName = "Al-Baqarah",
+                    timestamp = 1700L
+                )
+            )
+        )
+    }
+
+    @Test
+    fun `reading session keeps the timestamp union key and seconds`() {
+        assertEquals(
+            mapOf<String, Any?>(
+                "date" to "2026-01-01",
+                "duration" to 120L,
+                "type" to "reading",
+                "chapterId" to 2,
+                "timestamp" to 1700L
+            ),
+            webReadingSession(
+                ReadingSessionEntity(
+                    date = "2026-01-01",
+                    duration = 120L,
+                    type = "reading",
+                    chapterId = 2,
+                    timestamp = 1700L
+                )
+            )
+        )
+    }
+
+    @Test
+    fun `recently read keeps chapter id and name`() {
+        assertEquals(
+            mapOf<String, Any?>(
+                "chapterId" to 18,
+                "chapterName" to "Al-Kahf",
+                "verseKey" to "18:10",
+                "timestamp" to 1700L
+            ),
+            webRecentlyRead(
+                RecentlyReadEntity(
+                    chapterId = 18,
+                    chapterName = "Al-Kahf",
+                    verseKey = "18:10",
+                    timestamp = 1700L
+                )
+            )
+        )
+    }
+
+    @Test
+    fun `collections nest their items like the web collection shape`() {
+        val collections = listOf(
+            CollectionEntity(id = 4L, name = "Favourites", createdAt = 90L),
+            CollectionEntity(id = 5L, name = "Empty")
+        )
+        val items = listOf(
+            CollectionItemEntity(
+                collectionId = 4L,
+                verseKey = "1:1",
+                chapterId = 1,
+                surahName = "Al-Fatihah",
+                addedAt = 91L
+            ),
+            CollectionItemEntity(collectionId = 99L, verseKey = "2:1", chapterId = 2, surahName = "Al-Baqarah")
+        )
+
+        val flat = webCollections(collections, items)
+
+        assertEquals(2, flat.size)
+        assertEquals(4L, flat[0]["id"])
+        assertEquals("Favourites", flat[0]["name"])
+        assertEquals(
+            listOf(
+                mapOf<String, Any?>(
+                    "verseKey" to "1:1",
+                    "surahName" to "Al-Fatihah",
+                    "chapterId" to 1,
+                    "addedAt" to 91L
+                )
+            ),
+            flat[0]["items"]
+        )
+        assertEquals(emptyList<Map<String, Any?>>(), flat[1]["items"])
     }
 }

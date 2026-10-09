@@ -5,6 +5,11 @@ import com.google.gson.Gson
 import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
 import com.nur.quran.data.db.dao.QuranDao
+import com.nur.quran.data.db.entities.BookmarkEntity
+import com.nur.quran.data.db.entities.CollectionEntity
+import com.nur.quran.data.db.entities.CollectionItemEntity
+import com.nur.quran.data.db.entities.ReadingSessionEntity
+import com.nur.quran.data.db.entities.RecentlyReadEntity
 import com.nur.quran.data.mushaf.fontNameToId
 import com.nur.quran.data.planner.PRAYER_NAMES
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -366,3 +371,51 @@ internal fun pageVisitCounts(prefs: Map<String, Any?>): Map<String, Int> =
         val count = (value as? Number)?.toInt()?.takeIf { it > 0 }
         if (pageId != null && count != null) pageId to count else null
     }.toMap()
+
+/** Web `bookmarks` entry: { verseKey, surahName, chapterId, createdAt }. */
+internal fun webBookmark(bookmark: BookmarkEntity): Map<String, Any?> = mapOf(
+    "verseKey" to bookmark.verseKey,
+    "surahName" to bookmark.surahName,
+    "chapterId" to bookmark.chapterId,
+    "createdAt" to bookmark.timestamp
+)
+
+/**
+ * Web `readingSessions` entry. `timestamp` is the identity key syncMerge
+ * unions on and `duration` is seconds on both stores.
+ */
+internal fun webReadingSession(session: ReadingSessionEntity): Map<String, Any?> = mapOf(
+    "date" to session.date,
+    "duration" to session.duration,
+    "type" to session.type,
+    "chapterId" to session.chapterId,
+    "timestamp" to session.timestamp
+)
+
+/** Web `recentlyRead` entry; `chapterId` is the union key, latest `timestamp` wins. */
+internal fun webRecentlyRead(entry: RecentlyReadEntity): Map<String, Any?> = mapOf(
+    "chapterId" to entry.chapterId,
+    "chapterName" to entry.chapterName,
+    "verseKey" to entry.verseKey,
+    "timestamp" to entry.timestamp
+)
+
+/** Web `collections` entry: { id, name, createdAt, items: [{ verseKey, surahName, chapterId, addedAt }] }. */
+internal fun webCollections(
+    collections: List<CollectionEntity>,
+    items: List<CollectionItemEntity>
+): List<Map<String, Any?>> = collections.map { collection ->
+    mapOf(
+        "id" to collection.id,
+        "name" to collection.name,
+        "createdAt" to collection.createdAt,
+        "items" to items.filter { it.collectionId == collection.id }.map { item ->
+            mapOf(
+                "verseKey" to item.verseKey,
+                "surahName" to item.surahName,
+                "chapterId" to item.chapterId,
+                "addedAt" to item.addedAt
+            )
+        }
+    )
+}

@@ -196,6 +196,36 @@ internal fun parseWebHistoryMap(json: JsonElement?): Map<String, HifdhHistoryEnt
     }.toMap()
 }
 
+/** Reads a web `hifdhGoals` entry; ids arrive as numbers or strings, targetDate as `"YYYY-MM-DD"` or epoch millis. */
+internal fun parseWebGoal(json: JsonElement): HifdhGoal {
+    require(json.isJsonObject) { "hifdh goal must be a JSON object" }
+    fun field(name: String) = json.asJsonObject.get(name)
+    return HifdhGoal(
+        id = field("id").asWebId() ?: "",
+        targetType = field("targetType").asStringOrNull() ?: "surah",
+        targetId = field("targetId").asWebInt() ?: 0,
+        targetDate = (field("targetDate") ?: field("target_date")).asEpochMillis() ?: 0L,
+        createdAt = (field("createdAt") ?: field("created_at")).asEpochMillis()
+            ?: System.currentTimeMillis()
+    )
+}
+
+/** Serializes to the web `hifdhGoals` entry shape (numeric ids, `"YYYY-MM-DD"` targetDate). */
+internal fun HifdhGoal.toWebJson(): JsonObject = JsonObject().apply {
+    val numericId = id.toLongOrNull()
+    if (numericId != null) addProperty("id", numericId) else addProperty("id", id)
+    addProperty("targetType", targetType)
+    addProperty("targetId", targetId)
+    addProperty("targetDate", webDateOnly(targetDate))
+    addProperty("createdAt", createdAt)
+}
+
+/** Parses a web `hifdhGoals` array; one unreadable goal is skipped on its own. */
+internal fun parseWebGoalList(json: JsonElement?): List<HifdhGoal> {
+    if (json == null || !json.isJsonArray) return emptyList()
+    return json.asJsonArray.mapNotNull { runCatching { parseWebGoal(it) }.getOrNull() }
+}
+
 private const val S_MIN = 1e-3
 private const val S_MAX = 36500.0
 

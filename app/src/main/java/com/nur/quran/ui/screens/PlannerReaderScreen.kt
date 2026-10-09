@@ -162,7 +162,7 @@ fun PlannerReaderScreen(
     val collectionItems by surahViewModel.collectionItems.collectAsState()
 
     // Sync global dark theme state
-    val hifdhPrefs = LocalContext.current.getSharedPreferences("hifdh_settings", Context.MODE_PRIVATE)
+    val hifdhPrefs = LocalContext.current.getSharedPreferences("Settings", Context.MODE_PRIVATE)
     LaunchedEffect(Unit) {
         isDarkThemeGlobal = hifdhPrefs.getBoolean("is_dark_theme", false)
     }

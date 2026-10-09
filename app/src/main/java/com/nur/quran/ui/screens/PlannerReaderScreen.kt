@@ -966,7 +966,8 @@ fun PlannerReaderScreen(
             when (val tState = tafsirState) {
                 is TafsirUiState.Loading -> TafsirLoadingOverlay()
                 is TafsirUiState.Visible -> TafsirBottomSheet(
-                    verseNumber = tState.verseKey,
+                    // Web: "Tafsir (Ayah N)" — ayah number only, not the full key.
+                    verseNumber = tState.verseNumber,
                     text = tState.text,
                     onDismiss = { surahViewModel.dismissTafsir() }
                 )
@@ -1166,14 +1167,15 @@ fun PlannerReaderScreen(
                     takeawayVerse = takeawayVerse,
                     reflectionNote = reflectionNote,
                     displayedSeconds = displayedSeconds,
+                    // Web: no autosave on keystroke; save trimmed text on button only.
                     onReflectionChange = {
                         reflectionNote = it
-                        plannerViewModel.saveReflection(dayNumber, it)
                     },
                     onSaveAndReturn = {
                         showCelebrationDialog = false
-                        if (reflectionNote.isNotBlank()) {
-                            plannerViewModel.saveReflection(dayNumber, reflectionNote)
+                        val trimmed = reflectionNote.trim()
+                        if (trimmed.isNotBlank()) {
+                            plannerViewModel.saveReflection(dayNumber, trimmed)
                         }
                         onBack()
                     }

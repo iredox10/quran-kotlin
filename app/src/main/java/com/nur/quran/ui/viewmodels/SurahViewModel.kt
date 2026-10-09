@@ -297,7 +297,7 @@ class SurahViewModel @Inject constructor(
     private val _currentTafsirId = MutableStateFlow(hifdhPrefs.getInt("tafsir_id", 169))
     val currentTafsirIdFlow: StateFlow<Int> = _currentTafsirId.asStateFlow()
     private val _currentTranslationId = MutableStateFlow(
-        hifdhPrefs.getInt("translation_id", 20).let { if (it == 131) 20 else it }
+        hifdhPrefs.getInt("translation_id", 85).let { if (it == 131) 85 else it }
     )
     val currentTranslationId: StateFlow<Int> = _currentTranslationId.asStateFlow()
     private var cachedTafsirVerses: List<ApiTafsirVerse> = emptyList()
@@ -393,8 +393,8 @@ class SurahViewModel @Inject constructor(
     private val listeningTracker = com.nur.quran.data.audio.ListeningSessionTracker()
 
     init {
-        if (hifdhPrefs.getInt("translation_id", 20) == 131) {
-            hifdhPrefs.edit().putInt("translation_id", 20).apply()
+        if (hifdhPrefs.getInt("translation_id", 85) == 131) {
+            hifdhPrefs.edit().putInt("translation_id", 85).apply()
         }
         ensureController()
     }

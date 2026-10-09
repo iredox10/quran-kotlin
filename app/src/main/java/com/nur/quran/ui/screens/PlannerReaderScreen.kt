@@ -76,8 +76,14 @@ fun PlannerReaderScreen(
     }
 
     if (assignment == null) {
+        // Web parity (PlannerReader.jsx:580-586): plan still loading shows the
+        // loading line; a loaded plan with no day entry is an invalid assignment.
+        val isPlanLoading = activePlan == null
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("Assignment not found", color = hInkMuted)
+            Text(
+                if (isPlanLoading) "Loading planner data..." else "Assignment not found",
+                color = hInkMuted
+            )
         }
         return
     }

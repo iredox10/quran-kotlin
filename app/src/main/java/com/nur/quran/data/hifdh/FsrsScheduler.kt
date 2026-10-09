@@ -1,6 +1,7 @@
 package com.nur.quran.data.hifdh
 
 import com.google.gson.JsonElement
+import com.google.gson.JsonObject
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -132,6 +133,39 @@ internal fun webDateOnly(epochMillis: Long): String =
 /** ISO-8601 UTC instant — the shape `JSON.stringify(new Date(ms))` produces. */
 internal fun webIsoString(epochMillis: Long): String =
     DateTimeFormatter.ISO_INSTANT.format(Instant.ofEpochMilli(epochMillis).atOffset(ZoneOffset.UTC))
+
+/** Reads a ts-fsrs `Card` in either the web (snake_case/ISO) or Kotlin (camelCase/epoch) shape. */
+internal fun parseWebCard(json: JsonElement): FsrsCard {
+    require(json.isJsonObject) { "card must be a JSON object" }
+    fun field(name: String) = json.asJsonObject.get(name)
+    fun first(vararg names: String) = names.asSequence().map(::field).firstOrNull { it != null }
+    return FsrsCard(
+        due = first("due").asEpochMillis() ?: 0L,
+        stability = first("stability").asWebDouble() ?: 0.0,
+        difficulty = first("difficulty").asWebDouble() ?: 0.0,
+        elapsedDays = first("elapsed_days", "elapsedDays").asWebDouble() ?: 0.0,
+        scheduledDays = first("scheduled_days", "scheduledDays").asWebInt() ?: 0,
+        reps = first("reps").asWebInt() ?: 0,
+        lapses = first("lapses").asWebInt() ?: 0,
+        learningSteps = first("learning_steps", "learningSteps").asWebInt() ?: 0,
+        state = first("state").asWebInt() ?: FsrsState.NEW,
+        lastReview = first("last_review", "lastReview").asEpochMillis()
+    )
+}
+
+/** Serializes to the web `JSON.stringify(card)` shape (snake_case, ISO-8601 dates). */
+internal fun FsrsCard.toWebJson(): JsonObject = JsonObject().apply {
+    addProperty("due", webIsoString(due))
+    addProperty("stability", stability)
+    addProperty("difficulty", difficulty)
+    addProperty("elapsed_days", elapsedDays)
+    addProperty("scheduled_days", scheduledDays)
+    addProperty("learning_steps", learningSteps)
+    addProperty("reps", reps)
+    addProperty("lapses", lapses)
+    addProperty("state", state)
+    lastReview?.let { addProperty("last_review", webIsoString(it)) }
+}
 
 private const val S_MIN = 1e-3
 private const val S_MAX = 36500.0

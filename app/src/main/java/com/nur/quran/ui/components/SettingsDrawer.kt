@@ -41,16 +41,6 @@ private val MUSHAF_PRESETS = com.nur.quran.data.mushaf.Mushaf.ALL.map {
     it.id to "${it.name} (${if (it.id == "indopak") "16 lines" else "15 lines"})"
 }
 
-private val RECITERS_LIST = listOf(
-    7 to "Mishari Rashid al-`Afasy",
-    1 to "AbdulBaset AbdulSamad",
-    2 to "Abdur-Rahman as-Sudais",
-    3 to "Abu Bakr al-Shatri",
-    4 to "Hani ar-Rifai",
-    5 to "Mahmoud Khalil Al-Husary",
-    6 to "Al-Minshawi"
-)
-
 private val TAFSIRS_LIST = listOf(
     169 to "Ibn Kathir (Abridged)",
     168 to "Ma'arif al-Qur'an",
@@ -105,6 +95,7 @@ fun SettingsDrawer(
     val selectedArabicFontName by viewModel.selectedArabicFontName.collectAsState()
     val activeTranslationId by viewModel.currentTranslationId.collectAsState()
     val currentReciterId by viewModel.currentReciterId.collectAsState()
+    val currentTafsirId by viewModel.currentTafsirIdFlow.collectAsState()
     val wordTapBehavior by viewModel.wordTapBehavior.collectAsState()
     val mushafPreset by viewModel.mushafPreset.collectAsState()
     val isTranslationEnabled by viewModel.isTranslationEnabled.collectAsState()
@@ -363,7 +354,7 @@ fun SettingsDrawer(
                                                 Divider(color = hBoneDark)
                                                 SettingsRowItem(
                                                     label = "Reciter",
-                                                    value = RECITERS_LIST.find { it.first == currentReciterId }?.second ?: "Mishari Rashid al-Afasy",
+                                                    value = com.nur.quran.data.audio.Reciters.nameOf(currentReciterId),
                                                     onClick = { activeSubView = "reciters" }
                                                 )
                                             }
@@ -394,7 +385,7 @@ fun SettingsDrawer(
                                                 Divider(color = hBoneDark)
                                                 SettingsRowItem(
                                                     label = "Tafsir",
-                                                    value = "Ibn Kathir",
+                                                    value = TAFSIRS_LIST.find { it.first == currentTafsirId }?.second ?: "Ibn Kathir",
                                                     onClick = { activeSubView = "tafsir" }
                                                 )
                                                 Divider(color = hBoneDark)
@@ -781,7 +772,10 @@ fun SettingsDrawer(
                                         )
                                     }
                                     "font" -> {
-                                        ARABIC_FONT_OPTIONS.forEach { font ->
+                                        // Web: getMushafFontOptions — only compatible fonts listed.
+                                        ARABIC_FONT_OPTIONS.filter {
+                                            currentMushaf.supportedFontIds.contains(it.id)
+                                        }.forEach { font ->
                                             val isSelected = selectedArabicFontName == font.name
                                             Column(
                                                 modifier = Modifier
@@ -807,11 +801,7 @@ fun SettingsDrawer(
                                                             color = if (isSelected) hGold else hInk
                                                         )
                                                         Text(
-                                                            text = if (currentMushaf.supportedFontIds.contains(
-                                                                    com.nur.quran.data.mushaf.fontNameToId(font.name)
-                                                                )
-                                                            ) "Compatible with ${currentMushaf.name}"
-                                                            else "Not recommended for ${currentMushaf.name}",
+                                                            text = "Compatible with ${currentMushaf.name}",
                                                             fontSize = 11.sp,
                                                             color = hInkMuted
                                                         )
@@ -838,7 +828,7 @@ fun SettingsDrawer(
                                         TAFSIRS_LIST.forEach { (tId, title) ->
                                             TafsirPickerRow(
                                                 title = title,
-                                                selected = tId == 169,
+                                                selected = tId == currentTafsirId,
                                                 pack = packById[tId],
                                                 onSelect = {
                                                     viewModel.setTafsirId(tId)

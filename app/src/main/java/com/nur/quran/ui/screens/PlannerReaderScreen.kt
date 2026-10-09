@@ -598,12 +598,13 @@ fun PlannerReaderScreen(
                                 }
                             }
 
-                            // Right: Surah badge (if Juz/Page or different) + Timer pill + % Achieved
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                if (currentChapter != null && activePlan?.unitType != "surah") {
+                            // Center: Surah badge (web parity: PlannerReader.jsx:640-646 —
+                            // always when currentChapter != null, no unitType filter).
+                            if (currentChapter != null) {
+                                Box(
+                                    modifier = Modifier.weight(1f),
+                                    contentAlignment = Alignment.Center
+                                ) {
                                     Surface(
                                         shape = RoundedCornerShape(100),
                                         color = hTeal.copy(alpha = 0.08f),
@@ -621,7 +622,13 @@ fun PlannerReaderScreen(
                                         )
                                     }
                                 }
+                            }
 
+                            // Right: Timer pill + % Achieved
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
                                 Surface(
                                     shape = RoundedCornerShape(100),
                                     color = hTeal.copy(alpha = 0.08f),

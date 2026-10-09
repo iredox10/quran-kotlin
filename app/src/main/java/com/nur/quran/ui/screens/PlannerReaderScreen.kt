@@ -78,8 +78,14 @@ fun PlannerReaderScreen(
     }
 
     if (assignment == null) {
+        // Web parity (PlannerReader.jsx:580-586): plan still loading shows the
+        // loading line; a loaded plan with no day entry is an invalid assignment.
+        val isPlanLoading = activePlan == null
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("Assignment not found", color = hInkMuted)
+            Text(
+                if (isPlanLoading) "Loading planner data..." else "Assignment not found",
+                color = hInkMuted
+            )
         }
         return
     }
@@ -706,8 +712,13 @@ fun PlannerReaderScreen(
         Box(modifier = Modifier.weight(1f)) {
             when (val state = uiState) {
                 is SurahUiState.Loading -> {
+                    // Web parity (PlannerReader.jsx:735-738): "Loading page {n}..."
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = hGold)
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator(color = hGold)
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text("Loading page $currentPage...", color = hInkMuted)
+                        }
                     }
                 }
                 is SurahUiState.Error -> {
@@ -784,7 +795,12 @@ fun PlannerReaderScreen(
                         }
                     }
 
-                    if (currentMushaf.renderMode == com.nur.quran.data.mushaf.MushafRenderMode.QCF_PAGE && !isReadingMode) {
+                    if (assignedVerses.isEmpty()) {
+                        // Day filter removed every verse on this page.
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("No verses found for this page.", color = hInkMuted)
+                        }
+                    } else if (currentMushaf.renderMode == com.nur.quran.data.mushaf.MushafRenderMode.QCF_PAGE && !isReadingMode) {
                         LazyColumn(
                             state = lazyListState,
                             modifier = Modifier.fillMaxSize(),
@@ -1058,7 +1074,7 @@ fun PlannerReaderScreen(
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Column {
-                                    Text("PREV", fontSize = 9.sp, color = hInkMuted, fontFamily = fontFamilyMono, letterSpacing = 0.5.sp)
+                                    Text("Prev", fontSize = 9.sp, color = hInkMuted, fontFamily = fontFamilyMono, letterSpacing = 0.5.sp)
                                     Text("Page ${if (currentPage > pageStart) currentPage - 1 else pageStart}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (currentPage > pageStart) hInk else hInkMuted.copy(alpha = 0.4f))
                                 }
                             }
@@ -1089,7 +1105,7 @@ fun PlannerReaderScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Column(horizontalAlignment = Alignment.End) {
-                                        Text("NEXT", fontSize = 9.sp, color = Color.White.copy(alpha = 0.8f), fontFamily = fontFamilyMono, letterSpacing = 0.5.sp)
+                                        Text("Next", fontSize = 9.sp, color = Color.White.copy(alpha = 0.8f), fontFamily = fontFamilyMono, letterSpacing = 0.5.sp)
                                         Text("Page ${currentPage + 1}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
                                     }
                                     Spacer(modifier = Modifier.width(6.dp))
@@ -1375,17 +1391,6 @@ private fun formatTimerMmSs(totalSec: Int): String {
     val m = (totalSec.coerceAtLeast(0) / 60).toString().padStart(2, '0')
     val s = (totalSec.coerceAtLeast(0) % 60).toString().padStart(2, '0')
     return "$m:$s"
-}
-
-// ── Helper: Format session time (web parity: "1h 5m" / "5m 3s" / "12s") ──
-private fun formatSessionTime(seconds: Int): String {
-    if (seconds <= 0) return "0s"
-    val h = seconds / 3600
-    val m = (seconds % 3600) / 60
-    val s = seconds % 60
-    if (h > 0) return "${h}h ${m}m"
-    if (m > 0) return "${m}m ${s}s"
-    return "${s}s"
 }
 
 /**
@@ -1732,7 +1737,7 @@ fun DayCelebrationCard(
                 if (displayedSeconds > 0) {
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "Session Time: ${formatSessionTime(displayedSeconds)}",
+                        text = "Session Time: ${formatTimerMmSs(displayedSeconds)}",
                         fontSize = 12.sp,
                         fontFamily = fontFamilyMono,
                         color = Color.White.copy(alpha = 0.75f)
@@ -1753,7 +1758,7 @@ fun DayCelebrationCard(
                                 .padding(16.dp)
                         ) {
                             Text(
-                                text = "TAKEAWAY OF THE DAY",
+                                text = "Takeaway of the Day",
                                 fontSize = 10.sp,
                                 fontFamily = fontFamilyUi,
                                 fontWeight = FontWeight.SemiBold,

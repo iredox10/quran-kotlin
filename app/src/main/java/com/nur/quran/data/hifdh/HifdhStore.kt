@@ -53,6 +53,16 @@ class HifdhStore(context: Context) {
         prefs.edit().putString(KEY_GOALS, json.toString()).apply()
     }
 
+    /** Web `memorizedSurahs` (chapter ids) — persisted as a string set like `memorized_ayahs`. */
+    fun loadMemorizedSurahs(): Set<Int> =
+        prefs.getStringSet(KEY_MEMORIZED_SURAHS, null)
+            ?.mapNotNull { it.toIntOrNull() }?.toSet() ?: emptySet()
+
+    fun saveMemorizedSurahs(surahs: Set<Int>) {
+        prefs.edit().putStringSet(KEY_MEMORIZED_SURAHS, surahs.map { it.toString() }.toSet())
+            .apply()
+    }
+
     /** Unparseable JSON degrades to null so callers fall back to empty state. */
     private fun parseJsonElement(raw: String): JsonElement? =
         runCatching { gson.fromJson(raw, JsonElement::class.java) }.getOrNull()
@@ -61,5 +71,6 @@ class HifdhStore(context: Context) {
         const val KEY_HISTORY = "hifdh_history"
         const val KEY_TRANSITION_LINKS = "transition_links"
         const val KEY_GOALS = "hifdh_goals"
+        const val KEY_MEMORIZED_SURAHS = "memorized_surahs"
     }
 }

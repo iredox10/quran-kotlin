@@ -647,7 +647,7 @@ fun PlannerReaderScreen(
                                         )
                                         Spacer(modifier = Modifier.width(4.dp))
                                         Text(
-                                            text = formatSessionTime(displayedSeconds),
+                                            text = formatTimerMmSs(displayedSeconds),
                                             fontSize = 11.sp,
                                             fontFamily = fontFamilyMono,
                                             fontWeight = FontWeight.Bold,
@@ -1345,6 +1345,14 @@ fun PlannerReaderScreen(
             wordProgressByTafsir = wordProgress
         )
     }
+}
+
+// ── Web parity (PlannerReader.jsx:347-351 formatTimer): the header timer
+// pill is zero-padded MM:SS, not the "5m 3s" session label used elsewhere. ──
+private fun formatTimerMmSs(totalSec: Int): String {
+    val m = (totalSec.coerceAtLeast(0) / 60).toString().padStart(2, '0')
+    val s = (totalSec.coerceAtLeast(0) % 60).toString().padStart(2, '0')
+    return "$m:$s"
 }
 
 // ── Helper: Format session time (web parity: "1h 5m" / "5m 3s" / "12s") ──

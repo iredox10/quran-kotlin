@@ -152,10 +152,10 @@ class MainActivity : ComponentActivity() {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentDestination = navBackStackEntry?.destination
 
+                // Bottom bar hidden on the Planner section (own in-screen navigation).
                 val shouldShowBottomBar = currentDestination?.route in listOf(
                     Screen.Quran.route,
                     Screen.Memorize.route,
-                    Screen.Planner.route,
                     Screen.Analytics.route,
                     Screen.Profile.route
                 )

@@ -431,7 +431,7 @@ fun PlannerReaderScreen(
                                 .padding(horizontal = 4.dp, vertical = 2.dp)
                         ) {
                             Text(
-                                text = "Day $dayNumber Reader",
+                                text = "Day $dayNumber",
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = hInk,
@@ -607,12 +607,13 @@ fun PlannerReaderScreen(
                                 }
                             }
 
-                            // Right: Surah badge (if Juz/Page or different) + Timer pill + % Achieved
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                if (currentChapter != null && activePlan?.unitType != "surah") {
+                            // Center: Surah badge (web parity: PlannerReader.jsx:640-646 —
+                            // always when currentChapter != null, no unitType filter).
+                            if (currentChapter != null) {
+                                Box(
+                                    modifier = Modifier.weight(1f),
+                                    contentAlignment = Alignment.Center
+                                ) {
                                     Surface(
                                         shape = RoundedCornerShape(100),
                                         color = hTeal.copy(alpha = 0.08f),
@@ -630,7 +631,13 @@ fun PlannerReaderScreen(
                                         )
                                     }
                                 }
+                            }
 
+                            // Right: Timer pill + % Achieved
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
                                 Surface(
                                     shape = RoundedCornerShape(100),
                                     color = hTeal.copy(alpha = 0.08f),
@@ -649,7 +656,7 @@ fun PlannerReaderScreen(
                                         )
                                         Spacer(modifier = Modifier.width(4.dp))
                                         Text(
-                                            text = formatSessionTime(displayedSeconds),
+                                            text = formatTimerMmSs(displayedSeconds),
                                             fontSize = 11.sp,
                                             fontFamily = fontFamilyMono,
                                             fontWeight = FontWeight.Bold,
@@ -1360,6 +1367,14 @@ fun PlannerReaderScreen(
             wordProgressByTafsir = wordProgress
         )
     }
+}
+
+// ── Web parity (PlannerReader.jsx:347-351 formatTimer): the header timer
+// pill is zero-padded MM:SS, not the "5m 3s" session label used elsewhere. ──
+private fun formatTimerMmSs(totalSec: Int): String {
+    val m = (totalSec.coerceAtLeast(0) / 60).toString().padStart(2, '0')
+    val s = (totalSec.coerceAtLeast(0) % 60).toString().padStart(2, '0')
+    return "$m:$s"
 }
 
 // ── Helper: Format session time (web parity: "1h 5m" / "5m 3s" / "12s") ──

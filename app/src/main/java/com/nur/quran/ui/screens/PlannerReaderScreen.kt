@@ -1170,9 +1170,18 @@ fun PlannerReaderScreen(
                             }
                         }
 
-                        // Center: spacer keeps Next (left) / Prev (right)
-                        // balanced now the static "N / M" lives in-button.
-                        Spacer(modifier = Modifier.weight(1f))
+                        // Center: page progress indicator
+                        Text(
+                            text = "$currentPage / $pageEnd",
+                            fontSize = 13.sp,
+                            fontFamily = fontFamilyMono,
+                            fontWeight = FontWeight.Bold,
+                            color = hInkMuted,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .clickable { showPageJumpDialog = true }
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
 
                         // Prev Page Button (right)
                         Surface(

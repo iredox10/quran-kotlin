@@ -419,3 +419,37 @@ internal fun webCollections(
         }
     )
 }
+
+/**
+ * Web `plannerReflections` is `{ [plannerId]: { [dayNumber]: { text } } }`.
+ * Android only persists the note text (a plan's `assignmentReflections`), so
+ * `createdAt` is dropped — web never renders it.
+ */
+internal fun plannerReflectionsFromPlans(
+    plans: List<Map<String, Any?>>
+): Map<String, Map<String, Map<String, String>>> {
+    val out = LinkedHashMap<String, Map<String, Map<String, String>>>()
+    for (plan in plans) {
+        val planId = plan["id"]?.toString()?.takeIf { it.isNotBlank() } ?: continue
+        @Suppress("UNCHECKED_CAST")
+        val reflections = plan["assignmentReflections"] as? Map<String, Any?> ?: continue
+        val days = LinkedHashMap<String, Map<String, String>>()
+        for ((day, note) in reflections) {
+            val text = note?.toString()?.takeIf { it.isNotBlank() } ?: continue
+            days[day] = mapOf("text" to text)
+        }
+        if (days.isNotEmpty()) out[planId] = days
+    }
+    return out
+}
+
+/**
+ * Web `plannerSessionTimers[planId][dayNumber]` is `{ startedAt, totalSeconds }`.
+ * Android persists day → seconds only and never reads `startedAt`, so the
+ * web entry carries just `totalSeconds`.
+ */
+internal fun plannerSessionTimers(secondsByDay: Map<String, Any?>): Map<String, Map<String, Long>> =
+    secondsByDay.mapNotNull { (day, seconds) ->
+        val total = (seconds as? Number)?.toLong() ?: return@mapNotNull null
+        day to mapOf("totalSeconds" to total)
+    }.toMap()

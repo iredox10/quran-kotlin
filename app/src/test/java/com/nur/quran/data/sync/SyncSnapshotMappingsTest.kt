@@ -234,4 +234,36 @@ class SyncSnapshotMappingsTest {
         )
         assertEquals(emptyList<Map<String, Any?>>(), flat[1]["items"])
     }
+
+    @Test
+    fun `planner reflections are lifted out of the plans into the web keyed shape`() {
+        val plans = listOf(
+            mapOf<String, Any?>(
+                "id" to "plan-1",
+                "assignmentReflections" to mapOf<String, Any?>("1" to "day one", "2" to "   ")
+            ),
+            mapOf<String, Any?>("id" to "plan-2"),
+            mapOf<String, Any?>("assignmentReflections" to mapOf<String, Any?>("1" to "orphan"))
+        )
+
+        assertEquals(
+            mapOf("plan-1" to mapOf("1" to mapOf("text" to "day one"))),
+            plannerReflectionsFromPlans(plans)
+        )
+    }
+
+    @Test
+    fun `planner session timers are wrapped in the web totalSeconds entry`() {
+        // Gson reads JSON numbers as Double, so both shapes must survive.
+        assertEquals(
+            mapOf(
+                "1" to mapOf("totalSeconds" to 120L),
+                "2" to mapOf("totalSeconds" to 45L)
+            ),
+            plannerSessionTimers(
+                mapOf<String, Any?>("1" to 120.0, "2" to 45L, "3" to "nope", "4" to null)
+            )
+        )
+        assertEquals(emptyMap<String, Map<String, Long>>(), plannerSessionTimers(emptyMap()))
+    }
 }

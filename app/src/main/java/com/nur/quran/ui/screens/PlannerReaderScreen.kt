@@ -883,9 +883,11 @@ fun PlannerReaderScreen(
                                             )
                                         }
                                         if (verse.chapterId != 1 && verse.chapterId != 9) {
+                                            // Web parity (PlannerReader.jsx:774-785): basmala
+                                            // scales with the arabic font-size setting.
                                             Text(
                                                 text = "بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ",
-                                                fontSize = 28.sp,
+                                                fontSize = (28 * arabicFontScale).sp,
                                                 fontFamily = fontFamilyArabic,
                                                 color = hGold,
                                                 textAlign = TextAlign.Center,

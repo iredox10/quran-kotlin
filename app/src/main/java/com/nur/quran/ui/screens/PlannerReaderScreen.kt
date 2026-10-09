@@ -196,7 +196,7 @@ fun PlannerReaderScreen(
         wasAudioPlaying = isPlaying
     }
 
-    // ── Sticky Header HUD & Auto-Scroll ──────────────────────────────
+    // ── Reader HUD & Auto-Scroll ──────────────────────────────
     val lazyListState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     val isScrolled by remember {
@@ -565,7 +565,7 @@ fun PlannerReaderScreen(
                 )
             }
     ) {
-        // ── Header Bar (stays sticky on scroll; fully hidden in focus mode) ──
+        // ── Header Bar (sticky nav only; fully hidden in focus mode) ──
         AnimatedVisibility(
             visible = !isFocusMode,
             enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
@@ -716,8 +716,6 @@ fun PlannerReaderScreen(
                         }
                     }
                 }
-
-                StatusPillCard()
             }
         }
 
@@ -773,9 +771,10 @@ fun PlannerReaderScreen(
                     }
 
                     // Web parity (PlannerReader.jsx:215-268): non-verse header items
-                    // (intention banner + swipe hint) shift LazyColumn indices.
+                    // (status pill + intention banner + swipe hint) shift LazyColumn indices.
+                    // The pill slot always exists (zero-height in focus mode): +1 constant.
                     val verseHeaderOffset =
-                        (if (showIntentionPrompt && !isIntentionDismissed) 1 else 0) + (if (currentPage == pageStart) 1 else 0)
+                        1 + (if (showIntentionPrompt && !isIntentionDismissed) 1 else 0) + (if (currentPage == pageStart) 1 else 0)
 
                     // Web parity: scroll to top of page on page change
                     LaunchedEffect(currentPage) {
@@ -810,8 +809,18 @@ fun PlannerReaderScreen(
 
                     if (assignedVerses.isEmpty()) {
                         // Day filter removed every verse on this page.
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text("No verses found for this page.", color = hInkMuted)
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp, vertical = 12.dp)
+                        ) {
+                            StatusPillCard()
+                            Box(
+                                modifier = Modifier.weight(1f).fillMaxWidth(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("No verses found for this page.", color = hInkMuted)
+                            }
                         }
                     } else if (currentMushaf.renderMode == com.nur.quran.data.mushaf.MushafRenderMode.QCF_PAGE && !isReadingMode) {
                         LazyColumn(
@@ -819,6 +828,10 @@ fun PlannerReaderScreen(
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp)
                         ) {
+                            // Status pill scrolls with content; back at the very top.
+                            item {
+                                StatusPillCard()
+                            }
                             item {
                                 MushafPageView(
                                     page = currentPage,
@@ -843,6 +856,10 @@ fun PlannerReaderScreen(
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp)
                         ) {
+                            // Status pill scrolls with content; back at the very top.
+                            item {
+                                StatusPillCard()
+                            }
                             item {
                                 ContinuousReadingPageItem(
                                     page = currentPage,
@@ -866,6 +883,11 @@ fun PlannerReaderScreen(
                             contentPadding = PaddingValues(horizontal = 24.dp, vertical = 24.dp),
                             verticalArrangement = Arrangement.spacedBy(28.dp)
                         ) {
+                            // Status pill scrolls with the verses; back at the very top.
+                            item {
+                                StatusPillCard()
+                            }
+
                             // Renewal of Intention Banner (web: intentionPromptEnabled)
                             if (showIntentionPrompt && !isIntentionDismissed) {
                                 item {

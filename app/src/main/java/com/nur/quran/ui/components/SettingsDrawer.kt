@@ -781,7 +781,10 @@ fun SettingsDrawer(
                                         )
                                     }
                                     "font" -> {
-                                        ARABIC_FONT_OPTIONS.forEach { font ->
+                                        // Web: getMushafFontOptions — only compatible fonts listed.
+                                        ARABIC_FONT_OPTIONS.filter {
+                                            currentMushaf.supportedFontIds.contains(it.id)
+                                        }.forEach { font ->
                                             val isSelected = selectedArabicFontName == font.name
                                             Column(
                                                 modifier = Modifier
@@ -807,11 +810,7 @@ fun SettingsDrawer(
                                                             color = if (isSelected) hGold else hInk
                                                         )
                                                         Text(
-                                                            text = if (currentMushaf.supportedFontIds.contains(
-                                                                    com.nur.quran.data.mushaf.fontNameToId(font.name)
-                                                                )
-                                                            ) "Compatible with ${currentMushaf.name}"
-                                                            else "Not recommended for ${currentMushaf.name}",
+                                                            text = "Compatible with ${currentMushaf.name}",
                                                             fontSize = 11.sp,
                                                             color = hInkMuted
                                                         )

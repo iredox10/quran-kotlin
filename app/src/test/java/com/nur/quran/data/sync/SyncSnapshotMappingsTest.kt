@@ -59,4 +59,32 @@ class SyncSnapshotMappingsTest {
         assertNull(arabicFontIdFromName(""))
         assertNull(arabicFontIdFromName("Comic Sans Arabic"))
     }
+
+    @Test
+    fun `read preference passes through web values`() {
+        assertEquals("before", normalizeReadPreference("before"))
+        assertEquals("split", normalizeReadPreference(" SPLIT "))
+    }
+
+    @Test
+    fun `read preference drops values web does not accept`() {
+        assertNull(normalizeReadPreference(null))
+        assertNull(normalizeReadPreference(""))
+        assertNull(normalizeReadPreference("whenever"))
+    }
+
+    @Test
+    fun `active prayers keep canonical order and drop unknown names`() {
+        val parsed = normalizeActivePrayers(
+            linkedSetOf("Isha", "Fajr", "Duha", "Asr", "Maghrib")
+        )
+        assertEquals(listOf("Fajr", "Asr", "Maghrib", "Isha"), parsed)
+    }
+
+    @Test
+    fun `active prayers are omitted when nothing valid is stored`() {
+        assertNull(normalizeActivePrayers(null))
+        assertNull(normalizeActivePrayers(emptySet()))
+        assertNull(normalizeActivePrayers(linkedSetOf("Duha")))
+    }
 }

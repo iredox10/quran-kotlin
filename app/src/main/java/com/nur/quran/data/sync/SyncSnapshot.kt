@@ -6,6 +6,7 @@ import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
 import com.nur.quran.data.db.dao.QuranDao
 import com.nur.quran.data.mushaf.fontNameToId
+import com.nur.quran.data.planner.PRAYER_NAMES
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
@@ -306,3 +307,29 @@ internal fun arabicFontIdFromName(name: String?): String? =
     name?.takeIf { it.isNotBlank() }
         ?.let { fontNameToId(it) }
         ?.takeIf { it in WEB_ARABIC_FONT_IDS }
+
+/** Web `prayerSettings.readPreference` values ('before' | 'after' | 'split'). */
+private val WEB_READ_PREFERENCES = setOf("before", "after", "split")
+
+/**
+ * Web `prayerSettings.readPreference` ← PlannerSettings `reading_preference`.
+ * Mirrors PlannerViewModel's own coercion so a legacy/garbage stored value is
+ * dropped instead of pushed.
+ */
+internal fun normalizeReadPreference(raw: String?): String? {
+    val value = raw?.trim()?.lowercase()?.takeIf { it.isNotEmpty() } ?: return null
+    return value.takeIf { it in WEB_READ_PREFERENCES }
+}
+
+/**
+ * Web `prayerSettings.activePrayers` ← PlannerSettings `active_prayers`:
+ * names are ordered by [PRAYER_NAMES] (web renders Fajr → Isha) and unknown
+ * names are dropped; an empty selection means "not set" so it is omitted and
+ * the remote preference survives the merge.
+ */
+internal fun normalizeActivePrayers(raw: Set<String>?): List<String>? {
+    val ordered = raw.orEmpty()
+        .filter { it in PRAYER_NAMES }
+        .sortedBy { PRAYER_NAMES.indexOf(it) }
+    return ordered.takeIf { it.isNotEmpty() }
+}

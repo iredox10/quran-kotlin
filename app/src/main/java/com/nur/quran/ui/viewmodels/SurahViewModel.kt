@@ -1525,18 +1525,21 @@ class SurahViewModel @Inject constructor(
         // Offline-first: cached pages paint synchronously, never via Loading.
         pageReaderCache.cached(pageNumber, params)?.let { cached ->
             loadPageJob?.cancel()
+            pageReaderCache.beginLoad()
             if (_uiState.value != cached) _uiState.value = cached
             return
         }
         // Cache miss: keep the previous page visible; Loading only from empty.
         val fromEmpty = pageReaderCache.shouldEmitLoading(_uiState.value is SurahUiState.Success)
         loadPageJob?.cancel()
+        val gen = pageReaderCache.beginLoad()
         loadPageJob = viewModelScope.launch(Dispatchers.IO) {
             if (fromEmpty) _uiState.value = SurahUiState.Loading
             try {
                 val verses = repository.getVersesByPage(pageNumber, params.mushafId, params.translationId)
+                if (!pageReaderCache.isCurrent(gen)) return@launch
                 if (verses.isEmpty()) {
-                    _uiState.value = SurahUiState.Error("No verses found for page $pageNumber")
+                    if (_uiState.value !is SurahUiState.Success) _uiState.value = SurahUiState.Error("No verses found for page $pageNumber")
                     return@launch
                 }
                 val chapterId = verses.firstOrNull()?.chapterId ?: 1
@@ -1545,9 +1548,12 @@ class SurahViewModel @Inject constructor(
                 val wordsMap = repository.getWordsForVerses(verses.map { it.id })
                 val success = SurahUiState.Success(chapter, verses, wordsMap)
                 pageReaderCache.store(pageNumber, params, success)
+                if (!pageReaderCache.isCurrent(gen)) return@launch
                 _uiState.value = success
             } catch (e: Exception) {
-                _uiState.value = SurahUiState.Error(e.localizedMessage ?: "Failed to load page verses")
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                if (!pageReaderCache.isCurrent(gen)) return@launch
+                if (_uiState.value !is SurahUiState.Success) _uiState.value = SurahUiState.Error(e.localizedMessage ?: "Failed to load page verses")
             }
         }
     }

@@ -315,7 +315,13 @@ fun PlannerReaderScreen(
         onDispose {}
     }
 
-    val isDayCompleted = activePlan?.completedDays?.contains(dayNumber) == true
+    // ── Derived day progress (web parity: PlannerReader.jsx:92-95) ───────
+    // progress.isComplete is the single source for the pct bar, the Done
+    // button, and the celebration trigger — not completedDays.
+    val dayProgress = remember(activePlan, assignment) {
+        activePlan?.let { PlannerEngine.getAssignmentProgress(it, assignment) }
+    }
+    val isDayCompleted = dayProgress?.isComplete == true
 
     // ── Auto-celebrate on completion (web parity: PlannerReader.jsx:378-413)
     // Web pops the confetti/reflection card as soon as progress.isComplete
@@ -332,9 +338,6 @@ fun PlannerReaderScreen(
     // Web derives pct from getAssignmentProgress: surah is pages-based
     // (read incl. item-implied pages over summed item ranges), everything
     // else items-based (incl. page-derived completions), with Math.round.
-    val dayProgress = remember(activePlan, assignment) {
-        activePlan?.let { PlannerEngine.getAssignmentProgress(it, assignment) }
-    }
     val totalPages = (pageEnd - pageStart + 1)
     val progressPct = remember(dayProgress, activePlan) {
         val prog = dayProgress
@@ -986,13 +989,15 @@ fun PlannerReaderScreen(
                         .padding(horizontal = 16.dp, vertical = 12.dp)
                 ) {
                     // Per-item Done (web: Mark {currentItem.title} Done)
-                    val completedRangeValues = activePlan?.assignmentCompletedItems?.get(dayNumber) ?: emptyList()
+                    // Web (PlannerReader.jsx:588-592): both flags come from the
+                    // derived progress, and the gate reads planner.unitType.
                     val currentItem = assignment.items.find { currentPage in it.pageStart..it.pageEnd }
                         ?: assignment.items.firstOrNull()
-                    val dayProgressComplete = activePlan?.let { PlannerEngine.getAssignmentProgress(it, assignment).isComplete } == true
-                    val isCurrentItemComplete = currentItem == null || completedRangeValues.contains(currentItem.rangeValue)
+                    val dayProgressComplete = dayProgress?.isComplete == true
+                    val isCurrentItemComplete = currentItem == null ||
+                        (dayProgress?.completedRangeValues?.contains(currentItem.rangeValue) == true)
                     if (currentItem != null && !isCurrentItemComplete && !dayProgressComplete &&
-                        (assignment.unitType != "surah" || currentPage >= assignment.pageEnd)
+                        (activePlan?.unitType != "surah" || currentPage >= assignment.pageEnd)
                     ) {
                         Surface(
                             shape = RoundedCornerShape(100),

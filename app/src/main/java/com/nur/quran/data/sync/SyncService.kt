@@ -168,23 +168,14 @@ class SyncService @Inject constructor(
 
     private suspend fun pushInternal(userId: String): Boolean {
         return try {
-            val local = localStateMap().toMutableMap()
-            val now = System.currentTimeMillis()
-            local["userId"] = userId
-            local["version"] = 1
-            // LWW stamp for settings; section lists merge by union regardless of this stamp.
-            local["updatedAt"] = now
+            // Merge local over remote (web's pushState does the same), then upload the
+            // union as one `stateData` string.
             val existing = fetchRemote(userId)
-            val payload: Map<String, Any> = if (existing != null) {
-                mergeStateInto(existing.state, local).toMutableMap().also {
-                    it["userId"] = userId
-                    it["version"] = 1
-                    it["updatedAt"] = now
-                }.withoutNulls()
-            } else {
-                local.withoutNulls()
-            }
-            // Create-if-missing: try update, on 404 (or any update failure) create.
+            val merged = mergeStateInto(existing?.state ?: emptyMap(), localStateMap())
+            val payload = SyncContract.buildPushPayload(
+                userId,
+                gson.toJson(SyncContract.stripStateMetadata(merged)),
+            )
             val remoteTs = try {
                 val updated = appwriteClient.databases.updateDocument(
                     AppwriteClient.DATABASE_ID,
@@ -202,7 +193,8 @@ class SyncService @Inject constructor(
                 )
                 parseUpdatedAt(created.updatedAt)
             }
-            saveLastSync(if (remoteTs > 0) remoteTs else now)
+            // Watermark = the document's server stamp; local clock only if it is missing.
+            saveLastSync(if (remoteTs > 0) remoteTs else System.currentTimeMillis())
             true
         } catch (_: Exception) {
             false

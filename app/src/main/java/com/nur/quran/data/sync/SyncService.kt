@@ -58,6 +58,17 @@ class SyncService @Inject constructor(
 ) {
     private val gson = Gson()
 
+    /**
+     * Id of this account's sync document, so an update targets the real document and never
+     * has to guess (or mint) one. Keyed to [cachedUserId] — an id learned for one account
+     * must never be written for another.
+     */
+    @Volatile
+    private var cachedDocId: String? = null
+
+    @Volatile
+    private var cachedUserId: String? = null
+
     // ------------------------------------------------------------------ public API ---
 
     /** Build local snapshot and upload (merge local over remote, update-or-create). */
@@ -176,23 +187,7 @@ class SyncService @Inject constructor(
                 userId,
                 gson.toJson(SyncContract.stripStateMetadata(merged)),
             )
-            val remoteTs = try {
-                val updated = appwriteClient.databases.updateDocument(
-                    AppwriteClient.DATABASE_ID,
-                    AppwriteClient.USER_SYNC_COLLECTION_ID,
-                    userId,
-                    payload,
-                )
-                parseUpdatedAt(updated.updatedAt)
-            } catch (_: Exception) {
-                val created = appwriteClient.databases.createDocument(
-                    AppwriteClient.DATABASE_ID,
-                    AppwriteClient.USER_SYNC_COLLECTION_ID,
-                    userId,
-                    payload,
-                )
-                parseUpdatedAt(created.updatedAt)
-            }
+            val remoteTs = writePayload(userId, payload, existing?.id)
             // Watermark = the document's server stamp; local clock only if it is missing.
             saveLastSync(if (remoteTs > 0) remoteTs else System.currentTimeMillis())
             true
@@ -201,28 +196,91 @@ class SyncService @Inject constructor(
         }
     }
 
-    private suspend fun fetchRemote(userId: String): RemoteDoc? {
-        return try {
-            val doc = appwriteClient.databases.getDocument(
-                AppwriteClient.DATABASE_ID,
-                AppwriteClient.USER_SYNC_COLLECTION_ID,
-                userId,
-            )
-            RemoteDoc(extractState(doc.data), parseUpdatedAt(doc.updatedAt))
-        } catch (_: Exception) {
-            null // missing doc OR transport failure — caller treats as absent
+    /**
+     * Update-or-create, targeting the document resolved for this account. It only ever
+     * creates when the account really has none (re-resolving first, in case the earlier
+     * lookup raced a create) — assuming documentId == userId is what forked a second
+     * document per account in the first place.
+     */
+    private suspend fun writePayload(
+        userId: String,
+        payload: Map<String, Any>,
+        resolvedDocId: String?,
+    ): Long {
+        val target = resolvedDocId ?: cachedDocId?.takeIf { cachedUserId == userId }
+        if (target != null) {
+            updateById(target, payload)?.let { doc ->
+                cachedDocId = doc.id
+                return parseUpdatedAt(doc.updatedAt)
+            }
         }
+        val resolved = fetchRemote(userId)
+        if (resolved != null) {
+            updateById(resolved.id, payload)?.let { doc ->
+                cachedDocId = doc.id
+                return parseUpdatedAt(doc.updatedAt)
+            }
+        }
+        // Web creates with the magic id; the server generates the real one.
+        val created = appwriteClient.databases.createDocument(
+            AppwriteClient.DATABASE_ID,
+            AppwriteClient.USER_SYNC_COLLECTION_ID,
+            appwriteClient.uniqueDocumentId,
+            payload,
+        )
+        cachedUserId = userId
+        cachedDocId = created.id
+        return parseUpdatedAt(created.updatedAt)
     }
 
-    /** Remote doc may carry web-style `stateData` JSON string; normalize to a state map. */
-    private fun extractState(data: Map<String, Any?>): Map<String, Any?> {
-        val out = data.toMutableMap()
-        (out.remove("stateData") as? String)?.let { raw ->
-            parseJsonObject(raw)?.let { parsed -> for ((k, v) in parsed) out.putIfAbsent(k, v) }
+    /** Update one document; null when the id is stale (deleted) or transport failed. */
+    private suspend fun updateById(docId: String, payload: Map<String, Any>) =
+        runSuspendCatching {
+            appwriteClient.databases.updateDocument(
+                AppwriteClient.DATABASE_ID,
+                AppwriteClient.USER_SYNC_COLLECTION_ID,
+                docId,
+                payload,
+            )
+        }.getOrNull()
+
+    /**
+     * This account's document, resolved by attribute (web's `Query.equal("userId", userId)`),
+     * so it works whichever id the document was created with. Null = no document yet.
+     *
+     * Transport failures propagate on purpose: the entry points catch them and fail the
+     * sync, which is the safe outcome — writing blind would drop the remote union and could
+     * fork another document.
+     */
+    private suspend fun fetchRemote(userId: String): RemoteDoc? {
+        val docs = appwriteClient.databases.listDocuments(
+            AppwriteClient.DATABASE_ID,
+            AppwriteClient.USER_SYNC_COLLECTION_ID,
+            appwriteClient.userSyncQueries(userId),
+        )
+        val doc = SyncContract.resolveDoc(
+            docs.documents.map {
+                SyncContract.DocRef(id = it.id, data = it.data, updatedAtMillis = parseUpdatedAt(it.updatedAt))
+            },
+            userId,
+        )
+        cachedUserId = userId
+        if (doc == null) {
+            // Account has no doc yet: writes must CREATE, never update a guessed id.
+            cachedDocId = null
+            return null
         }
-        out.remove("userId")
-        return out
+        cachedDocId = doc.id
+        return RemoteDoc(extractState(doc.data), doc.updatedAtMillis, doc.id)
     }
+
+    /**
+     * Web-shaped docs carry `stateData` (a JSON string); legacy Android docs predate it and
+     * keep their state in flattened attributes, which are read until the next push writes
+     * the migrated state back behind `stateData`.
+     */
+    private fun extractState(data: Map<String, Any?>): Map<String, Any?> =
+        SyncContract.stateFromDoc(data) { parseJsonObject(it) }
 
     // ----------------------------------------------------------------- local state ---
 
@@ -815,5 +873,10 @@ class SyncService @Inject constructor(
         return out
     }
 
-    private data class RemoteDoc(val state: Map<String, Any?>, val updatedAt: Long)
+    private data class RemoteDoc(
+        val state: Map<String, Any?>,
+        val updatedAt: Long,
+        /** Id of the account's sync document — the update target, never a guess. */
+        val id: String,
+    )
 }

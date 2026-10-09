@@ -3,6 +3,7 @@ package com.nur.quran.data.sync
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.appwrite.Client
+import io.appwrite.Query
 import io.appwrite.services.Account
 import io.appwrite.services.Databases
 import javax.inject.Inject
@@ -27,6 +28,20 @@ class AppwriteClient @Inject constructor(
 
     val account = Account(client)
     val databases = Databases(client)
+
+    /**
+     * Query that resolves this account's sync document (web parity:
+     * `appwrite.js` pushState/pullState both list with
+     * `Query.equal("userId", userId)` and use `documents[0]`).
+     *
+     * The document id is server-generated (`unique()` on create), so it is never
+     * derivable from the account id and must never be guessed.
+     */
+    fun userSyncQueries(userId: String): List<String> =
+        listOf(Query.equal(SyncContract.FIELD_USER_ID, userId))
+
+    /** Magic id the server replaces with a generated one (same value web sends). */
+    val uniqueDocumentId: String = SyncContract.UNIQUE_DOCUMENT_ID
 
     companion object {
         const val ENDPOINT = "https://fra.cloud.appwrite.io/v1"

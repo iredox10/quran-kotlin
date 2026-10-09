@@ -1449,6 +1449,18 @@ fun PlannerReaderScreen(
     }
 }
 
+// ── Dock reveal: bottom dock stays hidden until the list reaches its ──
+// final layout item. The dock itself is NOT a LazyColumn item (it floats
+// below the verses Box), so totalItemsCount already covers all content:
+// status pill (slot 0) + optional intention/swipe-hint headers + verses
+// (verse mode), or pill + single page item (QCF/reading modes). Empty or
+// non-lazy states (loading/error/filtered-empty Column) report total <= 0
+// and keep the dock visible so navigation is never stranded.
+internal fun isReaderDockAtBottom(lastVisibleIndex: Int?, totalItems: Int): Boolean {
+    if (totalItems <= 0) return true
+    return lastVisibleIndex == totalItems - 1
+}
+
 // ── Web parity (PlannerReader.jsx:347-351 formatTimer): the header timer
 // pill is zero-padded MM:SS, not the "5m 3s" session label used elsewhere. ──
 private fun formatTimerMmSs(totalSec: Int): String {

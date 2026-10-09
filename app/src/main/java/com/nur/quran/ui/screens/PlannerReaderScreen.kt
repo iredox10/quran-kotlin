@@ -1139,21 +1139,7 @@ fun PlannerReaderScreen(
                                 ) {
                                     Icon(imageVector = NurIcons.CheckCircle2, contentDescription = "Finish", tint = Color.White, modifier = Modifier.size(18.dp))
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Column {
-                                        Text("Finish Day", fontSize = 13.sp, color = Color.White, fontWeight = FontWeight.Bold)
-                                        // Last-page count lives here so N/M
-                                        // is visible exactly once (tappable → jump).
-                                        Text(
-                                            text = "$currentPage / $pageEnd",
-                                            fontSize = 9.sp,
-                                            color = Color.White.copy(alpha = 0.75f),
-                                            fontFamily = fontFamilyMono,
-                                            modifier = Modifier
-                                                .clip(RoundedCornerShape(4.dp))
-                                                .clickable { showPageJumpDialog = true }
-                                                .padding(horizontal = 2.dp, vertical = 1.dp)
-                                        )
-                                    }
+                                    Text("Finish Day", fontSize = 13.sp, color = Color.White, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }

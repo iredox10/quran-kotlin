@@ -46,6 +46,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -1517,6 +1518,33 @@ class SurahViewModel @Inject constructor(
         }
     }
 
+    private var prefetchJob: Job? = null
+
+    /**
+     * Warm [pages] (verses + words + tajweed ensure-paths) into the shared
+     * page cache. Single job — a new call cancels the previous one.
+     * Never emits UI state; loadPageVerses serves hits with no flash.
+     */
+    fun prefetchAdjacentPages(pages: List<Int>) {
+        val params = PageCacheParams(_mushafPreset.value, _currentTranslationId.value)
+        prefetchJob?.cancel()
+        prefetchJob = viewModelScope.launch(Dispatchers.IO) {
+            for (page in pages) {
+                ensureActive()
+                if (pageReaderCache.cached(page, params) != null) continue
+                try {
+                    val bundle = repository.getPageVerses(page, params.mushafId, params.translationId)
+                    if (bundle.verses.isEmpty()) continue
+                    val chapterId = bundle.verses.firstOrNull()?.chapterId ?: 1
+                    val chapter = repository.getChapterById(chapterId) ?: continue
+                    pageReaderCache.store(page, params, SurahUiState.Success(chapter, bundle.verses, bundle.wordsMap))
+                } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                }
+            }
+        }
+    }
+
     private val pageReaderCache = PageReaderCache<SurahUiState.Success>()
     private var loadPageJob: Job? = null
 
@@ -1987,6 +2015,7 @@ class SurahViewModel @Inject constructor(
         // Bust caches so line numbers + script are refetched for the new mushaf.
         chapterMemoryCache.clear()
         pageReaderCache.clear()
+        prefetchJob?.cancel()
         loadedMushafByChapter.clear()
         val chapterToReload = currentChapterId
         if (chapterToReload > 0) {

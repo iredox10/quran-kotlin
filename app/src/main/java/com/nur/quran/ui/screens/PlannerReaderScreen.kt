@@ -315,6 +315,19 @@ fun PlannerReaderScreen(
         surahViewModel.loadPageVerses(currentPage)
     }
 
+    // ── Adjacent-page prefetch (offline-first: swipes render instantly) ──
+    // Fires once the page settles (300ms debounce); the effect key cancels
+    // the wait on further page change, and the ViewModel keeps a single
+    // prefetch job (each call cancels the last). Bounds-clamped, silent.
+    LaunchedEffect(currentPage, pageStart, pageEnd) {
+        delay(300)
+        val neighbors = buildList {
+            if (currentPage - 1 >= pageStart) add(currentPage - 1)
+            if (currentPage + 1 <= pageEnd) add(currentPage + 1)
+        }
+        if (neighbors.isNotEmpty()) surahViewModel.prefetchAdjacentPages(neighbors)
+    }
+
     // Save scroll position & mark page read
     DisposableEffect(currentPage) {
         plannerViewModel.markPageRead(dayNumber, currentPage)

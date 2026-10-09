@@ -153,4 +153,30 @@ class HifdhWebCompatTest {
         assertEquals("goal-42", stringId.get("id").asString)
         assertEquals("surah", stringId.get("targetType").asString)
     }
+
+    @Test
+    fun `goal list skips only the unreadable goal`() {
+        val raw = """
+            [{"id":1712345678901,"targetType":"surah","targetId":18,"targetDate":"2026-05-01","createdAt":1712345678901},
+             "nope",
+             {"id":1712345678902,"targetType":"surah","targetId":2,"targetDate":"2026-06-01","createdAt":1712345678902}]
+        """.trimIndent()
+
+        val goals = parseWebGoalList(parse(raw))
+
+        assertEquals(2, goals.size)
+        assertEquals(18, goals[0].targetId)
+        assertEquals(1777593600000L, goals[0].targetDate)
+        assertEquals(2, goals[1].targetId)
+    }
+
+    @Test
+    fun `strength normalizes to strong medium weak`() {
+        assertEquals("strong", normalizeHifdhStrength("strong"))
+        assertEquals("medium", normalizeHifdhStrength("medium"))
+        assertEquals("weak", normalizeHifdhStrength("weak"))
+        assertEquals("medium", normalizeHifdhStrength("good"))
+        assertEquals("medium", normalizeHifdhStrength("anything-else"))
+        assertEquals("medium", normalizeHifdhStrength(null))
+    }
 }

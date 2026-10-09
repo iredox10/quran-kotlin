@@ -1517,44 +1517,50 @@ class SurahViewModel @Inject constructor(
         }
     }
 
-    private data class PageCacheKey(val page: Int, val mushaf: String, val translationId: Int)
-    private val pageMemoryCache = java.util.concurrent.ConcurrentHashMap<PageCacheKey, SurahUiState.Success>()
+    private val pageReaderCache = PageReaderCache<SurahUiState.Success>()
     private var loadPageJob: Job? = null
 
     fun loadPageVerses(pageNumber: Int) {
-        // Repeat swipes serve from memory: no Loading flash for local data.
-        val key = PageCacheKey(pageNumber, _mushafPreset.value, _currentTranslationId.value)
-        pageMemoryCache[key]?.let {
-            currentChapterId = it.chapter.id
-            currentChapterName = it.chapter.nameSimple
-            _uiState.value = it
+        val params = PageCacheParams(_mushafPreset.value, _currentTranslationId.value)
+        // Offline-first: cached pages paint synchronously, never via Loading.
+        pageReaderCache.cached(pageNumber, params)?.let { cached ->
+            loadPageJob?.cancel()
+            pageReaderCache.beginLoad()
+            currentChapterId = cached.chapter.id
+            currentChapterName = cached.chapter.nameSimple
+            if (_uiState.value != cached) _uiState.value = cached
             return
         }
+        // Cache miss: keep the previous page visible; Loading only from empty.
+        val fromEmpty = pageReaderCache.shouldEmitLoading(_uiState.value is SurahUiState.Success)
         loadPageJob?.cancel()
+        val gen = pageReaderCache.beginLoad()
         loadPageJob = viewModelScope.launch(Dispatchers.IO) {
-            // Keep the previous page painted while the next loads (no flash);
-            // Loading only for first paint / retry of the same page.
-            val stale = _uiState.value as? SurahUiState.Success
-            if (stale == null || stale.verses.firstOrNull()?.pageNumber == pageNumber) {
-                _uiState.value = SurahUiState.Loading
-            }
+            if (fromEmpty) _uiState.value = SurahUiState.Loading
             try {
-                val bundle = repository.getPageVerses(pageNumber, _mushafPreset.value, _currentTranslationId.value)
+                // Single batched bundle (one txn): no N+1 translation/words queries.
+                val bundle = repository.getPageVerses(pageNumber, params.mushafId, params.translationId)
+                if (!pageReaderCache.isCurrent(gen)) return@launch
                 if (bundle.verses.isEmpty()) {
-                    _uiState.value = SurahUiState.Error("No verses found for page $pageNumber")
+                    if (_uiState.value !is SurahUiState.Success) _uiState.value = SurahUiState.Error("No verses found for page $pageNumber")
+                    return@launch
+                }
                     return@launch
                 }
                 val chapterId = bundle.verses.firstOrNull()?.chapterId ?: 1
                 val chapter = repository.getChapterById(chapterId)
                     ?: ChapterEntity(chapterId, "Surah $chapterId", "سورة", "Surah $chapterId", "Chapter", "makkah", 1, 10, pageNumber, pageNumber)
                 val success = SurahUiState.Success(chapter, bundle.verses, bundle.wordsMap)
-                pageMemoryCache[key] = success
+                pageReaderCache.store(pageNumber, params, success)
+                if (!pageReaderCache.isCurrent(gen)) return@launch
                 currentChapterId = chapter.id
                 currentChapterName = chapter.nameSimple
                 _uiState.value = success
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
-                _uiState.value = SurahUiState.Error(e.localizedMessage ?: "Failed to load page verses")
+                if (!pageReaderCache.isCurrent(gen)) return@launch
+                if (_uiState.value !is SurahUiState.Success) _uiState.value = SurahUiState.Error(e.localizedMessage ?: "Failed to load page verses")
+            }
             }
         }
     }

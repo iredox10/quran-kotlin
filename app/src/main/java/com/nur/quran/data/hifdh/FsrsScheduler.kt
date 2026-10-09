@@ -167,6 +167,35 @@ internal fun FsrsCard.toWebJson(): JsonObject = JsonObject().apply {
     lastReview?.let { addProperty("last_review", webIsoString(it)) }
 }
 
+/** Reads a web `hifdhHistory` entry `{card, lastReviewed, strength}`; legacy entries carry no `card`. */
+internal fun parseWebHistoryEntry(json: JsonElement): HifdhHistoryEntry {
+    require(json.isJsonObject) { "hifdh history entry must be a JSON object" }
+    fun field(name: String) = json.asJsonObject.get(name)
+    return HifdhHistoryEntry(
+        card = field("card")?.takeIf { it.isJsonObject }?.let { parseWebCard(it) },
+        lastReviewed = field("lastReviewed").asEpochMillis() ?: 0L,
+        strength = normalizeHifdhStrength(field("strength").asStringOrNull())
+    )
+}
+
+/** Serializes to the web `hifdhHistory` entry shape. */
+internal fun HifdhHistoryEntry.toWebJson(): JsonObject = JsonObject().apply {
+    card?.let { add("card", it.toWebJson()) }
+    addProperty("lastReviewed", lastReviewed)
+    addProperty("strength", strength)
+}
+
+/**
+ * Parses a web `hifdhHistory` map. One unreadable entry is skipped on its own —
+ * it must never take the whole history down.
+ */
+internal fun parseWebHistoryMap(json: JsonElement?): Map<String, HifdhHistoryEntry> {
+    if (json == null || !json.isJsonObject) return emptyMap()
+    return json.asJsonObject.entrySet().mapNotNull { (key, value) ->
+        runCatching { parseWebHistoryEntry(value) }.getOrNull()?.let { key to it }
+    }.toMap()
+}
+
 private const val S_MIN = 1e-3
 private const val S_MAX = 36500.0
 

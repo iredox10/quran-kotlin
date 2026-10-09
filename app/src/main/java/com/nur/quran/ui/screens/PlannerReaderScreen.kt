@@ -609,7 +609,8 @@ fun PlannerReaderScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                if (currentChapter != null && activePlan?.unitType != "surah") {
+                                // Web parity (PlannerReader.jsx:640): badge shows whenever a chapter matches.
+                                if (currentChapter != null) {
                                     Surface(
                                         shape = RoundedCornerShape(100),
                                         color = hTeal.copy(alpha = 0.08f),

@@ -271,47 +271,56 @@ class PlannerViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Web: markPlannerPageRead — append the page, then union every item whose
+     * full page range is now read (per-item completion, not all-or-nothing),
+     * stamp the completion date when all items are done, recompute
+     * completedDays from completed-items lengths.
+     */
     fun markPageRead(dayNumber: Int, pageNumber: Int) {
         val current = _activePlan.value ?: return
+        val assignment = current.assignments.find { it.dayNumber == dayNumber } ?: return
         val currentReadPages = current.assignmentReadPages[dayNumber] ?: emptyList()
         if (currentReadPages.contains(pageNumber)) return
 
+        val newReadPages = currentReadPages + pageNumber
         val updatedReadPagesMap = current.assignmentReadPages.toMutableMap()
-        updatedReadPagesMap[dayNumber] = currentReadPages + pageNumber
+        updatedReadPagesMap[dayNumber] = newReadPages
 
-        // Check if all pages for this assignment are read
-        val assignment = current.assignments.find { it.dayNumber == dayNumber }
-        var isNowComplete = false
-        if (assignment != null) {
-            val totalPages = (assignment.pageEnd - assignment.pageStart + 1)
-            if ((currentReadPages.size + 1) >= totalPages) {
-                isNowComplete = true
+        val existingCompleted = current.assignmentCompletedItems[dayNumber] ?: emptyList()
+        val nextCompletedSet = existingCompleted.toMutableSet()
+        assignment.items.forEach { item ->
+            // Web parity (useAppStore:670-671): `pageStart || 1`, `pageEnd || pStart`.
+            val pStart = item.pageStart.takeIf { it != 0 } ?: 1
+            val pEnd = item.pageEnd.takeIf { it != 0 } ?: pStart
+            if ((pStart..pEnd).all { newReadPages.contains(it) }) {
+                nextCompletedSet.add(item.rangeValue)
+            }
+        }
+        val nextCompleted = nextCompletedSet.filter { v -> assignment.items.any { it.rangeValue == v } }
+
+        val completedItemsMap = current.assignmentCompletedItems.toMutableMap()
+        completedItemsMap[dayNumber] = nextCompleted
+        val updatedProgressMap = current.assignmentProgress.toMutableMap()
+        updatedProgressMap[dayNumber] = nextCompleted.size
+
+        val updatedCompletedAtMap = current.assignmentCompletedAt.toMutableMap()
+        if (nextCompleted.size >= assignment.items.size && assignment.items.isNotEmpty()) {
+            if (!updatedCompletedAtMap.containsKey(dayNumber)) {
+                updatedCompletedAtMap[dayNumber] = PlannerEngine.formatPlannerDate()
             }
         }
 
-        val updatedCompletedDays = if (isNowComplete && !current.completedDays.contains(dayNumber)) {
-            current.completedDays + dayNumber
-        } else current.completedDays
-
-        val updatedCompletedAtMap = current.assignmentCompletedAt.toMutableMap()
-        if (isNowComplete && !updatedCompletedAtMap.containsKey(dayNumber)) {
-            updatedCompletedAtMap[dayNumber] = PlannerEngine.formatPlannerDate()
-        }
-
-        // Keep the explicit completed-items map in sync so prayer-slot progress
-        // (doneInSlot) agrees with page-derived completion.
-        val updatedCompletedItemsMap = current.assignmentCompletedItems.toMutableMap()
-        val updatedProgressMap = current.assignmentProgress.toMutableMap()
-        if (isNowComplete && assignment != null) {
-            updatedCompletedItemsMap[dayNumber] = assignment.items.map { it.rangeValue }
-            updatedProgressMap[dayNumber] = assignment.items.size
-        }
+        val updatedCompletedDays = current.assignments
+            .filter { (completedItemsMap[it.dayNumber]?.size ?: 0) >= it.items.size && it.items.isNotEmpty() }
+            .map { it.dayNumber }
+            .sorted()
 
         val updatedPlan = current.copy(
             assignmentReadPages = updatedReadPagesMap,
             completedDays = updatedCompletedDays,
             assignmentCompletedAt = updatedCompletedAtMap,
-            assignmentCompletedItems = updatedCompletedItemsMap,
+            assignmentCompletedItems = completedItemsMap,
             assignmentProgress = updatedProgressMap,
             lastReadPage = pageNumber
         )

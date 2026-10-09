@@ -1114,6 +1114,18 @@ fun PlannerReaderScreen(
                                     Column(horizontalAlignment = Alignment.End) {
                                         Text("Next", fontSize = 9.sp, color = Color.White.copy(alpha = 0.8f), fontFamily = fontFamilyMono, letterSpacing = 0.5.sp)
                                         Text("Page ${currentPage + 1}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                        // In-button count (tappable → page-jump);
+                                        // inner clickable wins over the button advance.
+                                        Text(
+                                            text = "$currentPage / $pageEnd",
+                                            fontSize = 9.sp,
+                                            color = Color.White.copy(alpha = 0.75f),
+                                            fontFamily = fontFamilyMono,
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(4.dp))
+                                                .clickable { showPageJumpDialog = true }
+                                                .padding(horizontal = 2.dp, vertical = 1.dp)
+                                        )
                                     }
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Icon(
@@ -1139,23 +1151,28 @@ fun PlannerReaderScreen(
                                 ) {
                                     Icon(imageVector = NurIcons.CheckCircle2, contentDescription = "Finish", tint = Color.White, modifier = Modifier.size(18.dp))
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Finish Day", fontSize = 13.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                                    Column {
+                                        Text("Finish Day", fontSize = 13.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                                        // Last-page count lives here so N/M
+                                        // is visible exactly once (tappable → jump).
+                                        Text(
+                                            text = "$currentPage / $pageEnd",
+                                            fontSize = 9.sp,
+                                            color = Color.White.copy(alpha = 0.75f),
+                                            fontFamily = fontFamilyMono,
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(4.dp))
+                                                .clickable { showPageJumpDialog = true }
+                                                .padding(horizontal = 2.dp, vertical = 1.dp)
+                                        )
+                                    }
                                 }
                             }
                         }
 
-                        // Center: page progress indicator
-                        Text(
-                            text = "$currentPage / $pageEnd",
-                            fontSize = 13.sp,
-                            fontFamily = fontFamilyMono,
-                            fontWeight = FontWeight.Bold,
-                            color = hInkMuted,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .clickable { showPageJumpDialog = true }
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
+                        // Center: spacer keeps Next (left) / Prev (right)
+                        // balanced now the static "N / M" lives in-button.
+                        Spacer(modifier = Modifier.weight(1f))
 
                         // Prev Page Button (right)
                         Surface(

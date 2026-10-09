@@ -808,9 +808,34 @@ fun PlannerReaderScreen(
                     val verseHeaderOffset =
                         1 + (if (showIntentionPrompt && !isIntentionDismissed) 1 else 0) + (if (currentPage == pageStart) 1 else 0)
 
-                    // Web parity: scroll to top of page on page change
-                    LaunchedEffect(currentPage) {
-                        lazyListState.scrollToItem(0)
+                    // Web parity: scroll to top of page on page change.
+                    // Prev arrival instead restores that page's saved position
+                    // (top when never visited). One-shot per arrival: the target
+                    // is consumed, so this never loops against the verse
+                    // auto-scroll-once or audio flows; while audio is playing it
+                    // keeps the legacy top scroll. Re-runs on verses arrival so
+                    // the restore clamps against the fresh page's item count.
+                    LaunchedEffect(currentPage, assignedVerses) {
+                        if (prevRestoreTarget == currentPage && prevRestoredForPage != currentPage) {
+                            prevRestoredForPage = currentPage
+                            prevRestoreTarget = null
+                            if (!isPlaying) {
+                                val saved = ReaderPrevScrollStore.take(currentPage)
+                                val listSize = if (isReadingMode || currentMushaf.renderMode == com.nur.quran.data.mushaf.MushafRenderMode.QCF_PAGE) 2
+                                else assignedVerses.size + verseHeaderOffset
+                                val maxIndex = (listSize - 1).coerceAtLeast(0)
+                                try {
+                                    if (saved != null) lazyListState.scrollToItem(saved.first.coerceIn(0, maxIndex), saved.second)
+                                    else lazyListState.scrollToItem(0)
+                                } catch (_: Exception) {
+                                    try { lazyListState.scrollToItem(0) } catch (_: Exception) { }
+                                }
+                            } else {
+                                try { lazyListState.scrollToItem(0) } catch (_: Exception) { }
+                            }
+                        } else if (prevRestoreTarget != currentPage && prevRestoredForPage != currentPage) {
+                            lazyListState.scrollToItem(0)
+                        }
                     }
 
                     // Auto-scroll to the last-read verse on initial load.

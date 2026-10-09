@@ -690,8 +690,13 @@ fun PlannerReaderScreen(
         Box(modifier = Modifier.weight(1f)) {
             when (val state = uiState) {
                 is SurahUiState.Loading -> {
+                    // Web parity (PlannerReader.jsx:735-738): "Loading page {n}..."
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = hGold)
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator(color = hGold)
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text("Loading page $currentPage...", color = hInkMuted)
+                        }
                     }
                 }
                 is SurahUiState.Error -> {

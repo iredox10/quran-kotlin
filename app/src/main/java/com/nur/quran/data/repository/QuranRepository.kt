@@ -244,10 +244,28 @@ class QuranRepository @Inject constructor(
 
     fun getVersesByPageFlow(pageNumber: Int): Flow<List<VerseEntity>> = quranDao.getVersesByPage(pageNumber)
 
-    suspend fun getVersesByPage(pageNumber: Int, mushafId: String? = null, translationId: Int = 20): List<VerseEntity> = withContext(Dispatchers.IO) {
+    /** One-shot verse read (legacy callers). Prefer [getPageVerses] on swipe paths. */
+    suspend fun getVersesByPage(pageNumber: Int, mushafId: String? = null, translationId: Int = 20): List<VerseEntity> =
+        getPageVerses(pageNumber, mushafId, translationId).verses
+
+    /** Atomic page snapshot: verses + words, so a paint never tears. */
+    data class PageVerses(
+        val verses: List<VerseEntity>,
+        val wordsMap: Map<Int, List<WordEntity>>
+    )
+
+    /**
+     * Offline-first page paint in ONE Room transaction (verses + words +
+     * packed translations). Network only seeds Room on a cold page. The old
+     * path collected a Flow plus N per-verse translation queries per swipe.
+     */
+    suspend fun getPageVerses(pageNumber: Int, mushafId: String? = null, translationId: Int = 20): PageVerses = withContext(Dispatchers.IO) {
         val mushaf = com.nur.quran.data.mushaf.Mushaf.fromId(mushafId)
-        var list = quranDao.getVersesByPage(pageNumber).firstOrNull()
-        if (list.isNullOrEmpty() || list.any { it.textUthmani.isNullOrBlank() }) {
+        val bundle = quranDao.getPageBundle(pageNumber, translationId)
+        var verses: List<VerseEntity> = bundle.verses
+        var words: List<WordEntity> = bundle.words
+        val packed: Map<String, String> = bundle.packedTranslations.associateBy({ it.verseKey }, { it.text })
+        if (verses.isEmpty() || verses.any { it.textUthmani.isNullOrBlank() }) {
             try {
                 val response = quranApi.getVersesByPage(
                     pageNumber = pageNumber,
@@ -304,18 +322,23 @@ class QuranRepository @Inject constructor(
                 }
                 if (verseEntities.isNotEmpty()) {
                     quranDao.replaceVersesAndWords(verseEntities, wordEntities)
-                    list = verseEntities
+                    verses = verseEntities
+                    words = wordEntities
                 }
             } catch (e: Exception) {
                 // Offline fallback: load from bundled asset
                 val (offlineVerses, offlineWords) = loadOfflineVersesForPage(pageNumber)
                 if (offlineVerses.isNotEmpty()) {
                     quranDao.insertVersesAndWords(offlineVerses, offlineWords)
-                    list = offlineVerses
+                    verses = offlineVerses
+                    words = offlineWords
                 }
             }
         }
-        backfillBlankTranslations(list ?: emptyList(), translationId)
+        val merged = com.nur.quran.data.TranslationFallback.mergePageTranslations(
+            verses, packed, { offlineTranslationsByVerseKey[it] }, false
+        )
+        PageVerses(merged, words.groupBy { it.verseId })
     }
 
     data class OfflineVerseItem(

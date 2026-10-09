@@ -182,6 +182,17 @@ fun PlannerReaderScreen(
         }
     }
 
+    // ── Prev navigation (backward restores the saved scroll position for
+    // the target page; Next/forward behavior is untouched) ──────────────
+    var prevRestoreTarget by remember { mutableStateOf<Int?>(null) }
+    var prevRestoredForPage by remember { mutableStateOf<Int?>(null) }
+    val goToPrevPage: () -> Unit = {
+        if (currentPage > pageStart) {
+            prevRestoreTarget = currentPage - 1
+            currentPage--
+        }
+    }
+
     // Seamless Audio Autoplay across pages in assignment (web parity: PlannerReader.jsx:450-480)
     var wasAudioPlaying by remember { mutableStateOf(false) }
     var shouldAutoPlayNextPage by remember { mutableStateOf(false) }
@@ -567,7 +578,7 @@ fun PlannerReaderScreen(
                         if (accumulatedDrag > 100f && currentPage < pageEnd) {
                             advanceToNextPage()
                         } else if (accumulatedDrag < -100f && currentPage > pageStart) {
-                            currentPage--
+                            goToPrevPage()
                         }
                         accumulatedDrag = 0f
                     },
@@ -1180,7 +1191,7 @@ fun PlannerReaderScreen(
                             color = if (currentPage > pageStart) hBone.copy(alpha = 0.6f) else hBone.copy(alpha = 0.2f),
                             border = androidx.compose.foundation.BorderStroke(1.dp, hBoneDark.copy(alpha = 0.5f)),
                             modifier = Modifier.clickable(enabled = currentPage > pageStart) {
-                                currentPage--
+                                goToPrevPage()
                             }
                         ) {
                             Row(

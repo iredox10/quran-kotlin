@@ -136,5 +136,15 @@ class SyncWorker(
                 request
             )
         }
+
+        /**
+         * Auto-sync entry point for app start (mirrors web cold-start pull +
+         * debounced push): schedules the 6-hourly periodic sync and kicks one
+         * immediate pass, both gated on CONNECTED. Idempotent.
+         */
+        fun enqueueAutoSync(context: Context) {
+            enqueuePeriodic(context)
+            enqueueOnce(context)
+        }
     }
 }

@@ -195,7 +195,8 @@ class PackViewModel @Inject constructor(
         refreshSyncState()
     }
 
-    fun refreshSyncState() {
+    fun refreshSyncState(preserveError: Boolean = false) {
+        val previousError = if (preserveError) _syncUiState.value.error else null
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val user = runCatching { appwriteClient.account.get() }.getOrNull()
@@ -204,7 +205,7 @@ class PackViewModel @Inject constructor(
                     email = user?.email,
                     lastSync = syncService.lastSyncAtPublic().takeIf { it > 0 },
                     syncing = false,
-                    error = null
+                    error = previousError
                 )
             } catch (_: Exception) {
             }
@@ -214,40 +215,45 @@ class PackViewModel @Inject constructor(
     fun backupNow() {
         viewModelScope.launch(Dispatchers.IO) {
             _syncUiState.value = _syncUiState.value.copy(syncing = true, error = null)
+            var failure: String? = null
             try {
-                val ok = syncService.push()
-                _syncUiState.value = _syncUiState.value.copy(
-                    syncing = false,
-                    lastSync = syncService.lastSyncAtPublic().takeIf { it > 0 },
-                    error = if (ok) null else "Backup failed"
-                )
+                if (!syncService.push()) failure = failureMessage("Backup failed")
             } catch (e: Exception) {
-                _syncUiState.value = _syncUiState.value.copy(
-                    syncing = false,
-                    error = e.message ?: "Backup failed"
-                )
+                failure = e.message ?: "Backup failed"
             }
-            refreshSyncState()
+            _syncUiState.value = _syncUiState.value.copy(
+                syncing = false,
+                lastSync = syncService.lastSyncAtPublic().takeIf { it > 0 },
+                error = failure
+            )
+            refreshSyncState(preserveError = true)
         }
     }
 
     fun restoreNow() {
         viewModelScope.launch(Dispatchers.IO) {
             _syncUiState.value = _syncUiState.value.copy(syncing = true, error = null)
+            var failure: String? = null
             try {
-                val ok = syncService.pull()
-                _syncUiState.value = _syncUiState.value.copy(
-                    syncing = false,
-                    lastSync = syncService.lastSyncAtPublic().takeIf { it > 0 },
-                    error = if (ok) null else "Restore failed"
-                )
+                if (!syncService.pull()) failure = failureMessage("Restore failed")
             } catch (e: Exception) {
-                _syncUiState.value = _syncUiState.value.copy(
-                    syncing = false,
-                    error = e.message ?: "Restore failed"
-                )
+                failure = e.message ?: "Restore failed"
             }
-            refreshSyncState()
+            _syncUiState.value = _syncUiState.value.copy(
+                syncing = false,
+                lastSync = syncService.lastSyncAtPublic().takeIf { it > 0 },
+                error = failure
+            )
+            refreshSyncState(preserveError = true)
         }
+    }
+
+    private suspend fun failureMessage(fallback: String): String {
+        val signedIn = runCatching { appwriteClient.account.get() }.getOrNull() != null
+        return if (signedIn) fallback else SIGN_IN_REQUIRED_MESSAGE
+    }
+
+    private companion object {
+        const val SIGN_IN_REQUIRED_MESSAGE = "Please sign in to sync your data"
     }
 }

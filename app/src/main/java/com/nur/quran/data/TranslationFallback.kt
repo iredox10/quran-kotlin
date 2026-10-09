@@ -122,6 +122,49 @@ object TranslationFallback {
         }
     }
 
+    /**
+     * Pure merge of one batched packed-translation lookup into [verses].
+     * [packedByKey] is the result of a SINGLE `IN (:keys)` query; [offlineByKey]
+     * is a CPU-only fallback. With [overrideExisting] false only blank
+     * translations are touched (page backfill); true lets a downloaded pack
+     * replace stale row text (pack activation).
+     */
+    fun mergePageTranslations(
+        verses: List<VerseEntity>,
+        packedByKey: Map<String, String>,
+        offlineByKey: (String) -> String?,
+        overrideExisting: Boolean
+    ): List<VerseEntity> {
+        if (verses.isEmpty()) return verses
+        if (!overrideExisting && verses.none { it.translation.isNullOrBlank() }) return verses
+        return verses.map { verse ->
+            val packed = packedByKey[verse.verseKey]
+            if (!packed.isNullOrBlank() && (overrideExisting || verse.translation.isNullOrBlank())) {
+                verse.copy(translation = packed)
+            } else if (verse.translation.isNullOrBlank()) {
+                val offline = offlineByKey(verse.verseKey)
+                if (!offline.isNullOrBlank()) verse.copy(translation = offline) else verse
+            } else verse
+        }
+    }
+
+    /**
+     * Suspend wrapper guaranteeing EXACTLY ONE [fetchPacked] call per page
+     * (batched `IN` query) instead of one query per verse (N+1). Fast path:
+     * no fetch at all when nothing is blank and no override is requested.
+     */
+    suspend fun backfillPageTranslations(
+        verses: List<VerseEntity>,
+        overrideExisting: Boolean,
+        fetchPacked: suspend (keys: List<String>) -> Map<String, String>,
+        offlineByKey: (String) -> String?
+    ): List<VerseEntity> {
+        if (verses.isEmpty()) return verses
+        if (!overrideExisting && verses.none { it.translation.isNullOrBlank() }) return verses
+        val packed = fetchPacked(verses.map { it.verseKey })
+        return mergePageTranslations(verses, packed, offlineByKey, overrideExisting)
+    }
+
     private fun tryAutoLoad() {
         val candidates = listOf(
             File("app/src/main/assets/data/quran_full.json"),

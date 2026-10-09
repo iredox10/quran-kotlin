@@ -49,4 +49,27 @@ class HifdhWebCompatTest {
     fun `kotlin camel_case card json still parses`() {
         assertEquals(parseWebCard(parse(webCardJson)), parseWebCard(parse(kotlinCardJson)))
     }
+
+    @Test
+    fun `card without last_review parses with null`() {
+        val raw = """{"due":"2026-05-01T09:30:00.000Z","stability":2.3065,"difficulty":5.1,
+                     "elapsed_days":0,"scheduled_days":1,"learning_steps":1,"reps":1,
+                     "lapses":0,"state":1}"""
+        assertNull(parseWebCard(parse(raw)).lastReview)
+    }
+
+    @Test
+    fun `card round trips to web shaped json`() {
+        val card = parseWebCard(parse(webCardJson))
+        val json = card.toWebJson()
+
+        assertEquals("2026-05-01T09:30:00Z", json.get("due").asString)
+        assertEquals("2026-04-05T00:00:00Z", json.get("last_review").asString)
+        assertEquals(3.0, json.get("elapsed_days").asDouble, 0.0)
+        assertEquals(12, json.get("scheduled_days").asInt)
+        assertEquals(0, json.get("learning_steps").asInt)
+        assertNull("kotlin keys must not leak into the web shape", json.get("elapsedDays"))
+        assertNull(json.get("lastReview"))
+        assertEquals(card, parseWebCard(json))
+    }
 }

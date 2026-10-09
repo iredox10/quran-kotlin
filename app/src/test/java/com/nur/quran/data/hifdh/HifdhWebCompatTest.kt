@@ -72,4 +72,27 @@ class HifdhWebCompatTest {
         assertNull(json.get("lastReview"))
         assertEquals(card, parseWebCard(json))
     }
+
+    @Test
+    fun `history entry reads web fields and normalizes legacy good strength`() {
+        val raw = """{"card":$webCardJson,"lastReviewed":1777627800123,"strength":"good"}"""
+        val entry = parseWebHistoryEntry(parse(raw))
+
+        assertEquals(1777627800123L, entry.lastReviewed)
+        assertEquals("medium", entry.strength)
+        assertEquals(1777627800000L, entry.card?.due)
+
+        val json = entry.toWebJson()
+        assertEquals(1777627800123L, json.get("lastReviewed").asLong)
+        assertEquals("medium", json.get("strength").asString)
+        assertEquals("2026-05-01T09:30:00Z", json.getAsJsonObject("card").get("due").asString)
+    }
+
+    @Test
+    fun `legacy entry without card keeps its strength`() {
+        val entry = parseWebHistoryEntry(parse("""{"lastReviewed":1777593600000,"strength":"strong"}"""))
+        assertNull(entry.card)
+        assertEquals("strong", entry.strength)
+        assertEquals(1777593600000L, entry.lastReviewed)
+    }
 }

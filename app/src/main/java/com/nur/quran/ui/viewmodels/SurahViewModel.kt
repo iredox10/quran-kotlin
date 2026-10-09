@@ -1517,21 +1517,43 @@ class SurahViewModel @Inject constructor(
         }
     }
 
+    private data class PageCacheKey(val page: Int, val mushaf: String, val translationId: Int)
+    private val pageMemoryCache = java.util.concurrent.ConcurrentHashMap<PageCacheKey, SurahUiState.Success>()
+    private var loadPageJob: Job? = null
+
     fun loadPageVerses(pageNumber: Int) {
-        viewModelScope.launch(Dispatchers.IO) {
-            _uiState.value = SurahUiState.Loading
+        // Repeat swipes serve from memory: no Loading flash for local data.
+        val key = PageCacheKey(pageNumber, _mushafPreset.value, _currentTranslationId.value)
+        pageMemoryCache[key]?.let {
+            currentChapterId = it.chapter.id
+            currentChapterName = it.chapter.nameSimple
+            _uiState.value = it
+            return
+        }
+        loadPageJob?.cancel()
+        loadPageJob = viewModelScope.launch(Dispatchers.IO) {
+            // Keep the previous page painted while the next loads (no flash);
+            // Loading only for first paint / retry of the same page.
+            val stale = _uiState.value as? SurahUiState.Success
+            if (stale == null || stale.verses.firstOrNull()?.pageNumber == pageNumber) {
+                _uiState.value = SurahUiState.Loading
+            }
             try {
-                val verses = repository.getVersesByPage(pageNumber, _mushafPreset.value, _currentTranslationId.value)
-                if (verses.isEmpty()) {
+                val bundle = repository.getPageVerses(pageNumber, _mushafPreset.value, _currentTranslationId.value)
+                if (bundle.verses.isEmpty()) {
                     _uiState.value = SurahUiState.Error("No verses found for page $pageNumber")
                     return@launch
                 }
-                val chapterId = verses.firstOrNull()?.chapterId ?: 1
+                val chapterId = bundle.verses.firstOrNull()?.chapterId ?: 1
                 val chapter = repository.getChapterById(chapterId)
                     ?: ChapterEntity(chapterId, "Surah $chapterId", "سورة", "Surah $chapterId", "Chapter", "makkah", 1, 10, pageNumber, pageNumber)
-                val wordsMap = repository.getWordsForVerses(verses.map { it.id })
-                _uiState.value = SurahUiState.Success(chapter, verses, wordsMap)
+                val success = SurahUiState.Success(chapter, bundle.verses, bundle.wordsMap)
+                pageMemoryCache[key] = success
+                currentChapterId = chapter.id
+                currentChapterName = chapter.nameSimple
+                _uiState.value = success
             } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 _uiState.value = SurahUiState.Error(e.localizedMessage ?: "Failed to load page verses")
             }
         }
@@ -1961,6 +1983,7 @@ class SurahViewModel @Inject constructor(
         }
         // Bust caches so line numbers + script are refetched for the new mushaf.
         chapterMemoryCache.clear()
+        pageMemoryCache.clear()
         loadedMushafByChapter.clear()
         val chapterToReload = currentChapterId
         if (chapterToReload > 0) {

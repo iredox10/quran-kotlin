@@ -63,6 +63,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 
 @Composable
 fun PlannerReaderScreen(
@@ -665,6 +666,12 @@ fun PlannerReaderScreen(
                         }
 
                         // Progress bar line: 3dp teal fill matching web
+                        // (transition-all duration-500 → animated fraction).
+                        val barFraction by animateFloatAsState(
+                            targetValue = (progressPct / 100f).coerceIn(0f, 1f),
+                            animationSpec = tween(500),
+                            label = "readerProgress"
+                        )
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -675,7 +682,7 @@ fun PlannerReaderScreen(
                             Box(
                                 modifier = Modifier
                                     .fillMaxHeight()
-                                    .fillMaxWidth(fraction = (progressPct / 100f).coerceIn(0f, 1f))
+                                    .fillMaxWidth(fraction = barFraction)
                                     .clip(RoundedCornerShape(100))
                                     .background(hTeal)
                             )

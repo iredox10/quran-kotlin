@@ -46,6 +46,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -1517,7 +1518,56 @@ class SurahViewModel @Inject constructor(
         }
     }
 
+    // ── Adjacent-page prefetch buffer (reader swipe-ahead) ──────────
+    // Silent holder warmed by prefetchAdjacentPages via the same
+    // repository path as loadPageVerses (verses + words + tajweed) but
+    // never touching _uiState; loadPageVerses serves hits with no
+    // Loading flash so swipes render instantly.
+    private val pagePrefetchCache = mutableMapOf<Int, SurahUiState.Success>()
+    private var prefetchJob: Job? = null
+
+    /**
+     * Warm [pages] (verses + words + tajweed ensure-paths). Single job —
+     * a new call cancels the previous one. Never emits UI state.
+     */
+    fun prefetchAdjacentPages(pages: List<Int>) {
+        prefetchJob?.cancel()
+        prefetchJob = viewModelScope.launch(Dispatchers.IO) {
+            for (page in pages) {
+                ensureActive()
+                val alreadyCached = synchronized(pagePrefetchCache) { pagePrefetchCache.containsKey(page) }
+                if (alreadyCached) continue
+                try {
+                    val verses = repository.getVersesByPage(page, _mushafPreset.value, _currentTranslationId.value)
+                    if (verses.isEmpty()) continue
+                    val chapterId = verses.firstOrNull()?.chapterId ?: 1
+                    val chapter = repository.getChapterById(chapterId) ?: continue
+                    val wordsMap = repository.getWordsForVerses(verses.map { it.id })
+                    val tajweedMap = mutableMapOf<String, String>()
+                    verses.map { it.chapterId }.distinct().forEach { id ->
+                        try {
+                            repository.getTajweedHtmlForChapter(id).verses.forEach { v ->
+                                tajweedMap[v.verse_key] = TajweedProcessor.sanitizeTajweedHtml(v.text_uthmani_tajweed)
+                            }
+                        } catch (_: Exception) {}
+                    }
+                    synchronized(pagePrefetchCache) {
+                        if (pagePrefetchCache.size >= 4) pagePrefetchCache.keys.firstOrNull()?.let { pagePrefetchCache.remove(it) }
+                        pagePrefetchCache[page] = SurahUiState.Success(chapter, verses, wordsMap, tajweedMap)
+                    }
+                } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                }
+            }
+        }
+    }
+
     fun loadPageVerses(pageNumber: Int) {
+        // Prefetch hit: render instantly, skip the Loading flash.
+        synchronized(pagePrefetchCache) { pagePrefetchCache.remove(pageNumber) }?.let {
+            _uiState.value = it
+            return
+        }
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.value = SurahUiState.Loading
             try {
@@ -1961,6 +2011,7 @@ class SurahViewModel @Inject constructor(
         }
         // Bust caches so line numbers + script are refetched for the new mushaf.
         chapterMemoryCache.clear()
+        synchronized(pagePrefetchCache) { pagePrefetchCache.clear() }
         loadedMushafByChapter.clear()
         val chapterToReload = currentChapterId
         if (chapterToReload > 0) {

@@ -898,9 +898,11 @@ fun PlannerReaderScreen(
                                             )
                                         }
                                         if (verse.chapterId != 1 && verse.chapterId != 9) {
+                                            // Web parity (PlannerReader.jsx:774-785): basmala
+                                            // scales with the arabic font-size setting.
                                             Text(
                                                 text = "بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ",
-                                                fontSize = 28.sp,
+                                                fontSize = (28 * arabicFontScale).sp,
                                                 fontFamily = fontFamilyArabic,
                                                 color = hGold,
                                                 textAlign = TextAlign.Center,
@@ -911,9 +913,10 @@ fun PlannerReaderScreen(
                                         }
                                     }
 
-                                    if (index > 0 && verse.verseNumber != 1) {
-                                        VerseDivider()
-                                    }
+                                    // Web parity (VerseRow.jsx:136-140): the ornament
+                                    // divider renders above EVERY verse container,
+                                    // including the first and surah-opening ayahs.
+                                    VerseDivider()
 
                                     val verseWords = wordsMap[verse.id] ?: emptyList()
                                     val verseChapter = chapters.find { it.id == verse.chapterId }

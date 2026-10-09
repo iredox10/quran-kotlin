@@ -1,5 +1,11 @@
 package com.nur.quran.data.hifdh
 
+import com.google.gson.JsonElement
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+
 /**
  * Kotlin port of ts-fsrs 5.4.1 (FSRS-6.0) with the exact defaults the web app
  * uses (`fsrs({})` in quran-app/src/store/useAppStore.js):
@@ -61,6 +67,53 @@ data class HifdhGoal(
             kotlin.math.ceil((targetDate - System.currentTimeMillis()) / 86_400_000.0).toLong()
         )
 }
+
+// ── Web compatibility (quran-app sync) ───────────────────────────────────
+//
+// The web app persists ts-fsrs `Card` objects verbatim, so a synced
+// `hifdhHistory` entry uses SNAKE_CASE keys with ISO-8601 date strings
+// (`{"due":"2026-05-01T00:00:00.000Z","elapsed_days":0,...}`) next to the
+// web-only `{lastReviewed, strength}` fields, and goals arrive as
+// `{id: 1712345678901, targetType, targetId, targetDate: "2026-05-01", createdAt}`.
+// Gson reflection cannot read that shape (ISO strings into `Long` fields throw,
+// unknown snake_case fields are dropped), which silently wiped the whole
+// history/goals maps. The helpers below accept both the web and the Kotlin
+// shape and write the web shape back, so both apps stay interoperable.
+
+const val STRENGTH_STRONG = "strong"
+const val STRENGTH_MEDIUM = "medium"
+const val STRENGTH_WEAK = "weak"
+
+/** Web strengths are `strong|medium|weak`; the legacy `'good'` maps to `medium`. */
+fun normalizeHifdhStrength(raw: String?): String = when (raw?.trim()?.lowercase()) {
+    "strong" -> STRENGTH_STRONG
+    "weak" -> STRENGTH_WEAK
+    else -> STRENGTH_MEDIUM
+}
+
+/** Epoch millis from a web date: epoch number, ISO-8601 string, or `"YYYY-MM-DD"` (UTC midnight, like JS `new Date(...)`). */
+internal fun webEpochMillis(element: JsonElement?): Long? {
+    if (element == null || !element.isJsonPrimitive) return null
+    val primitive = element.asJsonPrimitive
+    if (primitive.isNumber) return primitive.asLong
+    if (!primitive.isString) return null
+    val text = primitive.asString.trim()
+    if (text.isEmpty()) return null
+    runCatching { Instant.parse(text).toEpochMilli() }.getOrNull()?.let { return it }
+    return runCatching {
+        LocalDate.parse(text).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+    }.getOrNull()
+}
+
+private fun JsonElement?.asEpochMillis(): Long? = webEpochMillis(this)
+
+/** `"YYYY-MM-DD"` in UTC — the shape the web goal form writes. */
+internal fun webDateOnly(epochMillis: Long): String =
+    Instant.ofEpochMilli(epochMillis).atOffset(ZoneOffset.UTC).toLocalDate().toString()
+
+/** ISO-8601 UTC instant — the shape `JSON.stringify(new Date(ms))` produces. */
+internal fun webIsoString(epochMillis: Long): String =
+    DateTimeFormatter.ISO_INSTANT.format(Instant.ofEpochMilli(epochMillis).atOffset(ZoneOffset.UTC))
 
 private const val S_MIN = 1e-3
 private const val S_MAX = 36500.0

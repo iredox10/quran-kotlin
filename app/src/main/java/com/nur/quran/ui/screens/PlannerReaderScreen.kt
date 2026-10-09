@@ -374,10 +374,12 @@ fun PlannerReaderScreen(
             .pointerInput(currentPage, pageStart, pageEnd) {
                 detectHorizontalDragGestures(
                     onDragEnd = {
-                        if (accumulatedDrag > 100f && currentPage > pageStart) {
-                            currentPage--
-                        } else if (accumulatedDrag < -100f && currentPage < pageEnd) {
+                        // Web parity (PlannerReader.jsx:549-557): swiped
+                        // right advances, swiped left goes back.
+                        if (accumulatedDrag > 100f && currentPage < pageEnd) {
                             advanceToNextPage()
+                        } else if (accumulatedDrag < -100f && currentPage > pageStart) {
+                            currentPage--
                         }
                         accumulatedDrag = 0f
                     },

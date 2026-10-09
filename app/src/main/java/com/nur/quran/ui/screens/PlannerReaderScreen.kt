@@ -308,7 +308,9 @@ fun PlannerReaderScreen(
     // ── Last-read verse position (web parity: IntersectionObserver :215-268) ──
     // Tracks the top-visible verse (debounced) and auto-scrolls to it on load.
     val lastReadVerseKey = activePlan?.lastReadVerseKey
-    var hasAutoScrolledToLastRead by remember(dayNumber, currentPage) { mutableStateOf(false) }
+    // Once per day: after the initial resume-page jump, forward moves
+    // (Next/swipe/autoplay) must land at the top — never re-seek here.
+    var hasAutoScrolledToLastRead by remember(dayNumber) { mutableStateOf(false) }
 
     // Fetch verses for page
     LaunchedEffect(currentPage) {

@@ -47,6 +47,7 @@ import com.nur.quran.ui.viewmodels.PlannerViewModel
 import com.nur.quran.ui.viewmodels.SurahUiState
 import com.nur.quran.ui.viewmodels.SurahViewModel
 import com.nur.quran.ui.viewmodels.TafsirUiState
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -317,7 +318,12 @@ fun PlannerReaderScreen(
     // ── Last-read verse position (web parity: IntersectionObserver :215-268) ──
     // Tracks the top-visible verse (debounced) and auto-scrolls to it on load.
     val lastReadVerseKey = activePlan?.lastReadVerseKey
-    var hasAutoScrolledToLastRead by remember(dayNumber, currentPage) { mutableStateOf(false) }
+    // Once per day: after the initial resume-page jump, forward moves
+    // (Next/swipe/autoplay) must land at the top — never re-seek here.
+    var hasAutoScrolledToLastRead by remember(dayNumber) { mutableStateOf(false) }
+    // Tracks page direction for scroll-to-top: forward moves land at item 0,
+    // back moves are left alone (sibling-owned position restore).
+    var lastLandedPage by remember(dayNumber) { mutableStateOf(resumePage) }
 
     // Fetch verses for page
     LaunchedEffect(currentPage) {
@@ -798,9 +804,18 @@ fun PlannerReaderScreen(
                     val verseHeaderOffset =
                         1 + (if (showIntentionPrompt && !isIntentionDismissed) 1 else 0) + (if (currentPage == pageStart) 1 else 0)
 
-                    // Web parity: scroll to top of page on page change
+                    // Forward moves (Next/swipe-forward/audio autoplay) land at
+                    // the top. Back moves are untouched (sibling-owned).
                     LaunchedEffect(currentPage) {
-                        lazyListState.scrollToItem(0)
+                        if (currentPage > lastLandedPage) {
+                            try {
+                                lazyListState.scrollToItem(0)
+                            } catch (e: Exception) {
+                                if (e is CancellationException) throw e
+                                // ignore: rapid taps may race list updates
+                            }
+                        }
+                        lastLandedPage = currentPage
                     }
 
                     // Auto-scroll to the last-read verse on initial load.

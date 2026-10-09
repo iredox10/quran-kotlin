@@ -1356,15 +1356,11 @@ fun PlannerReaderScreen(
     }
 }
 
-// ── Helper: Format session time (web parity: "1h 5m" / "5m 3s" / "12s") ──
+// ── Helper: Format session time (web parity: PlannerReader.jsx formatTimer MM:SS) ──
 private fun formatSessionTime(seconds: Int): String {
-    if (seconds <= 0) return "0s"
-    val h = seconds / 3600
-    val m = (seconds % 3600) / 60
-    val s = seconds % 60
-    if (h > 0) return "${h}h ${m}m"
-    if (m > 0) return "${m}m ${s}s"
-    return "${s}s"
+    val m = (seconds / 60).toString().padStart(2, '0')
+    val s = (seconds % 60).toString().padStart(2, '0')
+    return "$m:$s"
 }
 
 /**

@@ -333,3 +333,36 @@ internal fun normalizeActivePrayers(raw: Set<String>?): List<String>? {
         .sortedBy { PRAYER_NAMES.indexOf(it) }
     return ordered.takeIf { it.isNotEmpty() }
 }
+
+/** Prefs key prefix for the `tour_prefs` page-visit counters. */
+private const val PAGE_VISIT_PREFIX = "visit_"
+
+/** Web `memorizedSurahs` (chapter ids) ← hifdh_settings `memorized_surahs` string set. */
+internal fun memorizedSurahIds(raw: Set<String>?): List<Int> =
+    raw.orEmpty().mapNotNull { it.trim().toIntOrNull() }.distinct().sorted()
+
+/** Web `memorizedAyahs` (verse keys) ← hifdh_settings `memorized_ayahs` string set. */
+internal fun memorizedAyahKeys(raw: Set<String>?): List<String> =
+    raw.orEmpty().map { it.trim() }.filter { it.isNotEmpty() }.distinct().sorted()
+
+/**
+ * Ids behind a `tour_prefs` boolean flag, e.g. `tour_home` → "home" for web
+ * `completedTours` and `coachmark_home` → "home" for `dismissedCoachmarks`.
+ */
+internal fun flagIds(prefs: Map<String, Any?>, prefix: String): List<String> =
+    prefs.mapNotNull { (key, value) ->
+        if (key.startsWith(prefix) && value == true) {
+            key.removePrefix(prefix).takeIf { it.isNotEmpty() }
+        } else {
+            null
+        }
+    }.sorted()
+
+/** Web `pageVisitCounts` ← `tour_prefs` `visit_<pageId>` int counters. */
+internal fun pageVisitCounts(prefs: Map<String, Any?>): Map<String, Int> =
+    prefs.mapNotNull { (key, value) ->
+        if (!key.startsWith(PAGE_VISIT_PREFIX)) return@mapNotNull null
+        val pageId = key.removePrefix(PAGE_VISIT_PREFIX).takeIf { it.isNotEmpty() }
+        val count = (value as? Number)?.toInt()?.takeIf { it > 0 }
+        if (pageId != null && count != null) pageId to count else null
+    }.toMap()

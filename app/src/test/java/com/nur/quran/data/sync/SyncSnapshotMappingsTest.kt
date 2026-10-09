@@ -87,4 +87,48 @@ class SyncSnapshotMappingsTest {
         assertNull(normalizeActivePrayers(emptySet()))
         assertNull(normalizeActivePrayers(linkedSetOf("Duha")))
     }
+
+    @Test
+    fun `memorized surah ids are deduped and sorted`() {
+        assertEquals(listOf(1, 2, 18), memorizedSurahIds(linkedSetOf("18", "1", "2", "1", "")))
+    }
+
+    @Test
+    fun `memorized surah ids drop non-numeric entries`() {
+        assertEquals(emptyList<Int>(), memorizedSurahIds(linkedSetOf("nope", "")))
+        assertEquals(emptyList<Int>(), memorizedSurahIds(null))
+    }
+
+    @Test
+    fun `memorized ayah keys are sorted and deduped`() {
+        assertEquals(
+            listOf("1:1", "2:5"),
+            memorizedAyahKeys(linkedSetOf("2:5", "1:1", "2:5", " 1:1 "))
+        )
+        assertEquals(emptyList<String>(), memorizedAyahKeys(null))
+    }
+
+    @Test
+    fun `tour flags become sorted ids`() {
+        val prefs = mapOf<String, Any?>(
+            "tour_home" to true,
+            "tour_advanced-tour" to true,
+            "tour_memorization-tour" to false,
+            "coachmark_home" to true,
+            "visit_home" to 3
+        )
+        assertEquals(listOf("advanced-tour", "home"), flagIds(prefs, "tour_"))
+        assertEquals(listOf("home"), flagIds(prefs, "coachmark_"))
+    }
+
+    @Test
+    fun `page visit counts keep positive entries only`() {
+        val prefs = mapOf<String, Any?>(
+            "visit_home" to 3,
+            "visit_planner" to 0,
+            "visit_" to 4,
+            "onboarding_dismissed" to true
+        )
+        assertEquals(mapOf("home" to 3), pageVisitCounts(prefs))
+    }
 }

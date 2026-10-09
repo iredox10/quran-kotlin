@@ -1,8 +1,10 @@
 package com.nur.quran.ui.viewmodels
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nur.quran.data.sync.AppwriteClient
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.appwrite.ID
 import kotlinx.coroutines.Dispatchers
@@ -23,7 +25,8 @@ data class AuthState(
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
-    private val appwrite: AppwriteClient
+    private val appwrite: AppwriteClient,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _authState = MutableStateFlow(AuthState())
@@ -52,6 +55,7 @@ class AuthViewModel @Inject constructor(
                 appwrite.account.createEmailPasswordSession(email.trim(), password)
                 appwrite.account.get()
             }.onSuccess { user ->
+                resetSyncWatermark()
                 _authState.value = AuthState(
                     signedIn = true,
                     email = user.email,
@@ -81,6 +85,7 @@ class AuthViewModel @Inject constructor(
                 appwrite.account.createEmailPasswordSession(email.trim(), password)
                 appwrite.account.get()
             }.onSuccess { user ->
+                resetSyncWatermark()
                 _authState.value = AuthState(
                     signedIn = true,
                     email = user.email,
@@ -127,11 +132,26 @@ class AuthViewModel @Inject constructor(
             runCatching {
                 appwrite.account.deleteSession("current")
             }.onSuccess {
+                resetSyncWatermark()
                 _authState.value = AuthState(signedIn = false, email = null, busy = false, error = null)
             }.onFailure { e ->
                 _authState.value = _authState.value.copy(busy = false, error = e.message ?: "Logout failed")
             }
         }
+    }
+
+    private fun resetSyncWatermark() {
+        runCatching {
+            context.getSharedPreferences(SYNC_PREFS, Context.MODE_PRIVATE)
+                .edit()
+                .putLong(KEY_LAST_SYNC_AT, 0L)
+                .apply()
+        }
+    }
+
+    private companion object {
+        const val SYNC_PREFS = "sync_state"
+        const val KEY_LAST_SYNC_AT = "last_sync_at"
     }
 
     fun refresh() {

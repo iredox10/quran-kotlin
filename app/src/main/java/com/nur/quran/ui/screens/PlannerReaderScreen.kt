@@ -204,6 +204,15 @@ fun PlannerReaderScreen(
             lazyListState.firstVisibleItemIndex > 0 || lazyListState.firstVisibleItemScrollOffset > 40
         }
     }
+    // Bottom dock reveals only at end of list content; scrolling up hides it.
+    val isDockRevealed by remember {
+        derivedStateOf {
+            isReaderDockAtBottom(
+                lazyListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index,
+                lazyListState.layoutInfo.totalItemsCount
+            )
+        }
+    }
     var isAutoScrollActive by remember { mutableStateOf(false) }
     var isAutoScrollPaused by remember { mutableStateOf(false) }
     var autoScrollSpeed by remember { mutableIntStateOf(3) }
@@ -1052,7 +1061,12 @@ fun PlannerReaderScreen(
 
         // Bottom Dock Bar: Navigation between pages (web parity: PlannerReader.jsx lines 832-869).
         // Transparent: no background fill, border or elevation — buttons float over content.
-        if (!isFocusMode) {
+        // Hidden until scrolled to the bottom of the verses; focus mode hides it regardless.
+        AnimatedVisibility(
+            visible = !isFocusMode && isDockRevealed,
+            enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
+            exit = fadeOut() + slideOutVertically(targetOffsetY = { it })
+        ) {
             Surface(
                 color = Color.Transparent,
                 shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
@@ -1430,6 +1444,18 @@ fun PlannerReaderScreen(
             wordProgressByTafsir = wordProgress
         )
     }
+}
+
+// ── Dock reveal: bottom dock stays hidden until the list reaches its ──
+// final layout item. The dock itself is NOT a LazyColumn item (it floats
+// below the verses Box), so totalItemsCount already covers all content:
+// status pill (slot 0) + optional intention/swipe-hint headers + verses
+// (verse mode), or pill + single page item (QCF/reading modes). Empty or
+// non-lazy states (loading/error/filtered-empty Column) report total <= 0
+// and keep the dock visible so navigation is never stranded.
+internal fun isReaderDockAtBottom(lastVisibleIndex: Int?, totalItems: Int): Boolean {
+    if (totalItems <= 0) return true
+    return lastVisibleIndex == totalItems - 1
 }
 
 // ── Web parity (PlannerReader.jsx:347-351 formatTimer): the header timer

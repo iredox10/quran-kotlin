@@ -35,6 +35,26 @@ interface QuranDao {
     @Query("SELECT * FROM verses WHERE pageNumber = :pageNumber ORDER BY chapterId ASC, verseNumber ASC")
     fun getVersesByPage(pageNumber: Int): Flow<List<VerseEntity>>
 
+    @Query("SELECT * FROM verses WHERE pageNumber = :pageNumber ORDER BY chapterId ASC, verseNumber ASC")
+    suspend fun getVersesByPageDirect(pageNumber: Int): List<VerseEntity>
+
+    /** Single-transaction snapshot of everything a page paint needs. */
+    data class PageBundle(
+        val verses: List<VerseEntity>,
+        val words: List<WordEntity>,
+        val packedTranslations: List<TranslationTextEntity>
+    )
+
+    @Transaction
+    suspend fun getPageBundle(pageNumber: Int, translationId: Int): PageBundle {
+        val verses = getVersesByPageDirect(pageNumber)
+        if (verses.isEmpty()) return PageBundle(emptyList(), emptyList(), emptyList())
+        val ids = verses.map { it.id }
+        val words = getWordsForVerses(ids)
+        val packed = getTranslationTexts(translationId, verses.map { it.verseKey })
+        return PageBundle(verses, words, packed)
+    }
+
     @Query("SELECT * FROM verses WHERE translation IS NULL OR translation = ''")
     suspend fun getVersesWithBlankTranslations(): List<VerseEntity>
 

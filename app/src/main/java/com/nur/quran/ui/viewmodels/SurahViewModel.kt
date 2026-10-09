@@ -141,7 +141,7 @@ class SurahViewModel @Inject constructor(
     private val _selectedArabicFontName = MutableStateFlow(hifdhPrefs.getString("arabic_font", "KFGQPC Hafs") ?: "KFGQPC Hafs")
     val selectedArabicFontName: StateFlow<String> = _selectedArabicFontName.asStateFlow()
 
-    private val _wordTapBehavior = MutableStateFlow(hifdhPrefs.getString("word_tap_behavior", "translation") ?: "translation")
+    private val _wordTapBehavior = MutableStateFlow(hifdhPrefs.getString("word_tap_behavior", "tajweed") ?: "tajweed")
     val wordTapBehavior: StateFlow<String> = _wordTapBehavior.asStateFlow()
 
     private val _mushafPreset = MutableStateFlow(

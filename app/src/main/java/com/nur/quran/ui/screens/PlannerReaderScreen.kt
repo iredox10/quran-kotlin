@@ -340,9 +340,17 @@ fun PlannerReaderScreen(
     }
 
     // Save scroll position & mark page read
+    // Snapshot-on-exit only (no per-frame writes): leaving a page records
+    // where the user was so Prev can restore it.
     DisposableEffect(currentPage) {
         plannerViewModel.markPageRead(dayNumber, currentPage)
-        onDispose {}
+        onDispose {
+            ReaderPrevScrollStore.save(
+                currentPage,
+                lazyListState.firstVisibleItemIndex,
+                lazyListState.firstVisibleItemScrollOffset
+            )
+        }
     }
 
     // ── Derived day progress (web parity: PlannerReader.jsx:92-95) ───────

@@ -1732,7 +1732,7 @@ fun DayCelebrationCard(
                                 .padding(16.dp)
                         ) {
                             Text(
-                                text = "TAKEAWAY OF THE DAY",
+                                text = "Takeaway of the Day",
                                 fontSize = 10.sp,
                                 fontFamily = fontFamilyUi,
                                 fontWeight = FontWeight.SemiBold,

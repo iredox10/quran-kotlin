@@ -896,9 +896,10 @@ fun PlannerReaderScreen(
                                         }
                                     }
 
-                                    if (index > 0 && verse.verseNumber != 1) {
-                                        VerseDivider()
-                                    }
+                                    // Web parity (VerseRow.jsx:136-140): the ornament
+                                    // divider renders above EVERY verse container,
+                                    // including the first and surah-opening ayahs.
+                                    VerseDivider()
 
                                     val verseWords = wordsMap[verse.id] ?: emptyList()
                                     val verseChapter = chapters.find { it.id == verse.chapterId }

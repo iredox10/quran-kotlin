@@ -382,6 +382,166 @@ fun PlannerReaderScreen(
     }
     var isIntentionDismissed by remember { mutableStateOf(false) }
 
+    // Planner Status Card (web parity: PlannerReader.jsx lines 616-671):
+    // Page N/M + Surah badge + timer + % + 3dp progress bar. Rendered as
+    // the first LazyColumn item so it scrolls away with the verses and
+    // reappears only at the very top. The item slot always exists (stable
+    // indices); focus mode hides the content in place.
+    @Composable
+    fun StatusPillCard() {
+        if (!isFocusMode) {
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = hWhite,
+                border = androidx.compose.foundation.BorderStroke(1.dp, hBoneDark.copy(alpha = 0.8f)),
+                shadowElevation = 2.dp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = if (isScrolled) 2.dp else 4.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(if (isScrolled) 10.dp else 14.dp),
+                    verticalArrangement = Arrangement.spacedBy(if (isScrolled) 6.dp else 10.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Left: Page number or Assignment Title + Subtitle
+                        Column(modifier = Modifier.weight(1f, fill = false)) {
+                            if (activePlan?.unitType == "page") {
+                                Text(
+                                    text = "Page $currentPage / $pageEnd",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = hInk,
+                                    fontFamily = fontFamilyUi,
+                                    modifier = Modifier.clickable { showPageJumpDialog = true }
+                                )
+                            } else {
+                                Text(
+                                    text = assignment.title,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = hInk,
+                                    fontFamily = fontFamilyUi,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                val subPrefix = remember(assignment.subtitle) {
+                                    val parts = assignment.subtitle.split(" · ")
+                                    if (parts.isNotEmpty() && parts[0].isNotBlank()) "${parts[0]} • " else ""
+                                }
+                                Text(
+                                    text = "${subPrefix}Page $currentPage / $pageEnd",
+                                    fontSize = 11.sp,
+                                    color = hInkMuted,
+                                    fontFamily = fontFamilyUi,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.clickable { showPageJumpDialog = true }
+                                )
+                            }
+                        }
+
+                        // Center: Surah badge (web parity: PlannerReader.jsx:640-646 —
+                        // always when currentChapter != null, no unitType filter).
+                        if (currentChapter != null) {
+                            Box(
+                                modifier = Modifier.weight(1f),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Surface(
+                                    shape = RoundedCornerShape(100),
+                                    color = hTeal.copy(alpha = 0.08f),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, hTeal.copy(alpha = 0.2f))
+                                ) {
+                                    Text(
+                                        text = "${currentChapter.id}. Surah ${currentChapter.nameSimple}",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = hTeal,
+                                        fontFamily = fontFamilyUi,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        }
+
+                        // Right: Timer pill + % Achieved
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(100),
+                                color = hTeal.copy(alpha = 0.08f),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, hTeal.copy(alpha = 0.2f)),
+                                modifier = Modifier.clickable { isTimerRunning = !isTimerRunning }
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = if (isTimerRunning) NurIcons.PauseFilled else NurIcons.PlayFilled,
+                                        contentDescription = if (isTimerRunning) "Pause session timer" else "Resume session timer",
+                                        tint = hTeal,
+                                        modifier = Modifier.size(10.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = formatTimerMmSs(displayedSeconds),
+                                        fontSize = 11.sp,
+                                        fontFamily = fontFamilyMono,
+                                        fontWeight = FontWeight.Bold,
+                                        color = hTeal
+                                    )
+                                }
+                            }
+
+                            Text(
+                                text = "$progressPct%",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = hTeal,
+                                fontFamily = fontFamilyUi
+                            )
+                        }
+                    }
+
+                    // Progress bar line: 3dp teal fill matching web
+                    // (transition-all duration-500 → animated fraction).
+                    val barFraction by animateFloatAsState(
+                        targetValue = (progressPct / 100f).coerceIn(0f, 1f),
+                        animationSpec = tween(500),
+                        label = "readerProgress"
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(3.dp)
+                            .clip(RoundedCornerShape(100))
+                            .background(Color.Black.copy(alpha = 0.06f))
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .fillMaxWidth(fraction = barFraction)
+                                .clip(RoundedCornerShape(100))
+                                .background(hTeal)
+                        )
+                    }
+                }
+            }
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -557,156 +717,7 @@ fun PlannerReaderScreen(
                     }
                 }
 
-                // Sticky Glass Planner Card (web parity: PlannerReader.jsx lines 616-671)
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = hWhite,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, hBoneDark.copy(alpha = 0.8f)),
-                    shadowElevation = 2.dp,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = if (isScrolled) 2.dp else 4.dp)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(if (isScrolled) 10.dp else 14.dp),
-                        verticalArrangement = Arrangement.spacedBy(if (isScrolled) 6.dp else 10.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // Left: Page number or Assignment Title + Subtitle
-                            Column(modifier = Modifier.weight(1f, fill = false)) {
-                                if (activePlan?.unitType == "page") {
-                                    Text(
-                                        text = "Page $currentPage / $pageEnd",
-                                        fontSize = 15.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = hInk,
-                                        fontFamily = fontFamilyUi,
-                                        modifier = Modifier.clickable { showPageJumpDialog = true }
-                                    )
-                                } else {
-                                    Text(
-                                        text = assignment.title,
-                                        fontSize = 15.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = hInk,
-                                        fontFamily = fontFamilyUi,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    val subPrefix = remember(assignment.subtitle) {
-                                        val parts = assignment.subtitle.split(" · ")
-                                        if (parts.isNotEmpty() && parts[0].isNotBlank()) "${parts[0]} • " else ""
-                                    }
-                                    Text(
-                                        text = "${subPrefix}Page $currentPage / $pageEnd",
-                                        fontSize = 11.sp,
-                                        color = hInkMuted,
-                                        fontFamily = fontFamilyUi,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.clickable { showPageJumpDialog = true }
-                                    )
-                                }
-                            }
-
-                            // Center: Surah badge (web parity: PlannerReader.jsx:640-646 —
-                            // always when currentChapter != null, no unitType filter).
-                            if (currentChapter != null) {
-                                Box(
-                                    modifier = Modifier.weight(1f),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Surface(
-                                        shape = RoundedCornerShape(100),
-                                        color = hTeal.copy(alpha = 0.08f),
-                                        border = androidx.compose.foundation.BorderStroke(1.dp, hTeal.copy(alpha = 0.2f))
-                                    ) {
-                                        Text(
-                                            text = "${currentChapter.id}. Surah ${currentChapter.nameSimple}",
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = hTeal,
-                                            fontFamily = fontFamilyUi,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    }
-                                }
-                            }
-
-                            // Right: Timer pill + % Achieved
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Surface(
-                                    shape = RoundedCornerShape(100),
-                                    color = hTeal.copy(alpha = 0.08f),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, hTeal.copy(alpha = 0.2f)),
-                                    modifier = Modifier.clickable { isTimerRunning = !isTimerRunning }
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = if (isTimerRunning) NurIcons.PauseFilled else NurIcons.PlayFilled,
-                                            contentDescription = if (isTimerRunning) "Pause session timer" else "Resume session timer",
-                                            tint = hTeal,
-                                            modifier = Modifier.size(10.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text(
-                                            text = formatTimerMmSs(displayedSeconds),
-                                            fontSize = 11.sp,
-                                            fontFamily = fontFamilyMono,
-                                            fontWeight = FontWeight.Bold,
-                                            color = hTeal
-                                        )
-                                    }
-                                }
-
-                                Text(
-                                    text = "$progressPct%",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = hTeal,
-                                    fontFamily = fontFamilyUi
-                                )
-                            }
-                        }
-
-                        // Progress bar line: 3dp teal fill matching web
-                        // (transition-all duration-500 → animated fraction).
-                        val barFraction by animateFloatAsState(
-                            targetValue = (progressPct / 100f).coerceIn(0f, 1f),
-                            animationSpec = tween(500),
-                            label = "readerProgress"
-                        )
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(3.dp)
-                                .clip(RoundedCornerShape(100))
-                                .background(Color.Black.copy(alpha = 0.06f))
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxHeight()
-                                    .fillMaxWidth(fraction = barFraction)
-                                    .clip(RoundedCornerShape(100))
-                                    .background(hTeal)
-                            )
-                        }
-                    }
-                }
+                StatusPillCard()
             }
         }
 

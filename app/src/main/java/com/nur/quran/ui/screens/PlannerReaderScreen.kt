@@ -1068,6 +1068,18 @@ fun PlannerReaderScreen(
                                     Column(horizontalAlignment = Alignment.End) {
                                         Text("Next", fontSize = 9.sp, color = Color.White.copy(alpha = 0.8f), fontFamily = fontFamilyMono, letterSpacing = 0.5.sp)
                                         Text("Page ${currentPage + 1}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                        // In-button count (tappable → page-jump);
+                                        // inner clickable wins over the button advance.
+                                        Text(
+                                            text = "$currentPage / $pageEnd",
+                                            fontSize = 9.sp,
+                                            color = Color.White.copy(alpha = 0.75f),
+                                            fontFamily = fontFamilyMono,
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(4.dp))
+                                                .clickable { showPageJumpDialog = true }
+                                                .padding(horizontal = 2.dp, vertical = 1.dp)
+                                        )
                                     }
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Icon(

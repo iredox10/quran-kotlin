@@ -422,7 +422,7 @@ fun PlannerReaderScreen(
                                 .padding(horizontal = 4.dp, vertical = 2.dp)
                         ) {
                             Text(
-                                text = "Day $dayNumber Reader",
+                                text = "Day $dayNumber",
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = hInk,

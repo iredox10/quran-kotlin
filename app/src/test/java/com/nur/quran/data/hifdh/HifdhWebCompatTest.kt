@@ -112,4 +112,45 @@ class HifdhWebCompatTest {
         assertEquals("medium", map["3:7"]?.strength)
         assertNull(map["2:5"])
     }
+
+    @Test
+    fun `goal accepts web string targetDate with numeric id`() {
+        val goal = parseWebGoal(
+            parse("""{"id":1712345678901,"targetType":"surah","targetId":18,"targetDate":"2026-05-01","createdAt":1712345678901}""")
+        )
+        assertEquals("1712345678901", goal.id)
+        assertEquals("surah", goal.targetType)
+        assertEquals(18, goal.targetId)
+        assertEquals(1777593600000L, goal.targetDate)
+        assertEquals(1712345678901L, goal.createdAt)
+    }
+
+    @Test
+    fun `goal accepts string ids and epoch millis targetDate`() {
+        val goal = parseWebGoal(
+            parse("""{"id":"goal-42","targetType":"surah","targetId":"2","targetDate":1777593600000,"createdAt":"2024-04-05T00:00:00.000Z"}""")
+        )
+        assertEquals("goal-42", goal.id)
+        assertEquals(2, goal.targetId)
+        assertEquals(1777593600000L, goal.targetDate)
+        assertEquals(1712275200000L, goal.createdAt)
+    }
+
+    @Test
+    fun `goal round trips to web shaped json`() {
+        val goal = parseWebGoal(
+            parse("""{"id":1712345678901,"targetType":"surah","targetId":18,"targetDate":"2026-05-01","createdAt":1712345678901}""")
+        )
+        val json = goal.toWebJson()
+
+        assertEquals(1712345678901L, json.get("id").asLong)
+        assertEquals("2026-05-01", json.get("targetDate").asString)
+        assertEquals(18, json.get("targetId").asInt)
+        assertEquals(1712345678901L, json.get("createdAt").asLong)
+        assertEquals(goal, parseWebGoal(json))
+
+        val stringId = parseWebGoal(parse("""{"id":"goal-42","targetDate":"2026-05-01"}""")).toWebJson()
+        assertEquals("goal-42", stringId.get("id").asString)
+        assertEquals("surah", stringId.get("targetType").asString)
+    }
 }

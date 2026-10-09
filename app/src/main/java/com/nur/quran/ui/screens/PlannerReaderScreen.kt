@@ -51,6 +51,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.ceil
+import kotlin.math.round
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -326,18 +327,22 @@ fun PlannerReaderScreen(
         }
     }
 
-    // ── Completion progress tracking ────────────────────────────────
+    // ── Completion progress tracking (web parity: PlannerReader.jsx:592-595) ──
+    // Web derives pct from getAssignmentProgress: surah is pages-based
+    // (read incl. item-implied pages over summed item ranges), everything
+    // else items-based (incl. page-derived completions), with Math.round.
+    val dayProgress = remember(activePlan, assignment) {
+        activePlan?.let { PlannerEngine.getAssignmentProgress(it, assignment) }
+    }
     val totalPages = (pageEnd - pageStart + 1)
-    val readPages = activePlan?.assignmentReadPages?.get(dayNumber)?.size ?: 0
-    val progressPct = remember(activePlan, assignment, readPages, totalPages) {
-        if (activePlan?.unitType == "surah" && totalPages > 0) {
-            (readPages * 100 / totalPages).coerceIn(0, 100)
-        } else {
-            val completed = activePlan?.assignmentCompletedItems?.get(dayNumber)?.size ?: 0
-            val totalItems = assignment.items.size
-            if (totalItems > 0) (completed * 100 / totalItems).coerceIn(0, 100)
-            else if (totalPages > 0) (readPages * 100 / totalPages).coerceIn(0, 100) else 0
-        }
+    val progressPct = remember(dayProgress, activePlan) {
+        val prog = dayProgress
+        if (prog == null) 0
+        else if (activePlan?.unitType == "surah" && prog.totalPagesCount > 0) {
+            round(prog.readPagesCount * 100f / prog.totalPagesCount).toInt()
+        } else if (prog.totalCount > 0) {
+            round(prog.completedCount * 100f / prog.totalCount).toInt()
+        } else 0
     }
     // Web parity (PlannerReader.jsx:578): estimated reading time label.
     val estimatedMins = ceil(totalPages * 2.5).toInt()

@@ -107,6 +107,24 @@ internal fun webEpochMillis(element: JsonElement?): Long? {
 
 private fun JsonElement?.asEpochMillis(): Long? = webEpochMillis(this)
 
+private fun JsonElement?.asWebDouble(): Double? {
+    if (this == null || !isJsonPrimitive) return null
+    val primitive = asJsonPrimitive
+    return if (primitive.isNumber) primitive.asDouble
+    else if (primitive.isString) asString.trim().toDoubleOrNull() else null
+}
+
+private fun JsonElement?.asWebInt(): Int? = asWebDouble()?.toInt()
+
+private fun JsonElement?.asWebId(): String? {
+    if (this == null || !isJsonPrimitive) return null
+    val primitive = asJsonPrimitive
+    return if (primitive.isNumber) primitive.asLong.toString() else asString.trim()
+}
+
+private fun JsonElement?.asStringOrNull(): String? =
+    if (this != null && isJsonPrimitive) asString else null
+
 /** `"YYYY-MM-DD"` in UTC — the shape the web goal form writes. */
 internal fun webDateOnly(epochMillis: Long): String =
     Instant.ofEpochMilli(epochMillis).atOffset(ZoneOffset.UTC).toLocalDate().toString()

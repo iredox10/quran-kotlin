@@ -1147,14 +1147,15 @@ fun PlannerReaderScreen(
                     takeawayVerse = takeawayVerse,
                     reflectionNote = reflectionNote,
                     displayedSeconds = displayedSeconds,
+                    // Web: no autosave on keystroke; save trimmed text on button only.
                     onReflectionChange = {
                         reflectionNote = it
-                        plannerViewModel.saveReflection(dayNumber, it)
                     },
                     onSaveAndReturn = {
                         showCelebrationDialog = false
-                        if (reflectionNote.isNotBlank()) {
-                            plannerViewModel.saveReflection(dayNumber, reflectionNote)
+                        val trimmed = reflectionNote.trim()
+                        if (trimmed.isNotBlank()) {
+                            plannerViewModel.saveReflection(dayNumber, trimmed)
                         }
                         onBack()
                     }

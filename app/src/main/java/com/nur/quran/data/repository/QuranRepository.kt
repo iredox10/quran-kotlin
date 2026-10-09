@@ -189,24 +189,26 @@ class QuranRepository @Inject constructor(
     /**
      * Fill every verse whose [VerseEntity.translation] is blank from the packed
      * `translation_texts` table or the bundled offline asset fallback.
-     * Already-filled verses are returned untouched.
+     * Exactly ONE batched `IN` query (no per-verse N+1). Already-filled
+     * verses return untouched with zero queries. Never throws.
      */
     private suspend fun backfillBlankTranslations(
         verses: List<VerseEntity>,
         translationId: Int
     ): List<VerseEntity> {
         if (verses.isEmpty()) return verses
-        if (verses.none { it.translation.isNullOrBlank() }) return verses
-        return verses.map { verse ->
-            if (!verse.translation.isNullOrBlank()) {
-                verse
-            } else {
-                val packed = runCatching {
-                    quranDao.getTranslationText(translationId, verse.verseKey)
-                }.getOrNull()
-                val text = if (!packed.isNullOrBlank()) packed else offlineTranslationsByVerseKey[verse.verseKey]
-                if (!text.isNullOrBlank()) verse.copy(translation = text) else verse
-            }
+        return try {
+            com.nur.quran.data.TranslationFallback.backfillPageTranslations(
+                verses = verses,
+                overrideExisting = false,
+                fetchPacked = { keys ->
+                    quranDao.getTranslationTexts(translationId, keys)
+                        .associateBy({ it.verseKey }, { it.text })
+                },
+                offlineByKey = { offlineTranslationsByVerseKey[it] }
+            )
+        } catch (_: Exception) {
+            verses
         }
     }
 
@@ -223,17 +225,15 @@ class QuranRepository @Inject constructor(
     ): List<VerseEntity> {
         if (verses.isEmpty()) return verses
         return try {
-            val keys = verses.map { it.verseKey }
-            val packed = quranDao.getTranslationTexts(translationId, keys)
-                .associateBy({ it.verseKey }, { it.text })
-            if (packed.isEmpty()) {
-                backfillBlankTranslations(verses, translationId)
-            } else {
-                verses.map { verse ->
-                    val text = packed[verse.verseKey]
-                    if (!text.isNullOrBlank()) verse.copy(translation = text) else verse
-                }
-            }
+            com.nur.quran.data.TranslationFallback.backfillPageTranslations(
+                verses = verses,
+                overrideExisting = true,
+                fetchPacked = { keys ->
+                    quranDao.getTranslationTexts(translationId, keys)
+                        .associateBy({ it.verseKey }, { it.text })
+                },
+                offlineByKey = { offlineTranslationsByVerseKey[it] }
+            )
         } catch (_: Exception) {
             verses
         }
@@ -708,10 +708,10 @@ class QuranRepository @Inject constructor(
         }
     }
 
-    suspend fun getWordsForVerses(verseIds: List<Int>): Map<Int, List<WordEntity>> {
-        if (verseIds.isEmpty()) return emptyMap()
+    suspend fun getWordsForVerses(verseIds: List<Int>): Map<Int, List<WordEntity>> = withContext(Dispatchers.IO) {
+        if (verseIds.isEmpty()) return@withContext emptyMap()
         val allWords = quranDao.getWordsForVerses(verseIds)
-        return allWords.groupBy { it.verseId }
+        allWords.groupBy { it.verseId }
     }
 
     // Direct chapter queries (non-Flow, for use from IO dispatchers)

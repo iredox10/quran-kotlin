@@ -5,6 +5,7 @@ import com.google.gson.Gson
 import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
 import com.nur.quran.data.db.dao.QuranDao
+import com.nur.quran.data.mushaf.fontNameToId
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
@@ -250,3 +251,58 @@ class SnapshotBuilder @Inject constructor(
             }
     }
 }
+
+// ─────────────────────────── Web-compatible mappings ───────────────────────────
+// Pure functions translating Android stores into the flat keys web's
+// `getSyncableState` expects. Kept free of Context/prefs so they are unit
+// testable on the JVM (see SyncSnapshotMappingsTest).
+
+/** Web's `fontSize` / `translationFontSize` slider range (SettingsDrawer, 1..8). */
+private const val WEB_FONT_INDEX_MIN = 1
+private const val WEB_FONT_INDEX_MAX = 8
+
+/**
+ * Web's default index (2) lines up with Android's default scale (1.0), and
+ * Android's 0.5..3.0 slider covers the index range at 0.25 of scale per step.
+ */
+private const val WEB_FONT_INDEX_DEFAULT = 2
+private const val WEB_FONT_INDEX_SCALE_STEP = 0.25f
+
+/** Web `ARABIC_FONT_OPTIONS` ids (quran-app/src/config/mushaf.js). */
+private val WEB_ARABIC_FONT_IDS = setOf(
+    "kfgqpc-hafs", "uthman-taha-naskh", "amiri-quran",
+    "noto-naskh-arabic", "scheherazade-new"
+)
+
+/** Web `wordTooltipBehavior` values ("Word Hover Action" options). */
+private val WEB_WORD_TOOLTIP_BEHAVIORS = setOf("tajweed", "translation", "none")
+
+/**
+ * Android's continuous `arabic_scale` / `translation_scale` (0.5..3.0) onto
+ * web's discrete `fontSize` / `translationFontSize` index (1..8). Index 2 is
+ * both stores' default, so the mapping is anchored there and clamped at the
+ * ends; inverse is `index -> 1f + (index - 2) * 0.25f`.
+ */
+internal fun fontScaleToWebFontSizeIndex(scale: Float): Int {
+    val raw = WEB_FONT_INDEX_DEFAULT +
+        (scale - WEB_FONT_INDEX_DEFAULT) / WEB_FONT_INDEX_SCALE_STEP
+    return Math.round(
+        raw.coerceIn(WEB_FONT_INDEX_MIN.toFloat(), WEB_FONT_INDEX_MAX.toFloat())
+    )
+}
+
+/** Web `wordTooltipBehavior` ← Android `word_tap_behavior`; unknown values are dropped. */
+internal fun normalizeWordTooltipBehavior(raw: String?): String? {
+    val value = raw?.trim()?.lowercase()?.takeIf { it.isNotEmpty() } ?: return null
+    return value.takeIf { it in WEB_WORD_TOOLTIP_BEHAVIORS }
+}
+
+/**
+ * Web `arabicFontId` ← Android `arabic_font` display name. Reuses the
+ * display-name map in [com.nur.quran.data.mushaf] and only emits ids web
+ * knows, so an unmapped Android font never writes garbage into web state.
+ */
+internal fun arabicFontIdFromName(name: String?): String? =
+    name?.takeIf { it.isNotBlank() }
+        ?.let { fontNameToId(it) }
+        ?.takeIf { it in WEB_ARABIC_FONT_IDS }

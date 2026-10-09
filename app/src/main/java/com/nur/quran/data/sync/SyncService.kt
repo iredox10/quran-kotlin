@@ -26,11 +26,15 @@ private const val KEY_LAST_SYNC_AT = "last_sync_at"
  * Cloud sync engine. Owns ONLY orchestration + merge; snapshot construction belongs to
  * [SnapshotBuilder] and transport constants/client to [AppwriteClient].
  *
- * Transport (mirrors quran-app/src/services/appwrite.js): one doc per user in
- * `AppwriteClient.USER_SYNC_COLLECTION_ID`, document id == userId (from `account.get()`),
- * create-if-missing (try update, on 404 create). Payload is [SnapshotBuilder.snapshotToMap]
- * output: scalar settings + JSON-string section fields (bookmarksJson, collectionsJson,
- * plansJson, hifdhJson, readingStatsJson) + `version` / `updatedAt`.
+ * Document contract (mirrors quran-app/src/services/appwrite.js + scripts/setup-appwrite-new.js):
+ * exactly ONE doc per account in `AppwriteClient.USER_SYNC_COLLECTION_ID`, found by
+ * `Query.equal("userId", userId)` (the id is server-generated — `unique()` on create, never
+ * the userId), and carrying ONLY the attributes `userId` and `stateData`, where `stateData`
+ * is the JSON string of [SnapshotBuilder]'s map (scalar settings + JSON-string section
+ * fields bookmarksJson, collectionsJson, plansJson, hifdhJson, readingStatsJson).
+ * `version`/`updatedAt` are NOT written: the server's `$updatedAt` is the only document
+ * timestamp, and it is the sync watermark. Legacy Android docs (flattened attributes, no
+ * `stateData`) are still READ, and migrate in place on the next push. See [SyncContract].
  *
  * Merge rules (mirror of quran-app/src/utils/syncMerge.js `mergeStateInto`):
  * - Settings / scalars: LAST-WRITE-WINS (incoming wins; absent local keys serialize as

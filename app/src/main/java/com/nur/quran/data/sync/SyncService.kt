@@ -366,6 +366,7 @@ class SyncService @Inject constructor(
         runSuspendCatching { applyHifdhState(state) }
         runSuspendCatching { applyTourState(state) }
         runSuspendCatching { applyLibraryJson(state) }
+        runSuspendCatching { applyLibraryData(state) }
     }
 
     /**
@@ -416,6 +417,54 @@ class SyncService @Inject constructor(
             tours["visit_$page"] = count
         }
         applyPrefs("tour_prefs", tours)
+    }
+
+    /**
+     * Web's flat `bookmarks` / `collections` arrays → Room. A row that cannot
+     * be read (no verse key, no usable id) is skipped instead of being written
+     * with defaults, so one malformed entry cannot corrupt the local union.
+     */
+    private suspend fun applyLibraryData(state: Map<String, Any?>) {
+        val d = dao ?: return
+        webBookmarkRows(state["bookmarks"])?.forEach { row ->
+            runSuspendCatching {
+                d.insertBookmark(
+                    BookmarkEntity(
+                        // BookmarkEntity PK defaults to 1 (single-row); derive a stable id
+                        // per verse so unioned bookmarks don't clobber each other.
+                        id = row.verseKey.hashCode(),
+                        verseKey = row.verseKey,
+                        chapterId = row.chapterId,
+                        surahName = row.surahName,
+                        timestamp = row.createdAt.takeIf { it > 0 } ?: System.currentTimeMillis(),
+                    ),
+                )
+            }
+        }
+        webCollectionRows(state["collections"])?.forEach { col ->
+            runSuspendCatching {
+                d.insertCollection(
+                    CollectionEntity(
+                        id = col.id,
+                        name = col.name,
+                        createdAt = col.createdAt.takeIf { it > 0 } ?: System.currentTimeMillis(),
+                    ),
+                )
+            }
+            col.items.forEach { item ->
+                runSuspendCatching {
+                    d.insertCollectionItem(
+                        CollectionItemEntity(
+                            collectionId = col.id,
+                            verseKey = item.verseKey,
+                            chapterId = item.chapterId,
+                            surahName = item.surahName,
+                            addedAt = item.addedAt.takeIf { it > 0 } ?: System.currentTimeMillis(),
+                        ),
+                    )
+                }
+            }
+        }
     }
 
     /**

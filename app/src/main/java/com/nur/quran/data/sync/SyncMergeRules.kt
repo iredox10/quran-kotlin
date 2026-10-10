@@ -61,3 +61,33 @@ private fun copyMap(value: Any?): Any? {
     value.forEach { (k, v) -> out[k.toString()] = v }
     return out
 }
+
+/** JS `Number(v)` with NaN/Infinity collapsing to 0 (finite check). */
+private fun numberFiniteOrZero(v: Any?): Double = when (v) {
+    null, false -> 0.0
+    true -> 1.0
+    is Number -> v.toDouble().takeIf { it.isFinite() } ?: 0.0
+    is String -> v.toDoubleOrNull()?.takeIf { it.isFinite() } ?: 0.0
+    else -> 0.0
+}
+
+/** JS `Number(v)`; 0 stays 0, NaN coerces to 0. */
+private fun visitCount(v: Any?): Double = numberFiniteOrZero(v).let { if (it > 0) it else 0.0 }
+
+/** JS `field.timestamp || 0` semantics. */
+private fun timestampOrZero(v: Any?): Double = if (truthy(v)) numberFiniteOrZero(v) else 0.0
+
+/**
+ * JS identity: keys are compared with SameValueZero, so Int 1 / Long 1 /
+ * Double 1.0 from different JSON parsers must collapse onto one identity.
+ */
+private fun normalizeIdentity(v: Any?): Any? = if (v is Number) v.toDouble() else v
+
+/** JS `identityOf(item, key)`: null key means the item itself. */
+private fun identityOf(item: Any?, key: String?): Any? = when {
+    key == null -> item
+    item is Map<*, *> -> normalizeIdentity(item[key])
+    else -> null
+}
+
+private fun fieldOf(item: Any?, key: String): Any? = (item as? Map<*, *>)?.get(key)

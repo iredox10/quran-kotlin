@@ -192,6 +192,59 @@ object PlannerWire {
 
     fun embeddedFromReflections(entries: Map<Int, PlannerReflection>): Map<Int, String> =
         entries.filterValues { it.text.isNotBlank() }.mapValues { it.value.text }
+
+    // ── plannerSessionTimers ──────────────────────────────────────────
+    fun sessionTimersToJson(timers: Map<String, Map<Int, PlannerSessionTimer>>): String {
+        val root = JsonObject()
+        timers.forEach { (planId, days) ->
+            val daysObj = JsonObject()
+            days.forEach { (dayNumber, timer) -> daysObj.add(dayNumber.toString(), timerEntry(timer)) }
+            root.add(planId, daysObj)
+        }
+        return root.toString()
+    }
+
+    fun sessionTimersFromJson(json: String): Map<String, Map<Int, PlannerSessionTimer>> {
+        return try {
+            val root = JsonParser.parseString(json).takeIf { it.isJsonObject }?.asJsonObject ?: return emptyMap()
+            root.entrySet().mapNotNull { (planId, daysEl) ->
+                if (!daysEl.isJsonObject) return@mapNotNull null
+                val days = daysEl.asJsonObject.entrySet().mapNotNull { (dayKey, entryEl) ->
+                    val dayNumber = dayKey.toIntOrNull() ?: return@mapNotNull null
+                    val timer = sessionTimerFromWireValue(entryEl) ?: return@mapNotNull null
+                    dayNumber to timer
+                }.toMap()
+                if (days.isEmpty()) null else planId to days
+            }.toMap()
+        } catch (e: Exception) {
+            emptyMap()
+        }
+    }
+
+    private fun timerEntry(timer: PlannerSessionTimer): JsonObject = JsonObject().apply {
+        addProperty("totalSeconds", timer.totalSeconds)
+        if (timer.startedAt != null) addProperty("startedAt", timer.startedAt)
+    }
+
+    /** Web entry { totalSeconds, startedAt } normalized into a timer. */
+    fun sessionTimerFromWire(seconds: String?, startedAt: String?): PlannerSessionTimer =
+        PlannerSessionTimer(totalSeconds = normalizeSeconds(seconds), startedAt = epochMsFromIso(startedAt))
+
+    /** Web timer object, or a legacy plain-seconds row (`{ day: 30 }`). */
+    fun sessionTimerFromWireValue(el: JsonElement): PlannerSessionTimer? = when {
+        el.isJsonObject -> {
+            val obj = el.asJsonObject
+            sessionTimerFromWire(
+                obj.stringOrNull("totalSeconds") ?: obj.stringOrNull("seconds"),
+                obj.stringOrNull("startedAt")
+            )
+        }
+        el.isJsonPrimitive -> sessionTimerFromWire(runCatching { el.asString }.getOrNull(), null)
+        else -> null
+    }
+
+    private fun normalizeSeconds(raw: String?): Long =
+        raw?.trim()?.toDoubleOrNull()?.toLong()?.coerceAtLeast(0L) ?: 0L
 }
 
 /** Web: groupContiguousPages entry — one contiguous page range { pStart, pEnd }. */

@@ -361,37 +361,8 @@ class SyncService @Inject constructor(
         val hifdhEdit = prefs("hifdh_settings").edit()
         var hifdhTouched = false
         runSuspendCatching { applyDisplaySettings(state) }
-        (state["translationId"] as? Number)?.let {
-            hifdhEdit.putInt("translation_id", it.toInt()); hifdhTouched = true
-        }
-        (state["tafsirId"] as? Number)?.let {
-            hifdhEdit.putInt("tafsir_id", it.toInt()); hifdhTouched = true
-        }
-        (state["reciterId"] as? Number)?.let {
-            hifdhEdit.putInt("reciter_id", it.toInt()); hifdhTouched = true
-        }
-        (state["tajweedEnabled"] as? Boolean)?.let {
-            hifdhEdit.putBoolean("is_tajweed_enabled", it); hifdhTouched = true
-        }
-        // Mushaf preset (web `mushafId`; native `mushafPreset` carries the same
-        // canonical id). Canonicalize through Mushaf.fromId so legacy preset
-        // keys ("uthmani"/"tajweed") and web ids both land consistently.
-        ((state["mushafPreset"] as? String) ?: (state["mushafId"] as? String))?.let { raw ->
-            val canonical = com.nur.quran.data.mushaf.Mushaf.fromId(raw).id
-            hifdhEdit.putString("mushaf_preset", canonical); hifdhTouched = true
-        }
-        // Reading mode (web `readingMode`, true = arabic-only) and its inverse
-        // `translationEnabled`. Applied translation-first, readingMode-last so
-        // web `readingMode` wins when both are present; either way both prefs
-        // keys stay in sync (readingMode == !translationEnabled).
-        (state["translationEnabled"] as? Boolean)?.let {
-            hifdhEdit.putBoolean("is_translation_enabled", it)
-            hifdhEdit.putBoolean("is_reading_mode", !it); hifdhTouched = true
-        }
-        (state["readingMode"] as? Boolean)?.let {
-            hifdhEdit.putBoolean("is_reading_mode", it)
-            hifdhEdit.putBoolean("is_translation_enabled", !it); hifdhTouched = true
-        }
+        runSuspendCatching { applySourceSettings(state) }
+        runSuspendCatching { applyPlannerSettings(state) }
 
         // hifdhJson section → hifdh_settings keys.
         (state["hifdhJson"] as? String)?.let { raw ->
@@ -573,6 +544,53 @@ class SyncService @Inject constructor(
             )?.let { hifdh["word_tap_behavior"] = it }
         applyPrefs("hifdh_settings", hifdh)
         applyPrefs("Settings", settings)
+    }
+
+    /**
+     * Source, mushaf and reading mode. Web's canonical keys are `translationId`,
+     * `tafsirId`, `reciterId`, `tajweedEnabled`, `mushafId` and `readingMode`;
+     * the Android blob's `mushafPreset` / `translationEnabled` are still read.
+     */
+    private suspend fun applySourceSettings(state: Map<String, Any?>) {
+        val hifdh = mutableMapOf<String, Any?>()
+        asInt(state["translationId"])?.let { hifdh["translation_id"] = it }
+        asInt(state["tafsirId"])?.let { hifdh["tafsir_id"] = it }
+        asInt(state["reciterId"])?.let { hifdh["reciter_id"] = it }
+        asBoolean(state["tajweedEnabled"])?.let { hifdh["is_tajweed_enabled"] = it }
+        (webMushafPreset(state["mushafId"]) ?: webMushafPreset(state["mushafPreset"]))?.let {
+            hifdh["mushaf_preset"] = it
+        }
+        // Reading mode (web `readingMode`, true = arabic-only) and its inverse
+        // `translationEnabled`: translation-first, readingMode-last so the
+        // canonical web key wins when both are present. Either way both prefs
+        // keys stay in sync (readingMode == !translationEnabled).
+        asBoolean(state["translationEnabled"])?.let { on ->
+            hifdh["is_translation_enabled"] = on
+            hifdh["is_reading_mode"] = !on
+        }
+        asBoolean(state["readingMode"])?.let { on ->
+            hifdh["is_reading_mode"] = on
+            hifdh["is_translation_enabled"] = !on
+        }
+        applyPrefs("hifdh_settings", hifdh)
+    }
+
+    /**
+     * Settings the UI owns outside the reading prefs: web `dailyReadingGoal`
+     * (ProfileScreen `daily_reading_goal` in `Settings`), and the planner's
+     * `intentionPromptEnabled` + `prayerSettings` (PlannerSettings).
+     */
+    private suspend fun applyPlannerSettings(state: Map<String, Any?>) {
+        val app = mutableMapOf<String, Any?>()
+        val planner = mutableMapOf<String, Any?>()
+        webDailyReadingGoal(state["dailyReadingGoal"])?.let { app["daily_reading_goal"] = it }
+        asBoolean(state["intentionPromptEnabled"])?.let { planner["show_intention_prompt"] = it }
+        webPrayerSettings(state["prayerSettings"])?.let { prayer ->
+            prayer.activePrayers?.let { planner["active_prayers"] = it.toSet() }
+            prayer.readPreference?.let { planner["reading_preference"] = it }
+        }
+        applyPrefs("Settings", app)
+        applyPrefs("PlannerSettings", planner)
     }
 
     // ------------------------------------------------------------------ DAO dumps ---

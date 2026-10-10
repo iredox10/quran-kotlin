@@ -172,6 +172,9 @@ internal const val WEB_ACCOUNT_STATE = """{
 
 private val MAP_TYPE = object : com.google.gson.reflect.TypeToken<Map<String, Any?>>() {}.type
 
+/** Mirrors the web's `JSON.stringify`, which keeps `null` members. */
+private val GSON: com.google.gson.Gson = com.google.gson.GsonBuilder().serializeNulls().create()
+
 /** The whole getSyncableState-shaped payload, as one map (numbers arrive as Double). */
 fun webState(): Map<String, Any?> = listOf(
     WEB_SETTINGS_STATE,
@@ -179,17 +182,17 @@ fun webState(): Map<String, Any?> = listOf(
     WEB_HIFDH_STATE,
     WEB_PLANNER_STATE,
     WEB_ACCOUNT_STATE,
-).map { section -> com.google.gson.Gson().fromJson<Map<String, Any?>>(section, MAP_TYPE) }
+).map { section -> GSON.fromJson<Map<String, Any?>>(section, MAP_TYPE) }
     .reduce { acc, section ->
         LinkedHashMap(acc).apply { putAll(section) }
     }
 
 /** The exact string the web client stores in the document's `stateData` attribute. */
-fun webStateData(): String = com.google.gson.Gson().toJson(webState())
+fun webStateData(): String = GSON.toJson(webState())
 
 /** Parses a JSON string the way the sync engine does (null on unparseable input). */
 fun parseState(json: String?): Map<String, Any?>? = json?.takeIf { it.isNotBlank() }
-    ?.let { runCatching { com.google.gson.Gson().fromJson<Map<String, Any?>>(it, MAP_TYPE) }.getOrNull() }
+    ?.let { runCatching { GSON.fromJson<Map<String, Any?>>(it, MAP_TYPE) }.getOrNull() }
 
 /** Numbers in both payloads are compared as Double: Gson hands back Double for JSON numbers. */
 fun numberOf(value: Any?): Double? = (value as? Number)?.toDouble()

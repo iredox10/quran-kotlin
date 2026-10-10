@@ -360,19 +360,7 @@ class SyncService @Inject constructor(
         // Scalar settings → hifdh_settings / Settings prefs (single apply() per file).
         val hifdhEdit = prefs("hifdh_settings").edit()
         var hifdhTouched = false
-        (state["theme"] as? String)?.let {
-            hifdhEdit.putBoolean("is_dark_theme", it == "dark"); hifdhTouched = true
-            prefs("Settings").edit().putBoolean("is_dark_theme", it == "dark").apply()
-        }
-        (state["arabicFont"] as? String)?.let {
-            hifdhEdit.putString("arabic_font", it); hifdhTouched = true
-        }
-        (state["arabicScale"] as? Number)?.let {
-            hifdhEdit.putFloat("arabic_scale", it.toFloat()); hifdhTouched = true
-        }
-        (state["translationScale"] as? Number)?.let {
-            hifdhEdit.putFloat("translation_scale", it.toFloat()); hifdhTouched = true
-        }
+        runSuspendCatching { applyDisplaySettings(state) }
         (state["translationId"] as? Number)?.let {
             hifdhEdit.putInt("translation_id", it.toInt()); hifdhTouched = true
         }
@@ -384,9 +372,6 @@ class SyncService @Inject constructor(
         }
         (state["tajweedEnabled"] as? Boolean)?.let {
             hifdhEdit.putBoolean("is_tajweed_enabled", it); hifdhTouched = true
-        }
-        (state["wordTapBehavior"] as? String)?.let {
-            hifdhEdit.putString("word_tap_behavior", it); hifdhTouched = true
         }
         // Mushaf preset (web `mushafId`; native `mushafPreset` carries the same
         // canonical id). Canonicalize through Mushaf.fromId so legacy preset
@@ -556,6 +541,38 @@ class SyncService @Inject constructor(
             }
             runSuspendCatching { dao.pruneRecentlyRead() } // keep newest 5 (web parity)
         }
+    }
+
+    /**
+     * Theme + typography. Web's canonical keys are `theme`, `fontSize` /
+     * `translationFontSize` (1..8), `arabicFontId` and `wordTooltipBehavior`;
+     * the Android blob's own names (`arabicFont`, `arabicScale`,
+     * `translationScale`, `wordTapBehavior`) are still read, so a payload
+     * written by either side of the transition applies.
+     */
+    private suspend fun applyDisplaySettings(state: Map<String, Any?>) {
+        val hifdh = mutableMapOf<String, Any?>()
+        val settings = mutableMapOf<String, Any?>()
+        asString(state["theme"])?.let { theme ->
+            val dark = theme == "dark"
+            hifdh["is_dark_theme"] = dark
+            settings["is_dark_theme"] = dark
+        }
+        (webFontIndexToScale(state["fontSize"]) ?: asFloat(state["arabicScale"]))?.let {
+            hifdh["arabic_scale"] = it
+        }
+        (webFontIndexToScale(state["translationFontSize"]) ?: asFloat(state["translationScale"]))?.let {
+            hifdh["translation_scale"] = it
+        }
+        (webArabicFontName(state["arabicFontId"]) ?: asString(state["arabicFont"]))?.let {
+            hifdh["arabic_font"] = it
+        }
+        (
+            webWordTapBehavior(state["wordTooltipBehavior"])
+                ?: webWordTapBehavior(state["wordTapBehavior"])
+            )?.let { hifdh["word_tap_behavior"] = it }
+        applyPrefs("hifdh_settings", hifdh)
+        applyPrefs("Settings", settings)
     }
 
     // ------------------------------------------------------------------ DAO dumps ---

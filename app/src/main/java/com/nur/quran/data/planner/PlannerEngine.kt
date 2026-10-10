@@ -98,6 +98,54 @@ data class PlannerBookmark(
     val createdAt: Long = System.currentTimeMillis()
 )
 
+/** Web: plannerReflections[planId][dayNumber] entry — { text, createdAt }. */
+data class PlannerReflection(
+    val text: String,
+    val createdAt: Long = System.currentTimeMillis()
+)
+
+/** Web: plannerSessionTimers[planId][dayNumber] entry — { startedAt, totalSeconds }. */
+data class PlannerSessionTimer(
+    val totalSeconds: Long = 0L,
+    val startedAt: Long? = null
+)
+
+/**
+ * Wire shapes for the planId-keyed planner sections (web useAppStore.js:97-102).
+ * Timestamps are ISO-8601 strings on the web side and epoch milliseconds in
+ * Android; the legacy Android shapes (plan-embedded reflection text, plain-int
+ * session totals, epoch-ms bookmark createdAt) stay readable on the way in.
+ */
+object PlannerWire {
+
+    private const val ISO_MILLIS = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
+    private const val ISO_SECONDS = "yyyy-MM-dd'T'HH:mm:ss'Z'"
+    private val UTC: TimeZone = TimeZone.getTimeZone("UTC")
+
+    /** Web: `new Date().toISOString()` — millisecond precision, UTC. */
+    fun isoFromEpochMs(epochMs: Long): String =
+        formatter(ISO_MILLIS).format(Date(epochMs))
+
+    /** Accepts web ISO-8601 (with/without millis) and legacy epoch-ms numbers. */
+    fun epochMsFromIso(value: String?): Long? {
+        if (value.isNullOrBlank()) return null
+        val text = value.trim()
+        parse(text, ISO_MILLIS)?.let { return it }
+        parse(text, ISO_SECONDS)?.let { return it }
+        return text.toLongOrNull()
+    }
+
+    private fun parse(text: String, pattern: String): Long? =
+        runCatching { formatter(pattern).parse(text)?.time }.getOrNull()
+
+    private fun formatter(pattern: String): SimpleDateFormat =
+        SimpleDateFormat(pattern, Locale.US).apply { timeZone = UTC }
+
+    private fun JsonObject?.stringOrNull(key: String): String? =
+        if (this == null) null
+        else get(key)?.takeIf { !it.isJsonNull }?.let { runCatching { it.asString }.getOrNull() }
+}
+
 /** Web: groupContiguousPages entry — one contiguous page range { pStart, pEnd }. */
 data class ContiguousPageGroup(
     val pStart: Int,

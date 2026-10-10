@@ -46,6 +46,24 @@ private const val KEY_LAST_SYNC_AT = "last_sync_at"
  *   `timestamp` (cap 500); recentlyRead by `chapterId`, latest timestamp wins, cap 5 —
  *   then re-serialized.
  * - Trade-off (same as web): deletions don't propagate.
+ * - The flat web keys (web's `getSyncableState` names: `bookmarks`, `collections`,
+ *   `planners`, `readingSessions`, `recentlyRead`, …) merge generically through
+ *   [mergeValue]: lists union, keyed maps deep-merge, scalars LWW. The
+ *   `pageVisitCounts` per-key max lives with the merge-rules work, not here.
+ *
+ * Apply side ([applyState]): every web flat key that has an Android home is
+ * written to that home, and the legacy Android blobs are accepted alongside the
+ * web shape for the transition — `hifdhJson`/`bookmarksJson`/`collectionsJson`/
+ * `plansJson`/`readingStatsJson` apply FIRST, so the web-named keys win when a
+ * document carries both. Destinations: scalars → `hifdh_settings` / `Settings` /
+ * `PlannerSettings` / `tour_prefs` prefs (see [applyDisplaySettings],
+ * [applySourceSettings], [applyPlannerSettings], [applyHifdhState],
+ * [applyTourState]); data → Room + planner cache rows (see [applyLibraryData],
+ * [applyReadingStats], [applyPlannerData]). Each section is isolated
+ * (`runSuspendCatching`) and every mapper drops a value it cannot read, so a
+ * malformed or unknown key never wipes local state — the same rule web follows.
+ * The key → store value translations are pure and unit tested in
+ * [SyncApplyMappings] (see SyncApplyMappingsTest).
  *
  * All entry points never throw: [push]/[pull] return Boolean, [sync] returns a status string.
  */
@@ -579,8 +597,10 @@ class SyncService @Inject constructor(
 
     /**
      * Legacy Android blobs (`bookmarksJson` / `collectionsJson` / `plansJson` /
-     * `readingStatsJson`) → Room. Restores use existing insert methods only;
-     * union semantics (never delete, matching web "deletions don't propagate").
+     * `readingStatsJson`) → Room. Invoked by [applyState] BEFORE the flat web
+     * sections, so a document carrying both applies the web shape last.
+     * Restores use existing insert methods only; union semantics (never delete,
+     * matching web "deletions don't propagate").
      */
     private suspend fun applyLibraryJson(state: Map<String, Any?>) {
         val dao = dao ?: return
@@ -714,7 +734,7 @@ class SyncService @Inject constructor(
     private suspend fun applyDisplaySettings(state: Map<String, Any?>) {
         val hifdh = mutableMapOf<String, Any?>()
         val settings = mutableMapOf<String, Any?>()
-        asString(state["theme"])?.let { theme ->
+        asString(state["theme"])?.takeIf { it == "dark" || it == "light" }?.let { theme ->
             val dark = theme == "dark"
             hifdh["is_dark_theme"] = dark
             settings["is_dark_theme"] = dark

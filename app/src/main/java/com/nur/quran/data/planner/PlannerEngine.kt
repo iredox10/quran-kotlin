@@ -144,6 +144,54 @@ object PlannerWire {
     private fun JsonObject?.stringOrNull(key: String): String? =
         if (this == null) null
         else get(key)?.takeIf { !it.isJsonNull }?.let { runCatching { it.asString }.getOrNull() }
+
+    // ── plannerReflections ────────────────────────────────────────────
+    fun reflectionsToJson(entries: Map<String, Map<Int, PlannerReflection>>): String {
+        val root = JsonObject()
+        entries.forEach { (planId, days) ->
+            val daysObj = JsonObject()
+            days.forEach { (dayNumber, reflection) -> daysObj.add(dayNumber.toString(), dayEntry(reflection)) }
+            root.add(planId, daysObj)
+        }
+        return root.toString()
+    }
+
+    fun reflectionsFromJson(json: String): Map<String, Map<Int, PlannerReflection>> {
+        return try {
+            val root = JsonParser.parseString(json).takeIf { it.isJsonObject }?.asJsonObject ?: return emptyMap()
+            root.entrySet().mapNotNull { (planId, daysEl) ->
+                if (!daysEl.isJsonObject) return@mapNotNull null
+                val days = daysEl.asJsonObject.entrySet().mapNotNull { (dayKey, entryEl) ->
+                    val dayNumber = dayKey.toIntOrNull() ?: return@mapNotNull null
+                    if (!entryEl.isJsonObject) return@mapNotNull null
+                    val entry = entryEl.asJsonObject
+                    val reflection = PlannerReflection(
+                        text = entry.stringOrNull("text") ?: "",
+                        createdAt = epochMsFromIso(entry.stringOrNull("createdAt")) ?: 0L
+                    )
+                    dayNumber to reflection
+                }.toMap()
+                if (days.isEmpty()) null else planId to days
+            }.toMap()
+        } catch (e: Exception) {
+            emptyMap()
+        }
+    }
+
+    private fun dayEntry(reflection: PlannerReflection): JsonObject = JsonObject().apply {
+        addProperty("text", reflection.text)
+        addProperty("createdAt", isoFromEpochMs(reflection.createdAt))
+    }
+
+    /** Legacy plan-embedded `assignmentReflections` (dayNumber -> plain text). */
+    fun reflectionsFromEmbedded(
+        embedded: Map<Int, String>?,
+        fallbackCreatedAt: Long = System.currentTimeMillis()
+    ): Map<Int, PlannerReflection> =
+        embedded.orEmpty().filterValues { it.isNotBlank() }.mapValues { PlannerReflection(it.value, fallbackCreatedAt) }
+
+    fun embeddedFromReflections(entries: Map<Int, PlannerReflection>): Map<Int, String> =
+        entries.filterValues { it.text.isNotBlank() }.mapValues { it.value.text }
 }
 
 /** Web: groupContiguousPages entry — one contiguous page range { pStart, pEnd }. */

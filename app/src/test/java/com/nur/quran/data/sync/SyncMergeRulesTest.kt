@@ -11,6 +11,7 @@ import org.junit.Test
  */
 class SyncMergeRulesTest {
 
+    @Suppress("UNCHECKED_CAST")
     private fun merge(base: Map<String, Any?>, incoming: Map<String, Any?>): Map<String, Any?> =
         mergeStateInto(base, incoming) as Map<String, Any?>
 

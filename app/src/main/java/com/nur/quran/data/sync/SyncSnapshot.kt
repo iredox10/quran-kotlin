@@ -274,6 +274,9 @@ private const val WEB_FONT_INDEX_MAX = 8
 private const val WEB_FONT_INDEX_DEFAULT = 2
 private const val WEB_FONT_INDEX_SCALE_STEP = 0.25f
 
+/** Android's default scale (1.0) anchors web's default index (2). */
+private const val ANDROID_FONT_SCALE_DEFAULT = 1f
+
 /** Web `ARABIC_FONT_OPTIONS` ids (quran-app/src/config/mushaf.js). */
 private val WEB_ARABIC_FONT_IDS = setOf(
     "kfgqpc-hafs", "uthman-taha-naskh", "amiri-quran",
@@ -291,7 +294,7 @@ private val WEB_WORD_TOOLTIP_BEHAVIORS = setOf("tajweed", "translation", "none")
  */
 internal fun fontScaleToWebFontSizeIndex(scale: Float): Int {
     val raw = WEB_FONT_INDEX_DEFAULT +
-        (scale - WEB_FONT_INDEX_DEFAULT) / WEB_FONT_INDEX_SCALE_STEP
+        (scale - ANDROID_FONT_SCALE_DEFAULT) / WEB_FONT_INDEX_SCALE_STEP
     return Math.round(
         raw.coerceIn(WEB_FONT_INDEX_MIN.toFloat(), WEB_FONT_INDEX_MAX.toFloat())
     )

@@ -8,6 +8,7 @@ import org.junit.Test
 class WebMergeKeyedMapTest {
 
     private val service = syncRig().service
+    private val web = webState()
 
     @Test
     fun `keyed maps keep every entry from both devices`() {

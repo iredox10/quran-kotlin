@@ -43,7 +43,7 @@ class WebApplyAbsenceTest {
     }
 }
 /** JSON hands back Double for every number; the snapshot side emits Int/Long. */
-private fun assertSameValue(web: Any?, snapshot: Any?) {
+internal fun assertSameValue(web: Any?, snapshot: Any?) {
     if (web is Number) assertEquals((web as Number).toDouble(), numberOf(snapshot))
     else assertEquals(web, snapshot)
 }

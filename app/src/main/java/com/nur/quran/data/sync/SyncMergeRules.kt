@@ -301,9 +301,10 @@ fun mergeStateInto(base: Any?, incoming: Any?): Any? {
     }
     val out = LinkedHashMap<String, Any?>()
     (base as Map<*, *>).forEach { (k, v) -> out[k.toString()] = v }
-    (incoming as Map<*, *>).forEach { (field, value) ->
-        val existing = out[field.toString()]
-        out[field.toString()] = when {
+    (incoming as Map<*, *>).forEach { (key, value) ->
+        val field = key.toString()
+        val existing = out[field]
+        out[field] = when {
             field == "recentlyRead" -> mergeArray(existing, value, field)
             field == "collections" -> mergeCollections(existing, value)
             field == "planners" -> mergePlanners(existing, value)

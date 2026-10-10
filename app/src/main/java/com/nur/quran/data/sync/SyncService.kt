@@ -368,6 +368,7 @@ class SyncService @Inject constructor(
         runSuspendCatching { applyLibraryJson(state) }
         runSuspendCatching { applyLibraryData(state) }
         runSuspendCatching { applyReadingStats(state) }
+        runSuspendCatching { applyPlannerData(state) }
     }
 
     /**
@@ -463,6 +464,69 @@ class SyncService @Inject constructor(
             }
             runSuspendCatching { d.pruneRecentlyRead() } // keep newest 5 (web parity)
         }
+    }
+
+    /**
+     * Web's flat `planners` / `activePlannerId` / `archivedPlanners` plus the
+     * per-plan keyed maps (`plannerBookmarks`, `plannerSessionTimers`,
+     * `plannerReflections`) → `api_responses` cache rows. Plan lists are
+     * unioned with the locally known ones, so a payload that arrived without
+     * the local `planners` key cannot drop plans this device owns.
+     */
+    private suspend fun applyPlannerData(state: Map<String, Any?>) {
+        val d = dao ?: return
+        val reflections = webPlannerReflectionsByPlan(state["plannerReflections"]).orEmpty()
+        val localPlans = runSuspendCatching { d.getCacheEntry("planner_all_plans")?.dataJson }.getOrNull()
+        mergePlansById(localPlans, state["planners"])
+            ?.map { plan -> planWithReflections(plan, reflections) }
+            ?.let { plans ->
+                runSuspendCatching {
+                    d.insertCacheEntry(
+                        ApiResponseCacheEntity("planner_all_plans", gson.toJson(plans)),
+                    )
+                }
+            }
+        asString(state["activePlannerId"])?.let { id ->
+            runSuspendCatching { d.insertCacheEntry(ApiResponseCacheEntity("planner_active_id", id)) }
+        }
+        val localArchived = runSuspendCatching {
+            d.getCacheEntry("planner_archived_plans")?.dataJson
+        }.getOrNull()
+        mergePlansById(localArchived, state["archivedPlanners"])?.let { archived ->
+            runSuspendCatching {
+                d.insertCacheEntry(
+                    ApiResponseCacheEntity("planner_archived_plans", gson.toJson(archived)),
+                )
+            }
+        }
+        webPlannerExtraEntries(state["plannerBookmarks"])?.forEach { (id, entry) ->
+            runSuspendCatching {
+                d.insertCacheEntry(
+                    ApiResponseCacheEntity("planner_bookmarks_$id", gson.toJson(entry)),
+                )
+            }
+        }
+        // Web keeps { dayNumber: { totalSeconds, startedAt } }; Android persists
+        // day → seconds only (startedAt is session state it never re-reads).
+        webPlannerExtraEntries(state["plannerSessionTimers"])?.forEach { (id, entry) ->
+            webPlannerSessionTotals(entry)?.let { totals ->
+                runSuspendCatching {
+                    d.insertCacheEntry(
+                        ApiResponseCacheEntity("planner_sessions_$id", gson.toJson(totals)),
+                    )
+                }
+            }
+        }
+    }
+
+    /** Folds web `plannerReflections[planId]` into a plan's `assignmentReflections`. */
+    private fun planWithReflections(
+        plan: Any?,
+        reflections: Map<String, Map<Int, String>>,
+    ): Any? {
+        if (reflections.isEmpty()) return plan
+        val map = asMap(plan) ?: return plan
+        return applyWebReflectionsToPlan(map, reflections[asString(map["id"])])
     }
 
     /**

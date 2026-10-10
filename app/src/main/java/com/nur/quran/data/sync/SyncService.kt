@@ -641,6 +641,30 @@ class SyncService @Inject constructor(
     private fun prefs(name: String): SharedPreferences =
         context.getSharedPreferences(name, Context.MODE_PRIVATE)
 
+    /**
+     * Applies type-tagged values to one prefs file. An empty map (nothing the
+     * remote actually carried) is skipped, so a partial payload never rewrites
+     * a file it has nothing to say about.
+     */
+    private fun applyPrefs(file: String, writes: Map<String, Any?>) {
+        if (writes.isEmpty()) return
+        val edit = prefs(file).edit()
+        writes.forEach { (key, value) -> putPrefValue(edit, key, value) }
+        edit.apply()
+    }
+
+    private fun putPrefValue(edit: SharedPreferences.Editor, key: String, value: Any?) {
+        when (value) {
+            null -> return
+            is Boolean -> edit.putBoolean(key, value)
+            is Int -> edit.putInt(key, value)
+            is Long -> edit.putLong(key, value)
+            is Float -> edit.putFloat(key, value)
+            is Set<*> -> edit.putStringSet(key, value.mapNotNull { it?.toString() }.toSet())
+            else -> edit.putString(key, value.toString())
+        }
+    }
+
     private fun lastSyncAt(): Long =
         runCatching { prefs(SYNC_PREFS).getLong(KEY_LAST_SYNC_AT, 0L) }.getOrDefault(0L)
 

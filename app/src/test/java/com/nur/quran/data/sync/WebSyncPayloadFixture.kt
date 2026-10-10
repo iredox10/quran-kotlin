@@ -166,3 +166,28 @@ internal const val WEB_ACCOUNT_STATE = """{
     "repeatAya": 1, "delayBetweenAyas": 0, "playbackSpeed": 1.0, "scrollWhilePlaying": true
   }
 }"""
+private val GSON: com.google.gson.Gson = com.google.gson.GsonBuilder().serializeNulls().create()
+
+private val MAP_TYPE = object : com.google.gson.reflect.TypeToken<Map<String, Any?>>() {}.type
+
+/** The whole getSyncableState-shaped payload, as one map (numbers arrive as Double). */
+fun webState(): Map<String, Any?> = listOf(
+    WEB_SETTINGS_STATE,
+    WEB_READING_STATE,
+    WEB_HIFDH_STATE,
+    WEB_PLANNER_STATE,
+    WEB_ACCOUNT_STATE,
+).map { section -> GSON.fromJson<Map<String, Any?>>(section, MAP_TYPE) }
+    .reduce { acc, section ->
+        LinkedHashMap(acc).apply { putAll(section) }
+    }
+
+/** The exact string the web client stores in the document's `stateData` attribute. */
+fun webStateData(): String = GSON.toJson(webState())
+
+/** Parses a JSON string the way the sync engine does (null on unparseable input). */
+fun parseState(json: String?): Map<String, Any?>? = json?.takeIf { it.isNotBlank() }
+    ?.let { runCatching { GSON.fromJson<Map<String, Any?>>(it, MAP_TYPE) }.getOrNull() }
+
+/** Numbers in both payloads are compared as Double: Gson hands back Double for JSON numbers. */
+fun numberOf(value: Any?): Double? = (value as? Number)?.toDouble()

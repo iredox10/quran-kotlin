@@ -276,6 +276,27 @@ class SyncApplyMappingsTest {
     // ------------------------------------------------------ planner extras ----
 
     @Test
+    fun `planner bookmark rows drop the web only createdAt stamp`() {
+        val rows = webPlannerBookmarkRows(
+            listOf(
+                mapOf(
+                    "verseKey" to "2:255",
+                    "surahName" to "Al-Baqarah",
+                    "note" to " revise ",
+                    "createdAt" to "2026-01-01T00:00:00.000Z"
+                ),
+                mapOf("note" to "no verse key")
+            )
+        )!!
+        assertEquals(1, rows.size)
+        val row = rows.single()
+        assertEquals("2:255", row.verseKey)
+        assertEquals("Al-Baqarah", row.surahName)
+        assertEquals("revise", row.note)
+        assertNull(webPlannerBookmarkRows("nope"))
+    }
+
+    @Test
     fun `planner session totals read web totalSeconds per day`() {
         val totals = webPlannerSessionTotals(
             mapOf("1" to mapOf("totalSeconds" to 120.0), "2" to mapOf("totalSeconds" to 0.0), "x" to 5)

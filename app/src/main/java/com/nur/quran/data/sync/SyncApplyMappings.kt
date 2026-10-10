@@ -320,6 +320,29 @@ internal fun webPlannerExtraEntries(value: Any?): List<Pair<String, Any?>>? =
     }
 
 /**
+ * Web `plannerBookmarks[planId]` entries → Android's persisted highlight rows.
+ * Web's `createdAt` is an ISO string Android has no field for (it defaults on
+ * read), so it is dropped instead of breaking the parse.
+ */
+data class WebPlannerBookmarkRow(
+    val verseKey: String,
+    val surahName: String,
+    val note: String
+)
+
+internal fun webPlannerBookmarkRows(value: Any?): List<WebPlannerBookmarkRow>? =
+    asList(value)?.mapNotNull { asMap(it)?.let(::webPlannerBookmarkRow) }
+
+private fun webPlannerBookmarkRow(raw: Map<String, Any?>): WebPlannerBookmarkRow? {
+    val verseKey = asString(raw["verseKey"]) ?: return null
+    return WebPlannerBookmarkRow(
+        verseKey = verseKey,
+        surahName = asString(raw["surahName"]) ?: "",
+        note = asString(raw["note"]) ?: ""
+    )
+}
+
+/**
  * Web `plannerSessionTimers[planId]` ({ dayNumber: { totalSeconds } }) →
  * Android's persisted day → seconds map.
  */

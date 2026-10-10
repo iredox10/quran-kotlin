@@ -518,10 +518,12 @@ class SyncService @Inject constructor(
             }
         }
         webPlannerExtraEntries(state["plannerBookmarks"])?.forEach { (id, entry) ->
-            runSuspendCatching {
-                d.insertCacheEntry(
-                    ApiResponseCacheEntity("planner_bookmarks_$id", gson.toJson(entry)),
-                )
+            webPlannerBookmarkRows(entry)?.let { rows ->
+                runSuspendCatching {
+                    d.insertCacheEntry(
+                        ApiResponseCacheEntity("planner_bookmarks_$id", gson.toJson(rows)),
+                    )
+                }
             }
         }
         // Web keeps { dayNumber: { totalSeconds, startedAt } }; Android persists

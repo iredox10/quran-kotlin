@@ -314,4 +314,96 @@ class SyncMergeRulesTest {
         assertEquals("t701", (merged.first() as Map<*, *>)["completedAt"])
     }
 
+    @Test
+    fun plannerIsReDerivedFromActivePlannerIdAfterMerge() {
+        val base = mapOf(
+            "planners" to listOf(mapOf("id" to "p1", "name" to "Old"), mapOf("id" to "p2", "name" to "P2")),
+            "activePlannerId" to "p1",
+            "planner" to mapOf("id" to "stale", "name" to "Stale")
+        )
+        val incoming = mapOf("planners" to listOf(mapOf("id" to "p1", "name" to "Fresh")))
+        val out = merge(base, incoming)
+        val planner = field(out, "planner") as Map<*, *>
+        assertEquals("p1", planner["id"])
+        assertEquals("Fresh", planner["name"])
+    }
+
+    @Test
+    fun plannerFallsBackToCurrentPlannerThenPreservesIt() {
+        val base = mapOf(
+            "planners" to listOf(mapOf("id" to "p1", "name" to "P1"), mapOf("id" to "p2", "name" to "P2")),
+            "activePlannerId" to "missing",
+            "planner" to mapOf("id" to "p2", "name" to "P2")
+        )
+        val out = merge(base, mapOf("planners" to listOf(mapOf("id" to "p1", "name" to "P1"))))
+        assertEquals("p2", (field(out, "planner") as Map<*, *>)["id"])
+
+        val onlyCurrent = merge(
+            mapOf(
+                "planners" to listOf(mapOf("id" to "p9", "name" to "P9")),
+                "activePlannerId" to "missing",
+                "planner" to mapOf("id" to "other", "name" to "Other")
+            ),
+            mapOf("planners" to listOf(mapOf("id" to "p8", "name" to "P8")))
+        )
+        assertEquals("other", (field(onlyCurrent, "planner") as Map<*, *>)["id"])
+    }
+
+    @Test
+    fun slimStatePayloadDropsPlannerAndClampsVisitCounts() {
+        val state = mapOf(
+            "planner" to mapOf("id" to "p1"),
+            "activePlannerId" to "p1",
+            "pageVisitCounts" to mapOf("1" to 99999, "2" to -7, "3" to "abc", "4" to 12.9),
+            "planners" to listOf(
+                mapOf(
+                    "id" to "p1",
+                    "assignments" to listOf(
+                        mapOf("dayNumber" to 1, "surah" to "first", "updatedAt" to 50),
+                        mapOf("dayNumber" to 1, "surah" to "second", "updatedAt" to 50),
+                        mapOf("dayNumber" to 2, "surah" to "newer", "updatedAt" to 90)
+                    )
+                )
+            )
+        )
+        val slim = slimStatePayload(state)
+        assertTrue(slim.containsKey("activePlannerId"))
+        assertTrue(!slim.containsKey("planner"))
+        val counts = slim["pageVisitCounts"] as Map<*, *>
+        // "3" held a non-numeric value, so the key is dropped entirely.
+        assertEquals(3, counts.size)
+        assertEquals(10000.0, counts["1"])
+        assertEquals(0.0, counts["2"])
+        assertEquals(12.0, counts["4"])
+        assertEquals(setOf("1", "2", "4"), counts.keys)
+        // Assignments dedupe per dayNumber; a tie keeps the earlier item.
+        val assignments = (slim["planners"] as List<*>)[0] as Map<*, *>
+        val days = assignments["assignments"] as List<*>
+        assertEquals(2, days.size)
+        assertEquals("first", (days[0] as Map<*, *>)["surah"])
+        assertEquals("newer", (days[1] as Map<*, *>)["surah"])
+    }
+
+    @Test
+    fun oversizedPayloadTrimsSessionsToLastHundred() {
+        val big = "x".repeat(8_000)
+        val sessions = (1..120).map { mapOf("timestamp" to it.toLong(), "note" to big) }
+        val slim = slimStatePayload(mapOf("readingSessions" to sessions))
+        val kept = slim["readingSessions"] as List<*>
+        assertEquals(100, kept.size)
+        assertEquals(21L, (kept.first() as Map<*, *>)["timestamp"])
+        assertEquals(120L, (kept.last() as Map<*, *>)["timestamp"])
+    }
+
+    @Test
+    fun payloadStillTooLargeAfterSlimThrows() {
+        val state = mapOf("notes" to "y".repeat(1_000_000))
+        val error = try {
+            slimStatePayload(state)
+            null
+        } catch (e: IllegalStateException) {
+            e
+        }
+        assertTrue(error != null && error.message!!.startsWith("sync payload too large: "))
+    }
 }

@@ -1,6 +1,7 @@
 package com.nur.quran.data.planner
 
 import com.google.gson.Gson
+import com.google.gson.JsonArray
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
@@ -245,6 +246,39 @@ object PlannerWire {
 
     private fun normalizeSeconds(raw: String?): Long =
         raw?.trim()?.toDoubleOrNull()?.toLong()?.coerceAtLeast(0L) ?: 0L
+
+    // ── plannerBookmarks ──────────────────────────────────────────────
+    fun bookmarksToJson(bookmarks: List<PlannerBookmark>): String {
+        val arr = JsonArray()
+        bookmarks.forEach { bm ->
+            arr.add(JsonObject().apply {
+                addProperty("verseKey", bm.verseKey)
+                addProperty("surahName", bm.surahName)
+                addProperty("note", bm.note)
+                addProperty("createdAt", isoFromEpochMs(bm.createdAt))
+            })
+        }
+        return arr.toString()
+    }
+
+    fun bookmarksFromJson(json: String): List<PlannerBookmark> {
+        return try {
+            val arr = JsonParser.parseString(json).takeIf { it.isJsonArray }?.asJsonArray ?: return emptyList()
+            arr.mapNotNull { el ->
+                if (!el.isJsonObject) return@mapNotNull null
+                val obj = el.asJsonObject
+                val verseKey = obj.stringOrNull("verseKey") ?: return@mapNotNull null
+                PlannerBookmark(
+                    verseKey = verseKey,
+                    surahName = obj.stringOrNull("surahName") ?: "",
+                    note = obj.stringOrNull("note") ?: "",
+                    createdAt = epochMsFromIso(obj.stringOrNull("createdAt")) ?: 0L
+                )
+            }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
 }
 
 /** Web: groupContiguousPages entry — one contiguous page range { pStart, pEnd }. */

@@ -103,3 +103,45 @@ internal const val WEB_HIFDH_STATE = """{
     { "id": 1778300000001, "targetType": "ayah", "targetId": "2:255", "targetDate": "2026-05-31", "createdAt": 1778300000001 }
   ]
 }"""
+/** Planner sections: plans with per-day progress/assignments, plus their keyed extras. */
+internal const val WEB_PLANNER_STATE = """{
+  "planners": [
+    {
+      "id": "plan-1778200000000",
+      "createdAt": "2026-05-07T06:00:00.000Z",
+      "unitType": "ayah",
+      "title": "Al-Ikhlas review",
+      "durationDays": 3,
+      "startDate": "2026-05-07",
+      "startUnit": 1,
+      "endUnit": 4,
+      "assignmentProgress": { "1": 4, "2": 1 },
+      "assignmentCompletedItems": { "1": [1, 2, 3, 4] },
+      "assignmentCompletedAt": { "1": "2026-05-07T07:00:00.000Z" },
+      "completedDays": [1],
+      "assignments": [
+        { "dayNumber": 1, "date": "2026-05-07", "title": "Ayahs 1-4", "updatedAt": 190 },
+        { "dayNumber": 2, "date": "2026-05-08", "title": "Ayahs 5-6", "updatedAt": 80 }
+      ],
+      "excludeDays": [5]
+    }
+  ],
+  "activePlannerId": "plan-1778200000000",
+  "archivedPlanners": [],
+  "plannerReflections": {
+    "plan-1778200000000": {
+      "1": { "text": "First pass felt solid", "createdAt": "2026-05-07T08:00:00.000Z" },
+      "2": { "text": "Verse 5 slipped", "createdAt": "2026-05-08T08:00:00.000Z" }
+    }
+  },
+  "plannerBookmarks": {
+    "plan-1778200000000": [
+      { "verseKey": "112:1", "surahName": "Al-Ikhlas", "note": "tarteel check", "createdAt": "2026-05-07T09:00:00.000Z" }
+    ]
+  },
+  "plannerSessionTimers": {
+    "plan-1778200000000": {
+      "1": { "startedAt": "2026-05-07T06:10:00.000Z", "totalSeconds": 1500 }
+    }
+  }
+}"""

@@ -145,3 +145,24 @@ internal const val WEB_PLANNER_STATE = """{
     }
   }
 }"""
+/** Onboarding / page-visit / misc device-shared keys. */
+internal const val WEB_ACCOUNT_STATE = """{
+  "completedTours": ["home-tour", "surah-tour"],
+  "dismissedCoachmarks": ["planner-coach"],
+  "dismissedGestureTips": ["swipe-tip"],
+  "pageVisitCounts": { "home": 12, "surah": 45, "analytics": 3, "planner": 7 },
+  "saukaProgress": { "sauka-1": 12 },
+  "pomodoroProfiles": [
+    { "id": "classic", "name": "Classic", "focusMinutes": 25, "breakMinutes": 5 }
+  ],
+  "activePomodoroProfileId": "classic",
+  "pomodoroHistory": [],
+  "pomodoroMode": "focus",
+  "pomodoroIsRunning": false,
+  "pomodoroSecondsLeft": 1500,
+  "pomodoroCompletedFocusCount": 4,
+  "audioSettings": {
+    "startRange": null, "endRange": null, "reciterId": 3, "repeatSelection": 1,
+    "repeatAya": 1, "delayBetweenAyas": 0, "playbackSpeed": 1.0, "scrollWhilePlaying": true
+  }
+}"""

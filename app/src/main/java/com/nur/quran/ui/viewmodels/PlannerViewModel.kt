@@ -228,7 +228,7 @@ class PlannerViewModel @Inject constructor(
             val seededReflections = all
                 .filter { it.assignmentReflections.isNotEmpty() }
                 .associate { it.id to PlannerWire.reflectionsFromEmbedded(it.assignmentReflections) }
-                .filterKeys { persistedReflections[it.key].isNullOrEmpty() }
+                .filterKeys { persistedReflections[it].isNullOrEmpty() }
             _reflectionEntriesByPlan.value = persistedReflections + seededReflections
             loadPlanExtras(actId)
 

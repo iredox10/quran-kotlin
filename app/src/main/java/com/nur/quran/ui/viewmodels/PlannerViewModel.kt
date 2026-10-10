@@ -154,8 +154,9 @@ class PlannerViewModel @Inject constructor(
         // running timer.
         val haveBookmarks = _plannerBookmarksByPlan.value.containsKey(planId)
         val haveTotals = _sessionTimersByPlan.value.containsKey(planId)
+        val haveReflections = _reflectionEntriesByPlan.value.containsKey(planId)
         refreshActiveExtrasViews(planId)
-        if (haveBookmarks && haveTotals) return
+        if (haveBookmarks && haveTotals && haveReflections) return
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             if (!haveBookmarks) {
                 try {
@@ -174,6 +175,12 @@ class PlannerViewModel @Inject constructor(
                     val starts = loaded.timerStarts() + inMemory
                     _timerStartedAtByPlan.value = _timerStartedAtByPlan.value + (planId to starts)
                     if (planId == _activePlannerId.value) _timerStartedAt.value = starts
+                } catch (_: Exception) {}
+            }
+            if (!haveReflections) {
+                try {
+                    val loaded = repository.getPlannerReflections(planId)
+                    _reflectionEntriesByPlan.value = _reflectionEntriesByPlan.value + (planId to loaded)
                 } catch (_: Exception) {}
             }
         }
@@ -206,15 +213,23 @@ class PlannerViewModel @Inject constructor(
             _activePlannerId.value = actId
             _activePlan.value = all.find { it.id == actId }
             _archivedPlans.value = repository.getArchivedPlans()
-            // Migration (item 3): seed the planId-keyed reflections map from each
-            // plan's embedded assignmentReflections (source before this change),
-            // so current active-plan data appears in the new maps on first run.
+            // Persisted plannerReflections win over the plan-embedded map: the
+            // repository is the web-parity source, the embedded map is legacy.
+            val persistedReflections = all.mapNotNull { plan ->
+                try {
+                    repository.getPlannerReflections(plan.id).takeIf { it.isNotEmpty() }
+                        ?.let { plan.id to it }
+                } catch (_: Exception) {
+                    null
+                }
+            }.toMap()
+            // Migration: seed any plan still missing entries from its embedded
+            // assignmentReflections (source before the planId-keyed store).
             val seededReflections = all
-                .filter { it.assignmentReflections.orEmpty().isNotEmpty() }
-                .associate { it.id to it.assignmentReflections.orEmpty().toMap() }
-            if (seededReflections.isNotEmpty()) {
-                _plannerReflectionsByPlan.value = seededReflections
-            }
+                .filter { it.assignmentReflections.isNotEmpty() }
+                .associate { it.id to PlannerWire.reflectionsFromEmbedded(it.assignmentReflections) }
+                .filterKeys { persistedReflections[it.key].isNullOrEmpty() }
+            _reflectionEntriesByPlan.value = persistedReflections + seededReflections
             loadPlanExtras(actId)
 
             repository.getAllBookmarksFlow().collect { bmList ->
@@ -503,23 +518,36 @@ class PlannerViewModel @Inject constructor(
     }
 
     /**
+     * Reflections for [planId]: the planId-keyed store first (with createdAt),
+     * the plan-embedded map as legacy fallback.
+     */
+    private fun reflectionEntriesFor(planId: String, plan: ReadingPlan?): Map<Int, PlannerReflection> =
+        _reflectionEntriesByPlan.value[planId]
+            ?: PlannerWire.reflectionsFromEmbedded(plan?.assignmentReflections)
+
+    /**
      * Web: addPlannerReflection — active-plan overload (signature unchanged).
-     * Writes the embedded map as before AND mirrors into the planId-keyed
-     * plannerReflections map so reflections survive plan switches.
+     * Writes the embedded map as before AND the planId-keyed plannerReflections
+     * entry { text, createdAt } so reflections survive plan switches.
      */
     fun saveReflection(dayNumber: Int, note: String) {
-        val planId = _activePlannerId.value
         val current = _activePlan.value ?: return
+        val planId = current.id
+        val createdAt = System.currentTimeMillis()
         val updatedMap = current.assignmentReflections.orEmpty().toMutableMap()
+        val updatedEntries = reflectionEntriesFor(planId, current).toMutableMap()
         if (note.isNotBlank()) {
             updatedMap[dayNumber] = note
+            updatedEntries[dayNumber] = PlannerReflection(note, createdAt)
         } else {
             updatedMap.remove(dayNumber)
+            updatedEntries.remove(dayNumber)
         }
         val updatedPlan = current.copy(assignmentReflections = updatedMap)
         setActivePlan(updatedPlan)
-        if (planId != null) {
-            _plannerReflectionsByPlan.value = _plannerReflectionsByPlan.value + (planId to updatedMap.toMap())
+        _reflectionEntriesByPlan.value = _reflectionEntriesByPlan.value + (planId to updatedEntries.toMap())
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try { repository.savePlannerReflections(planId, updatedEntries) } catch (_: Exception) {}
         }
     }
 
@@ -535,23 +563,28 @@ class PlannerViewModel @Inject constructor(
             return
         }
         val plan = _allPlans.value.find { it.id == planId } ?: return
+        val createdAt = System.currentTimeMillis()
         val updatedEmbedded = plan.assignmentReflections.orEmpty().toMutableMap()
+        val updatedEntries = reflectionEntriesFor(planId, plan).toMutableMap()
         if (note.isNotBlank()) {
             updatedEmbedded[dayNumber] = note
+            updatedEntries[dayNumber] = PlannerReflection(note, createdAt)
         } else {
             updatedEmbedded.remove(dayNumber)
+            updatedEntries.remove(dayNumber)
         }
-        _plannerReflectionsByPlan.value = _plannerReflectionsByPlan.value + (planId to updatedEmbedded.toMap())
+        _reflectionEntriesByPlan.value = _reflectionEntriesByPlan.value + (planId to updatedEntries.toMap())
         val updatedAll = _allPlans.value.map { if (it.id == planId) plan.copy(assignmentReflections = updatedEmbedded) else it }
         _allPlans.value = updatedAll
         viewModelScope.launch {
             repository.saveAllPlans(updatedAll)
+            try { repository.savePlannerReflections(planId, updatedEntries) } catch (_: Exception) {}
         }
     }
 
     /** Web parity read: plannerReflections[plannerId][dayNumber]?.text */
     fun getReflectionForPlan(planId: String, dayNumber: Int): String {
-        _plannerReflectionsByPlan.value[planId]?.get(dayNumber)?.let { return it }
+        _reflectionEntriesByPlan.value[planId]?.get(dayNumber)?.let { return it.text }
         return _allPlans.value.find { it.id == planId }?.assignmentReflections?.get(dayNumber) ?: ""
     }
 

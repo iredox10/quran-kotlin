@@ -155,3 +155,47 @@ private fun writeJsonString(sb: StringBuilder, s: String) {
     }
     sb.append('"')
 }
+
+/** JS mergeValue: undefined skips, null overwrites, objects deep-merge. */
+private fun mergeValue(base: Any?, incoming: Any?): Any? {
+    if (incoming == null) return base
+    if (base == null) return incoming
+    if (base is List<*> && incoming is List<*>) return mergeValueArrays(base, incoming)
+    if (isPlainObject(base) && isPlainObject(incoming)) {
+        val out = LinkedHashMap<String, Any?>()
+        (base as Map<*, *>).forEach { (k, v) -> out[k.toString()] = v }
+        (incoming as Map<*, *>).forEach { (k, v) -> out[k.toString()] = mergeValue(out[k], v) }
+        return out
+    }
+    return incoming
+}
+
+/** JS hasDayNumber: plain object carrying a dayNumber key (null counts). */
+private fun hasDayNumber(item: Any?): Boolean = isPlainObject(item) && (item as Map<*, *>).containsKey("dayNumber")
+
+private fun isDayNumberArray(v: List<*>): Boolean = v.isNotEmpty() && v.all(::hasDayNumber)
+
+/**
+ * JS mergeValueArrays: dayNumber arrays union per dayNumber with the
+ * latest updatedAt winning (ties go to the later item, `>=`); every other
+ * array unions by JSON value identity, incoming replacing base in place.
+ */
+private fun mergeValueArrays(base: List<*>, incoming: List<*>): List<Any?> {
+    if (isDayNumberArray(base) && isDayNumberArray(incoming)) {
+        val map = LinkedHashMap<Any?, Any?>()
+        (base + incoming).forEach { item ->
+            val day = normalizeIdentity(fieldOf(item, "dayNumber"))
+            val existing = map[day]
+            if (existing == null || numberFiniteOrZero(fieldOf(item, "updatedAt")) >=
+                numberFiniteOrZero(fieldOf(existing, "updatedAt"))
+            ) {
+                map[day] = item
+            }
+        }
+        return map.values.toList()
+    }
+    val map = LinkedHashMap<String, Any?>()
+    base.forEach { map[jsonString(it)] = it }
+    incoming.forEach { map[jsonString(it)] = it }
+    return map.values.toList()
+}

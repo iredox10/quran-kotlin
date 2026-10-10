@@ -91,3 +91,67 @@ private fun identityOf(item: Any?, key: String?): Any? = when {
 }
 
 private fun fieldOf(item: Any?, key: String): Any? = (item as? Map<*, *>)?.get(key)
+
+/**
+ * Deterministic JSON text used for value identity in `mergeValueArrays`
+ * (web uses JSON.stringify) and for payload size accounting in
+ * `slimStatePayload`. Object key order is preserved, matching JS.
+ */
+internal fun jsonString(value: Any?): String = StringBuilder().also { writeJson(it, value) }.toString()
+
+private fun writeJson(sb: StringBuilder, value: Any?) {
+    when (value) {
+        null -> sb.append("null")
+        true -> sb.append("true")
+        false -> sb.append("false")
+        is String -> writeJsonString(sb, value)
+        is Number -> sb.append(formatNumber(value))
+        is List<*> -> {
+            sb.append('[')
+            value.forEachIndexed { i, item ->
+                if (i > 0) sb.append(',')
+                writeJson(sb, item)
+            }
+            sb.append(']')
+        }
+        is Map<*, *> -> {
+            sb.append('{')
+            var first = true
+            value.forEach { (k, v) ->
+                if (!first) sb.append(',')
+                first = false
+                writeJsonString(sb, k.toString())
+                sb.append(':')
+                writeJson(sb, v)
+            }
+            sb.append('}')
+        }
+        else -> sb.append("null")
+    }
+}
+
+/** JS JSON.stringify number formatting: integral doubles without ".0". */
+private fun formatNumber(n: Number): String {
+    val d = n.toDouble()
+    if (!d.isFinite()) return "null"
+    if (d == 0.0) return "0"
+    if (d == Math.floor(d) && Math.abs(d) < 1e21) return d.toLong().toString()
+    return d.toString()
+}
+
+private fun writeJsonString(sb: StringBuilder, s: String) {
+    sb.append('"')
+    for (c in s) {
+        when (c) {
+            '"' -> sb.append("\\\"")
+            '\\' -> sb.append("\\\\")
+            '\n' -> sb.append("\\n")
+            '\r' -> sb.append("\\r")
+            '\t' -> sb.append("\\t")
+            '\b' -> sb.append("\\b")
+            '\u000C' -> sb.append("\\f")
+            else -> if (c < ' ') sb.append(String.format("\\u%04x", c.code)) else sb.append(c)
+        }
+    }
+    sb.append('"')
+}

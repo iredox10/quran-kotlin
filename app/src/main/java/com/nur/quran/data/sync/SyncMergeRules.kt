@@ -199,3 +199,92 @@ private fun mergeValueArrays(base: List<*>, incoming: List<*>): List<Any?> {
     incoming.forEach { map[jsonString(it)] = it }
     return map.values.toList()
 }
+
+/** JS mergeItem: recentlyRead keeps the newest timestamp per chapterId. */
+private fun mergeItem(baseItem: Any?, incomingItem: Any?, field: String): Any? {
+    if (baseItem == null) return incomingItem
+    if (field == "recentlyRead") {
+        val a = timestampOrZero(fieldOf(baseItem, "timestamp"))
+        val b = timestampOrZero(fieldOf(incomingItem, "timestamp"))
+        return if (b >= a) incomingItem else baseItem
+    }
+    return incomingItem
+}
+
+/**
+ * JS mergeArray: identity-keyed union (dedupe, latest wins per key) with
+ * post caps — recentlyRead sorted newest-first then trimmed to 5,
+ * readingSessions/pomodoroHistory keep the last 500.
+ */
+private fun mergeArray(base: Any?, incoming: Any?, field: String): List<Any?> {
+    val key = ARRAY_KEY[field]
+    val baseList = (base as? List<*>) ?: emptyList<Any?>()
+    val incList = (incoming as? List<*>) ?: emptyList<Any?>()
+    if (key == null) {
+        // JS keys these arrays by object identity, which never collides
+        // across two JSON documents: the union is a plain concatenation.
+        return baseList + incList
+    }
+    val map = LinkedHashMap<Any?, Any?>()
+    baseList.forEach { map[identityOf(it, key)] = it }
+    incList.forEach { item ->
+        val id = identityOf(item, key)
+        map[id] = mergeItem(map[id], item, field)
+    }
+    var merged = map.values.toList()
+    if (field == "recentlyRead") {
+        merged = merged.sortedByDescending { timestampOrZero(fieldOf(it, "timestamp")) }.take(RECENTLY_READ_CAP)
+    }
+    if (field == "readingSessions" || field == "pomodoroHistory") merged = merged.takeLast(SESSION_CAP)
+    return merged
+}
+
+/** JS mergeCollections: union by id, items keyed by verseKey only. */
+private fun mergeCollections(base: Any?, incoming: Any?): List<Any?> {
+    val map = LinkedHashMap<Any?, Any?>()
+    (base as? List<*>)?.forEach { map[identityOf(it, "id")] = copyMap(it) }
+    (incoming as? List<*>)?.forEach { inc ->
+        val id = identityOf(inc, "id")
+        val existing = map[id]
+        if (existing == null || !isPlainObject(existing)) {
+            map[id] = copyMap(inc)
+            return@forEach
+        }
+        val items = LinkedHashMap<Any?, Any?>()
+        listOfNotNull(fieldOf(existing, "items"), fieldOf(inc, "items")).forEach { itemsValue ->
+            (itemsValue as? List<*>)?.forEach { item ->
+                items[identityOf(item, "verseKey")] = item
+            }
+        }
+        val out = LinkedHashMap<String, Any?>()
+        (existing as Map<*, *>).forEach { (k, v) -> out[k.toString()] = v }
+        out["items"] = items.values.toList()
+        map[id] = out
+    }
+    return map.values.toList()
+}
+
+/** JS mergePlanners: union by id, then a full deep merge of both plans. */
+private fun mergePlanners(base: Any?, incoming: Any?): List<Any?> {
+    val map = LinkedHashMap<Any?, Any?>()
+    (base as? List<*>)?.forEach { map[identityOf(it, "id")] = it }
+    (incoming as? List<*>)?.forEach { inc ->
+        val id = identityOf(inc, "id")
+        val existing = map[id]
+        map[id] = if (existing == null) inc else mergeValue(existing, inc)
+    }
+    return map.values.toList()
+}
+
+/** JS pageVisitCounts: per-key max with negatives and junk clamped to 0. */
+private fun mergePageVisitCounts(base: Any?, incoming: Any?): Map<String, Any?> {
+    val counts = LinkedHashMap<String, Any?>()
+    (base as? Map<*, *>)?.forEach { (k, v) -> counts[k.toString()] = v }
+    val keys = LinkedHashSet<String>()
+    counts.keys.forEach { keys.add(it) }
+    (incoming as? Map<*, *>)?.keys?.forEach { keys.add(it.toString()) }
+    keys.forEach { k ->
+        counts[k] = maxOf(visitCount(counts[k]), visitCount((incoming as? Map<*, *>)?.get(k)))
+    }
+    return counts
+}

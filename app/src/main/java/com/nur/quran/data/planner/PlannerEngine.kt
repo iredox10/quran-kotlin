@@ -88,7 +88,9 @@ data class ReadingPlan(
     val excludeDays: List<Int> = emptyList(), // Day of week to skip: 0=Sun, 1=Mon, ..., 6=Sat
     val assignmentReflections: Map<Int, String> = emptyMap(), // dayNumber -> reflection text
     val lastReadPage: Int? = null,
-    val lastReadVerseKey: String? = null
+    val lastReadVerseKey: String? = null,
+    /** Web: archivePlanner stamps `new Date().toISOString()` on the archived entry. */
+    val archivedAt: String? = null
 )
 
 /** Web: plannerBookmarks[planId] entry — a verse highlighted from the reader. */

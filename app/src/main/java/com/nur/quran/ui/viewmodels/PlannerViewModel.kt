@@ -303,7 +303,11 @@ class PlannerViewModel @Inject constructor(
         val targetId = planId ?: _activePlannerId.value ?: return
         val target = _allPlans.value.find { it.id == targetId } ?: _activePlan.value?.takeIf { it.id == targetId } ?: return
         viewModelScope.launch {
-            val updatedArchives = _archivedPlans.value + target
+            // Web parity: archivePlanner stamps archivedAt (`new Date().toISOString()`).
+            val archived = target.copy(
+                archivedAt = PlannerWire.isoFromEpochMs(System.currentTimeMillis())
+            )
+            val updatedArchives = _archivedPlans.value + archived
             _archivedPlans.value = updatedArchives
             repository.saveArchivedPlans(updatedArchives)
 
@@ -504,8 +508,9 @@ class PlannerViewModel @Inject constructor(
         viewModelScope.launch {
             _archivedPlans.value = updatedArchives
             repository.saveArchivedPlans(updatedArchives)
-            
-            setActivePlan(target)
+
+            // Restoring drops the archive stamp: the plan is live again.
+            setActivePlan(target.copy(archivedAt = null))
         }
     }
 
@@ -592,8 +597,10 @@ class PlannerViewModel @Inject constructor(
         val current = _activePlan.value ?: return
         val chaptersVal = _chapters.value
         viewModelScope.launch {
-            // Archive current plan first
-            val updatedArchives = _archivedPlans.value + current
+            // Archive current plan first (web stamps archivedAt on the entry).
+            val updatedArchives = _archivedPlans.value + current.copy(
+                archivedAt = PlannerWire.isoFromEpochMs(System.currentTimeMillis())
+            )
             _archivedPlans.value = updatedArchives
             repository.saveArchivedPlans(updatedArchives)
             

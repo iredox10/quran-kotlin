@@ -332,3 +332,85 @@ fun mergeStateInto(base: Any?, incoming: Any?): Any? {
     }
     return out
 }
+
+/** JS clampCount: trunc, clamp to 0..10000, drop non-numeric values. */
+private fun clampCount(v: Any?): Double? {
+    val n = when (v) {
+        null, false -> 0.0
+        true -> 1.0
+        is Number -> v.toDouble()
+        is String -> v.toDoubleOrNull() ?: return null
+        else -> return null
+    }
+    if (!n.isFinite()) return null
+    val truncated = if (n >= 0) Math.floor(n) else Math.ceil(n)
+    return minOf(10000.0, maxOf(0.0, truncated))
+}
+
+/** JS dedupeAssignments: one entry per dayNumber, strictly newer updatedAt wins. */
+private fun dedupeAssignments(items: List<*>): List<Any?> {
+    val map = LinkedHashMap<Any?, Any?>()
+    items.forEach { item ->
+        val day = normalizeIdentity(fieldOf(item, "dayNumber"))
+        val existing = map[day]
+        if (existing == null || numberFiniteOrZero(fieldOf(item, "updatedAt")) >
+            numberFiniteOrZero(fieldOf(existing, "updatedAt"))
+        ) {
+            map[day] = item
+        }
+    }
+    return map.values.toList()
+}
+
+/** JS slimDeep: copy-on-write walk that dedupes assignment arrays in place. */
+private fun slimDeep(value: Any?): Any? {
+    if (value is List<*>) return value.map(::slimDeep)
+    if (!isPlainObject(value)) return value
+    val out = LinkedHashMap<String, Any?>()
+    (value as Map<*, *>).forEach { (k, v) ->
+        val key = k.toString()
+        out[key] = if (key == "assignments" && v is List<*> && isDayNumberArray(v)) {
+            dedupeAssignments(v)
+        } else {
+            slimDeep(v)
+        }
+    }
+    return out
+}
+
+private fun trimTail(state: MutableMap<String, Any?>, field: String, keep: Int) {
+    val list = state[field]
+    if (list is List<*> && list.size > keep) state[field] = list.takeLast(keep)
+}
+
+/**
+ * Web slimStatePayload: drop the derived `planner`, clamp pageVisitCounts,
+ * dedupe assignment arrays, and if the JSON payload still exceeds 950k
+ * chars trim sessions to their last 100 entries.
+ */
+fun slimStatePayload(state: Map<String, Any?>): Map<String, Any?> {
+    val result = LinkedHashMap<String, Any?>()
+    state.forEach { (k, v) -> if (k.toString() != "planner") result[k.toString()] = v }
+
+    val counts = result["pageVisitCounts"]
+    if (isPlainObject(counts)) {
+        val clamped = LinkedHashMap<String, Any?>()
+        (counts as Map<*, *>).forEach { (k, v) ->
+            val n = clampCount(v)
+            if (n != null) clamped[k.toString()] = n
+        }
+        result["pageVisitCounts"] = clamped
+    }
+
+    val slimmed = slimDeep(result) as MutableMap<String, Any?>
+    var size = jsonString(slimmed).length
+    if (size > PAYLOAD_SIZE_LIMIT) {
+        trimTail(slimmed, "readingSessions", SLIM_SESSION_CAP)
+        trimTail(slimmed, "pomodoroHistory", SLIM_SESSION_CAP)
+        size = jsonString(slimmed).length
+        if (size > PAYLOAD_SIZE_LIMIT) {
+            throw IllegalStateException("sync payload too large: $size chars")
+        }
+    }
+    return slimmed
+}

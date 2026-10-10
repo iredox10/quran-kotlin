@@ -367,6 +367,7 @@ class SyncService @Inject constructor(
         runSuspendCatching { applyTourState(state) }
         runSuspendCatching { applyLibraryJson(state) }
         runSuspendCatching { applyLibraryData(state) }
+        runSuspendCatching { applyReadingStats(state) }
     }
 
     /**
@@ -417,6 +418,51 @@ class SyncService @Inject constructor(
             tours["visit_$page"] = count
         }
         applyPrefs("tour_prefs", tours)
+    }
+
+    /**
+     * Web's flat `readingSessions` / `recentlyRead` arrays → Room. Sessions are
+     * deduped by `timestamp` (the identity key syncMerge unions on) and capped
+     * at 500, recently-read at 5 per chapter, latest stamp wins — web parity.
+     */
+    private suspend fun applyReadingStats(state: Map<String, Any?>) {
+        val d = dao ?: return
+        webReadingSessionRows(state["readingSessions"])?.let { rows ->
+            val seen = daoSessions().mapNotNullTo(HashSet()) {
+                longOf(it["timestamp"]).takeIf { t -> t > 0 }
+            }
+            rows.forEach { row ->
+                if (!seen.add(row.timestamp)) return@forEach // already applied
+                runSuspendCatching {
+                    d.insertReadingSession(
+                        ReadingSessionEntity(
+                            date = row.date,
+                            duration = row.duration,
+                            type = row.type,
+                            chapterId = row.chapterId,
+                            timestamp = row.timestamp,
+                        ),
+                    )
+                }
+            }
+            runSuspendCatching { d.pruneReadingSessions() } // keep newest 500 (web parity)
+        }
+        webRecentlyReadRows(state["recentlyRead"])?.let { rows ->
+            rows.forEach { row ->
+                runSuspendCatching {
+                    d.upsertRecentlyRead(
+                        RecentlyReadEntity(
+                            chapterId = row.chapterId,
+                            chapterName = row.chapterName,
+                            verseKey = row.verseKey,
+                            timestamp = row.timestamp.takeIf { it > 0 }
+                                ?: System.currentTimeMillis(),
+                        ),
+                    )
+                }
+            }
+            runSuspendCatching { d.pruneRecentlyRead() } // keep newest 5 (web parity)
+        }
     }
 
     /**

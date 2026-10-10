@@ -357,42 +357,73 @@ class SyncService @Inject constructor(
     // ---------------------------------------------------------------- apply remote ---
 
     private suspend fun applyState(state: Map<String, Any?>) {
-        // Scalar settings → hifdh_settings / Settings prefs (single apply() per file).
-        val hifdhEdit = prefs("hifdh_settings").edit()
-        var hifdhTouched = false
+        // Legacy Android blobs apply first, so the web-named flat keys
+        // (web's `getSyncableState`) win when a document carries both.
+        runSuspendCatching { applyHifdhJson(state) }
         runSuspendCatching { applyDisplaySettings(state) }
         runSuspendCatching { applySourceSettings(state) }
         runSuspendCatching { applyPlannerSettings(state) }
+        runSuspendCatching { applyHifdhState(state) }
+        runSuspendCatching { applyTourState(state) }
+        runSuspendCatching { applyLibraryJson(state) }
+    }
 
-        // hifdhJson section → hifdh_settings keys.
+    /**
+     * Web's flat hifdh keys → `hifdh_settings`. History and goals are written
+     * back verbatim (web's own snake_case card / ISO-date shape), which is what
+     * `HifdhStore` and its lenient parsers read.
+     */
+    private suspend fun applyHifdhState(state: Map<String, Any?>) {
+        val hifdh = mutableMapOf<String, Any?>()
+        webMemorizedAyahSet(state["memorizedAyahs"])?.let { hifdh["memorized_ayahs"] = it }
+        webMemorizedSurahSet(state["memorizedSurahs"])?.let { hifdh["memorized_surahs"] = it }
+        asMap(state["hifdhHistory"])?.let { hifdh["hifdh_history"] = gson.toJson(it) }
+        asList(state["hifdhGoals"])?.let { hifdh["hifdh_goals"] = gson.toJson(it) }
+        applyPrefs("hifdh_settings", hifdh)
+    }
+
+    /** Legacy Android `hifdhJson` blob → hifdh_settings keys. */
+    private fun applyHifdhJson(state: Map<String, Any?>) {
+        val hifdh = mutableMapOf<String, Any?>()
         (state["hifdhJson"] as? String)?.let { raw ->
             parseJsonObject(raw)?.let { h ->
                 (h["history"] as? Map<String, Any?>)?.let {
-                    hifdhEdit.putString("hifdh_history", gson.toJson(it)); hifdhTouched = true
+                    hifdh["hifdh_history"] = gson.toJson(it)
                 }
-                (h["goals"] as? List<*>)?.let {
-                    hifdhEdit.putString("hifdh_goals", gson.toJson(it)); hifdhTouched = true
-                }
+                (h["goals"] as? List<*>)?.let { hifdh["hifdh_goals"] = gson.toJson(it) }
                 (h["memorizedAyahs"] as? List<*>)?.let { list ->
-                    hifdhEdit.putStringSet(
-                        "memorized_ayahs",
-                        list.mapNotNull { it?.toString() }.toMutableSet(),
-                    )
-                    hifdhTouched = true
+                    hifdh["memorized_ayahs"] = list.mapNotNull { it?.toString() }.toSet()
                 }
                 (h["transitionLinks"] as? List<*>)?.let { list ->
-                    hifdhEdit.putStringSet(
-                        "transition_links",
-                        list.mapNotNull { it?.toString() }.toMutableSet(),
-                    )
-                    hifdhTouched = true
+                    hifdh["transition_links"] = list.mapNotNull { it?.toString() }.toSet()
                 }
             }
         }
-        if (hifdhTouched) hifdhEdit.apply()
+        applyPrefs("hifdh_settings", hifdh)
+    }
 
-        // DAO restores — existing insert methods only; union semantics (never delete,
-        // matching web "deletions don't propagate").
+    /**
+     * Web's `completedTours` / `dismissedCoachmarks` / `pageVisitCounts` →
+     * `tour_prefs` `tour_` / `coachmark_` / `visit_` keys. Only flags the
+     * remote actually carries are written, so local tours survive (web does not
+     * propagate deletions either).
+     */
+    private suspend fun applyTourState(state: Map<String, Any?>) {
+        val tours = mutableMapOf<String, Any?>()
+        webFlagIds(state["completedTours"])?.forEach { tours["tour_$it"] = true }
+        webFlagIds(state["dismissedCoachmarks"])?.forEach { tours["coachmark_$it"] = true }
+        webPageVisits(state["pageVisitCounts"])?.forEach { (page, count) ->
+            tours["visit_$page"] = count
+        }
+        applyPrefs("tour_prefs", tours)
+    }
+
+    /**
+     * Legacy Android blobs (`bookmarksJson` / `collectionsJson` / `plansJson` /
+     * `readingStatsJson`) → Room. Restores use existing insert methods only;
+     * union semantics (never delete, matching web "deletions don't propagate").
+     */
+    private suspend fun applyLibraryJson(state: Map<String, Any?>) {
         val dao = dao ?: return
         parseJsonArray(state["bookmarksJson"] as? String)?.forEach { raw ->
             (raw as? Map<String, Any?>) ?: return@forEach

@@ -59,3 +59,47 @@ internal const val WEB_READING_STATE = """{
   "offlineDataStatus": "completed",
   "offlinePackStatus": { "1": { "status": "ready" } }
 }"""
+/**
+ * Hifdh sections. `hifdhHistory` values carry the ts-fsrs card as the web persists it
+ * (snake_case keys, ISO `due` / `last_review`); `hifdhGoals` dates are `YYYY-MM-DD`.
+ */
+internal const val WEB_HIFDH_STATE = """{
+  "hifdhHistory": {
+    "2:255": {
+      "card": {
+        "due": "2026-05-20T09:00:00.000Z",
+        "stability": 12.4,
+        "difficulty": 5.1,
+        "elapsed_days": 3,
+        "scheduled_days": 12,
+        "reps": 3,
+        "lapses": 1,
+        "learning_steps": 0,
+        "state": 2,
+        "last_review": "2026-05-08T09:00:00.000Z"
+      },
+      "lastReviewed": 1778154000000,
+      "strength": "strong"
+    },
+    "112:1": {
+      "card": {
+        "due": "2026-05-14T09:00:00.000Z",
+        "stability": 4.1,
+        "difficulty": 6.7,
+        "elapsed_days": 1,
+        "scheduled_days": 4,
+        "reps": 2,
+        "lapses": 0,
+        "learning_steps": 1,
+        "state": 1,
+        "last_review": "2026-05-10T09:00:00.000Z"
+      },
+      "lastReviewed": 1778413200000,
+      "strength": "medium"
+    }
+  },
+  "hifdhGoals": [
+    { "id": 1778300000000, "targetType": "surah", "targetId": 112, "targetDate": "2026-06-30", "createdAt": 1778300000000 },
+    { "id": 1778300000001, "targetType": "ayah", "targetId": "2:255", "targetDate": "2026-05-31", "createdAt": 1778300000001 }
+  ]
+}"""

@@ -288,3 +288,47 @@ private fun mergePageVisitCounts(base: Any?, incoming: Any?): Map<String, Any?> 
     }
     return counts
 }
+
+/**
+ * Merge `incoming` state into `base` state (web mergeStateInto):
+ * identity-keyed lists union, keyed maps deep-merge, pageVisitCounts
+ * take a per-key max, scalars/positions let the incoming value win, and
+ * `planner` is re-derived from `planners` + `activePlannerId`.
+ */
+fun mergeStateInto(base: Any?, incoming: Any?): Any? {
+    if (!isPlainObject(base) || !isPlainObject(incoming)) {
+        return if (truthy(incoming)) incoming else base
+    }
+    val out = LinkedHashMap<String, Any?>()
+    (base as Map<*, *>).forEach { (k, v) -> out[k.toString()] = v }
+    (incoming as Map<*, *>).forEach { (field, value) ->
+        val existing = out[field.toString()]
+        out[field.toString()] = when {
+            field == "recentlyRead" -> mergeArray(existing, value, field)
+            field == "collections" -> mergeCollections(existing, value)
+            field == "planners" -> mergePlanners(existing, value)
+            field == "pageVisitCounts" -> mergePageVisitCounts(existing, value)
+            ARRAY_KEY.containsKey(field) -> mergeArray(existing, value, field)
+            field in DEEP_MERGE_FIELDS -> mergeValue(
+                existing.takeIf { isPlainObject(it) } ?: emptyMap<String, Any?>(),
+                value
+            )
+            value is List<*> && existing is List<*> -> mergeValueArrays(existing, value)
+            isPlainObject(value) && isPlainObject(existing) -> mergeValue(existing, value)
+            else -> value
+        }
+    }
+    val planners = out["planners"]
+    if (planners is List<*>) {
+        val activeId = out["activePlannerId"]
+        val current = out["planner"]
+        val byActive = planners.firstOrNull { isPlainObject(it) && fieldOf(it, "id") == activeId }
+        val byCurrent = if (byActive == null && isPlainObject(current)) {
+            planners.firstOrNull { isPlainObject(it) && fieldOf(it, "id") == fieldOf(current, "id") }
+        } else {
+            null
+        }
+        out["planner"] = byActive ?: byCurrent ?: current
+    }
+    return out
+}

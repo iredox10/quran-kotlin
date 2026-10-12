@@ -48,17 +48,39 @@ class SyncWorker(
                 SyncWorkerEntryPoint::class.java
             )
             val message: String = entryPoint.syncService().sync()
-            setProgress(workDataOf(KEY_PROGRESS to PROGRESS_DONE))
-            Result.success(workDataOf(KEY_RESULT to message))
+            when {
+                // Signed out (SyncService.currentUserId() is null): no-op, no retry.
+                message == RESULT_SIGNED_OUT ->
+                    Result.success(workDataOf(KEY_RESULT to RESULT_SIGNED_OUT))
+
+                // sync() never throws — transport failures come back as "error:<msg>"
+                // (currentUserId() also returns null on transport failure), so map
+                // them onto the retry ladder instead of reporting success.
+                message.startsWith(RESULT_ERROR_PREFIX) -> retryOrFail(message)
+
+                else -> {
+                    setProgress(workDataOf(KEY_PROGRESS to PROGRESS_DONE))
+                    Result.success(workDataOf(KEY_RESULT to message))
+                }
+            }
         } catch (e: IOException) {
             setProgress(workDataOf(KEY_PROGRESS to PROGRESS_RETRY))
             Result.retry()
         } catch (e: Exception) {
-            if (runAttemptCount >= MAX_ATTEMPTS) {
-                Result.failure(workDataOf(KEY_RESULT to (e.message ?: "Sync failed")))
-            } else {
-                Result.retry()
-            }
+            retryOrFail(e.message ?: "Sync failed")
+        }
+    }
+
+    /**
+     * Retries with the request backoff until [MAX_ATTEMPTS] (web ladder is
+     * 0/5/20s = 3 attempts), then fails so the next enqueue can start clean.
+     */
+    private suspend fun retryOrFail(reason: String): Result {
+        return if (runAttemptCount >= MAX_ATTEMPTS) {
+            Result.failure(workDataOf(KEY_RESULT to reason))
+        } else {
+            setProgress(workDataOf(KEY_PROGRESS to PROGRESS_RETRY))
+            Result.retry()
         }
     }
 
@@ -71,6 +93,12 @@ class SyncWorker(
         const val PROGRESS_RUNNING = "running"
         const val PROGRESS_DONE = "done"
         const val PROGRESS_RETRY = "retry"
+
+        /** Contract of SyncService.sync() (signed out — no user, nothing to do). */
+        private const val RESULT_SIGNED_OUT = "signed-out"
+
+        /** Contract of SyncService.sync() (error:<message> — transport/merge failure). */
+        private const val RESULT_ERROR_PREFIX = "error:"
 
         private const val MAX_ATTEMPTS = 3
 
@@ -107,6 +135,16 @@ class SyncWorker(
                 ExistingWorkPolicy.REPLACE,
                 request
             )
+        }
+
+        /**
+         * Auto-sync entry point for app start (mirrors web cold-start pull +
+         * debounced push): schedules the 6-hourly periodic sync and kicks one
+         * immediate pass, both gated on CONNECTED. Idempotent.
+         */
+        fun enqueueAutoSync(context: Context) {
+            enqueuePeriodic(context)
+            enqueueOnce(context)
         }
     }
 }

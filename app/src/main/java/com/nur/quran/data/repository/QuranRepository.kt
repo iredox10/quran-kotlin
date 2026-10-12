@@ -954,16 +954,13 @@ class QuranRepository @Inject constructor(
         }
     }
 
-    // ── Per-plan highlights (web: plannerBookmarks) ──────────────────────
+    // ── Per-plan highlights (web: plannerBookmarks[planId], ISO createdAt) ─
     suspend fun getPlannerBookmarks(planId: String): List<com.nur.quran.data.planner.PlannerBookmark> =
         withContext(Dispatchers.IO) {
             val entry = quranDao.getCacheEntry("planner_bookmarks_$planId")
             if (entry != null && entry.dataJson.isNotBlank()) {
                 try {
-                    val type =
-                        object : TypeToken<List<com.nur.quran.data.planner.PlannerBookmark>>() {}.type
-                    gson.fromJson<List<com.nur.quran.data.planner.PlannerBookmark>>(entry.dataJson, type)
-                        ?: emptyList()
+                    com.nur.quran.data.planner.PlannerWire.bookmarksFromJson(entry.dataJson)
                 } catch (e: Exception) {
                     emptyList()
                 }
@@ -972,25 +969,49 @@ class QuranRepository @Inject constructor(
 
     suspend fun savePlannerBookmarks(planId: String, items: List<com.nur.quran.data.planner.PlannerBookmark>) =
         withContext(Dispatchers.IO) {
-            quranDao.insertCacheEntry(ApiResponseCacheEntity("planner_bookmarks_$planId", gson.toJson(items)))
+            val json = com.nur.quran.data.planner.PlannerWire.bookmarksToJson(items)
+            quranDao.insertCacheEntry(ApiResponseCacheEntity("planner_bookmarks_$planId", json))
         }
 
-    // ── Per-plan reading timers (web: plannerSessionTimers, day -> seconds)
-    suspend fun getPlannerSessionTotals(planId: String): Map<Int, Long> =
+    // ── Per-plan reflections (web: plannerReflections[planId][dayNumber]) ──
+    suspend fun getPlannerReflections(planId: String): Map<Int, com.nur.quran.data.planner.PlannerReflection> =
         withContext(Dispatchers.IO) {
-            val entry = quranDao.getCacheEntry("planner_sessions_$planId")
+            val entry = quranDao.getCacheEntry("planner_reflections_$planId")
             if (entry != null && entry.dataJson.isNotBlank()) {
                 try {
-                    val type = object : TypeToken<Map<Int, Long>>() {}.type
-                    gson.fromJson<Map<Int, Long>>(entry.dataJson, type) ?: emptyMap()
+                    com.nur.quran.data.planner.PlannerWire.reflectionsFromJson(entry.dataJson)[planId] ?: emptyMap()
                 } catch (e: Exception) {
                     emptyMap()
                 }
             } else emptyMap()
         }
 
-    suspend fun savePlannerSessionTotals(planId: String, totals: Map<Int, Long>) =
+    suspend fun savePlannerReflections(
+        planId: String,
+        entries: Map<Int, com.nur.quran.data.planner.PlannerReflection>
+    ) = withContext(Dispatchers.IO) {
+        val json = com.nur.quran.data.planner.PlannerWire.reflectionsToJson(mapOf(planId to entries))
+        quranDao.insertCacheEntry(ApiResponseCacheEntity("planner_reflections_$planId", json))
+    }
+
+    // ── Per-plan reading timers (web: plannerSessionTimers[planId][dayNumber])
+    suspend fun getPlannerSessionTimers(planId: String): Map<Int, com.nur.quran.data.planner.PlannerSessionTimer> =
         withContext(Dispatchers.IO) {
-            quranDao.insertCacheEntry(ApiResponseCacheEntity("planner_sessions_$planId", gson.toJson(totals)))
+            val entry = quranDao.getCacheEntry("planner_sessions_$planId")
+            if (entry != null && entry.dataJson.isNotBlank()) {
+                try {
+                    com.nur.quran.data.planner.PlannerWire.sessionTimersFromJson(entry.dataJson)[planId] ?: emptyMap()
+                } catch (e: Exception) {
+                    emptyMap()
+                }
+            } else emptyMap()
         }
+
+    suspend fun savePlannerSessionTimers(
+        planId: String,
+        timers: Map<Int, com.nur.quran.data.planner.PlannerSessionTimer>
+    ) = withContext(Dispatchers.IO) {
+        val json = com.nur.quran.data.planner.PlannerWire.sessionTimersToJson(mapOf(planId to timers))
+        quranDao.insertCacheEntry(ApiResponseCacheEntity("planner_sessions_$planId", json))
+    }
 }

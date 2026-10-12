@@ -1,6 +1,7 @@
 package com.nur.quran.data.planner
 
 import com.google.gson.Gson
+import com.google.gson.JsonArray
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
@@ -87,7 +88,9 @@ data class ReadingPlan(
     val excludeDays: List<Int> = emptyList(), // Day of week to skip: 0=Sun, 1=Mon, ..., 6=Sat
     val assignmentReflections: Map<Int, String> = emptyMap(), // dayNumber -> reflection text
     val lastReadPage: Int? = null,
-    val lastReadVerseKey: String? = null
+    val lastReadVerseKey: String? = null,
+    /** Web: archivePlanner stamps `new Date().toISOString()` on the archived entry. */
+    val archivedAt: String? = null
 )
 
 /** Web: plannerBookmarks[planId] entry — a verse highlighted from the reader. */
@@ -97,6 +100,188 @@ data class PlannerBookmark(
     val note: String = "",
     val createdAt: Long = System.currentTimeMillis()
 )
+
+/** Web: plannerReflections[planId][dayNumber] entry — { text, createdAt }. */
+data class PlannerReflection(
+    val text: String,
+    val createdAt: Long = System.currentTimeMillis()
+)
+
+/** Web: plannerSessionTimers[planId][dayNumber] entry — { startedAt, totalSeconds }. */
+data class PlannerSessionTimer(
+    val totalSeconds: Long = 0L,
+    val startedAt: Long? = null
+)
+
+/**
+ * Wire shapes for the planId-keyed planner sections (web useAppStore.js:97-102).
+ * Timestamps are ISO-8601 strings on the web side and epoch milliseconds in
+ * Android; the legacy Android shapes (plan-embedded reflection text, plain-int
+ * session totals, epoch-ms bookmark createdAt) stay readable on the way in.
+ */
+object PlannerWire {
+
+    private const val ISO_MILLIS = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
+    private const val ISO_SECONDS = "yyyy-MM-dd'T'HH:mm:ss'Z'"
+    private val UTC: TimeZone = TimeZone.getTimeZone("UTC")
+
+    /** Web: `new Date().toISOString()` — millisecond precision, UTC. */
+    fun isoFromEpochMs(epochMs: Long): String =
+        formatter(ISO_MILLIS).format(Date(epochMs))
+
+    /** Accepts web ISO-8601 (with/without millis) and legacy epoch-ms numbers. */
+    fun epochMsFromIso(value: String?): Long? {
+        if (value.isNullOrBlank()) return null
+        val text = value.trim()
+        parse(text, ISO_MILLIS)?.let { return it }
+        parse(text, ISO_SECONDS)?.let { return it }
+        return text.toLongOrNull()
+    }
+
+    private fun parse(text: String, pattern: String): Long? =
+        runCatching { formatter(pattern).parse(text)?.time }.getOrNull()
+
+    private fun formatter(pattern: String): SimpleDateFormat =
+        SimpleDateFormat(pattern, Locale.US).apply { timeZone = UTC }
+
+    private fun JsonObject?.stringOrNull(key: String): String? =
+        if (this == null) null
+        else get(key)?.takeIf { !it.isJsonNull }?.let { runCatching { it.asString }.getOrNull() }
+
+    // ── plannerReflections ────────────────────────────────────────────
+    fun reflectionsToJson(entries: Map<String, Map<Int, PlannerReflection>>): String {
+        val root = JsonObject()
+        entries.forEach { (planId, days) ->
+            val daysObj = JsonObject()
+            days.forEach { (dayNumber, reflection) -> daysObj.add(dayNumber.toString(), dayEntry(reflection)) }
+            root.add(planId, daysObj)
+        }
+        return root.toString()
+    }
+
+    fun reflectionsFromJson(json: String): Map<String, Map<Int, PlannerReflection>> {
+        return try {
+            val root = JsonParser.parseString(json).takeIf { it.isJsonObject }?.asJsonObject ?: return emptyMap()
+            root.entrySet().mapNotNull { (planId, daysEl) ->
+                if (!daysEl.isJsonObject) return@mapNotNull null
+                val days = daysEl.asJsonObject.entrySet().mapNotNull { (dayKey, entryEl) ->
+                    val dayNumber = dayKey.toIntOrNull() ?: return@mapNotNull null
+                    if (!entryEl.isJsonObject) return@mapNotNull null
+                    val entry = entryEl.asJsonObject
+                    val reflection = PlannerReflection(
+                        text = entry.stringOrNull("text") ?: "",
+                        createdAt = epochMsFromIso(entry.stringOrNull("createdAt")) ?: 0L
+                    )
+                    dayNumber to reflection
+                }.toMap()
+                if (days.isEmpty()) null else planId to days
+            }.toMap()
+        } catch (e: Exception) {
+            emptyMap()
+        }
+    }
+
+    private fun dayEntry(reflection: PlannerReflection): JsonObject = JsonObject().apply {
+        addProperty("text", reflection.text)
+        addProperty("createdAt", isoFromEpochMs(reflection.createdAt))
+    }
+
+    /** Legacy plan-embedded `assignmentReflections` (dayNumber -> plain text). */
+    fun reflectionsFromEmbedded(
+        embedded: Map<Int, String>?,
+        fallbackCreatedAt: Long = System.currentTimeMillis()
+    ): Map<Int, PlannerReflection> =
+        embedded.orEmpty().filterValues { it.isNotBlank() }.mapValues { PlannerReflection(it.value, fallbackCreatedAt) }
+
+    fun embeddedFromReflections(entries: Map<Int, PlannerReflection>): Map<Int, String> =
+        entries.filterValues { it.text.isNotBlank() }.mapValues { it.value.text }
+
+    // ── plannerSessionTimers ──────────────────────────────────────────
+    fun sessionTimersToJson(timers: Map<String, Map<Int, PlannerSessionTimer>>): String {
+        val root = JsonObject()
+        timers.forEach { (planId, days) ->
+            val daysObj = JsonObject()
+            days.forEach { (dayNumber, timer) -> daysObj.add(dayNumber.toString(), timerEntry(timer)) }
+            root.add(planId, daysObj)
+        }
+        return root.toString()
+    }
+
+    fun sessionTimersFromJson(json: String): Map<String, Map<Int, PlannerSessionTimer>> {
+        return try {
+            val root = JsonParser.parseString(json).takeIf { it.isJsonObject }?.asJsonObject ?: return emptyMap()
+            root.entrySet().mapNotNull { (planId, daysEl) ->
+                if (!daysEl.isJsonObject) return@mapNotNull null
+                val days = daysEl.asJsonObject.entrySet().mapNotNull { (dayKey, entryEl) ->
+                    val dayNumber = dayKey.toIntOrNull() ?: return@mapNotNull null
+                    val timer = sessionTimerFromWireValue(entryEl) ?: return@mapNotNull null
+                    dayNumber to timer
+                }.toMap()
+                if (days.isEmpty()) null else planId to days
+            }.toMap()
+        } catch (e: Exception) {
+            emptyMap()
+        }
+    }
+
+    private fun timerEntry(timer: PlannerSessionTimer): JsonObject = JsonObject().apply {
+        addProperty("totalSeconds", timer.totalSeconds)
+        if (timer.startedAt != null) addProperty("startedAt", timer.startedAt)
+    }
+
+    /** Web entry { totalSeconds, startedAt } normalized into a timer. */
+    fun sessionTimerFromWire(seconds: String?, startedAt: String?): PlannerSessionTimer =
+        PlannerSessionTimer(totalSeconds = normalizeSeconds(seconds), startedAt = epochMsFromIso(startedAt))
+
+    /** Web timer object, or a legacy plain-seconds row (`{ day: 30 }`). */
+    fun sessionTimerFromWireValue(el: JsonElement): PlannerSessionTimer? = when {
+        el.isJsonObject -> {
+            val obj = el.asJsonObject
+            sessionTimerFromWire(
+                obj.stringOrNull("totalSeconds") ?: obj.stringOrNull("seconds"),
+                obj.stringOrNull("startedAt")
+            )
+        }
+        el.isJsonPrimitive -> sessionTimerFromWire(runCatching { el.asString }.getOrNull(), null)
+        else -> null
+    }
+
+    private fun normalizeSeconds(raw: String?): Long =
+        raw?.trim()?.toDoubleOrNull()?.toLong()?.coerceAtLeast(0L) ?: 0L
+
+    // ── plannerBookmarks ──────────────────────────────────────────────
+    fun bookmarksToJson(bookmarks: List<PlannerBookmark>): String {
+        val arr = JsonArray()
+        bookmarks.forEach { bm ->
+            arr.add(JsonObject().apply {
+                addProperty("verseKey", bm.verseKey)
+                addProperty("surahName", bm.surahName)
+                addProperty("note", bm.note)
+                addProperty("createdAt", isoFromEpochMs(bm.createdAt))
+            })
+        }
+        return arr.toString()
+    }
+
+    fun bookmarksFromJson(json: String): List<PlannerBookmark> {
+        return try {
+            val arr = JsonParser.parseString(json).takeIf { it.isJsonArray }?.asJsonArray ?: return emptyList()
+            arr.mapNotNull { el ->
+                if (!el.isJsonObject) return@mapNotNull null
+                val obj = el.asJsonObject
+                val verseKey = obj.stringOrNull("verseKey") ?: return@mapNotNull null
+                PlannerBookmark(
+                    verseKey = verseKey,
+                    surahName = obj.stringOrNull("surahName") ?: "",
+                    note = obj.stringOrNull("note") ?: "",
+                    createdAt = epochMsFromIso(obj.stringOrNull("createdAt")) ?: 0L
+                )
+            }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+}
 
 /** Web: groupContiguousPages entry — one contiguous page range { pStart, pEnd }. */
 data class ContiguousPageGroup(

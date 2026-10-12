@@ -46,6 +46,24 @@ private const val KEY_LAST_SYNC_AT = "last_sync_at"
  *   `timestamp` (cap 500); recentlyRead by `chapterId`, latest timestamp wins, cap 5 —
  *   then re-serialized.
  * - Trade-off (same as web): deletions don't propagate.
+ * - The flat web keys (web's `getSyncableState` names: `bookmarks`, `collections`,
+ *   `planners`, `readingSessions`, `recentlyRead`, …) merge generically through
+ *   [mergeValue]: lists union, keyed maps deep-merge, scalars LWW. The
+ *   `pageVisitCounts` per-key max lives with the merge-rules work, not here.
+ *
+ * Apply side ([applyState]): every web flat key that has an Android home is
+ * written to that home, and the legacy Android blobs are accepted alongside the
+ * web shape for the transition — `hifdhJson`/`bookmarksJson`/`collectionsJson`/
+ * `plansJson`/`readingStatsJson` apply FIRST, so the web-named keys win when a
+ * document carries both. Destinations: scalars → `hifdh_settings` / `Settings` /
+ * `PlannerSettings` / `tour_prefs` prefs (see [applyDisplaySettings],
+ * [applySourceSettings], [applyPlannerSettings], [applyHifdhState],
+ * [applyTourState]); data → Room + planner cache rows (see [applyLibraryData],
+ * [applyReadingStats], [applyPlannerData]). Each section is isolated
+ * (`runSuspendCatching`) and every mapper drops a value it cannot read, so a
+ * malformed or unknown key never wipes local state — the same rule web follows.
+ * The key → store value translations are pure and unit tested in
+ * [SyncApplyMappings] (see SyncApplyMappingsTest).
  *
  * All entry points never throw: [push]/[pull] return Boolean, [sync] returns a status string.
  */
@@ -357,86 +375,236 @@ class SyncService @Inject constructor(
     // ---------------------------------------------------------------- apply remote ---
 
     private suspend fun applyState(state: Map<String, Any?>) {
-        // Scalar settings → hifdh_settings / Settings prefs (single apply() per file).
-        val hifdhEdit = prefs("hifdh_settings").edit()
-        var hifdhTouched = false
-        (state["theme"] as? String)?.let {
-            hifdhEdit.putBoolean("is_dark_theme", it == "dark"); hifdhTouched = true
-            prefs("Settings").edit().putBoolean("is_dark_theme", it == "dark").apply()
-        }
-        (state["arabicFont"] as? String)?.let {
-            hifdhEdit.putString("arabic_font", it); hifdhTouched = true
-        }
-        (state["arabicScale"] as? Number)?.let {
-            hifdhEdit.putFloat("arabic_scale", it.toFloat()); hifdhTouched = true
-        }
-        (state["translationScale"] as? Number)?.let {
-            hifdhEdit.putFloat("translation_scale", it.toFloat()); hifdhTouched = true
-        }
-        (state["translationId"] as? Number)?.let {
-            hifdhEdit.putInt("translation_id", it.toInt()); hifdhTouched = true
-        }
-        (state["tafsirId"] as? Number)?.let {
-            hifdhEdit.putInt("tafsir_id", it.toInt()); hifdhTouched = true
-        }
-        (state["reciterId"] as? Number)?.let {
-            hifdhEdit.putInt("reciter_id", it.toInt()); hifdhTouched = true
-        }
-        (state["tajweedEnabled"] as? Boolean)?.let {
-            hifdhEdit.putBoolean("is_tajweed_enabled", it); hifdhTouched = true
-        }
-        (state["wordTapBehavior"] as? String)?.let {
-            hifdhEdit.putString("word_tap_behavior", it); hifdhTouched = true
-        }
-        // Mushaf preset (web `mushafId`; native `mushafPreset` carries the same
-        // canonical id). Canonicalize through Mushaf.fromId so legacy preset
-        // keys ("uthmani"/"tajweed") and web ids both land consistently.
-        ((state["mushafPreset"] as? String) ?: (state["mushafId"] as? String))?.let { raw ->
-            val canonical = com.nur.quran.data.mushaf.Mushaf.fromId(raw).id
-            hifdhEdit.putString("mushaf_preset", canonical); hifdhTouched = true
-        }
-        // Reading mode (web `readingMode`, true = arabic-only) and its inverse
-        // `translationEnabled`. Applied translation-first, readingMode-last so
-        // web `readingMode` wins when both are present; either way both prefs
-        // keys stay in sync (readingMode == !translationEnabled).
-        (state["translationEnabled"] as? Boolean)?.let {
-            hifdhEdit.putBoolean("is_translation_enabled", it)
-            hifdhEdit.putBoolean("is_reading_mode", !it); hifdhTouched = true
-        }
-        (state["readingMode"] as? Boolean)?.let {
-            hifdhEdit.putBoolean("is_reading_mode", it)
-            hifdhEdit.putBoolean("is_translation_enabled", !it); hifdhTouched = true
-        }
+        // Legacy Android blobs apply first, so the web-named flat keys
+        // (web's `getSyncableState`) win when a document carries both.
+        runSuspendCatching { applyHifdhJson(state) }
+        runSuspendCatching { applyDisplaySettings(state) }
+        runSuspendCatching { applySourceSettings(state) }
+        runSuspendCatching { applyPlannerSettings(state) }
+        runSuspendCatching { applyHifdhState(state) }
+        runSuspendCatching { applyTourState(state) }
+        runSuspendCatching { applyLibraryJson(state) }
+        runSuspendCatching { applyLibraryData(state) }
+        runSuspendCatching { applyReadingStats(state) }
+        runSuspendCatching { applyPlannerData(state) }
+    }
 
-        // hifdhJson section → hifdh_settings keys.
+    /**
+     * Web's flat hifdh keys → `hifdh_settings`. History and goals are written
+     * back verbatim (web's own snake_case card / ISO-date shape), which is what
+     * `HifdhStore` and its lenient parsers read.
+     */
+    private suspend fun applyHifdhState(state: Map<String, Any?>) {
+        val hifdh = mutableMapOf<String, Any?>()
+        webMemorizedAyahSet(state["memorizedAyahs"])?.let { hifdh["memorized_ayahs"] = it }
+        webMemorizedSurahSet(state["memorizedSurahs"])?.let { hifdh["memorized_surahs"] = it }
+        asMap(state["hifdhHistory"])?.let { hifdh["hifdh_history"] = gson.toJson(it) }
+        asList(state["hifdhGoals"])?.let { hifdh["hifdh_goals"] = gson.toJson(it) }
+        applyPrefs("hifdh_settings", hifdh)
+    }
+
+    /** Legacy Android `hifdhJson` blob → hifdh_settings keys. */
+    private fun applyHifdhJson(state: Map<String, Any?>) {
+        val hifdh = mutableMapOf<String, Any?>()
         (state["hifdhJson"] as? String)?.let { raw ->
             parseJsonObject(raw)?.let { h ->
                 (h["history"] as? Map<String, Any?>)?.let {
-                    hifdhEdit.putString("hifdh_history", gson.toJson(it)); hifdhTouched = true
+                    hifdh["hifdh_history"] = gson.toJson(it)
                 }
-                (h["goals"] as? List<*>)?.let {
-                    hifdhEdit.putString("hifdh_goals", gson.toJson(it)); hifdhTouched = true
-                }
+                (h["goals"] as? List<*>)?.let { hifdh["hifdh_goals"] = gson.toJson(it) }
                 (h["memorizedAyahs"] as? List<*>)?.let { list ->
-                    hifdhEdit.putStringSet(
-                        "memorized_ayahs",
-                        list.mapNotNull { it?.toString() }.toMutableSet(),
-                    )
-                    hifdhTouched = true
+                    hifdh["memorized_ayahs"] = list.mapNotNull { it?.toString() }.toSet()
                 }
                 (h["transitionLinks"] as? List<*>)?.let { list ->
-                    hifdhEdit.putStringSet(
-                        "transition_links",
-                        list.mapNotNull { it?.toString() }.toMutableSet(),
-                    )
-                    hifdhTouched = true
+                    hifdh["transition_links"] = list.mapNotNull { it?.toString() }.toSet()
                 }
             }
         }
-        if (hifdhTouched) hifdhEdit.apply()
+        applyPrefs("hifdh_settings", hifdh)
+    }
 
-        // DAO restores — existing insert methods only; union semantics (never delete,
-        // matching web "deletions don't propagate").
+    /**
+     * Web's `completedTours` / `dismissedCoachmarks` / `pageVisitCounts` →
+     * `tour_prefs` `tour_` / `coachmark_` / `visit_` keys. Only flags the
+     * remote actually carries are written, so local tours survive (web does not
+     * propagate deletions either).
+     */
+    private suspend fun applyTourState(state: Map<String, Any?>) {
+        val tours = mutableMapOf<String, Any?>()
+        webFlagIds(state["completedTours"])?.forEach { tours["tour_$it"] = true }
+        webFlagIds(state["dismissedCoachmarks"])?.forEach { tours["coachmark_$it"] = true }
+        webPageVisits(state["pageVisitCounts"])?.forEach { (page, count) ->
+            tours["visit_$page"] = count
+        }
+        applyPrefs("tour_prefs", tours)
+    }
+
+    /**
+     * Web's flat `readingSessions` / `recentlyRead` arrays → Room. Sessions are
+     * deduped by `timestamp` (the identity key syncMerge unions on) and capped
+     * at 500, recently-read at 5 per chapter, latest stamp wins — web parity.
+     */
+    private suspend fun applyReadingStats(state: Map<String, Any?>) {
+        val d = dao ?: return
+        webReadingSessionRows(state["readingSessions"])?.let { rows ->
+            val seen = daoSessions().mapNotNullTo(HashSet()) {
+                longOf(it["timestamp"]).takeIf { t -> t > 0 }
+            }
+            rows.forEach { row ->
+                if (!seen.add(row.timestamp)) return@forEach // already applied
+                runSuspendCatching {
+                    d.insertReadingSession(
+                        ReadingSessionEntity(
+                            date = row.date,
+                            duration = row.duration,
+                            type = row.type,
+                            chapterId = row.chapterId,
+                            timestamp = row.timestamp,
+                        ),
+                    )
+                }
+            }
+            runSuspendCatching { d.pruneReadingSessions() } // keep newest 500 (web parity)
+        }
+        webRecentlyReadRows(state["recentlyRead"])?.let { rows ->
+            rows.forEach { row ->
+                runSuspendCatching {
+                    d.upsertRecentlyRead(
+                        RecentlyReadEntity(
+                            chapterId = row.chapterId,
+                            chapterName = row.chapterName,
+                            verseKey = row.verseKey,
+                            timestamp = row.timestamp.takeIf { it > 0 }
+                                ?: System.currentTimeMillis(),
+                        ),
+                    )
+                }
+            }
+            runSuspendCatching { d.pruneRecentlyRead() } // keep newest 5 (web parity)
+        }
+    }
+
+    /**
+     * Web's flat `planners` / `activePlannerId` / `archivedPlanners` plus the
+     * per-plan keyed maps (`plannerBookmarks`, `plannerSessionTimers`,
+     * `plannerReflections`) → `api_responses` cache rows. Plan lists are
+     * unioned with the locally known ones, so a payload that arrived without
+     * the local `planners` key cannot drop plans this device owns.
+     */
+    private suspend fun applyPlannerData(state: Map<String, Any?>) {
+        val d = dao ?: return
+        val reflections = webPlannerReflectionsByPlan(state["plannerReflections"]).orEmpty()
+        val localPlans = runSuspendCatching { d.getCacheEntry("planner_all_plans")?.dataJson }.getOrNull()
+        mergePlansById(localPlans, state["planners"])
+            ?.map { plan -> planWithReflections(plan, reflections) }
+            ?.let { plans ->
+                runSuspendCatching {
+                    d.insertCacheEntry(
+                        ApiResponseCacheEntity("planner_all_plans", gson.toJson(plans)),
+                    )
+                }
+            }
+        asString(state["activePlannerId"])?.let { id ->
+            runSuspendCatching { d.insertCacheEntry(ApiResponseCacheEntity("planner_active_id", id)) }
+        }
+        val localArchived = runSuspendCatching {
+            d.getCacheEntry("planner_archived_plans")?.dataJson
+        }.getOrNull()
+        mergePlansById(localArchived, state["archivedPlanners"])?.let { archived ->
+            runSuspendCatching {
+                d.insertCacheEntry(
+                    ApiResponseCacheEntity("planner_archived_plans", gson.toJson(archived)),
+                )
+            }
+        }
+        webPlannerExtraEntries(state["plannerBookmarks"])?.forEach { (id, entry) ->
+            webPlannerBookmarkRows(entry)?.let { rows ->
+                runSuspendCatching {
+                    d.insertCacheEntry(
+                        ApiResponseCacheEntity("planner_bookmarks_$id", gson.toJson(rows)),
+                    )
+                }
+            }
+        }
+        // Web keeps { dayNumber: { totalSeconds, startedAt } }; Android persists
+        // day → seconds only (startedAt is session state it never re-reads).
+        webPlannerExtraEntries(state["plannerSessionTimers"])?.forEach { (id, entry) ->
+            webPlannerSessionTotals(entry)?.let { totals ->
+                runSuspendCatching {
+                    d.insertCacheEntry(
+                        ApiResponseCacheEntity("planner_sessions_$id", gson.toJson(totals)),
+                    )
+                }
+            }
+        }
+    }
+
+    /** Folds web `plannerReflections[planId]` into a plan's `assignmentReflections`. */
+    private fun planWithReflections(
+        plan: Any?,
+        reflections: Map<String, Map<Int, String>>,
+    ): Any? {
+        if (reflections.isEmpty()) return plan
+        val map = asMap(plan) ?: return plan
+        return applyWebReflectionsToPlan(map, reflections[asString(map["id"])])
+    }
+
+    /**
+     * Web's flat `bookmarks` / `collections` arrays → Room. A row that cannot
+     * be read (no verse key, no usable id) is skipped instead of being written
+     * with defaults, so one malformed entry cannot corrupt the local union.
+     */
+    private suspend fun applyLibraryData(state: Map<String, Any?>) {
+        val d = dao ?: return
+        webBookmarkRows(state["bookmarks"])?.forEach { row ->
+            runSuspendCatching {
+                d.insertBookmark(
+                    BookmarkEntity(
+                        // BookmarkEntity PK defaults to 1 (single-row); derive a stable id
+                        // per verse so unioned bookmarks don't clobber each other.
+                        id = row.verseKey.hashCode(),
+                        verseKey = row.verseKey,
+                        chapterId = row.chapterId,
+                        surahName = row.surahName,
+                        timestamp = row.createdAt.takeIf { it > 0 } ?: System.currentTimeMillis(),
+                    ),
+                )
+            }
+        }
+        webCollectionRows(state["collections"])?.forEach { col ->
+            runSuspendCatching {
+                d.insertCollection(
+                    CollectionEntity(
+                        id = col.id,
+                        name = col.name,
+                        createdAt = col.createdAt.takeIf { it > 0 } ?: System.currentTimeMillis(),
+                    ),
+                )
+            }
+            col.items.forEach { item ->
+                runSuspendCatching {
+                    d.insertCollectionItem(
+                        CollectionItemEntity(
+                            collectionId = col.id,
+                            verseKey = item.verseKey,
+                            chapterId = item.chapterId,
+                            surahName = item.surahName,
+                            addedAt = item.addedAt.takeIf { it > 0 } ?: System.currentTimeMillis(),
+                        ),
+                    )
+                }
+            }
+        }
+    }
+
+    /**
+     * Legacy Android blobs (`bookmarksJson` / `collectionsJson` / `plansJson` /
+     * `readingStatsJson`) → Room. Invoked by [applyState] BEFORE the flat web
+     * sections, so a document carrying both applies the web shape last.
+     * Restores use existing insert methods only; union semantics (never delete,
+     * matching web "deletions don't propagate").
+     */
+    private suspend fun applyLibraryJson(state: Map<String, Any?>) {
         val dao = dao ?: return
         parseJsonArray(state["bookmarksJson"] as? String)?.forEach { raw ->
             (raw as? Map<String, Any?>) ?: return@forEach
@@ -558,6 +726,85 @@ class SyncService @Inject constructor(
         }
     }
 
+    /**
+     * Theme + typography. Web's canonical keys are `theme`, `fontSize` /
+     * `translationFontSize` (1..8), `arabicFontId` and `wordTooltipBehavior`;
+     * the Android blob's own names (`arabicFont`, `arabicScale`,
+     * `translationScale`, `wordTapBehavior`) are still read, so a payload
+     * written by either side of the transition applies.
+     */
+    private suspend fun applyDisplaySettings(state: Map<String, Any?>) {
+        val hifdh = mutableMapOf<String, Any?>()
+        val settings = mutableMapOf<String, Any?>()
+        asString(state["theme"])?.takeIf { it == "dark" || it == "light" }?.let { theme ->
+            val dark = theme == "dark"
+            hifdh["is_dark_theme"] = dark
+            settings["is_dark_theme"] = dark
+        }
+        (webFontIndexToScale(state["fontSize"]) ?: asFloat(state["arabicScale"]))?.let {
+            hifdh["arabic_scale"] = it
+        }
+        (webFontIndexToScale(state["translationFontSize"]) ?: asFloat(state["translationScale"]))?.let {
+            hifdh["translation_scale"] = it
+        }
+        (webArabicFontName(state["arabicFontId"]) ?: asString(state["arabicFont"]))?.let {
+            hifdh["arabic_font"] = it
+        }
+        (
+            webWordTapBehavior(state["wordTooltipBehavior"])
+                ?: webWordTapBehavior(state["wordTapBehavior"])
+            )?.let { hifdh["word_tap_behavior"] = it }
+        applyPrefs("hifdh_settings", hifdh)
+        applyPrefs("Settings", settings)
+    }
+
+    /**
+     * Source, mushaf and reading mode. Web's canonical keys are `translationId`,
+     * `tafsirId`, `reciterId`, `tajweedEnabled`, `mushafId` and `readingMode`;
+     * the Android blob's `mushafPreset` / `translationEnabled` are still read.
+     */
+    private suspend fun applySourceSettings(state: Map<String, Any?>) {
+        val hifdh = mutableMapOf<String, Any?>()
+        asInt(state["translationId"])?.let { hifdh["translation_id"] = it }
+        asInt(state["tafsirId"])?.let { hifdh["tafsir_id"] = it }
+        asInt(state["reciterId"])?.let { hifdh["reciter_id"] = it }
+        asBoolean(state["tajweedEnabled"])?.let { hifdh["is_tajweed_enabled"] = it }
+        (webMushafPreset(state["mushafId"]) ?: webMushafPreset(state["mushafPreset"]))?.let {
+            hifdh["mushaf_preset"] = it
+        }
+        // Reading mode (web `readingMode`, true = arabic-only) and its inverse
+        // `translationEnabled`: translation-first, readingMode-last so the
+        // canonical web key wins when both are present. Either way both prefs
+        // keys stay in sync (readingMode == !translationEnabled).
+        asBoolean(state["translationEnabled"])?.let { on ->
+            hifdh["is_translation_enabled"] = on
+            hifdh["is_reading_mode"] = !on
+        }
+        asBoolean(state["readingMode"])?.let { on ->
+            hifdh["is_reading_mode"] = on
+            hifdh["is_translation_enabled"] = !on
+        }
+        applyPrefs("hifdh_settings", hifdh)
+    }
+
+    /**
+     * Settings the UI owns outside the reading prefs: web `dailyReadingGoal`
+     * (ProfileScreen `daily_reading_goal` in `Settings`), and the planner's
+     * `intentionPromptEnabled` + `prayerSettings` (PlannerSettings).
+     */
+    private suspend fun applyPlannerSettings(state: Map<String, Any?>) {
+        val app = mutableMapOf<String, Any?>()
+        val planner = mutableMapOf<String, Any?>()
+        webDailyReadingGoal(state["dailyReadingGoal"])?.let { app["daily_reading_goal"] = it }
+        asBoolean(state["intentionPromptEnabled"])?.let { planner["show_intention_prompt"] = it }
+        webPrayerSettings(state["prayerSettings"])?.let { prayer ->
+            prayer.activePrayers?.let { planner["active_prayers"] = it.toSet() }
+            prayer.readPreference?.let { planner["reading_preference"] = it }
+        }
+        applyPrefs("Settings", app)
+        applyPrefs("PlannerSettings", planner)
+    }
+
     // ------------------------------------------------------------------ DAO dumps ---
 
     private suspend fun daoBookmarks(): List<Map<String, Any?>> {
@@ -640,6 +887,30 @@ class SyncService @Inject constructor(
 
     private fun prefs(name: String): SharedPreferences =
         context.getSharedPreferences(name, Context.MODE_PRIVATE)
+
+    /**
+     * Applies type-tagged values to one prefs file. An empty map (nothing the
+     * remote actually carried) is skipped, so a partial payload never rewrites
+     * a file it has nothing to say about.
+     */
+    private fun applyPrefs(file: String, writes: Map<String, Any?>) {
+        if (writes.isEmpty()) return
+        val edit = prefs(file).edit()
+        writes.forEach { (key, value) -> putPrefValue(edit, key, value) }
+        edit.apply()
+    }
+
+    private fun putPrefValue(edit: SharedPreferences.Editor, key: String, value: Any?) {
+        when (value) {
+            null -> return
+            is Boolean -> edit.putBoolean(key, value)
+            is Int -> edit.putInt(key, value)
+            is Long -> edit.putLong(key, value)
+            is Float -> edit.putFloat(key, value)
+            is Set<*> -> edit.putStringSet(key, value.mapNotNull { it?.toString() }.toSet())
+            else -> edit.putString(key, value.toString())
+        }
+    }
 
     private fun lastSyncAt(): Long =
         runCatching { prefs(SYNC_PREFS).getLong(KEY_LAST_SYNC_AT, 0L) }.getOrDefault(0L)

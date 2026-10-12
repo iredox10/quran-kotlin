@@ -5,6 +5,13 @@ import com.google.gson.Gson
 import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
 import com.nur.quran.data.db.dao.QuranDao
+import com.nur.quran.data.db.entities.BookmarkEntity
+import com.nur.quran.data.db.entities.CollectionEntity
+import com.nur.quran.data.db.entities.CollectionItemEntity
+import com.nur.quran.data.db.entities.ReadingSessionEntity
+import com.nur.quran.data.db.entities.RecentlyReadEntity
+import com.nur.quran.data.mushaf.fontNameToId
+import com.nur.quran.data.planner.PRAYER_NAMES
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
@@ -250,3 +257,202 @@ class SnapshotBuilder @Inject constructor(
             }
     }
 }
+
+// ─────────────────────────── Web-compatible mappings ───────────────────────────
+// Pure functions translating Android stores into the flat keys web's
+// `getSyncableState` expects. Kept free of Context/prefs so they are unit
+// testable on the JVM (see SyncSnapshotMappingsTest).
+
+/** Web's `fontSize` / `translationFontSize` slider range (SettingsDrawer, 1..8). */
+private const val WEB_FONT_INDEX_MIN = 1
+private const val WEB_FONT_INDEX_MAX = 8
+
+/**
+ * Web's default index (2) lines up with Android's default scale (1.0), and
+ * Android's 0.5..3.0 slider covers the index range at 0.25 of scale per step.
+ */
+private const val WEB_FONT_INDEX_DEFAULT = 2
+private const val WEB_FONT_INDEX_SCALE_STEP = 0.25f
+
+/** Android's default scale (1.0) anchors web's default index (2). */
+private const val ANDROID_FONT_SCALE_DEFAULT = 1f
+
+/** Web `ARABIC_FONT_OPTIONS` ids (quran-app/src/config/mushaf.js). */
+private val WEB_ARABIC_FONT_IDS = setOf(
+    "kfgqpc-hafs", "uthman-taha-naskh", "amiri-quran",
+    "noto-naskh-arabic", "scheherazade-new"
+)
+
+/** Web `wordTooltipBehavior` values ("Word Hover Action" options). */
+private val WEB_WORD_TOOLTIP_BEHAVIORS = setOf("tajweed", "translation", "none")
+
+/**
+ * Android's continuous `arabic_scale` / `translation_scale` (0.5..3.0) onto
+ * web's discrete `fontSize` / `translationFontSize` index (1..8). Index 2 is
+ * both stores' default, so the mapping is anchored there and clamped at the
+ * ends; inverse is `index -> 1f + (index - 2) * 0.25f`.
+ */
+internal fun fontScaleToWebFontSizeIndex(scale: Float): Int {
+    val raw = WEB_FONT_INDEX_DEFAULT +
+        (scale - ANDROID_FONT_SCALE_DEFAULT) / WEB_FONT_INDEX_SCALE_STEP
+    return Math.round(
+        raw.coerceIn(WEB_FONT_INDEX_MIN.toFloat(), WEB_FONT_INDEX_MAX.toFloat())
+    )
+}
+
+/** Web `wordTooltipBehavior` ← Android `word_tap_behavior`; unknown values are dropped. */
+internal fun normalizeWordTooltipBehavior(raw: String?): String? {
+    val value = raw?.trim()?.lowercase()?.takeIf { it.isNotEmpty() } ?: return null
+    return value.takeIf { it in WEB_WORD_TOOLTIP_BEHAVIORS }
+}
+
+/**
+ * Web `arabicFontId` ← Android `arabic_font` display name. Reuses the
+ * display-name map in [com.nur.quran.data.mushaf] and only emits ids web
+ * knows, so an unmapped Android font never writes garbage into web state.
+ */
+internal fun arabicFontIdFromName(name: String?): String? =
+    name?.takeIf { it.isNotBlank() }
+        ?.let { fontNameToId(it) }
+        ?.takeIf { it in WEB_ARABIC_FONT_IDS }
+
+/** Web `prayerSettings.readPreference` values ('before' | 'after' | 'split'). */
+private val WEB_READ_PREFERENCES = setOf("before", "after", "split")
+
+/**
+ * Web `prayerSettings.readPreference` ← PlannerSettings `reading_preference`.
+ * Mirrors PlannerViewModel's own coercion so a legacy/garbage stored value is
+ * dropped instead of pushed.
+ */
+internal fun normalizeReadPreference(raw: String?): String? {
+    val value = raw?.trim()?.lowercase()?.takeIf { it.isNotEmpty() } ?: return null
+    return value.takeIf { it in WEB_READ_PREFERENCES }
+}
+
+/**
+ * Web `prayerSettings.activePrayers` ← PlannerSettings `active_prayers`:
+ * names are ordered by [PRAYER_NAMES] (web renders Fajr → Isha) and unknown
+ * names are dropped; an empty selection means "not set" so it is omitted and
+ * the remote preference survives the merge.
+ */
+internal fun normalizeActivePrayers(raw: Set<String>?): List<String>? {
+    val ordered = raw.orEmpty()
+        .filter { it in PRAYER_NAMES }
+        .sortedBy { PRAYER_NAMES.indexOf(it) }
+    return ordered.takeIf { it.isNotEmpty() }
+}
+
+/** Prefs key prefix for the `tour_prefs` page-visit counters. */
+private const val PAGE_VISIT_PREFIX = "visit_"
+
+/** Web `memorizedSurahs` (chapter ids) ← hifdh_settings `memorized_surahs` string set. */
+internal fun memorizedSurahIds(raw: Set<String>?): List<Int> =
+    raw.orEmpty().mapNotNull { it.trim().toIntOrNull() }.distinct().sorted()
+
+/** Web `memorizedAyahs` (verse keys) ← hifdh_settings `memorized_ayahs` string set. */
+internal fun memorizedAyahKeys(raw: Set<String>?): List<String> =
+    raw.orEmpty().map { it.trim() }.filter { it.isNotEmpty() }.distinct().sorted()
+
+/**
+ * Ids behind a `tour_prefs` boolean flag, e.g. `tour_home` → "home" for web
+ * `completedTours` and `coachmark_home` → "home" for `dismissedCoachmarks`.
+ */
+internal fun flagIds(prefs: Map<String, Any?>, prefix: String): List<String> =
+    prefs.mapNotNull { (key, value) ->
+        if (key.startsWith(prefix) && value == true) {
+            key.removePrefix(prefix).takeIf { it.isNotEmpty() }
+        } else {
+            null
+        }
+    }.sorted()
+
+/** Web `pageVisitCounts` ← `tour_prefs` `visit_<pageId>` int counters. */
+internal fun pageVisitCounts(prefs: Map<String, Any?>): Map<String, Int> =
+    prefs.mapNotNull { (key, value) ->
+        if (!key.startsWith(PAGE_VISIT_PREFIX)) return@mapNotNull null
+        val pageId = key.removePrefix(PAGE_VISIT_PREFIX).takeIf { it.isNotEmpty() }
+        val count = (value as? Number)?.toInt()?.takeIf { it > 0 }
+        if (pageId != null && count != null) pageId to count else null
+    }.toMap()
+
+/** Web `bookmarks` entry: { verseKey, surahName, chapterId, createdAt }. */
+internal fun webBookmark(bookmark: BookmarkEntity): Map<String, Any?> = mapOf(
+    "verseKey" to bookmark.verseKey,
+    "surahName" to bookmark.surahName,
+    "chapterId" to bookmark.chapterId,
+    "createdAt" to bookmark.timestamp
+)
+
+/**
+ * Web `readingSessions` entry. `timestamp` is the identity key syncMerge
+ * unions on and `duration` is seconds on both stores.
+ */
+internal fun webReadingSession(session: ReadingSessionEntity): Map<String, Any?> = mapOf(
+    "date" to session.date,
+    "duration" to session.duration,
+    "type" to session.type,
+    "chapterId" to session.chapterId,
+    "timestamp" to session.timestamp
+)
+
+/** Web `recentlyRead` entry; `chapterId` is the union key, latest `timestamp` wins. */
+internal fun webRecentlyRead(entry: RecentlyReadEntity): Map<String, Any?> = mapOf(
+    "chapterId" to entry.chapterId,
+    "chapterName" to entry.chapterName,
+    "verseKey" to entry.verseKey,
+    "timestamp" to entry.timestamp
+)
+
+/** Web `collections` entry: { id, name, createdAt, items: [{ verseKey, surahName, chapterId, addedAt }] }. */
+internal fun webCollections(
+    collections: List<CollectionEntity>,
+    items: List<CollectionItemEntity>
+): List<Map<String, Any?>> = collections.map { collection ->
+    mapOf(
+        "id" to collection.id,
+        "name" to collection.name,
+        "createdAt" to collection.createdAt,
+        "items" to items.filter { it.collectionId == collection.id }.map { item ->
+            mapOf(
+                "verseKey" to item.verseKey,
+                "surahName" to item.surahName,
+                "chapterId" to item.chapterId,
+                "addedAt" to item.addedAt
+            )
+        }
+    )
+}
+
+/**
+ * Web `plannerReflections` is `{ [plannerId]: { [dayNumber]: { text } } }`.
+ * Android only persists the note text (a plan's `assignmentReflections`), so
+ * `createdAt` is dropped — web never renders it.
+ */
+internal fun plannerReflectionsFromPlans(
+    plans: List<Map<String, Any?>>
+): Map<String, Map<String, Map<String, String>>> {
+    val out = LinkedHashMap<String, Map<String, Map<String, String>>>()
+    for (plan in plans) {
+        val planId = plan["id"]?.toString()?.takeIf { it.isNotBlank() } ?: continue
+        @Suppress("UNCHECKED_CAST")
+        val reflections = plan["assignmentReflections"] as? Map<String, Any?> ?: continue
+        val days = LinkedHashMap<String, Map<String, String>>()
+        for ((day, note) in reflections) {
+            val text = note?.toString()?.takeIf { it.isNotBlank() } ?: continue
+            days[day] = mapOf("text" to text)
+        }
+        if (days.isNotEmpty()) out[planId] = days
+    }
+    return out
+}
+
+/**
+ * Web `plannerSessionTimers[planId][dayNumber]` is `{ startedAt, totalSeconds }`.
+ * Android persists day → seconds only and never reads `startedAt`, so the
+ * web entry carries just `totalSeconds`.
+ */
+internal fun plannerSessionTimers(secondsByDay: Map<String, Any?>): Map<String, Map<String, Long>> =
+    secondsByDay.mapNotNull { (day, seconds) ->
+        val total = (seconds as? Number)?.toLong() ?: return@mapNotNull null
+        day to mapOf("totalSeconds" to total)
+    }.toMap()

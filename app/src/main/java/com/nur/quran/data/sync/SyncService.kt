@@ -2,6 +2,7 @@ package com.nur.quran.data.sync
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.annotation.VisibleForTesting
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.nur.quran.data.db.dao.QuranDao
@@ -373,6 +374,14 @@ class SyncService @Inject constructor(
     }
 
     // ---------------------------------------------------------------- apply remote ---
+
+    /**
+     * @suppress
+     * Test seam: runs [applyState] outside `pull()`, so JVM tests can drive a remote
+     * payload through the apply path (prefs + DAO writes) without a transport round trip.
+     */
+    @VisibleForTesting
+    suspend fun applyRemoteState(state: Map<String, Any?>) = applyState(state)
 
     private suspend fun applyState(state: Map<String, Any?>) {
         // Legacy Android blobs apply first, so the web-named flat keys

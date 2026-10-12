@@ -40,7 +40,7 @@ fun ProfileCloudSyncCard(
     isSyncing: Boolean,
     syncStatusMessage: String?,
     isSyncSuccess: Boolean,
-    isSyncError: Boolean,
+    syncError: String?,
     onLogin: (email: String, pass: String) -> Unit,
     onRegister: (email: String, pass: String, name: String) -> Unit,
     onForgot: (email: String) -> Unit,
@@ -54,6 +54,8 @@ fun ProfileCloudSyncCard(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var name by remember { mutableStateOf("") }
+
+    val syncStatusActive = isSyncing || isSyncSuccess || syncError != null
 
     Column(modifier = modifier.fillMaxWidth()) {
         ProfileSectionHeader(title = "CLOUD SYNC")
@@ -352,7 +354,7 @@ fun ProfileCloudSyncCard(
                     }
 
                     // Live Status Row
-                    if (isSyncing || isSyncSuccess || isSyncError) {
+                    if (syncStatusActive) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -377,9 +379,9 @@ fun ProfileCloudSyncCard(
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF10B981)
                                 )
-                            } else if (isSyncError) {
+                            } else if (syncError != null) {
                                 Text(
-                                    text = "Failed to sync. Please try again.",
+                                    text = syncError,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFFEF4444)
@@ -396,7 +398,7 @@ fun ProfileCloudSyncCard(
                         // Restore Button
                         OutlinedButton(
                             onClick = onRestore,
-                            enabled = !isSyncing,
+                            enabled = !syncStatusActive,
                             shape = RoundedCornerShape(16.dp),
                             border = BorderStroke(1.5.dp, hBoneDark),
                             colors = ButtonDefaults.outlinedButtonColors(
@@ -423,7 +425,7 @@ fun ProfileCloudSyncCard(
                         // Backup Button
                         Button(
                             onClick = onBackup,
-                            enabled = !isSyncing,
+                            enabled = !syncStatusActive,
                             shape = RoundedCornerShape(16.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = hInk,

@@ -2,6 +2,7 @@ package com.nur.quran.ui.screens
 
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.*
@@ -64,8 +65,23 @@ fun ProfileScreen(
     // "last_sync_at"): survives process death, unlike the in-memory syncUi
     // flow which starts null on cold start. Shown web-style via timeAgo.
     val syncPrefs = remember { context.getSharedPreferences("sync_state", Context.MODE_PRIVATE) }
-    val persistedLastSync = remember { syncPrefs.getLong("last_sync_at", 0L).takeIf { it > 0 } }
+    var persistedLastSync by remember {
+        mutableStateOf(syncPrefs.getLong("last_sync_at", 0L).takeIf { it > 0 })
+    }
+    DisposableEffect(syncPrefs) {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == "last_sync_at") {
+                persistedLastSync = syncPrefs.getLong("last_sync_at", 0L).takeIf { it > 0 }
+            }
+        }
+        syncPrefs.registerOnSharedPreferenceChangeListener(listener)
+        onDispose { syncPrefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
     val lastSyncAt = syncUi.lastSync ?: persistedLastSync
+
+    LaunchedEffect(authState.signedIn) {
+        packVm.refreshSyncState()
+    }
 
     val reciterId by surahViewModel.currentReciterId.collectAsState()
     val translationId by surahViewModel.currentTranslationId.collectAsState()
@@ -73,17 +89,20 @@ fun ProfileScreen(
 
     var syncOp by remember { mutableStateOf<String?>(null) }
     var showSyncSuccess by remember { mutableStateOf(false) }
+    var syncError by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(syncUi.syncing) {
         if (!syncUi.syncing && syncOp != null) {
             showSyncSuccess = syncUi.error == null
+            syncError = syncUi.error?.takeIf { it.isNotBlank() }
             syncOp = null
         }
     }
-    LaunchedEffect(showSyncSuccess) {
-        if (showSyncSuccess) {
+    LaunchedEffect(showSyncSuccess, syncError) {
+        if (showSyncSuccess || syncError != null) {
             kotlinx.coroutines.delay(3000)
             showSyncSuccess = false
+            syncError = null
         }
     }
 
@@ -234,18 +253,20 @@ fun ProfileScreen(
                     isSyncing = syncUi.syncing,
                     syncStatusMessage = syncStatusMessage,
                     isSyncSuccess = showSyncSuccess,
-                    isSyncError = syncUi.error != null,
+                    syncError = syncError,
                     onLogin = authVm::login,
                     onRegister = authVm::register,
                     onForgot = authVm::sendRecovery,
                     onBackup = {
                         syncOp = "backup"
                         showSyncSuccess = false
+                        syncError = null
                         packVm.backupNow()
                     },
                     onRestore = {
                         syncOp = "restore"
                         showSyncSuccess = false
+                        syncError = null
                         packVm.restoreNow()
                     },
                     onClearMessage = authVm::clearMessage,

@@ -24,7 +24,11 @@ class WebApplyEmitTest {
 
         assertEquals("dark", snapshot["theme"])
         assertEquals(131.0, numberOf(snapshot["translationId"]))
-        assertEquals(3.0, numberOf(snapshot["reciterId"]))
+        // reciterId is apply-only: numeric web values land in prefs, but are
+        // never re-emitted — web uses string reciter keys and an int would
+        // clobber them under last-write-wins merge.
+        assertNull(snapshot["reciterId"])
+        assertEquals(3, rig.prefs.values["reciter_id"])
         assertEquals(169.0, numberOf(snapshot["tafsirId"]))
         assertTrue(snapshot["tajweedEnabled"] == true)
         assertEquals("Amiri Quran", snapshot["arabicFont"])
@@ -37,7 +41,7 @@ class WebApplyEmitTest {
         val rig = syncRig()
         rig.applyRemote(web)
         val snapshot = rig.snapshot()
-        listOf("theme", "translationId", "reciterId", "tafsirId", "tajweedEnabled", "arabicFont")
+        listOf("theme", "translationId", "tafsirId", "tajweedEnabled", "arabicFont")
             .forEach { field -> assertSameValue(web[field], snapshot[field]) }
         listOf("mushafId", "mushafPreset")
             .forEach { field -> assertSameValue(web["mushafId"], snapshot[field]) }

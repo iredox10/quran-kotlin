@@ -484,7 +484,8 @@ class SyncService @Inject constructor(
         hifdh.getString("arabic_font", null)?.let { out["arabicFont"] = it }
         if (hifdh.contains("translation_id")) out["translationId"] = hifdh.getInt("translation_id", 20)
         if (hifdh.contains("tafsir_id")) out["tafsirId"] = hifdh.getInt("tafsir_id", 169)
-        if (hifdh.contains("reciter_id")) out["reciterId"] = hifdh.getInt("reciter_id", 7)
+        // reciter_id deliberately omitted: web uses string reciter keys and an
+        // int here would clobber them under last-write-wins merge.
         if (hifdh.contains("is_tajweed_enabled")) {
             out["tajweedEnabled"] = hifdh.getBoolean("is_tajweed_enabled", false)
         }

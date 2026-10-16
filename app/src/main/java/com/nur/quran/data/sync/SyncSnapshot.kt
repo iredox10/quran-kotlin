@@ -25,8 +25,10 @@ import javax.inject.Singleton
  * Web → Android source mapping:
  * - theme ("light"/"dark") ← `is_dark_theme` boolean in `hifdh_settings`
  *   (SurahScreen) with fallback to the `Settings` file (MainActivity).
- * - translationId / tafsirId / reciterId ← `translation_id` / `tafsir_id` /
- *   `reciter_id` ints in `hifdh_settings` (SurahViewModel).
+ * - translationId / tafsirId ← `translation_id` / `tafsir_id` ints in
+ *   `hifdh_settings`. `reciter_id` is deliberately never emitted: web uses
+ *   string reciter keys and an int would clobber them under last-write-wins
+ *   merge (numeric web values are still applied on pull).
  * - arabicFont (display name, e.g. "Scheherazade New") ← `arabic_font` in
  *   `hifdh_settings`. Web `arabicFontId` has no Android equivalent.
  * - Font scales (`arabic_scale` / `translation_scale`) and `word_tap_behavior`
@@ -123,7 +125,6 @@ class SnapshotBuilder @Inject constructor(
             arabicFont = hifdh.getString("arabic_font", null),
             translationId = if (hifdh.contains("translation_id")) hifdh.getInt("translation_id", 20) else null,
             tafsirId = if (hifdh.contains("tafsir_id")) hifdh.getInt("tafsir_id", 169) else null,
-            reciterId = if (hifdh.contains("reciter_id")) hifdh.getInt("reciter_id", 7) else null,
             tajweedEnabled = if (hifdh.contains("is_tajweed_enabled")) hifdh.getBoolean("is_tajweed_enabled", false) else null,
             mushafPreset = if (hifdh.contains("mushaf_preset")) hifdh.getString("mushaf_preset", null) else null,
             mushafId = if (hifdh.contains("mushaf_preset")) hifdh.getString("mushaf_preset", null) else null,

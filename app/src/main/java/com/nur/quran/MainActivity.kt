@@ -49,6 +49,7 @@ import com.nur.quran.ui.viewmodels.HomeViewModel
 import com.nur.quran.ui.viewmodels.SurahViewModel
 import com.nur.quran.ui.viewmodels.PlannerViewModel
 import com.nur.quran.ui.viewmodels.LibraryViewModel
+import com.nur.quran.ui.viewmodels.PackViewModel
 import com.nur.quran.ui.components.NurIcons
 import dagger.hilt.android.AndroidEntryPoint
 import com.nur.quran.ui.screens.*
@@ -62,6 +63,7 @@ class MainActivity : ComponentActivity() {
     private val surahViewModel: SurahViewModel by viewModels()
     private val plannerViewModel: PlannerViewModel by viewModels()
     private val libraryViewModel: LibraryViewModel by viewModels()
+    private val packViewModel: PackViewModel by viewModels()
 
     private var pendingDeepLink by mutableStateOf<Pair<Int, String?>?>(null)
 
@@ -106,6 +108,8 @@ class MainActivity : ComponentActivity() {
             // flushReadingSession() resets start=now, so resume continues cleanly
             // (timer restarts naturally, no double-count on return).
             runCatching { surahViewModel.flushReadingSession() }
+            // Drop the realtime sync subscription; it re-opens on foreground.
+            runCatching { packViewModel.stopRealtimeSync() }
         }
 
         override fun onStart(owner: LifecycleOwner) {
@@ -114,6 +118,8 @@ class MainActivity : ComponentActivity() {
             if (surahViewModel.isPlaying.value && !activeKey.isNullOrBlank()) {
                 surahViewModel.requestScrollToVerse(activeKey)
             }
+            // Re-open live cross-device sync (signed in only; no-op otherwise).
+            runCatching { packViewModel.startRealtimeSync() }
         }
     }
 

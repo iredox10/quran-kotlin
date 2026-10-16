@@ -6,6 +6,7 @@ import io.appwrite.Client
 import io.appwrite.Query
 import io.appwrite.services.Account
 import io.appwrite.services.Databases
+import io.appwrite.services.Realtime
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -28,6 +29,7 @@ class AppwriteClient @Inject constructor(
 
     val account = Account(client)
     val databases = Databases(client)
+    val realtime = Realtime(client)
 
     /**
      * Query that resolves this account's sync document (web parity:

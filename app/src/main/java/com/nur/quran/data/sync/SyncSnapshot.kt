@@ -29,11 +29,12 @@ import javax.inject.Singleton
  *   `reciter_id` ints in `hifdh_settings` (SurahViewModel).
  * - arabicFont (display name, e.g. "Scheherazade New") ← `arabic_font` in
  *   `hifdh_settings`. Web `arabicFontId` has no Android equivalent.
- * - arabicScale / translationScale ← `arabic_scale` / `translation_scale`
- *   floats in `hifdh_settings` (web `fontSize` / `translationFontSize`).
+ * - Font scales (`arabic_scale` / `translation_scale`) and `word_tap_behavior`
+ *   are deliberately NOT emitted: the web canonical keys (`fontSize`,
+ *   `translationFontSize`, `wordTooltipBehavior`) carry them on push,
+ *   and re-emitting the legacy blob names would fork the source of truth.
+ *   They are still READ on apply for legacy-doc migration.
  * - tajweedEnabled ← `is_tajweed_enabled` in `hifdh_settings`.
- * - wordTapBehavior ← `word_tap_behavior` in `hifdh_settings`
- *   (web `wordTooltipBehavior`).
  * - mushafPreset / mushafId ← `mushaf_preset` in `hifdh_settings`
  *   (web `mushafId`; both carry the canonical id, e.g. "madani-standard").
  * - readingMode ← `is_reading_mode` in `hifdh_settings` (web `readingMode`;
@@ -120,13 +121,10 @@ class SnapshotBuilder @Inject constructor(
             updatedAt = System.currentTimeMillis(),
             theme = theme,
             arabicFont = hifdh.getString("arabic_font", null),
-            arabicScale = if (hifdh.contains("arabic_scale")) hifdh.getFloat("arabic_scale", 1f) else null,
-            translationScale = if (hifdh.contains("translation_scale")) hifdh.getFloat("translation_scale", 1f) else null,
             translationId = if (hifdh.contains("translation_id")) hifdh.getInt("translation_id", 20) else null,
             tafsirId = if (hifdh.contains("tafsir_id")) hifdh.getInt("tafsir_id", 169) else null,
             reciterId = if (hifdh.contains("reciter_id")) hifdh.getInt("reciter_id", 7) else null,
             tajweedEnabled = if (hifdh.contains("is_tajweed_enabled")) hifdh.getBoolean("is_tajweed_enabled", false) else null,
-            wordTapBehavior = hifdh.getString("word_tap_behavior", null),
             mushafPreset = if (hifdh.contains("mushaf_preset")) hifdh.getString("mushaf_preset", null) else null,
             mushafId = if (hifdh.contains("mushaf_preset")) hifdh.getString("mushaf_preset", null) else null,
             readingMode = when {

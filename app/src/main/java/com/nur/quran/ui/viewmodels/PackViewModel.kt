@@ -38,7 +38,8 @@ class PackViewModel @Inject constructor(
     private val translationPackManager: TranslationPackManager,
     private val wordPackManager: WordPackManager,
     private val syncService: SyncService,
-    private val appwriteClient: AppwriteClient
+    private val appwriteClient: AppwriteClient,
+    private val syncRealtime: com.nur.quran.data.sync.SyncRealtime
 ) : ViewModel() {
 
     /** Tafsir packs mapped for Settings UI rows (mirrors the former SurahViewModel bridge). */
@@ -251,6 +252,37 @@ class PackViewModel @Inject constructor(
     private suspend fun failureMessage(fallback: String): String {
         val signedIn = runCatching { appwriteClient.account.get() }.getOrNull() != null
         return if (signedIn) fallback else SIGN_IN_REQUIRED_MESSAGE
+    }
+
+    /**
+     * Live sync: subscribes to remote doc changes while the app is foregrounded
+     * (signed in only) and refreshes the card when a remote pull lands.
+     * Safe to call on every foreground transition; stops on [stopRealtimeSync].
+     */
+    @Volatile
+    private var realtimeCollecting = false
+
+    fun startRealtimeSync() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val user = runCatching { appwriteClient.account.get() }.getOrNull() ?: return@launch
+            syncRealtime.start(user.id)
+            if (realtimeCollecting) return@launch
+            realtimeCollecting = true
+            runCatching {
+                syncRealtime.lastRemoteSyncAt.collect {
+                    if (it != null) refreshSyncState(preserveError = true)
+                }
+            }
+        }
+    }
+
+    fun stopRealtimeSync() {
+        syncRealtime.stop()
+    }
+
+    override fun onCleared() {
+        syncRealtime.stop()
+        super.onCleared()
     }
 
     private companion object {

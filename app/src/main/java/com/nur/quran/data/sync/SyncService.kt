@@ -6,6 +6,7 @@ import androidx.annotation.VisibleForTesting
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.nur.quran.data.db.dao.QuranDao
+import com.nur.quran.data.mushaf.fontNameToId
 import com.nur.quran.data.db.entities.ApiResponseCacheEntity
 import com.nur.quran.data.db.entities.BookmarkEntity
 import com.nur.quran.data.db.entities.CollectionEntity
@@ -108,8 +109,10 @@ class SyncService @Inject constructor(
         return try {
             val userId = currentUserId() ?: return false
             val remote = fetchRemote(userId) ?: return false
-            val watermark = maxOf(lastSyncAt(), localUpdatedAt())
-            if (remote.updatedAt > watermark) {
+            // Web parity (CloudSync.jsx:102): gate ONLY on the persisted watermark.
+            // The old maxOf() with the snapshot build clock (≈ now) could never fire.
+            // lastSyncAt()==0 (fresh login/reset) force-applies like web's login pull.
+            if (remote.updatedAt > lastSyncAt()) {
                 applyState(mergeStateInto(localStateMap(), remote.state))
                 saveLastSync(remote.updatedAt)
             }
@@ -129,12 +132,17 @@ class SyncService @Inject constructor(
             val remote = fetchRemote(userId)
             val lastSync = lastSyncAt()
             val local = localStateMap()
-            val localTs = (local["updatedAt"] as? Number)?.toLong() ?: 0L
-            if (remote != null && remote.updatedAt > maxOf(lastSync, localTs)) {
+            if (remote != null && remote.updatedAt > lastSync) {
                 applyState(mergeStateInto(local, remote.state))
                 saveLastSync(remote.updatedAt)
+                // Web parity (CloudSync.jsx:116-139): push back when the merge
+                // changed anything, so the cloud converges to the union.
+                val converged = mergeStateInto(remote.state, local)
+                if (converged != remote.state) {
+                    pushInternal(userId)
+                }
                 "pulled"
-            } else if (localTs > lastSync || remote == null) {
+            } else if (remote == null) {
                 if (pushInternal(userId)) "pushed" else "error:push failed"
             } else {
                 "up-to-date"
@@ -174,7 +182,9 @@ class SyncService @Inject constructor(
                 "readingStatsJson" -> out[field] = mergeReadingStatsJson(
                     out[field] as? String, inc as? String,
                 )
-                else -> out[field] = mergeValue(out[field], inc)
+                // Flat web keys use the exact web merge rules (per-key max,
+                // dayNumber unions, deep maps) instead of plain LWW.
+                else -> out[field] = mergeField(field, out[field], inc)
             }
         }
         return out
@@ -304,16 +314,154 @@ class SyncService @Inject constructor(
     // ----------------------------------------------------------------- local state ---
 
     private suspend fun localStateMap(): Map<String, Any?> {
-        if (snapshotBuilder != null) {
-            return runSuspendCatching {
+        val base: Map<String, Any?> = if (snapshotBuilder != null) {
+            runSuspendCatching {
                 snapshotBuilder.snapshotToMap(snapshotBuilder.build())
             }.getOrNull() ?: emptyMap()
+        } else {
+            buildLocalStateMap()
         }
-        return buildLocalStateMap()
+        // Flat web keys (web getSyncableState) ride alongside the legacy blobs so
+        // the web client reads everything Android knows. Absent data is omitted.
+        return runSuspendCatching {
+            base.toMutableMap().also { it.putAll(flatWebKeys()) }
+        }.getOrNull() ?: base
     }
 
-    private suspend fun localUpdatedAt(): Long {
-        return (runSuspendCatching { localStateMap()["updatedAt"] }.getOrNull() as? Number)?.toLong() ?: 0L
+    /**
+     * Web-named flat keys derived from local stores. Mirrors the apply side
+     * (applyDisplaySettings/applyHifdhState/...) so push and pull speak the
+     * same shapes. Every section is best-effort and omitted on failure.
+     */
+    private suspend fun flatWebKeys(): Map<String, Any?> {
+        val out = mutableMapOf<String, Any?>()
+        val hifdh = prefs("hifdh_settings")
+        val settings = prefs("Settings")
+        val plannerPrefs = prefs("PlannerSettings")
+        val tours = prefs("tour_prefs")
+        // Settings scalars.
+        if (hifdh.contains("arabic_scale")) {
+            out["fontSize"] = fontScaleToWebFontSizeIndex(hifdh.getFloat("arabic_scale", 1f))
+        }
+        if (hifdh.contains("translation_scale")) {
+            out["translationFontSize"] = fontScaleToWebFontSizeIndex(hifdh.getFloat("translation_scale", 1f))
+        }
+        normalizeWordTooltipBehavior(hifdh.getString("word_tap_behavior", null))?.let {
+            out["wordTooltipBehavior"] = it
+        }
+        hifdh.getString("arabic_font", null)?.let { out["arabicFontId"] = fontNameToId(it) }
+        if (settings.contains("daily_reading_goal")) {
+            out["dailyReadingGoal"] = settings.getInt("daily_reading_goal", 20)
+        }
+        if (plannerPrefs.contains("show_intention_prompt")) {
+            out["intentionPromptEnabled"] = plannerPrefs.getBoolean("show_intention_prompt", true)
+        }
+        val activePrayers = plannerPrefs.getStringSet("active_prayers", null)
+        val readPreference = plannerPrefs.getString("reading_preference", null)
+        if (activePrayers != null || readPreference != null) {
+            out["prayerSettings"] = mapOf(
+                "activePrayers" to (activePrayers?.toList() ?: emptyList<String>()),
+                "readPreference" to (readPreference ?: "after"),
+            )
+        }
+        // Tours / visits.
+        tours.all.mapNotNull { (key, value) ->
+            if (key.startsWith("tour_") && value == true) key.removePrefix("tour_") else null
+        }.takeIf { it.isNotEmpty() }?.let { out["completedTours"] = it }
+        tours.all.mapNotNull { (key, value) ->
+            if (key.startsWith("coachmark_") && value == true) key.removePrefix("coachmark_") else null
+        }.takeIf { it.isNotEmpty() }?.let { out["dismissedCoachmarks"] = it }
+        tours.all.mapNotNull { (key, value) ->
+            if (key.startsWith("visit_")) key.removePrefix("visit_") to ((value as? Number)?.toInt() ?: 0) else null
+        }.toMap().takeIf { it.isNotEmpty() }?.let { out["pageVisitCounts"] = it }
+        // Library arrays (web shapes; timestamp is epoch ms like web createdAt).
+        runSuspendCatching { daoBookmarks() }.getOrNull()?.let { rows ->
+            out["bookmarks"] = rows.map {
+                mapOf(
+                    "verseKey" to it["verseKey"], "surahName" to it["surahName"],
+                    "chapterId" to it["chapterId"], "createdAt" to it["timestamp"],
+                )
+            }
+        }
+        runSuspendCatching {
+            val collections = daoCollections()
+            val itemsByCollection = daoCollectionItems().groupBy { it["collectionId"] }
+            collections.map { collection ->
+                val items = (itemsByCollection[collection["id"]] ?: emptyList()).map {
+                    mapOf(
+                        "verseKey" to it["verseKey"], "surahName" to it["surahName"],
+                        "chapterId" to it["chapterId"],
+                    )
+                }
+                mapOf(
+                    "id" to collection["id"], "name" to collection["name"],
+                    "createdAt" to collection["createdAt"], "items" to items,
+                )
+            }
+        }.getOrNull()?.let { out["collections"] = it }
+        // Reading stats.
+        runSuspendCatching { daoSessions() }.getOrNull()?.let { out["readingSessions"] = it }
+        runSuspendCatching { daoRecent() }.getOrNull()?.let { out["recentlyRead"] = it }
+        // Hifdh (web top-level shapes; history/goals stay verbatim for lenient parsers).
+        hifdh.getStringSet("memorized_ayahs", null)?.toList()?.sorted()?.let { out["memorizedAyahs"] = it }
+        hifdh.getStringSet("memorized_surahs", null)?.mapNotNull { it.toIntOrNull() }?.sorted()?.let {
+            out["memorizedSurahs"] = it
+        }
+        hifdh.getString("hifdh_history", null)?.let { parseJsonAny(it) }?.let { out["hifdhHistory"] = it }
+        hifdh.getString("hifdh_goals", null)?.let { parseJsonAny(it) }?.let { out["hifdhGoals"] = it }
+        // Planner (parsed structures so they merge as objects, not strings).
+        val plans = runSuspendCatching {
+            dao?.getCacheEntry("planner_all_plans")?.dataJson?.takeIf { it.isNotBlank() }?.let { parseJsonAny(it) }
+        }.getOrNull()
+        @Suppress("UNCHECKED_CAST")
+        val planList = (plans as? List<*>)?.filterIsInstance<Map<String, Any?>>() ?: emptyList()
+        if (planList.isNotEmpty()) out["planners"] = planList
+        runSuspendCatching {
+            dao?.getCacheEntry("planner_active_id")?.dataJson?.takeIf { it.isNotBlank() }
+        }.getOrNull()?.let { out["activePlannerId"] = it }
+        runSuspendCatching {
+            dao?.getCacheEntry("planner_archived_plans")?.dataJson?.takeIf { it.isNotBlank() }?.let { parseJsonAny(it) }
+        }.getOrNull()?.let { out["archivedPlanners"] = it }
+        if (planList.isNotEmpty()) {
+            val planIds = planList.mapNotNull { it["id"]?.toString() }
+            val bookmarksByPlan = mutableMapOf<String, Any?>()
+            val timersByPlan = mutableMapOf<String, Any?>()
+            val reflectionsByPlan = mutableMapOf<String, Any?>()
+            for (planId in planIds) {
+                runSuspendCatching {
+                    dao?.getCacheEntry("planner_bookmarks_$planId")?.dataJson?.takeIf { it.isNotBlank() }?.let { parseJsonAny(it) }
+                }.getOrNull()?.let { bookmarksByPlan[planId] = it }
+                runSuspendCatching {
+                    dao?.getCacheEntry("planner_sessions_$planId")?.dataJson?.takeIf { it.isNotBlank() }?.let {
+                        com.nur.quran.data.planner.PlannerWire.sessionTimersFromJson(it)[planId]
+                    }
+                }.getOrNull()?.let { days ->
+                    timersByPlan[planId] = days.mapValues { (_, timer) ->
+                        mapOf("startedAt" to timer.startedAt, "totalSeconds" to timer.totalSeconds)
+                    }.mapKeys { (day, _) -> day.toString() }
+                }
+                runSuspendCatching {
+                    dao?.getCacheEntry("planner_reflections_$planId")?.dataJson?.takeIf { it.isNotBlank() }?.let {
+                        com.nur.quran.data.planner.PlannerWire.reflectionsFromJson(it)[planId]
+                    }
+                }.getOrNull()?.let { days ->
+                    reflectionsByPlan[planId] = days.mapValues { (_, reflection) ->
+                        mapOf("text" to reflection.text, "createdAt" to com.nur.quran.data.planner.PlannerWire.isoFromEpochMs(reflection.createdAt))
+                    }.mapKeys { (day, _) -> day.toString() }
+                }
+            }
+            if (bookmarksByPlan.isNotEmpty()) out["plannerBookmarks"] = bookmarksByPlan
+            if (timersByPlan.isNotEmpty()) out["plannerSessionTimers"] = timersByPlan
+            if (reflectionsByPlan.isNotEmpty()) {
+                out["plannerReflections"] = reflectionsByPlan
+            } else {
+                // Fall back to plan-embedded notes so reflections still cross devices.
+                plannerReflectionsFromPlans(planList).takeIf { it.isNotEmpty() }?.let {
+                    out["plannerReflections"] = it
+                }
+            }
+        }
+        return out
     }
 
     /**
@@ -334,17 +482,12 @@ class SyncService @Inject constructor(
             out["theme"] = if (dark) "dark" else "light"
         }
         hifdh.getString("arabic_font", null)?.let { out["arabicFont"] = it }
-        if (hifdh.contains("arabic_scale")) out["arabicScale"] = hifdh.getFloat("arabic_scale", 1f)
-        if (hifdh.contains("translation_scale")) {
-            out["translationScale"] = hifdh.getFloat("translation_scale", 1f)
-        }
         if (hifdh.contains("translation_id")) out["translationId"] = hifdh.getInt("translation_id", 20)
         if (hifdh.contains("tafsir_id")) out["tafsirId"] = hifdh.getInt("tafsir_id", 169)
         if (hifdh.contains("reciter_id")) out["reciterId"] = hifdh.getInt("reciter_id", 7)
         if (hifdh.contains("is_tajweed_enabled")) {
             out["tajweedEnabled"] = hifdh.getBoolean("is_tajweed_enabled", false)
         }
-        hifdh.getString("word_tap_behavior", null)?.let { out["wordTapBehavior"] = it }
         if (hifdh.contains("mushaf_preset")) {
             hifdh.getString("mushaf_preset", null)?.let {
                 out["mushafPreset"] = it

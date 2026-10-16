@@ -221,9 +221,12 @@ private fun mergeArray(base: Any?, incoming: Any?, field: String): List<Any?> {
     val baseList = (base as? List<*>) ?: emptyList<Any?>()
     val incList = (incoming as? List<*>) ?: emptyList<Any?>()
     if (key == null) {
-        // JS keys these arrays by object identity, which never collides
-        // across two JSON documents: the union is a plain concatenation.
-        return baseList + incList
+        // No identity key: union by value itself, exactly like web mergeArray
+        // (JS Map keyed by the item; primitives dedupe by value). Plain
+        // concatenation would duplicate shared entries on every sync.
+        val seen = LinkedHashMap<Any?, Any?>()
+        (baseList + incList).forEach { seen[it] = it }
+        return seen.values.toList()
     }
     val map = LinkedHashMap<Any?, Any?>()
     baseList.forEach { map[identityOf(it, key)] = it }
@@ -289,6 +292,22 @@ private fun mergePageVisitCounts(base: Any?, incoming: Any?): Map<String, Any?> 
     return counts
 }
 
+/** Single-field merge (same rules as [mergeStateInto], without planner re-derivation). */
+fun mergeField(field: String, existing: Any?, value: Any?): Any? = when {
+    field == "recentlyRead" -> mergeArray(existing, value, field)
+    field == "collections" -> mergeCollections(existing, value)
+    field == "planners" -> mergePlanners(existing, value)
+    field == "pageVisitCounts" -> mergePageVisitCounts(existing, value)
+    ARRAY_KEY.containsKey(field) -> mergeArray(existing, value, field)
+    field in DEEP_MERGE_FIELDS -> mergeValue(
+        existing.takeIf { isPlainObject(it) } ?: emptyMap<String, Any?>(),
+        value
+    )
+    value is List<*> && existing is List<*> -> mergeValueArrays(existing, value)
+    isPlainObject(value) && isPlainObject(existing) -> mergeValue(existing, value)
+    else -> value
+}
+
 /**
  * Merge `incoming` state into `base` state (web mergeStateInto):
  * identity-keyed lists union, keyed maps deep-merge, pageVisitCounts
@@ -303,21 +322,7 @@ fun mergeStateInto(base: Any?, incoming: Any?): Any? {
     (base as Map<*, *>).forEach { (k, v) -> out[k.toString()] = v }
     (incoming as Map<*, *>).forEach { (key, value) ->
         val field = key.toString()
-        val existing = out[field]
-        out[field] = when {
-            field == "recentlyRead" -> mergeArray(existing, value, field)
-            field == "collections" -> mergeCollections(existing, value)
-            field == "planners" -> mergePlanners(existing, value)
-            field == "pageVisitCounts" -> mergePageVisitCounts(existing, value)
-            ARRAY_KEY.containsKey(field) -> mergeArray(existing, value, field)
-            field in DEEP_MERGE_FIELDS -> mergeValue(
-                existing.takeIf { isPlainObject(it) } ?: emptyMap<String, Any?>(),
-                value
-            )
-            value is List<*> && existing is List<*> -> mergeValueArrays(existing, value)
-            isPlainObject(value) && isPlainObject(existing) -> mergeValue(existing, value)
-            else -> value
-        }
+        out[field] = mergeField(field, out[field], value)
     }
     val planners = out["planners"]
     if (planners is List<*>) {

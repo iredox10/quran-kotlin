@@ -45,11 +45,13 @@ class SyncMergeRulesTest {
     }
 
     @Test
-    fun nullIdentityArraysConcatenateFromBothDevices() {
+    fun nullIdentityArraysUnionByValueLikeWeb() {
+        // Web mergeArray keys these lists by the item itself (JS Map), so
+        // shared entries dedupe instead of concatenating on every sync.
         val base = mapOf("memorizedAyahs" to listOf("2:1", "2:2"))
         val incoming = mapOf("memorizedAyahs" to listOf("2:2", "2:3"))
         val out = merge(base, incoming)
-        assertEquals(listOf("2:1", "2:2", "2:2", "2:3"), listField(out, "memorizedAyahs"))
+        assertEquals(listOf("2:1", "2:2", "2:3"), listField(out, "memorizedAyahs"))
     }
 
     @Test

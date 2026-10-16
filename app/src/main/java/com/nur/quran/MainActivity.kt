@@ -205,6 +205,15 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onGoalResume = { chapterId, verseKey ->
                                     navController.navigate(Screen.MemorizeDetail.createRoute(chapterId, verseKey))
+                                },
+                                onBack = {
+                                    navController.navigate(Screen.Quran.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
                                 }
                             )
                         }
@@ -242,6 +251,15 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onOpenVerse = { surah, verseKey ->
                                     navController.navigate(Screen.SurahDetail.createRoute(surah, verseKey))
+                                },
+                                onBack = {
+                                    navController.navigate(Screen.Quran.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
                                 }
                             )
                         }

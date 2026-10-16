@@ -698,7 +698,8 @@ fun TopNavbar(
     title: String = "Quran Nur",
     subTitle: String? = null,
     onThemeToggle: () -> Unit,
-    onSettingsClick: () -> Unit
+    onSettingsClick: () -> Unit,
+    onBack: (() -> Unit)? = null
 ) {
     Surface(
         modifier = Modifier
@@ -715,8 +716,25 @@ fun TopNavbar(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Left Brand Logo & Title
+                // Left Brand Logo & Title (optional back chevron first)
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (onBack != null) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable { onBack() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = NurIcons.ArrowLeft,
+                                contentDescription = "Back",
+                                tint = hInk,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(4.dp))
+                    }
                     androidx.compose.foundation.Image(
                         painter = androidx.compose.ui.res.painterResource(id = com.nur.quran.R.drawable.ic_logo),
                         contentDescription = "Quran Nur Logo",

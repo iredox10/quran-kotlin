@@ -63,7 +63,8 @@ fun MemorizeScreen(
     homeViewModel: HomeViewModel,
     surahViewModel: SurahViewModel,
     onSurahClick: (Int) -> Unit,
-    onGoalResume: (chapterId: Int, verseKey: String?) -> Unit = { c, _ -> onSurahClick(c) }
+    onGoalResume: (chapterId: Int, verseKey: String?) -> Unit = { c, _ -> onSurahClick(c) },
+    onBack: () -> Unit = {}
 ) {
     val homeState by homeViewModel.uiState.collectAsState()
     val memorizedAyahs by surahViewModel.memorizedAyahs.collectAsState()
@@ -117,7 +118,8 @@ fun MemorizeScreen(
                 context.getSharedPreferences("Settings", Context.MODE_PRIVATE)
                     .edit().putBoolean("is_dark_theme", isDarkThemeGlobal).apply()
             },
-            onSettingsClick = { showSettingsDrawer = true }
+            onSettingsClick = { showSettingsDrawer = true },
+            onBack = onBack
         )
 
         LazyColumn(

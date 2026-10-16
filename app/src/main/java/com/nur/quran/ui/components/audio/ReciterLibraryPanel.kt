@@ -88,8 +88,6 @@ fun ReciterLibraryPanel(
         runCatching { reciterStates.associateBy { it.reciterId } }.getOrDefault(emptyMap())
     }
 
-    var query by remember { mutableStateOf("") }
-
     // ── Shared 1:1 sample preview player (AudioSetupSheet pattern) ──
     var previewPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
     var previewPlayingId by remember { mutableIntStateOf(-1) }
@@ -156,12 +154,7 @@ fun ReciterLibraryPanel(
         return
     }
 
-    val filtered = remember(query) {
-        val q = query.trim().lowercase()
-        if (q.isEmpty()) Reciters.ALL
-        else runCatching { Reciters.ALL.filter { it.name.lowercase().contains(q) } }
-            .getOrDefault(Reciters.ALL)
-    }
+    val filtered = Reciters.ALL
     val grouped = remember(filtered) {
         runCatching { filtered.groupBy { it.style } }.getOrDefault(emptyMap())
     }
@@ -176,22 +169,6 @@ fun ReciterLibraryPanel(
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        OutlinedTextField(
-            value = query,
-            onValueChange = { query = it },
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = {
-                Text(
-                    text = "Search reciters…",
-                    color = hInkMuted,
-                    fontFamily = fontFamilyBody,
-                    fontSize = 14.sp,
-                )
-            },
-            singleLine = true,
-            shape = RoundedCornerShape(12.dp),
-        )
-
         // Plain Column (not LazyColumn): the drawer subview host is itself a
         // vertically scrollable Column, in which a LazyColumn collapses to
         // zero height. 20 reciters render fine without virtualization.

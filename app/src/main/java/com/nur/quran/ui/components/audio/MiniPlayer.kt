@@ -5,19 +5,20 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -26,25 +27,32 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import com.nur.quran.R
 import com.nur.quran.ui.components.NurIcons
 import com.nur.quran.ui.screens.fontFamilyMono
-import com.nur.quran.ui.screens.hBoneDark
+import com.nur.quran.ui.screens.fontFamilyUi
 import com.nur.quran.ui.screens.hGold
-import com.nur.quran.ui.screens.hGoldSoft
-import com.nur.quran.ui.screens.hInk
-import com.nur.quran.ui.screens.isDarkThemeGlobal
+
+private val playerBarBg = Color(0xFF1E4A38)
+private val playerTitleColor = Color(0xFFF5EFE0)
+private val playerSubtitleColor = Color(0xFFB9C8BE)
+private val playerTrackColor = Color(0xFF3A6B58)
+private val playerOnGoldColor = Color(0xFF1E4A38)
 
 /**
- * Bottom pill mini-player, styled after [com.nur.quran.ui.components.AutoScrollerBar].
+ * Compact bottom player bar in the style of a music mini-player: rounded deep-green
+ * bar with mushaf artwork, surah title + ayah subtitle, prev/play/next cluster and
+ * a thin gold progress track (shown only when [progress] is provided).
  *
- * Props only — no ViewModel, no ExoPlayer reference. The host (SurahScreen)
- * passes the currently-playing [verseKey] plus transport lambdas and decides
- * visibility (e.g. `visible = isPlaying || playingVerseKey != null`).
+ * Props only — no ViewModel, no ExoPlayer reference. Hosts pass the currently-playing
+ * [verseKey] plus transport lambdas and decide visibility. Progress comes from the
+ * host ViewModel's polled `(positionMs, durationMs)` as a 0..1 fraction.
  */
 @Composable
 fun MiniPlayer(
@@ -56,13 +64,30 @@ fun MiniPlayer(
     onNext: () -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
+    progress: Float? = null,
     onSettings: (() -> Unit)? = null,
     onStop: (() -> Unit)? = null,
     onVerseClick: (() -> Unit)? = null,
 ) {
-    val pillBg = if (isDarkThemeGlobal) Color(0xF22D2D2A) else Color(0xF2EFECE4)
-    val pillBorder = if (isDarkThemeGlobal) Color(0xFF4A4A45) else Color(0x66FFFFFF)
-    val btnSecondaryBg = if (isDarkThemeGlobal) Color(0xFF3A3A36) else Color(0xFFEDE8DA)
+    // Title = surah name, subtitle = ayah number (clickable to jump to reciting ayah).
+    val (titleText, subtitleText) = androidx.compose.runtime.remember(verseKey) {
+        if (verseKey.isBlank()) {
+            "—" to ""
+        } else {
+            val parts = verseKey.split(":")
+            val chId = parts.getOrNull(0)?.toIntOrNull()
+            val ayahNo = parts.getOrNull(1)
+            val surah = if (chId != null) {
+                runCatching {
+                    com.nur.quran.data.mushaf.ChapterMetadata.nameById(chId)
+                }.getOrNull()
+            } else {
+                null
+            }
+            if (surah != null && ayahNo != null) surah to "Ayah $ayahNo"
+            else verseKey to ""
+        }
+    }
 
     Box(
         modifier = modifier
@@ -77,163 +102,176 @@ fun MiniPlayer(
             exit = slideOutVertically { it } + fadeOut()
         ) {
             Surface(
-                shape = CircleShape,
-                color = pillBg,
-                border = BorderStroke(1.dp, pillBorder),
+                shape = RoundedCornerShape(18.dp),
+                color = playerBarBg,
                 shadowElevation = 14.dp
             ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Prev / Next
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Artwork thumb.
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_logo),
+                            contentDescription = "Quran Nur",
+                            modifier = Modifier
+                                .size(46.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                        )
+
+                        // Title + subtitle.
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .then(
+                                    if (onVerseClick != null) Modifier.clickable { onVerseClick() }
+                                    else Modifier
+                                )
+                        ) {
+                            Text(
+                                text = titleText,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = fontFamilyUi,
+                                color = playerTitleColor,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            if (subtitleText.isNotEmpty()) {
+                                Text(
+                                    text = subtitleText,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    fontFamily = fontFamilyMono,
+                                    color = playerSubtitleColor,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+
+                        // Transport cluster: prev / play / next.
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(34.dp)
+                                    .clip(CircleShape)
+                                    .clickable { onPrevious() },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = NurIcons.ChevronLeft,
+                                    contentDescription = "Previous ayah",
+                                    tint = playerTitleColor,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .size(42.dp)
+                                    .clip(CircleShape)
+                                    .background(hGold)
+                                    .clickable { onPlayPause() },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = if (isPlaying) NurIcons.PauseFilled else NurIcons.PlayFilled,
+                                    contentDescription = if (isPlaying) "Pause" else "Play",
+                                    tint = playerOnGoldColor,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .size(34.dp)
+                                    .clip(CircleShape)
+                                    .clickable { onNext() },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = NurIcons.ChevronRight,
+                                    contentDescription = "Next ayah",
+                                    tint = playerTitleColor,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+
+                        // Audio settings (gear) — only when the host passes onSettings.
+                        if (onSettings != null) {
+                            Box(
+                                modifier = Modifier
+                                    .size(30.dp)
+                                    .clip(CircleShape)
+                                    .clickable { onSettings() },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = NurIcons.Settings,
+                                    contentDescription = "Audio settings",
+                                    tint = playerSubtitleColor,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+
+                        // Stop (■) — dedicated stop: resets to range start + hides.
+                        // Distinct from Close (X) which only hides the bar and keeps
+                        // playing in the background. Only when the host passes onStop.
+                        if (onStop != null) {
+                            Box(
+                                modifier = Modifier
+                                    .size(30.dp)
+                                    .clip(CircleShape)
+                                    .clickable { onStop() },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = NurIcons.Square,
+                                    contentDescription = "Stop playback",
+                                    tint = playerSubtitleColor,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
+                        }
+
+                        // Close.
                         Box(
                             modifier = Modifier
                                 .size(30.dp)
                                 .clip(CircleShape)
-                                .background(btnSecondaryBg)
-                                .clickable { onPrevious() },
+                                .clickable { onClose() },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = NurIcons.ChevronLeft,
-                                contentDescription = "Previous ayah",
-                                tint = hInk,
+                                imageVector = NurIcons.X,
+                                contentDescription = "Close player",
+                                tint = playerSubtitleColor,
                                 modifier = Modifier.size(16.dp)
                             )
                         }
+                    }
+
+                    // Progress track — only while the host reports position.
+                    if (progress != null) {
                         Box(
                             modifier = Modifier
-                                .size(30.dp)
-                                .clip(CircleShape)
-                                .background(btnSecondaryBg)
-                                .clickable { onNext() },
-                            contentAlignment = Alignment.Center
+                                .fillMaxWidth()
+                                .height(3.dp)
+                                .background(playerTrackColor)
                         ) {
-                            Icon(
-                                imageVector = NurIcons.ChevronRight,
-                                contentDescription = "Next ayah",
-                                tint = hInk,
-                                modifier = Modifier.size(16.dp)
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth(progress.coerceIn(0f, 1f))
+                                    .height(3.dp)
+                                    .background(hGold)
                             )
                         }
-                    }
-
-                    Spacer(
-                        modifier = Modifier
-                            .width(1.dp)
-                            .height(20.dp)
-                            .background(hBoneDark)
-                    )
-
-                    // Current verse key with Surah name (clickable to jump to reciting ayah)
-                    val formattedVerseText = androidx.compose.runtime.remember(verseKey) {
-                        if (verseKey.isBlank()) "—"
-                        else {
-                            val parts = verseKey.split(":")
-                            val chId = parts.getOrNull(0)?.toIntOrNull()
-                            if (chId != null) {
-                                "${com.nur.quran.data.mushaf.ChapterMetadata.nameById(chId)} $verseKey"
-                            } else verseKey
-                        }
-                    }
-                    Text(
-                        text = formattedVerseText,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = fontFamilyMono,
-                        color = hInk,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier
-                            .padding(horizontal = 4.dp)
-                            .then(
-                                if (onVerseClick != null) Modifier.clickable { onVerseClick() }
-                                else Modifier
-                            )
-                    )
-
-                    // Play / Pause toggle
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(CircleShape)
-                            .background(if (isPlaying) Color.Transparent else hGoldSoft)
-                            .clickable { onPlayPause() },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = if (isPlaying) NurIcons.PauseFilled else NurIcons.PlayFilled,
-                            contentDescription = if (isPlaying) "Pause" else "Play",
-                            tint = hGold,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-
-                    Spacer(
-                        modifier = Modifier
-                            .width(1.dp)
-                            .height(20.dp)
-                            .background(hBoneDark)
-                    )
-
-                    // Audio settings (gear) — only when the host passes onSettings
-                    if (onSettings != null) {
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .background(btnSecondaryBg)
-                                .clickable { onSettings() },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = NurIcons.Settings,
-                                contentDescription = "Audio settings",
-                                tint = hInk,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-
-                    // Stop (■) — dedicated stop: resets to range start + hides.
-                    // Distinct from Close (X) which only hides the pill and keeps
-                    // playing in the background. Only when the host passes onStop.
-                    if (onStop != null) {
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .background(btnSecondaryBg)
-                                .clickable { onStop() },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = NurIcons.Square,
-                                contentDescription = "Stop playback",
-                                tint = hInk,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-
-                    // Close
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(CircleShape)
-                            .background(Color(0x1AEF4444))
-                            .clickable { onClose() },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = NurIcons.X,
-                            contentDescription = "Close player",
-                            tint = Color(0xFFEF4444),
-                            modifier = Modifier.size(16.dp)
-                        )
                     }
                 }
             }

@@ -478,6 +478,35 @@ class SurahViewModel @Inject constructor(
     private val _isPlaying = MutableStateFlow(false)
     val isPlaying: StateFlow<Boolean> = _isPlaying.asStateFlow()
 
+    /** (positionMs, durationMs) of the current ayah, polled while playing for the mini-player bar. */
+    private val _playbackProgress = MutableStateFlow<Pair<Long, Long>?>(null)
+    val playbackProgress: StateFlow<Pair<Long, Long>?> = _playbackProgress.asStateFlow()
+    private var progressTicker: Job? = null
+
+    private fun startProgressTicker() {
+        progressTicker?.cancel()
+        progressTicker = viewModelScope.launch {
+            while (true) {
+                ensureActive()
+                val p = player()
+                if (p == null) {
+                    _playbackProgress.value = null
+                    break
+                }
+                val dur = p.duration
+                _playbackProgress.value =
+                    if (dur > 0) p.currentPosition.coerceIn(0L, dur) to dur else null
+                delay(500)
+            }
+        }
+    }
+
+    private fun stopProgressTicker(clear: Boolean = false) {
+        progressTicker?.cancel()
+        progressTicker = null
+        if (clear) _playbackProgress.value = null
+    }
+
     private val _scrollToVerseEvent = MutableSharedFlow<String>(replay = 1, extraBufferCapacity = 2)
     val scrollToVerseEvent: SharedFlow<String> = _scrollToVerseEvent.asSharedFlow()
 
@@ -883,6 +912,7 @@ class SurahViewModel @Inject constructor(
     private val playerListener = object : Player.Listener {
         override fun onIsPlayingChanged(playing: Boolean) {
             _isPlaying.value = playing
+            if (playing) startProgressTicker() else stopProgressTicker()
             val chapterId = if (playlistChapterId > 0) playlistChapterId else null
             val segment = listeningTracker.onPlayingChanged(playing, chapterId, System.currentTimeMillis())
             if (segment != null) logReadingSession(segment.durationSeconds.toInt(), "listening", segment.chapterId)
@@ -909,6 +939,7 @@ class SurahViewModel @Inject constructor(
 
         override fun onPlaybackStateChanged(playbackState: Int) {
             if (playbackState == Player.STATE_ENDED) {
+                stopProgressTicker(clear = true)
                 if (hifdhLoopActive) {
                     handleHifdhChunkEnded()
                 } else {
@@ -1271,6 +1302,7 @@ class SurahViewModel @Inject constructor(
         lastMediaIndex = -1
         mediaController?.stop()
         mediaController?.clearMediaItems()
+        stopProgressTicker(clear = true)
         playlist = emptyList()
         playlistChapterId = 0
         _isPlaying.value = false

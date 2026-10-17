@@ -41,6 +41,7 @@ class SyncWorker(
     }
 
     override suspend fun doWork(): Result {
+        android.util.Log.d("NurSync", "SyncWorker doWork start (attempt=$runAttemptCount)")
         setProgress(workDataOf(KEY_PROGRESS to PROGRESS_RUNNING))
         return try {
             val entryPoint = EntryPointAccessors.fromApplication(
@@ -48,6 +49,7 @@ class SyncWorker(
                 SyncWorkerEntryPoint::class.java
             )
             val message: String = entryPoint.syncService().sync()
+            android.util.Log.d("NurSync", "SyncWorker result: $message")
             when {
                 // Signed out (SyncService.currentUserId() is null): no-op, no retry.
                 message == RESULT_SIGNED_OUT ->

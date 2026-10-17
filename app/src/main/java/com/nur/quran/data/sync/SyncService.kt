@@ -2,6 +2,7 @@ package com.nur.quran.data.sync
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Log
 import androidx.annotation.VisibleForTesting
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -26,6 +27,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 
 private const val SYNC_PREFS = "sync_state"
 private const val KEY_LAST_SYNC_AT = "last_sync_at"
+private const val TAG = "NurSync"
 
 /**
  * Cloud sync engine. Owns ONLY orchestration + merge; snapshot construction belongs to
@@ -81,6 +83,15 @@ class SyncService @Inject constructor(
 ) {
     private val gson = Gson()
 
+    /** Like [runSuspendCatching] but names the section so a silent apply failure is visible in logcat. */
+    private suspend fun applySection(name: String, block: suspend () -> Unit) {
+        try {
+            block()
+        } catch (e: Exception) {
+            Log.w(TAG, "apply section '$name' failed", e)
+        }
+    }
+
     /**
      * Emitted after [applyState] writes a pulled remote snapshot to prefs/DB, so
      * ViewModels holding prefs-snapshot StateFlows (SurahViewModel's hifdh data)
@@ -119,17 +130,26 @@ class SyncService @Inject constructor(
      */
     suspend fun pull(): Boolean {
         return try {
-            val userId = currentUserId() ?: return false
-            val remote = fetchRemote(userId) ?: return false
+            val userId = currentUserId() ?: run {
+                Log.w(TAG, "pull: no userId (signed out or account.get failed)")
+                return false
+            }
+            val remote = fetchRemote(userId) ?: run {
+                Log.w(TAG, "pull: no remote doc for user $userId")
+                return false
+            }
             // Web parity (CloudSync.jsx:102): gate ONLY on the persisted watermark.
             // The old maxOf() with the snapshot build clock (≈ now) could never fire.
             // lastSyncAt()==0 (fresh login/reset) force-applies like web's login pull.
-            if (remote.updatedAt > lastSyncAt()) {
+            val gate = remote.updatedAt > lastSyncAt()
+            Log.d(TAG, "pull: remote.updatedAt=${remote.updatedAt} lastSyncAt=${lastSyncAt()} gate=$gate stateKeys=${remote.state.keys}")
+            if (gate) {
                 applyState(mergeStateInto(localStateMap(), remote.state))
                 saveLastSync(remote.updatedAt)
             }
             true
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.w(TAG, "pull failed", e)
             false
         }
     }
@@ -144,6 +164,10 @@ class SyncService @Inject constructor(
             val remote = fetchRemote(userId)
             val lastSync = lastSyncAt()
             val local = localStateMap()
+            Log.d(
+                TAG,
+                "sync: user=$userId remote=${if (remote == null) "null" else "ts=${remote.updatedAt} keys=${remote.state.keys}"} lastSync=$lastSync localKeys=${local.keys}"
+            )
             if (remote != null && remote.updatedAt > lastSync) {
                 applyState(mergeStateInto(local, remote.state))
                 saveLastSync(remote.updatedAt)
@@ -160,6 +184,7 @@ class SyncService @Inject constructor(
                 "up-to-date"
             }
         } catch (e: Exception) {
+            Log.w(TAG, "sync failed", e)
             "error:${e.message}"
         }
     }
@@ -301,6 +326,7 @@ class SyncService @Inject constructor(
         )
         val doc = SyncContract.resolveDoc(
             docs.documents.map {
+                Log.d(TAG, "fetchRemote: raw \$updatedAt='${it.updatedAt}' docId=${it.id}")
                 SyncContract.DocRef(id = it.id, data = it.data, updatedAtMillis = parseUpdatedAt(it.updatedAt))
             },
             userId,
@@ -542,16 +568,17 @@ class SyncService @Inject constructor(
     private suspend fun applyState(state: Map<String, Any?>) {
         // Legacy Android blobs apply first, so the web-named flat keys
         // (web's `getSyncableState`) win when a document carries both.
-        runSuspendCatching { applyHifdhJson(state) }
-        runSuspendCatching { applyDisplaySettings(state) }
-        runSuspendCatching { applySourceSettings(state) }
-        runSuspendCatching { applyPlannerSettings(state) }
-        runSuspendCatching { applyHifdhState(state) }
-        runSuspendCatching { applyTourState(state) }
-        runSuspendCatching { applyLibraryJson(state) }
-        runSuspendCatching { applyLibraryData(state) }
-        runSuspendCatching { applyReadingStats(state) }
-        runSuspendCatching { applyPlannerData(state) }
+        applySection("hifdhJson") { applyHifdhJson(state) }
+        applySection("displaySettings") { applyDisplaySettings(state) }
+        applySection("sourceSettings") { applySourceSettings(state) }
+        applySection("plannerSettings") { applyPlannerSettings(state) }
+        applySection("hifdhState") { applyHifdhState(state) }
+        applySection("tourState") { applyTourState(state) }
+        applySection("libraryJson") { applyLibraryJson(state) }
+        applySection("libraryData") { applyLibraryData(state) }
+        applySection("readingStats") { applyReadingStats(state) }
+        applySection("plannerData") { applyPlannerData(state) }
+        Log.d(TAG, "applyState: done for keys=${state.keys}")
         // Nudge prefs-snapshot ViewModels to re-read what we just wrote, so a
         // restore shows up immediately instead of waiting for an app restart.
         runCatching { _syncApplied.tryEmit(Unit) }
@@ -1277,26 +1304,34 @@ class SyncService @Inject constructor(
         return runCatching { gson.fromJson(raw, Any::class.java) }.getOrNull()
     }
 
-    /** Accepts epoch-ms numbers and Appwrite ISO-8601 strings; 0 when unparseable. */
+    /**
+     * Accepts epoch-ms numbers and Appwrite ISO-8601 strings; 0 when unparseable.
+     *
+     * Covers both the classic `...Z` form and offset-style `...+00:00` (Appwrite
+     * 2.x servers), plus fractional seconds of any length via [java.time.Instant]
+     * on API 26+ — falls back to SimpleDateFormat patterns below that.
+     */
     private fun parseUpdatedAt(v: Any?): Long {
         return when (v) {
             is Number -> v.toLong()
             is String -> {
                 v.toLongOrNull()
-                    ?: runCatching {
-                        val fmt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US)
-                        fmt.timeZone = TimeZone.getTimeZone("UTC")
-                        fmt.parse(v)?.time
-                    }.getOrNull()
-                    ?: runCatching {
-                        val fmt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US)
-                        fmt.timeZone = TimeZone.getTimeZone("UTC")
-                        fmt.parse(v)?.time
-                    }.getOrNull() ?: 0L
+                    ?: runCatching { java.time.Instant.parse(v).toEpochMilli() }.getOrNull()
+                    ?: isoFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX", v)
+                    ?: isoFormat("yyyy-MM-dd'T'HH:mm:ssXXX", v)
+                    ?: isoFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", v)
+                    ?: isoFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", v)
+                    ?: 0L
             }
             else -> 0L
         }
     }
+
+    private fun isoFormat(pattern: String, v: String): Long? = runCatching {
+        val fmt = SimpleDateFormat(pattern, Locale.US)
+        fmt.timeZone = TimeZone.getTimeZone("UTC")
+        fmt.parse(v)?.time
+    }.getOrNull()
 
     private fun longOf(v: Any?): Long {
         return when (v) {

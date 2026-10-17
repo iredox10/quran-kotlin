@@ -421,6 +421,10 @@ class SurahViewModel @Inject constructor(
         _hifdhHistory.value = hifdhStore.loadHifdhHistory()
         _transitionLinks.value = hifdhStore.loadTransitionLinks()
         _hifdhGoals.value = hifdhStore.loadHifdhGoals()
+        android.util.Log.d(
+            "NurSync",
+            "reloadHifdhState: ayahs=${_memorizedAyahs.value.size} history=${_hifdhHistory.value.size} goals=${_hifdhGoals.value.size}"
+        )
     }
 
     /**

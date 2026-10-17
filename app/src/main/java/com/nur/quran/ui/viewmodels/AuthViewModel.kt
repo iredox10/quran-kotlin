@@ -82,7 +82,8 @@ class AuthViewModel @Inject constructor(
      */
     private fun restoreFromCloud() {
         viewModelScope.launch(Dispatchers.IO) {
-            runCatching { syncService.pull() }
+            val ok = runCatching { syncService.pull() }.getOrDefault(false)
+            android.util.Log.d("NurSync", "restoreFromCloud after login: pull ok=$ok")
         }
     }
 

@@ -64,6 +64,9 @@ android {
     buildFeatures {
         compose = true
     }
+    // SyncService/SyncWorker log through android.util.Log; JVM tests must not
+    // throw "not mocked" — return default values for framework stubs instead.
+    testOptions.unitTests.isReturnDefaultValues = true
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.8"
     }

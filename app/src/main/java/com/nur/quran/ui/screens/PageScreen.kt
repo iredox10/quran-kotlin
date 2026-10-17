@@ -45,6 +45,7 @@ fun PageScreen(
     val isTranslationEnabled by viewModel.isTranslationEnabled.collectAsState()
     val isPlaying by viewModel.isPlaying.collectAsState()
     val playingVerseKey by viewModel.playingVerseKey.collectAsState()
+    val playbackProgress by viewModel.playbackProgress.collectAsState()
     val bookmarkedVerses by viewModel.bookmarkedVerses.collectAsState()
     val arabicFontScale by viewModel.arabicFontScale.collectAsState()
     val translationFontScale by viewModel.translationFontScale.collectAsState()
@@ -350,7 +351,10 @@ fun PageScreen(
                         if (idx in 0 until playerVerses.size - 1) viewModel.startPlayback(playerVerses, idx + 1)
                     },
                     onClose = { playerHiddenByUser = true },
-                    onStop = { viewModel.stopPlaying() }
+                    onStop = { viewModel.stopPlaying() },
+                    progress = playbackProgress?.let { (pos, dur) ->
+                        if (dur > 0) (pos.toFloat() / dur).coerceIn(0f, 1f) else null
+                    }
                 )
             }
         }

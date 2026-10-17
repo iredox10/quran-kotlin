@@ -16,6 +16,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.nur.quran.data.audio.Reciters
 import com.nur.quran.data.translation.translationNameOf
 import com.nur.quran.ui.components.SettingsDrawer
+import com.nur.quran.ui.components.NurIcons
 import com.nur.quran.ui.components.profile.*
 import com.nur.quran.ui.navigation.Screen
 import com.nur.quran.ui.viewmodels.AuthViewModel
@@ -45,7 +46,8 @@ fun ProfileScreen(
     homeViewModel: HomeViewModel,
     surahViewModel: SurahViewModel,
     plannerViewModel: PlannerViewModel,
-    onNavigateToScreen: (String) -> Unit
+    onNavigateToScreen: (String) -> Unit,
+    onBack: () -> Unit = { onNavigateToScreen(Screen.Quran.route) }
 ) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("Settings", Context.MODE_PRIVATE) }
@@ -138,6 +140,15 @@ fun ProfileScreen(
                         fontSize = 18.sp,
                         color = hInk
                     )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = NurIcons.ArrowLeft,
+                            contentDescription = "Back",
+                            tint = hInk
+                        )
+                    }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = hWhite)
             )

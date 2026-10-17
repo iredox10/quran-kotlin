@@ -401,6 +401,7 @@ fun SurahScreen(
     val isTranslationEnabled by viewModel.isTranslationEnabled.collectAsState()
     val isPlaying by viewModel.isPlaying.collectAsState()
     val playingVerseKey by viewModel.playingVerseKey.collectAsState()
+    val playbackProgress by viewModel.playbackProgress.collectAsState()
     val currentReciterId by viewModel.currentReciterId.collectAsState()
     val playbackSettings by viewModel.playbackSettings.collectAsState()
     val streamOnly by viewModel.streamOnly.collectAsState()
@@ -1497,6 +1498,9 @@ fun SurahScreen(
                 onClose = { playerHiddenByUser = true },
                 onStop = { viewModel.stopPlaying() },
                 onSettings = { showAudioSetupDialog = true },
+                progress = playbackProgress?.let { (pos, dur) ->
+                    if (dur > 0) (pos.toFloat() / dur).coerceIn(0f, 1f) else null
+                },
                 onVerseClick = {
                     val key = playingVerseKey
                     if (!key.isNullOrBlank()) {

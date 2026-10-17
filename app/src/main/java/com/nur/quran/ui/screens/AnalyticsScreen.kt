@@ -40,7 +40,8 @@ fun AnalyticsScreen(
     surahViewModel: SurahViewModel,
     onOpenQuranClick: () -> Unit,
     onOpenLibraryClick: () -> Unit = onOpenQuranClick,
-    onOpenCollectionsClick: () -> Unit = onOpenQuranClick
+    onOpenCollectionsClick: () -> Unit = onOpenQuranClick,
+    onBack: () -> Unit = onOpenQuranClick
 ) {
     val sessions by homeViewModel.readingSessions.collectAsState()
     val recentlyRead by homeViewModel.recentlyRead.collectAsState()
@@ -171,7 +172,7 @@ fun AnalyticsScreen(
         ) {
             // 1. Dashboard Header
             item {
-                AnalyticsDashboardHeader(greeting = greeting)
+                AnalyticsDashboardHeader(greeting = greeting, onBack = onBack)
             }
 
             // 2. Smart Insight Banner (Web lines 237-241)

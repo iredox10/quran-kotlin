@@ -34,7 +34,8 @@ fun PlannerScreen(
     surahViewModel: SurahViewModel,
     plannerViewModel: PlannerViewModel,
     onReadAssignment: (Int) -> Unit,
-    onOpenVerse: (Int, String) -> Unit = { _, _ -> }
+    onOpenVerse: (Int, String) -> Unit = { _, _ -> },
+    onBack: () -> Unit = {}
 ) {
     val activePlan by plannerViewModel.activePlan.collectAsState()
     val allPlans by plannerViewModel.allPlans.collectAsState()
@@ -98,7 +99,8 @@ fun PlannerScreen(
                 context.getSharedPreferences("Settings", Context.MODE_PRIVATE)
                     .edit().putBoolean("is_dark_theme", isDarkThemeGlobal).apply()
             },
-            onSettingsClick = { showSettingsDrawer = true }
+            onSettingsClick = { showSettingsDrawer = true },
+            onBack = onBack
         )
 
         if (viewMode == "intention" || activePlan == null) {

@@ -85,7 +85,8 @@ class SurahViewModel @Inject constructor(
     private val linkedAudioStore: LinkedAudioStore,
     private val timingImporter: TimingImporter,
     private val tafsirPackManager: TafsirPackManager,
-    private val wordPackManager: WordPackManager
+    private val wordPackManager: WordPackManager,
+    private val syncService: com.nur.quran.data.sync.SyncService
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<SurahUiState>(SurahUiState.Loading)
@@ -398,6 +399,28 @@ class SurahViewModel @Inject constructor(
             hifdhPrefs.edit().putInt("translation_id", 85).apply()
         }
         ensureController()
+        // Cloud restore parity: when a sync pull writes hifdh state to prefs,
+        // re-read it here so the UI updates immediately (these flows are
+        // prefs-snapshotted at construction, not reactive like the Room flows).
+        viewModelScope.launch {
+            syncService.syncApplied.collect { reloadHifdhState() }
+        }
+    }
+
+    /**
+     * Re-read hifdh prefs-backed flows after a cloud restore pull. Web has a
+     * single store so setState refreshes everything; native sharded state needs
+     * this nudge to match. Only re-reads — never writes, so it can't clobber.
+     */
+    private fun reloadHifdhState() {
+        _memorizedAyahs.value =
+            hifdhPrefs.getStringSet("memorized_ayahs", emptySet()) ?: emptySet()
+        _memorizedSurahs.value =
+            hifdhPrefs.getStringSet("memorized_surahs", emptySet())
+                ?.mapNotNull { it.toIntOrNull() }?.toSet() ?: emptySet()
+        _hifdhHistory.value = hifdhStore.loadHifdhHistory()
+        _transitionLinks.value = hifdhStore.loadTransitionLinks()
+        _hifdhGoals.value = hifdhStore.loadHifdhGoals()
     }
 
     /**

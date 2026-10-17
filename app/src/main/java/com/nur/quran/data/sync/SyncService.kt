@@ -20,6 +20,9 @@ import java.util.TimeZone
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 
 private const val SYNC_PREFS = "sync_state"
 private const val KEY_LAST_SYNC_AT = "last_sync_at"
@@ -77,6 +80,15 @@ class SyncService @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
     private val gson = Gson()
+
+    /**
+     * Emitted after [applyState] writes a pulled remote snapshot to prefs/DB, so
+     * ViewModels holding prefs-snapshot StateFlows (SurahViewModel's hifdh data)
+     * can re-read them. Without this, a restore pull updates prefs but the UI keeps
+     * showing the empty snapshot taken at construction until app restart.
+     */
+    private val _syncApplied = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val syncApplied: SharedFlow<Unit> = _syncApplied.asSharedFlow()
 
     /**
      * Id of this account's sync document, so an update targets the real document and never
@@ -540,6 +552,9 @@ class SyncService @Inject constructor(
         runSuspendCatching { applyLibraryData(state) }
         runSuspendCatching { applyReadingStats(state) }
         runSuspendCatching { applyPlannerData(state) }
+        // Nudge prefs-snapshot ViewModels to re-read what we just wrote, so a
+        // restore shows up immediately instead of waiting for an app restart.
+        runCatching { _syncApplied.tryEmit(Unit) }
     }
 
     /**

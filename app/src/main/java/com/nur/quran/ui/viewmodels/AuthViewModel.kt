@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nur.quran.data.sync.AppwriteClient
+import com.nur.quran.data.sync.SyncService
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.appwrite.ID
@@ -26,6 +27,7 @@ data class AuthState(
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val appwrite: AppwriteClient,
+    private val syncService: SyncService,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -63,9 +65,24 @@ class AuthViewModel @Inject constructor(
                     busy = false,
                     error = null
                 )
+                // Web CloudSync.jsx (login transition): reset watermark then pull
+                // immediately so a fresh device restores its cloud data right after
+                // sign-in instead of waiting for the next periodic sync.
+                restoreFromCloud()
             }.onFailure { e ->
                 _authState.value = _authState.value.copy(busy = false, error = e.message ?: "Login failed")
             }
+        }
+    }
+
+    /**
+     * Pull-only restore after sign-in (CloudSync.jsx performPull). Runs in the
+     * background and never blocks the auth UI; the watermark gate in
+     * [SyncService.pull] makes a stale/no-op pull harmless.
+     */
+    private fun restoreFromCloud() {
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching { syncService.pull() }
         }
     }
 
@@ -93,6 +110,7 @@ class AuthViewModel @Inject constructor(
                     busy = false,
                     error = null
                 )
+                restoreFromCloud()
             }.onFailure { e ->
                 _authState.value = _authState.value.copy(busy = false, error = e.message ?: "Registration failed")
             }

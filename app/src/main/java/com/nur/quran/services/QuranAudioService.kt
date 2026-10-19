@@ -2,6 +2,7 @@ package com.nur.quran.services
 
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.media3.common.AudioAttributes
@@ -37,6 +38,7 @@ class QuranAudioService : MediaLibraryService() {
     private var player: ExoPlayer? = null
     private var mediaSession: MediaLibrarySession? = null
     private var noisyReceiver: BroadcastReceiver? = null
+    private var focusManager: QuranFocusManager? = null
 
     @UnstableApi
     override fun onCreate() {
@@ -47,9 +49,23 @@ class QuranAudioService : MediaLibraryService() {
             .setContentType(C.CONTENT_TYPE_SPEECH)
             .build()
         val exoPlayer = ExoPlayer.Builder(this)
-            .setAudioAttributes(audioAttributes, true)
+            // Focus is managed by QuranFocusManager (Telegram model: pause on
+            // call, auto-resume on gain, keep the notification alive) instead
+            // of Media3's built-in handler, which only pauses.
+            .setAudioAttributes(audioAttributes, false)
             .build()
         player = exoPlayer
+        focusManager = QuranFocusManager(
+            audio = RealFocusAudio(this),
+            control = object : QuranFocusManager.PlayerControl {
+                override fun isPlaying(): Boolean = exoPlayer.isPlaying
+                override fun pause() = exoPlayer.pause()
+                override fun play() = exoPlayer.play()
+                override fun setVolume(volume: Float) {
+                    exoPlayer.volume = volume
+                }
+            },
+        )
 
         val uniformPlayer = SurahUniformPlayer(exoPlayer)
 
@@ -64,6 +80,24 @@ class QuranAudioService : MediaLibraryService() {
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 val pendingIntent = createSessionActivityPendingIntent(mediaItem?.mediaId)
                 mediaSession?.setSessionActivity(pendingIntent)
+            }
+
+            override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+                super.onPlayWhenReadyChanged(playWhenReady, reason)
+                // Request focus as the play command arrives (before audio
+                // actually starts). No-op when focus is already held; also
+                // covers play-during-a-call (DELAYED → GAIN after the call).
+                if (playWhenReady) focusManager?.requestPlaybackFocus()
+            }
+
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                super.onPlaybackStateChanged(playbackState)
+                // Only a full stop releases focus (Telegram abandons focus in
+                // cleanupPlayer, not in pauseMessage) so the call's
+                // transient-loss → GAIN round trip can resume playback.
+                if (playbackState == androidx.media3.common.Player.STATE_IDLE) {
+                    focusManager?.abandonPlaybackFocus()
+                }
             }
         })
 
@@ -97,6 +131,21 @@ class QuranAudioService : MediaLibraryService() {
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? =
         mediaSession
 
+    /**
+     * Telegram MusicPlayerService keeps the player service in the FOREGROUND
+     * while it exists — playing OR paused (on Android 12+ always
+     * `startForeground`; on older versions only while playing, which is what
+     * lets aggressive OEM task killers reap a paused player mid-call). Media3's
+     * default demotes the service to the background the moment playback pauses
+     * (`maybeStopForegroundService` in MediaNotificationManager), which is
+     * exactly when a call is in progress. Forcing `startInForegroundRequired`
+     * keeps the service protected and the notification alive through the call,
+     * so playback can continue when it ends instead of the player vanishing.
+     */
+    override fun onUpdateNotification(session: MediaSession, startInForegroundRequired: Boolean) {
+        super.onUpdateNotification(session, /* startInForegroundRequired= */ true)
+    }
+
     override fun onTaskRemoved(rootIntent: Intent?) {
         // Intentionally nothing: keep playing like music players.
         // No pause, no stopSelf().
@@ -105,6 +154,8 @@ class QuranAudioService : MediaLibraryService() {
     override fun onDestroy() {
         noisyReceiver?.let { PlaybackNoisyHandler().unregister(this, it) }
         noisyReceiver = null
+        focusManager?.abandonPlaybackFocus()
+        focusManager = null
         mediaSession?.release()
         mediaSession = null
         player?.release()
@@ -112,6 +163,26 @@ class QuranAudioService : MediaLibraryService() {
         runCatching { libraryDb.close() }
         libraryIo.shutdown()
         super.onDestroy()
+    }
+
+    /** AudioManager seam for [QuranFocusManager]. */
+    private class RealFocusAudio(
+        private val context: Context,
+    ) : QuranFocusManager.FocusAudio {
+        override fun requestFocus(listener: AudioManager.OnAudioFocusChangeListener): Int {
+            val manager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+                ?: return AudioManager.AUDIOFOCUS_REQUEST_FAILED
+            return runCatching {
+                manager.requestAudioFocus(listener, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN)
+            }.getOrDefault(AudioManager.AUDIOFOCUS_REQUEST_FAILED)
+        }
+
+        override fun abandonFocus(listener: AudioManager.OnAudioFocusChangeListener) {
+            runCatching {
+                (context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager)
+                    ?.abandonAudioFocus(listener)
+            }
+        }
     }
 
     private inner class LibraryCallback : MediaLibrarySession.Callback {

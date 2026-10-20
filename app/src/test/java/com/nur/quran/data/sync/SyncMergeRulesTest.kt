@@ -76,16 +76,19 @@ class SyncMergeRulesTest {
     }
 
     @Test
-    fun recentlyReadKeepsOnlyFiveNewestEntries() {
+    fun recentlyReadKeepsOnlyNewestEntriesAndCapsAtTwenty() {
         val base = mapOf(
             "recentlyRead" to (1..3).map { mapOf("chapterId" to "$it", "timestamp" to it.toLong()) }
         )
-        val incoming = mapOf(
-            "recentlyRead" to (4..6).map { mapOf("chapterId" to "$it", "timestamp" to it.toLong()) }
+        val out = merge(base, base) // sanity: union keeps 3 entries under the cap
+
+        val cooling = mapOf(
+            "recentlyRead" to (1..25).map { mapOf("chapterId" to "$it", "timestamp" to it.toLong()) }
         )
-        val out = merge(base, incoming)
-        assertEquals(listOf("6", "5", "4", "3", "2"), listField(out, "recentlyRead").map { (it as Map<*, *>)["chapterId"] })
-        assertEquals(5, listField(out, "recentlyRead").size)
+        val capped = merge(mapOf("recentlyRead" to emptyList<Any?>()), cooling)
+        assertEquals(20, listField(capped, "recentlyRead").size)
+        assertEquals("25", (listField(capped, "recentlyRead").first() as Map<*, *>)["chapterId"])
+        assertEquals(3, listField(out, "recentlyRead").size)
     }
 
     @Test

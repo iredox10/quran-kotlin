@@ -43,6 +43,8 @@ fun AnalyticsScreen(
     onOpenQuranClick: () -> Unit,
     onOpenLibraryClick: () -> Unit = onOpenQuranClick,
     onOpenCollectionsClick: () -> Unit = onOpenQuranClick,
+    onOpenActivityHistoryClick: () -> Unit = onOpenQuranClick,
+    onOpenRecentSurahsClick: () -> Unit = onOpenQuranClick,
     onBack: () -> Unit = onOpenQuranClick
 ) {
     val sessions by homeViewModel.readingSessions.collectAsState()
@@ -388,7 +390,8 @@ fun AnalyticsScreen(
                             RecentActivityTimeline(
                                 sessions = sessions,
                                 chapters = chapters,
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
+                                onSeeAllClick = onOpenActivityHistoryClick
                             )
                         }
                     } else {
@@ -398,8 +401,11 @@ fun AnalyticsScreen(
                         ) {
                             FreshUnlockCelebration(badges = achievementBadges, todaySessions = achievementStats.todaySessions)
                             AchievementsBoard(badges = achievementBadges, hasSessions = sessions.isNotEmpty())
-                            // No activity route in Screen.kt, so See-all stays hidden (onSeeAllClick = null).
-                            RecentActivityTimeline(sessions = sessions, chapters = chapters)
+                            RecentActivityTimeline(
+                                sessions = sessions,
+                                chapters = chapters,
+                                onSeeAllClick = onOpenActivityHistoryClick
+                            )
                         }
                     }
                 }
@@ -413,7 +419,8 @@ fun AnalyticsScreen(
                     recentSurahsCount = recentlyRead.size,
                     onOpenLibraryClick = onOpenLibraryClick,
                     onOpenCollectionsClick = onOpenCollectionsClick,
-                    onOpenQuranClick = onOpenQuranClick
+                    onOpenQuranClick = onOpenQuranClick,
+                    onOpenRecentSurahsClick = onOpenRecentSurahsClick
                 )
             }
 

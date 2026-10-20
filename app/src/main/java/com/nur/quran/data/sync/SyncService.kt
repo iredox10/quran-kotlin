@@ -675,7 +675,7 @@ class SyncService @Inject constructor(
                     )
                 }
             }
-            runSuspendCatching { d.pruneRecentlyRead() } // keep newest 5 (web parity)
+            runSuspendCatching { d.pruneRecentlyRead() } // keep newest 20 (web store parity)
         }
     }
 
@@ -917,7 +917,7 @@ class SyncService @Inject constructor(
                     )
                 }
             }
-            runSuspendCatching { dao.pruneRecentlyRead() } // keep newest 5 (web parity)
+            runSuspendCatching { dao.pruneRecentlyRead() } // keep newest 20 (web store parity)
         }
     }
 

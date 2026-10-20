@@ -823,6 +823,17 @@ class QuranRepository @Inject constructor(
     // Recently Read
     fun getRecentlyReadFlow(): Flow<List<RecentlyReadEntity>> = quranDao.getRecentlyRead()
 
+    /** Full history for the /recent page — the store caps history at 20 entries (web parity). */
+    fun getRecentlyReadHistoryFlow(): Flow<List<RecentlyReadEntity>> = quranDao.getRecentlyReadHistory()
+
+    suspend fun removeRecentlyRead(chapterId: Int) = withContext(Dispatchers.IO) {
+        quranDao.deleteRecentlyReadByChapter(chapterId)
+    }
+
+    suspend fun clearRecentlyRead() = withContext(Dispatchers.IO) {
+        quranDao.deleteAllRecentlyRead()
+    }
+
     suspend fun getRecentlyReadForChapter(chapterId: Int): RecentlyReadEntity? = withContext(Dispatchers.IO) {
         quranDao.getRecentlyReadForChapter(chapterId)
     }

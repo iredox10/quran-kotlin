@@ -286,6 +286,12 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onOpenCollectionsClick = {
                                     navController.navigate(Screen.Library.route)
+                                },
+                                onOpenActivityHistoryClick = {
+                                    navController.navigate(Screen.ActivityHistory.route)
+                                },
+                                onOpenRecentSurahsClick = {
+                                    navController.navigate(Screen.RecentSurahs.route)
                                 }
                             )
                         }
@@ -301,6 +307,22 @@ class MainActivity : ComponentActivity() {
                             val audioPacksVm: com.nur.quran.ui.viewmodels.AudioPacksViewModel =
                                 androidx.hilt.navigation.compose.hiltViewModel()
                             DownloadsScreen(packVm = audioPacksVm, onBack = { navController.popBackStack() })
+                        }
+                        composable(Screen.RecentSurahs.route) {
+                            com.nur.quran.ui.screens.RecentSurahsScreen(
+                                homeViewModel = homeViewModel,
+                                onOpenSurah = { chapterId, verseKey ->
+                                    navController.navigate(Screen.SurahDetail.createRoute(chapterId, verseKey))
+                                },
+                                onBack = { navController.popBackStack() }
+                            )
+                        }
+                        composable(Screen.ActivityHistory.route) {
+                            com.nur.quran.ui.screens.ActivityHistoryScreen(
+                                homeViewModel = homeViewModel,
+                                chapters = surahViewModel.allChapters.value,
+                                onBack = { navController.popBackStack() }
+                            )
                         }
                         composable(Screen.Library.route) {
                             LibraryScreen(

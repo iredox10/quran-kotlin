@@ -56,6 +56,7 @@ fun AnalyticsQuickCards(
     onOpenLibraryClick: () -> Unit,
     onOpenCollectionsClick: () -> Unit,
     onOpenQuranClick: () -> Unit,
+    onOpenRecentSurahsClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
@@ -81,10 +82,10 @@ fun AnalyticsQuickCards(
                     modifier = Modifier.weight(1f)
                 )
                 QuickCardItem(
-                    icon = NurIcons.Brain,
+                    icon = NurIcons.Clock,
                     count = recentSurahsCount,
                     label = "RECENT SURAHS",
-                    onClick = onOpenQuranClick,
+                    onClick = onOpenRecentSurahsClick,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -108,10 +109,10 @@ fun AnalyticsQuickCards(
                     modifier = Modifier.fillMaxWidth()
                 )
                 QuickCardItem(
-                    icon = NurIcons.Brain,
+                    icon = NurIcons.Clock,
                     count = recentSurahsCount,
                     label = "RECENT SURAHS",
-                    onClick = onOpenQuranClick,
+                    onClick = onOpenRecentSurahsClick,
                     modifier = Modifier.fillMaxWidth()
                 )
             }

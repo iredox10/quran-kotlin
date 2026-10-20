@@ -935,13 +935,13 @@ fun HifdhReaderScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                // 1. Prev Chunk Button (<ChevronLeft>)
+                                // 1. Next Chunk Button (RTL mushaf parity with the page navigator: NEXT on the left)
                                 IconButton(
-                                    onClick = goPrev,
-                                    enabled = currentVerseIndex > 0,
+                                    onClick = goNext,
+                                    enabled = canNext,
                                     modifier = Modifier.size(38.dp)
                                 ) {
-                                    Icon(imageVector = NurIcons.ArrowLeft, contentDescription = "Prev", tint = if (currentVerseIndex > 0) hInkMid else hInkMuted.copy(alpha = 0.3f))
+                                    Icon(imageVector = NurIcons.ArrowLeft, contentDescription = "Next", tint = if (canNext) hInkMid else hInkMuted.copy(alpha = 0.3f))
                                 }
 
                                 // 2. Hide Mode Cycle Button (<EyeOff> / <Eye>)
@@ -1057,13 +1057,13 @@ fun HifdhReaderScreen(
                                     )
                                 }
 
-                                // 8. Next Chunk Button (<ChevronRight>)
+                                // 8. Prev Chunk Button (RTL mushaf parity: PREVIOUS on the right)
                                 IconButton(
-                                    onClick = goNext,
-                                    enabled = canNext,
+                                    onClick = goPrev,
+                                    enabled = currentVerseIndex > 0,
                                     modifier = Modifier.size(38.dp)
                                 ) {
-                                    Icon(imageVector = NurIcons.ArrowRight, contentDescription = "Next", tint = if (canNext) hInkMid else hInkMuted.copy(alpha = 0.3f))
+                                    Icon(imageVector = NurIcons.ArrowRight, contentDescription = "Prev", tint = if (currentVerseIndex > 0) hInkMid else hInkMuted.copy(alpha = 0.3f))
                                 }
                             }
                         }

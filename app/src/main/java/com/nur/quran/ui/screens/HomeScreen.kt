@@ -151,6 +151,7 @@ fun HomeScreen(
     val browseMode by viewModel.browseMode.collectAsState()
     val recentlyRead by viewModel.recentlyRead.collectAsState()
     val latestBookmark by viewModel.latestBookmark.collectAsState()
+    val stats by viewModel.stats.collectAsState()
     val onboardingState by viewModel.onboardingState.collectAsState()
     val isOnline by viewModel.isOnline.collectAsState()
     val completedTours by viewModel.completedTours.collectAsState()
@@ -360,6 +361,12 @@ fun HomeScreen(
                             )
                             Spacer(modifier = Modifier.height(20.dp))
                         }
+                    }
+
+                    // ─── Weekly Heatmap ───
+                    item {
+                        WeeklyHeatmapCard(stats = stats)
+                        Spacer(modifier = Modifier.height(28.dp))
                     }
 
                     // ─── Bookmark ───
@@ -938,6 +945,106 @@ private fun ZeroStateContinueCard(onClick: () -> Unit) {
     }
 }
 
+// ── Weekly Heatmap ("This Week") ────────────────────────────────────────
+@Composable
+private fun WeeklyHeatmapCard(stats: HomeStats) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = hCream,
+        border = androidx.compose.foundation.BorderStroke(1.5.dp, hBoneDark)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = NurIcons.BarChart3,
+                    contentDescription = null,
+                    tint = hInk,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "This Week",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = hInk,
+                    fontFamily = fontFamilyUi
+                )
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                stats.week.forEach { day ->
+                    val pct = Math.round(day.mins * 100f / stats.weekMax)
+                    // Level thresholds identical to the web app
+                    val level = when {
+                        pct > 80 -> 3 // max
+                        pct > 50 -> 2 // high
+                        pct > 20 -> 1 // med
+                        else -> 0     // low
+                    }
+                    val fillColor = when (level) {
+                        3 -> hGreen
+                        2 -> hTeal
+                        1 -> hTealSoft
+                        else -> hBoneDark
+                    }
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = day.label,
+                            fontSize = 9.sp,
+                            fontFamily = fontFamilyMono,
+                            letterSpacing = 0.5.sp,
+                            fontWeight = if (day.isToday) FontWeight.Bold else FontWeight.Normal,
+                            color = if (day.isToday) hTeal else hInkMuted
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(32.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(hBone)
+                        ) {
+                            if (day.mins > 0) {
+                                val fraction = maxOf(15, pct) / 100f
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .fillMaxHeight(fraction)
+                                        .align(Alignment.BottomCenter)
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(fillColor)
+                                        .then(
+                                            if (level == 1) Modifier.border(
+                                                1.dp,
+                                                Color(0x262E4F4A),
+                                                RoundedCornerShape(6.dp)
+                                            ) else Modifier
+                                        )
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "${day.mins}m",
+                            fontSize = 9.sp,
+                            fontFamily = fontFamilyMono,
+                            fontWeight = if (day.isToday) FontWeight.Bold else FontWeight.Normal,
+                            color = if (day.isToday) hTeal else hInkMuted
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
 // ── Bookmark Card (gold) ────────────────────────────────────────────────
 @Composable
 private fun BookmarkCard(bookmark: BookmarkEntity, onClick: () -> Unit) {
@@ -1409,6 +1516,7 @@ private fun buildSectionIndexMap(
     if (!onboardingDismissed) idx++ // onboarding card
     val stats = idx; idx++
     val verse = idx; idx++
+    idx++ // weekly heatmap
     idx++ // invite friends
     if (hasBookmark) idx++ // bookmark card
     var resume = -1

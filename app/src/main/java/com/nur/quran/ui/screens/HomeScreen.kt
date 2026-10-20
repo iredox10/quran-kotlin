@@ -315,7 +315,17 @@ fun HomeScreen(
                             if (lastRead != null) {
                                 ContinueReadingCard(
                                     item = lastRead,
-                                    onClick = { onChapterClick(lastRead.chapterId, lastRead.verseKey) }
+                                    onClick = {
+                                        // Reopen the exact reader the user was in:
+                                        // page reads (page/juz/hizb) → page screen,
+                                        // surah reads → surah screen at the anchor.
+                                        val lastPage = lastRead.pageNumber
+                                        if (lastPage != null && lastRead.verseKey == null) {
+                                            onPageClick(lastPage)
+                                        } else {
+                                            onChapterClick(lastRead.chapterId, lastRead.verseKey)
+                                        }
+                                    }
                                 )
                             } else {
                                 ZeroStateContinueCard(
@@ -359,7 +369,16 @@ fun HomeScreen(
                         item {
                             BookmarkCard(
                                 bookmark = bookmark,
-                                onClick = { onChapterClick(bookmark.chapterId, bookmark.verseKey) }
+                                onClick = {
+                                    // Reopen in the reader context the bookmark
+                                    // was taken from (page mode → page screen).
+                                    val pg = bookmark.sourcePage
+                                    if (bookmark.sourceMode == "page" && pg != null) {
+                                        onPageClick(pg)
+                                    } else {
+                                        onChapterClick(bookmark.chapterId, bookmark.verseKey)
+                                    }
+                                }
                             )
                             Spacer(modifier = Modifier.height(28.dp))
                         }

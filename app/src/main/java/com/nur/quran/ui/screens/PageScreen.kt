@@ -279,16 +279,18 @@ fun PageScreen(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    // Previous
+                                    // Web page navigator (Page.jsx): NEXT is on the LEFT,
+                                    // PREVIOUS on the right — RTL mushaf page order.
+                                    // Next (left)
                                     Text(
-                                        text = "← Previous",
+                                        text = "← Next",
                                         fontFamily = fontFamilyUi,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (pageNumber > 1) hTeal else hInkMuted,
+                                        color = if (pageNumber < 604) hTeal else hInkMuted,
                                         modifier = Modifier
                                             .clip(RoundedCornerShape(8.dp))
-                                            .clickable(enabled = pageNumber > 1) {
-                                                onNavigateToPage(pageNumber - 1)
+                                            .clickable(enabled = pageNumber < 604) {
+                                                onNavigateToPage(pageNumber + 1)
                                             }
                                             .padding(8.dp)
                                     )
@@ -311,16 +313,16 @@ fun PageScreen(
                                         )
                                     }
 
-                                    // Next
+                                    // Previous (right)
                                     Text(
-                                        text = "Next →",
+                                        text = "Previous →",
                                         fontFamily = fontFamilyUi,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (pageNumber < 604) hTeal else hInkMuted,
+                                        color = if (pageNumber > 1) hTeal else hInkMuted,
                                         modifier = Modifier
                                             .clip(RoundedCornerShape(8.dp))
-                                            .clickable(enabled = pageNumber < 604) {
-                                                onNavigateToPage(pageNumber + 1)
+                                            .clickable(enabled = pageNumber > 1) {
+                                                onNavigateToPage(pageNumber - 1)
                                             }
                                             .padding(8.dp)
                                     )

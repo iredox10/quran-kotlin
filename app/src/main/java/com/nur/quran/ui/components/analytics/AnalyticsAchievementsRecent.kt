@@ -458,7 +458,7 @@ private fun formatSessionSubtitle(timestamp: Long, dateString: String): String {
 }
 
 @Composable
-private fun TimelineSessionRow(
+internal fun TimelineSessionRow(
     session: ReadingSessionEntity,
     chapters: List<ChapterEntity>,
     modifier: Modifier = Modifier

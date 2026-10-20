@@ -38,7 +38,7 @@ private val DEEP_MERGE_FIELDS: Set<String> = setOf(
 private const val PAYLOAD_SIZE_LIMIT = 950_000
 private const val SESSION_CAP = 500
 private const val SLIM_SESSION_CAP = 100
-private const val RECENTLY_READ_CAP = 5
+private const val RECENTLY_READ_CAP = 20
 
 /** JS isPlainObject: non-null object that is not an array. */
 internal fun isPlainObject(v: Any?): Boolean = v is Map<*, *>
@@ -213,7 +213,7 @@ private fun mergeItem(baseItem: Any?, incomingItem: Any?, field: String): Any? {
 
 /**
  * JS mergeArray: identity-keyed union (dedupe, latest wins per key) with
- * post caps — recentlyRead sorted newest-first then trimmed to 5,
+ * post caps — recentlyRead sorted newest-first then trimmed to 20,
  * readingSessions/pomodoroHistory keep the last 500.
  */
 private fun mergeArray(base: Any?, incoming: Any?, field: String): List<Any?> {

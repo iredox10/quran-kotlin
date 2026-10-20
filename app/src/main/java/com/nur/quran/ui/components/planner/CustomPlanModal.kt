@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -43,7 +44,8 @@ fun CustomPlanModal(
     var customTitle by remember { mutableStateOf("") }
     var startUnitText by remember { mutableStateOf("1") }
     var endUnitText by remember { mutableStateOf("604") }
-    var pagesPerDay by remember { mutableStateOf(10) }
+    // Raw number-input text for "X per day" (web pagesPerDay: free typing, clamped on blur).
+    var pagesPerDayText by remember { mutableStateOf("10") }
     var startDateText by remember { mutableStateOf(PlannerEngine.formatPlannerDate()) }
     var excludeDays by remember { mutableStateOf(setOf<Int>()) }
     var buildError by remember { mutableStateOf<String?>(null) }
@@ -54,7 +56,9 @@ fun CustomPlanModal(
     val sUnit = (startUnitText.toIntOrNull() ?: 1).coerceIn(1, maxUnit)
     val eUnit = (endUnitText.toIntOrNull() ?: maxUnit).coerceIn(sUnit, maxUnit)
     val totalSelectedUnits = (eUnit - sUnit + 1).coerceAtLeast(1)
-    val computedDuration = Math.ceil(totalSelectedUnits.toDouble() / pagesPerDay.coerceAtLeast(1)).toInt().coerceAtLeast(1)
+    // Web parity: computedDuration uses max(Number(pagesPerDay) || 1, 1).
+    val pagesPerDay = Math.max(pagesPerDayText.toIntOrNull() ?: 1, 1)
+    val computedDuration = Math.ceil(totalSelectedUnits.toDouble() / pagesPerDay).toInt().coerceAtLeast(1)
 
     val stats = remember(computedDuration, excludeDays, startDateText, totalSelectedUnits) {
         PlannerUtils.getPaceStats(
@@ -211,7 +215,8 @@ fun CustomPlanModal(
                         )
                     }
 
-                    // Units per day slider + number
+                    // Units per day — editable number + slider (web parity: number input
+                    // min 1 / max totalUnits, clamped on blur; slider is 1..min(total,50))
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
                             text = "$unitPlural per day",
@@ -225,25 +230,48 @@ fun CustomPlanModal(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Surface(
+                            var editingPerDay by remember { mutableStateOf(false) }
+                            OutlinedTextField(
+                                value = pagesPerDayText,
+                                onValueChange = { raw ->
+                                    pagesPerDayText = raw.filter { it.isDigit() }.take(3)
+                                },
+                                singleLine = true,
                                 shape = RoundedCornerShape(10.dp),
-                                border = BorderStroke(1.5.dp, hBoneDark),
-                                color = hCream,
-                                modifier = Modifier.width(60.dp)
-                            ) {
-                                Text(
-                                    text = "$pagesPerDay",
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    unfocusedContainerColor = hCream,
+                                    focusedContainerColor = hCream,
+                                    unfocusedBorderColor = hBoneDark,
+                                    focusedBorderColor = hGold
+                                ),
+                                textStyle = androidx.compose.ui.text.TextStyle(
                                     fontFamily = fontFamilyBody,
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.SemiBold,
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier.padding(vertical = 10.dp)
-                                )
-                            }
+                                    textAlign = TextAlign.Center
+                                ),
+                                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                                ),
+                                modifier = Modifier
+                                    .width(70.dp)
+                                    .onFocusChanged { focus ->
+                                        if (focus.isFocused) {
+                                            editingPerDay = true
+                                        } else if (editingPerDay) {
+                                            editingPerDay = false
+                                            // Web onBlur: Math.max(1, Math.min(Number(prev) || 1, totalUnits))
+                                            val parsed = pagesPerDayText.toIntOrNull() ?: 1
+                                            pagesPerDayText =
+                                                parsed.coerceIn(1, totalSelectedUnits.coerceAtLeast(1)).toString()
+                                        }
+                                    }
+                            )
                             Slider(
-                                value = pagesPerDay.toFloat(),
-                                onValueChange = { pagesPerDay = it.toInt().coerceAtLeast(1) },
-                                // Web parity: slider max is min(totalUnits, 50).
+                                // Web: slider value = Math.min(pagesPerDay, 50) so it stays
+                                // in range even when the input holds a bigger number.
+                                value = pagesPerDay.coerceIn(1, 50).toFloat(),
+                                onValueChange = { pagesPerDayText = it.toInt().coerceAtLeast(1).toString() },
                                 valueRange = 1f..totalSelectedUnits.coerceAtMost(50).coerceAtLeast(1).toFloat(),
                                 modifier = Modifier.weight(1f),
                                 colors = SliderDefaults.colors(thumbColor = hTeal, activeTrackColor = hTeal)

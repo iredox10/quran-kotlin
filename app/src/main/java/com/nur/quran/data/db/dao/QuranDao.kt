@@ -168,14 +168,24 @@ interface QuranDao {
     @Query("SELECT * FROM recently_read ORDER BY timestamp DESC LIMIT :limit")
     fun getRecentlyRead(limit: Int = 5): Flow<List<RecentlyReadEntity>>
 
+    /** Full history list for the Recently-Read page (kept pruned to 20 by addRecentlyRead). */
+    @Query("SELECT * FROM recently_read ORDER BY timestamp DESC")
+    fun getRecentlyReadHistory(): Flow<List<RecentlyReadEntity>>
+
     @Query("SELECT * FROM recently_read WHERE chapterId = :chapterId LIMIT 1")
     suspend fun getRecentlyReadForChapter(chapterId: Int): RecentlyReadEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertRecentlyRead(item: RecentlyReadEntity)
 
-    // Keep only the newest 5 entries (matches the web store's slice(0, 5))
-    @Query("DELETE FROM recently_read WHERE chapterId NOT IN (SELECT chapterId FROM recently_read ORDER BY timestamp DESC LIMIT 5)")
+    @Query("DELETE FROM recently_read WHERE chapterId = :chapterId")
+    suspend fun deleteRecentlyReadByChapter(chapterId: Int)
+
+    @Query("DELETE FROM recently_read")
+    suspend fun deleteAllRecentlyRead()
+
+    // Keep only the newest 20 entries (matches the web store's slice(0, 20))
+    @Query("DELETE FROM recently_read WHERE chapterId NOT IN (SELECT chapterId FROM recently_read ORDER BY timestamp DESC LIMIT 20)")
     suspend fun pruneRecentlyRead()
 
     // Latest bookmark (web app shows a single active bookmark card on Home)

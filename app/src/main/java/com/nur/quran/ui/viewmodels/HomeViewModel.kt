@@ -170,6 +170,18 @@ class HomeViewModel @Inject constructor(
     val recentlyRead: StateFlow<List<RecentlyReadEntity>> = repository.getRecentlyReadFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    /** Full history for the Recently Read screen (web /recent parity, 20 entries). */
+    val recentlyReadHistory: StateFlow<List<RecentlyReadEntity>> = repository.getRecentlyReadHistoryFlow()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun removeRecentlyRead(chapterId: Int) {
+        viewModelScope.launch { repository.removeRecentlyRead(chapterId) }
+    }
+
+    fun clearRecentlyRead() {
+        viewModelScope.launch { repository.clearRecentlyRead() }
+    }
+
     val latestBookmark: StateFlow<BookmarkEntity?> = repository.getLatestBookmarkFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 

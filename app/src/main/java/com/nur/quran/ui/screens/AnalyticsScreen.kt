@@ -5,6 +5,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,6 +23,7 @@ import androidx.compose.ui.unit.sp
 import com.nur.quran.analytics.AnalyticsStats
 import com.nur.quran.ui.components.NurIcons
 import com.nur.quran.ui.components.analytics.*
+import com.nur.quran.ui.viewmodels.HomeStats
 import com.nur.quran.ui.viewmodels.HomeViewModel
 import com.nur.quran.ui.viewmodels.SurahViewModel
 import java.text.SimpleDateFormat
@@ -48,6 +50,8 @@ fun AnalyticsScreen(
     val bookmarks by homeViewModel.bookmarks.collectAsState()
     val collections by homeViewModel.collections.collectAsState()
     val chapters by surahViewModel.allChapters.collectAsState()
+    // Weekly heatmap ("This Week") — moved from Home; same single stats source.
+    val stats by homeViewModel.stats.collectAsState()
 
     var chartMode by remember { mutableStateOf("flow") } // "flow" or "heatmap"
     // In-card log-activity form (web ActivityFlow parity); gen resets form on close.
@@ -364,6 +368,11 @@ fun AnalyticsScreen(
 
             // (Log-activity form now lives inside the Flow card, web parity.)
 
+            // 5b. Weekly recap — moved from Home: per-day minutes ("This Week")
+            item {
+                WeeklyHeatmapCard(stats = stats)
+            }
+
             // 6. Achievements & Recent Activity Row (Web lines 450-536)
             item {
                 BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
@@ -606,6 +615,107 @@ private fun ActivityFlowPeriodTabs(
                 Text(range.label.uppercase(Locale.getDefault()), fontSize = 10.sp,
                     fontWeight = FontWeight.Bold, fontFamily = fontFamilyMono,
                     letterSpacing = 1.sp, color = if (active) hInk else hInkMuted)
+            }
+        }
+    }
+}
+
+// ── Weekly Recap ("This Week") — moved from HomeScreen ──────────────────
+// ── Weekly Heatmap ("This Week") ────────────────────────────────────────
+@Composable
+private fun WeeklyHeatmapCard(stats: HomeStats) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = hCream,
+        border = androidx.compose.foundation.BorderStroke(1.5.dp, hBoneDark)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = NurIcons.BarChart3,
+                    contentDescription = null,
+                    tint = hInk,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "This Week",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = hInk,
+                    fontFamily = fontFamilyUi
+                )
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                stats.week.forEach { day ->
+                    val pct = Math.round(day.mins * 100f / stats.weekMax)
+                    // Level thresholds identical to the web app
+                    val level = when {
+                        pct > 80 -> 3 // max
+                        pct > 50 -> 2 // high
+                        pct > 20 -> 1 // med
+                        else -> 0     // low
+                    }
+                    val fillColor = when (level) {
+                        3 -> hGreen
+                        2 -> hTeal
+                        1 -> hTealSoft
+                        else -> hBoneDark
+                    }
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = day.label,
+                            fontSize = 9.sp,
+                            fontFamily = fontFamilyMono,
+                            letterSpacing = 0.5.sp,
+                            fontWeight = if (day.isToday) FontWeight.Bold else FontWeight.Normal,
+                            color = if (day.isToday) hTeal else hInkMuted
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(32.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(hBone)
+                        ) {
+                            if (day.mins > 0) {
+                                val fraction = maxOf(15, pct) / 100f
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .fillMaxHeight(fraction)
+                                        .align(Alignment.BottomCenter)
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(fillColor)
+                                        .then(
+                                            if (level == 1) Modifier.border(
+                                                1.dp,
+                                                Color(0x262E4F4A),
+                                                RoundedCornerShape(6.dp)
+                                            ) else Modifier
+                                        )
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "${day.mins}m",
+                            fontSize = 9.sp,
+                            fontFamily = fontFamilyMono,
+                            fontWeight = if (day.isToday) FontWeight.Bold else FontWeight.Normal,
+                            color = if (day.isToday) hTeal else hInkMuted
+                        )
+                    }
+                }
             }
         }
     }

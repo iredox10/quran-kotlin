@@ -1,15 +1,23 @@
 package com.nur.quran.ui.screens
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -17,12 +25,16 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.abs
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.nur.quran.data.getHizbByPage
 import com.nur.quran.data.getJuzByPage
@@ -76,16 +88,87 @@ fun PageScreen(
         }
     }
 
-    var swipeTotal by remember { mutableStateOf(0f) }
     val swipeThreshold = with(LocalDensity.current) { 60.dp.toPx() }
-    val listState = rememberLazyListState()
+
+    // Holds the last loaded pane (verses or error) so the flip animation can
+    // cross-slide two real panes instead of flickering through the transient
+    // Loading state between pages.
+    var flipPane by remember { mutableStateOf<PageUiState?>(null) }
+    SideEffect {
+        when (val s = uiState) {
+            is PageUiState.Success -> flipPane = s
+            is PageUiState.Error -> flipPane = s
+            else -> {}
+        }
+    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(hWhite)
+            .pointerInput(pageNumber) {
+                // Web parity (Page.jsx useSwipeable): swipe right → next page,
+                // swipe left → previous page. Observed in the Initial pass with
+                // an axis lock so the verse list's vertical scroll cannot
+                // consume the gesture and cancel detection mid-swipe.
+                awaitEachGesture {
+                    awaitFirstDown(pass = PointerEventPass.Initial)
+                    val slop = viewConfiguration.touchSlop
+                    var totalX = 0f
+                    var totalY = 0f
+                    var horizontalWins: Boolean? = null
+                    while (true) {
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                        val change = event.changes.firstOrNull() ?: continue
+                        val delta = change.positionChange()
+                        totalX += delta.x
+                        totalY += delta.y
+                        if (horizontalWins == null && (abs(totalX) > slop || abs(totalY) > slop)) {
+                            horizontalWins = abs(totalX) > abs(totalY)
+                        }
+                        if (horizontalWins == true) {
+                            // Claimed horizontally: the list below must not scroll.
+                            change.consume()
+                        }
+                        if (!change.pressed) break
+                    }
+                    if (horizontalWins == true) {
+                        when {
+                            totalX > swipeThreshold && pageNumber < 604 -> onNavigateToPage(pageNumber + 1)
+                            totalX < -swipeThreshold && pageNumber > 1 -> onNavigateToPage(pageNumber - 1)
+                        }
+                    }
+                }
+            }
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
+        // Web page-flip (Page.jsx pageVariants, spring stiffness 300 / damping
+        // 30 ≈ 0.87 ratio): the whole pane (header + content) slides and
+        // crossfades on page change — next page enters from the LEFT, previous
+        // from the RIGHT. The bottom navigator flips with its pane.
+        AnimatedContent(
+            targetState = flipPane,
+            transitionSpec = {
+                val from = initialState as? PageUiState.Success
+                val to = targetState as? PageUiState.Success
+                val toNext = from != null && to != null && to.pageNumber > from.pageNumber
+                // First mount (web AnimatePresence initial={false}): no flip.
+                if (initialState == null) {
+                    fadeIn(snap()) togetherWith fadeOut(snap())
+                } else {
+                    val slide = spring<IntOffset>(dampingRatio = 0.87f, stiffness = 300f)
+                    val fade = spring<Float>(dampingRatio = 0.87f, stiffness = 300f)
+                    (slideInHorizontally(slide) { full -> if (toNext) -full else full } +
+                        fadeIn(fade)) togetherWith
+                        (slideOutHorizontally(slide) { full -> if (toNext) full else -full } +
+                            fadeOut(fade))
+                }
+            },
+            label = "pageFlip"
+        ) { pane ->
+            // Pane-scoped page number: the sliding-out pane keeps showing its
+            // own page while it animates (header flips with the content).
+            val panePage = (pane as? PageUiState.Success)?.pageNumber ?: pageNumber
+            Column(modifier = Modifier.fillMaxSize()) {
             // ─── Custom Header ───
             Row(
                 modifier = Modifier
@@ -108,15 +191,15 @@ fun PageScreen(
                     horizontalAlignment = Alignment.Start
                 ) {
                     Text(
-                        text = "Page $pageNumber",
+                        text = "Page $panePage",
                         fontFamily = fontFamilyUi,
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp,
                         color = hInk
                     )
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        val juz = getJuzByPage(pageNumber)
-                        val hizb = getHizbByPage(pageNumber)
+                        val juz = getJuzByPage(panePage)
+                        val hizb = getHizbByPage(panePage)
                         Text(
                             text = "Juz ${juz.id} · Hizb ${hizb.id}",
                             fontFamily = fontFamilyUi,
@@ -128,29 +211,9 @@ fun PageScreen(
             }
 
             // ─── Main Content ───
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .pointerInput(pageNumber) {
-                        detectHorizontalDragGestures(
-                            onDragStart = { swipeTotal = 0f },
-                            onDragEnd = {
-                                when {
-                                    swipeTotal > swipeThreshold && pageNumber > 1 -> {
-                                        onNavigateToPage(pageNumber - 1)
-                                    }
-                                    swipeTotal < -swipeThreshold && pageNumber < 604 -> {
-                                        onNavigateToPage(pageNumber + 1)
-                                    }
-                                }
-                                swipeTotal = 0f
-                            },
-                            onHorizontalDrag = { _, dragAmount -> swipeTotal += dragAmount }
-                        )
-                    }
-            ) {
-                when (val state = uiState) {
-                    is PageUiState.Loading -> {
+            Box(modifier = Modifier.weight(1f)) {
+                when (val state = pane) {
+                    null, PageUiState.Loading -> {
                         Column(
                             modifier = Modifier.fillMaxSize(),
                             horizontalAlignment = Alignment.CenterHorizontally,
@@ -196,7 +259,6 @@ fun PageScreen(
                         val chapterMap = state.chapterMap
 
                         LazyColumn(
-                            state = listState,
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(bottom = 100.dp)
                         ) {
@@ -286,11 +348,11 @@ fun PageScreen(
                                         text = "← Next",
                                         fontFamily = fontFamilyUi,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (pageNumber < 604) hTeal else hInkMuted,
+                                        color = if (state.pageNumber < 604) hTeal else hInkMuted,
                                         modifier = Modifier
                                             .clip(RoundedCornerShape(8.dp))
-                                            .clickable(enabled = pageNumber < 604) {
-                                                onNavigateToPage(pageNumber + 1)
+                                            .clickable(enabled = state.pageNumber < 604) {
+                                                onNavigateToPage(state.pageNumber + 1)
                                             }
                                             .padding(8.dp)
                                     )
@@ -305,7 +367,7 @@ fun PageScreen(
                                             letterSpacing = 1.sp
                                         )
                                         Text(
-                                            text = "$pageNumber / 604",
+                                            text = "${state.pageNumber} / 604",
                                             fontFamily = fontFamilyUi,
                                             fontWeight = FontWeight.ExtraBold,
                                             fontSize = 16.sp,
@@ -318,11 +380,11 @@ fun PageScreen(
                                         text = "Previous →",
                                         fontFamily = fontFamilyUi,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (pageNumber > 1) hTeal else hInkMuted,
+                                        color = if (state.pageNumber > 1) hTeal else hInkMuted,
                                         modifier = Modifier
                                             .clip(RoundedCornerShape(8.dp))
-                                            .clickable(enabled = pageNumber > 1) {
-                                                onNavigateToPage(pageNumber - 1)
+                                            .clickable(enabled = state.pageNumber > 1) {
+                                                onNavigateToPage(state.pageNumber - 1)
                                             }
                                             .padding(8.dp)
                                     )
@@ -332,33 +394,34 @@ fun PageScreen(
                     }
                 }
             }
-
-            // ─── MiniPlayer ───
-            AnimatedVisibility(
-                visible = isPlaying && !playerHiddenByUser && playingVerseKey != null,
-                enter = slideInVertically(initialOffsetY = { it }),
-                exit = slideOutVertically(targetOffsetY = { it })
-            ) {
-                val playerVerses = (uiState as? PageUiState.Success)?.verses ?: emptyList()
-                MiniPlayer(
-                    verseKey = playingVerseKey ?: "",
-                    isPlaying = isPlaying,
-                    onPlayPause = { viewModel.togglePlayPause() },
-                    onPrevious = {
-                        val idx = playerVerses.indexOfFirst { it.verseKey == playingVerseKey }
-                        if (idx > 0) viewModel.startPlayback(playerVerses, idx - 1)
-                    },
-                    onNext = {
-                        val idx = playerVerses.indexOfFirst { it.verseKey == playingVerseKey }
-                        if (idx in 0 until playerVerses.size - 1) viewModel.startPlayback(playerVerses, idx + 1)
-                    },
-                    onClose = { playerHiddenByUser = true },
-                    onStop = { viewModel.stopPlaying() },
-                    progress = playbackProgress?.let { (pos, dur) ->
-                        if (dur > 0) (pos.toFloat() / dur).coerceIn(0f, 1f) else null
-                    }
-                )
             }
+        }
+
+        // ─── MiniPlayer ─── (outside the flip panes: static overlay)
+        AnimatedVisibility(
+            visible = isPlaying && !playerHiddenByUser && playingVerseKey != null,
+            enter = slideInVertically(initialOffsetY = { it }),
+            exit = slideOutVertically(targetOffsetY = { it })
+        ) {
+            val playerVerses = (uiState as? PageUiState.Success)?.verses ?: emptyList()
+            MiniPlayer(
+                verseKey = playingVerseKey ?: "",
+                isPlaying = isPlaying,
+                onPlayPause = { viewModel.togglePlayPause() },
+                onPrevious = {
+                    val idx = playerVerses.indexOfFirst { it.verseKey == playingVerseKey }
+                    if (idx > 0) viewModel.startPlayback(playerVerses, idx - 1)
+                },
+                onNext = {
+                    val idx = playerVerses.indexOfFirst { it.verseKey == playingVerseKey }
+                    if (idx in 0 until playerVerses.size - 1) viewModel.startPlayback(playerVerses, idx + 1)
+                },
+                onClose = { playerHiddenByUser = true },
+                onStop = { viewModel.stopPlaying() },
+                progress = playbackProgress?.let { (pos, dur) ->
+                    if (dur > 0) (pos.toFloat() / dur).coerceIn(0f, 1f) else null
+                }
+            )
         }
     }
 }

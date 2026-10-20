@@ -169,6 +169,15 @@ class PageViewModel @Inject constructor(
                 
                 val wordsMap = repository.getWordsForVerses(verses.map { it.id })
 
+                // Word-tap tooltips offline-first: Room words paint instantly;
+                // backfill missing translation packs in the background so the
+                // next open works fully offline (surah load does the same).
+                viewModelScope.launch(Dispatchers.IO) {
+                    chapterIds.forEach { cId ->
+                        runCatching { repository.ensureChapterWordsCached(cId) }
+                    }
+                }
+
                 var pageVerses = verses
                 if (pageVerses.any { it.translation.isNullOrBlank() }) {
                     repository.repairBlankTranslations()

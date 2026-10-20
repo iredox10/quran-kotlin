@@ -262,6 +262,10 @@ class SurahViewModel @Inject constructor(
         }
     }
 
+    /** Whether the chapter's word-translation pack is already cached (offline word taps). */
+    fun isWordPackCached(chapterId: Int): Boolean =
+        runCatching { wordPackManager.isChapterCached(chapterId) }.getOrDefault(false)
+
     /** Downloads word translations for every chapter missing them. */
     fun downloadAllMissingWordPacks() {
         viewModelScope.launch(Dispatchers.IO) {

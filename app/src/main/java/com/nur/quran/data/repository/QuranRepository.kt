@@ -838,13 +838,19 @@ class QuranRepository @Inject constructor(
         quranDao.getRecentlyReadForChapter(chapterId)
     }
 
-    suspend fun addRecentlyRead(chapterId: Int, chapterName: String, verseKey: String? = null) {
+    suspend fun addRecentlyRead(
+        chapterId: Int,
+        chapterName: String,
+        verseKey: String? = null,
+        pageNumber: Int? = null
+    ) {
         withContext(Dispatchers.IO) {
             quranDao.upsertRecentlyRead(
                 RecentlyReadEntity(
                     chapterId = chapterId,
                     chapterName = chapterName,
-                    verseKey = verseKey
+                    verseKey = verseKey,
+                    pageNumber = pageNumber
                 )
             )
             quranDao.pruneRecentlyRead()

@@ -69,7 +69,7 @@ class PageViewModel @Inject constructor(
     private val hifdhPrefs = context.getSharedPreferences("hifdh_settings", Context.MODE_PRIVATE)
 
     private val _currentTranslationId = MutableStateFlow(
-        hifdhPrefs.getInt("translation_id", 85).let { if (it == 131) 85 else it }
+        hifdhPrefs.getInt("translation_id", 20).let { if (it == 131) 20 else it }
     )
     val currentTranslationId: StateFlow<Int> = _currentTranslationId.asStateFlow()
 
@@ -297,8 +297,8 @@ class PageViewModel @Inject constructor(
     val streamOnly: StateFlow<Boolean> = _streamOnly.asStateFlow()
 
     init {
-        if (hifdhPrefs.getInt("translation_id", 85) == 131) {
-            hifdhPrefs.edit().putInt("translation_id", 85).apply()
+        if (hifdhPrefs.getInt("translation_id", 20) == 131) {
+            hifdhPrefs.edit().putInt("translation_id", 20).apply()
         }
         ensureController()
     }

@@ -318,10 +318,14 @@ fun PageScreen(
                                     isTafsirOpen = false,
                                     onPlayClick = { viewModel.startPlayback(verses, index) },
                                     onBookmarkClick = {
+                                        // Bookmark remembers the page reader context,
+                                        // so the Home bookmark card reopens this page.
                                         viewModel.toggleBookmark(
                                             verse.verseKey,
                                             verse.chapterId,
-                                            chapter?.nameSimple ?: ""
+                                            chapter?.nameSimple ?: "",
+                                            sourceMode = "page",
+                                            sourcePage = pageNumber
                                         )
                                     },
                                     onTafsirClick = { /* Tafsir not implemented in page view */ },

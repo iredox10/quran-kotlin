@@ -450,7 +450,7 @@ fun HifdhReaderScreen(
                                         verticalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
                                         IconButton(
-                                            onClick = { surahViewModel.toggleBookmark(verseKey, chapterId, chapterObj.nameSimple) },
+                                            onClick = { surahViewModel.toggleBookmark(verseKey, chapterId, chapterObj.nameSimple, sourceMode = "surah") },
                                             modifier = Modifier.size(32.dp)
                                         ) {
                                             Icon(

@@ -64,7 +64,7 @@ object AppModule {
             context,
             QuranDatabase::class.java,
             "quran_database"
-        ).fallbackToDestructiveMigration().build()
+        ).addMigrations(QuranDatabase.MIGRATION_8_9).fallbackToDestructiveMigration().build()
     }
 
     @Provides

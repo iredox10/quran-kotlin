@@ -101,7 +101,13 @@ class PageViewModel @Inject constructor(
         .map { it.toSet() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
 
-    fun toggleBookmark(verseKey: String, chapterId: Int, surahName: String) {
+    fun toggleBookmark(
+        verseKey: String,
+        chapterId: Int,
+        surahName: String,
+        sourceMode: String = "surah",
+        sourcePage: Int? = null
+    ) {
         viewModelScope.launch {
             if (bookmarkedVerses.value.contains(verseKey)) {
                 repository.clearBookmarks()
@@ -111,7 +117,9 @@ class PageViewModel @Inject constructor(
                         verseKey = verseKey,
                         chapterId = chapterId,
                         surahName = surahName,
-                        timestamp = System.currentTimeMillis()
+                        timestamp = System.currentTimeMillis(),
+                        sourceMode = sourceMode,
+                        sourcePage = sourcePage
                     )
                 )
             }
@@ -205,10 +213,12 @@ class PageViewModel @Inject constructor(
                     pageNumber = pageNumber
                 )
                 
-                // Track recently read using the first chapter on the page
+                // Track recently read using the first chapter on the page.
+                // pageNumber (not verseKey) marks this as a page/juz/hizb read,
+                // so the Continue card reopens the page screen.
                 val firstChapterId = verses.first().chapterId
                 val firstChapterName = chapterMap[firstChapterId]?.nameSimple ?: "Surah $firstChapterId"
-                repository.addRecentlyRead(firstChapterId, firstChapterName)
+                repository.addRecentlyRead(firstChapterId, firstChapterName, pageNumber = pageNumber)
                 
                 // Prefetch next 3 pages
                 prefetchPages(pageNumber + 1, pageNumber + 3)

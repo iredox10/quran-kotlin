@@ -1821,7 +1821,13 @@ class SurahViewModel @Inject constructor(
         setReadingMode(!_isReadingMode.value)
     }
 
-    fun toggleBookmark(verseKey: String, chapterId: Int, surahName: String) {
+    fun toggleBookmark(
+        verseKey: String,
+        chapterId: Int,
+        surahName: String,
+        sourceMode: String = "surah",
+        sourcePage: Int? = null
+    ) {
         viewModelScope.launch {
             val isCurrentlyBookmarked = verseKey in bookmarkedVerses.value
             if (isCurrentlyBookmarked) {
@@ -1833,7 +1839,9 @@ class SurahViewModel @Inject constructor(
                         verseKey = verseKey,
                         chapterId = chapterId,
                         surahName = surahName,
-                        timestamp = System.currentTimeMillis()
+                        timestamp = System.currentTimeMillis(),
+                        sourceMode = sourceMode,
+                        sourcePage = sourcePage
                     )
                 )
             }

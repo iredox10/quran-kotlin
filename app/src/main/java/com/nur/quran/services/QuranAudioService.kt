@@ -242,7 +242,7 @@ class QuranAudioService : MediaLibraryService() {
             this,
             com.nur.quran.data.db.QuranDatabase::class.java,
             "quran_database",
-        ).fallbackToDestructiveMigration().build()
+        ).addMigrations(com.nur.quran.data.db.QuranDatabase.MIGRATION_8_9).fallbackToDestructiveMigration().build()
     }
 
     private fun resolveSurahItems(reciterId: Int, surah: Int): List<MediaItem> {

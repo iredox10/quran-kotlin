@@ -78,7 +78,11 @@ data class BookmarkEntity(
     val verseKey: String,
     val chapterId: Int,
     val surahName: String,
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    /** Reading UI the verse was bookmarked from: "surah" (default) or "page". */
+    val sourceMode: String? = null,
+    /** Page number to reopen when [sourceMode] == "page" (covers juz/hizb paging). */
+    val sourcePage: Int? = null
 )
 
 @Entity(tableName = "collections")
@@ -138,7 +142,13 @@ data class RecentlyReadEntity(
     @PrimaryKey val chapterId: Int,
     val chapterName: String,
     val verseKey: String? = null,
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    /**
+     * Page the user was on when the chapter was last read from the page
+     * (also juz/hizb) reader. Null = the last touch happened in the surah
+     * screen, so Continue opens the surah anchored at [verseKey].
+     */
+    val pageNumber: Int? = null
 )
 
 /**

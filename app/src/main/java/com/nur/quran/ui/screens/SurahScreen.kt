@@ -1398,6 +1398,7 @@ fun SurahScreen(
                 WordTranslationTooltipDrawer(
                     word = word,
                     onDismiss = { selectedWordForTooltip = null },
+                    wordPackDownloaded = !viewModel.isWordPackCached(chapterId),
                     onDownloadWordPack = { viewModel.downloadChapterWords(chapterId) }
                 )
             }

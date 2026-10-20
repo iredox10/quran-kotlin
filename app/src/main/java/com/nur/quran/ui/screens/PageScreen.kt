@@ -38,6 +38,7 @@ import kotlin.math.abs
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.nur.quran.data.getHizbByPage
 import com.nur.quran.data.getJuzByPage
+import com.nur.quran.data.db.entities.WordEntity
 import com.nur.quran.ui.components.NurIcons
 import com.nur.quran.ui.components.audio.MiniPlayer
 import com.nur.quran.ui.viewmodels.PageUiState
@@ -89,6 +90,9 @@ fun PageScreen(
     }
 
     val swipeThreshold = with(LocalDensity.current) { 60.dp.toPx() }
+
+    // Word-tap tooltip (tap to translate) — same drawer as the surah/planner readers.
+    var selectedWordForTooltip by remember { mutableStateOf<WordEntity?>(null) }
 
     // Holds the last loaded pane (verses or error) so the flip animation can
     // cross-slide two real panes instead of flickering through the transient
@@ -323,7 +327,10 @@ fun PageScreen(
                                     onTafsirClick = { /* Tafsir not implemented in page view */ },
                                     onShareClick = { /* Share not implemented in page view */ },
                                     onAddToCollection = { /* Collections not implemented in page view */ },
-                                    onWordClick = { /* Word tap not implemented in page view */ },
+                                    onWordClick = { word ->
+                                        // Tap to translate — Room-first word tooltip.
+                                        selectedWordForTooltip = word
+                                    },
                                     onLoadFootnote = { viewModel.getFootnote(it) },
                                     arabicFontScale = arabicFontScale,
                                     translationFontScale = translationFontScale,
@@ -421,6 +428,14 @@ fun PageScreen(
                 progress = playbackProgress?.let { (pos, dur) ->
                     if (dur > 0) (pos.toFloat() / dur).coerceIn(0f, 1f) else null
                 }
+            )
+        }
+
+        // ─── Word Tooltip ─── (tap to translate; data comes from Room offline)
+        selectedWordForTooltip?.let { word ->
+            WordTranslationTooltipDrawer(
+                word = word,
+                onDismiss = { selectedWordForTooltip = null }
             )
         }
     }

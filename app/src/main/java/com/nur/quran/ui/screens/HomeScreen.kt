@@ -60,10 +60,6 @@ import com.nur.quran.ui.viewmodels.SurahViewModel
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.delay
-import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Date
-import java.util.Locale
 
 // ── Local & System Fonts Setup ──────────────────────────────────────────────
 
@@ -176,9 +172,6 @@ fun HomeScreen(
     }
 
     var showSettingsDrawer by remember { mutableStateOf(false) }
-    val todayDate = remember {
-        SimpleDateFormat("EEEE, MMMM d, yyyy", Locale.ENGLISH).format(Date()).uppercase()
-    }
 
     val defaultArabicFontName = remember {
         context.getSharedPreferences("HifdhPrefs", Context.MODE_PRIVATE)
@@ -302,16 +295,6 @@ fun HomeScreen(
                                 .padding(top = 24.dp, bottom = 24.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Text(
-                                text = todayDate,
-                                fontSize = 10.sp,
-                                color = hInkMuted,
-                                fontFamily = fontFamilyMono,
-                                letterSpacing = 1.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Spacer(modifier = Modifier.height(20.dp))
-
                             if (lastRead != null) {
                                 ContinueReadingCard(
                                     item = lastRead,
@@ -1505,7 +1488,7 @@ private fun buildSectionIndexMap(
 ): Map<String, Int> {
     var idx = 0
     if (!isOnline) idx++ // offline banner
-    idx++ // hero (date + continue reading)
+    idx++ // hero (continue reading)
     if (!onboardingDismissed) idx++ // onboarding card
     val stats = idx; idx++ // weekly heatmap
     if (hasBookmark) idx++ // bookmark card

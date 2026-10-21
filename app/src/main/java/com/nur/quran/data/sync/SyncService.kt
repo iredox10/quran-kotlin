@@ -50,7 +50,7 @@ private const val TAG = "NurSync"
  *   bookmarks by `verseKey`; collections by `id` (items unioned by `verseKey`);
  *   plans by `id` (planner bookmarks/session maps deep-merged); hifdh goals by `id`,
  *   history deep-merged, memorized ayahs/transition links deduped; reading sessions by
- *   `timestamp` (cap 500); recentlyRead by `chapterId`, latest timestamp wins, cap 5 —
+ *   `timestamp` (cap 500); recentlyRead by `chapterId`, latest timestamp wins, cap 20 —
  *   then re-serialized.
  * - Trade-off (same as web): deletions don't propagate.
  * - The flat web keys (web's `getSyncableState` names: `bookmarks`, `collections`,
@@ -1067,7 +1067,8 @@ class SyncService @Inject constructor(
     private suspend fun daoRecent(): List<Map<String, Any?>> {
         val dao = dao ?: return emptyList()
         return runSuspendCatching {
-            dao.getRecentlyRead().first().map {
+            // Full history (home keeps a short LIMIT-5 flow; web parity cap is 20).
+            dao.getRecentlyReadHistory().first().map {
                 mapOf(
                     "chapterId" to it.chapterId,
                     "chapterName" to it.chapterName,
@@ -1213,7 +1214,7 @@ class SyncService @Inject constructor(
         ((incoming["sessions"] as? List<Map<String, Any?>>) ?: emptyList()).forEach {
             sessions[longOf(it["timestamp"]).toString()] = it
         }
-        // recentlyRead: latest timestamp wins per chapter, most-recent-first, cap 5.
+        // recentlyRead: latest timestamp wins per chapter, most-recent-first, cap 20.
         val recent = LinkedHashMap<String, Map<String, Any?>>()
         @Suppress("UNCHECKED_CAST")
         val all = ((base["recentlyRead"] as? List<Map<String, Any?>>) ?: emptyList()) +
@@ -1229,7 +1230,7 @@ class SyncService @Inject constructor(
         }
         val recentMerged = recent.values
             .sortedByDescending { longOf(it["timestamp"]) }
-            .take(5)
+            .take(20) // Web parity: recentlyRead history cap (syncMerge.js slice(0, 20)).
         return gson.toJson(
             mapOf(
                 "sessions" to sessions.values.toList().takeLast(500),

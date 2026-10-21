@@ -734,7 +734,10 @@ fun PlannerReaderScreen(
                             onClick = {
                                 val nextTheme = !isDarkThemeGlobal
                                 isDarkThemeGlobal = nextTheme
-                                context.getSharedPreferences("hifdh_settings", Context.MODE_PRIVATE)
+                                // Canonical "Settings" file (MainActivity + surah
+                                // re-read) — this toggle used to write the never-read
+                                // "hifdh_settings" copy, so the choice was lost.
+                                context.getSharedPreferences("Settings", Context.MODE_PRIVATE)
                                     .edit()
                                     .putBoolean("is_dark_theme", nextTheme)
                                     .apply()

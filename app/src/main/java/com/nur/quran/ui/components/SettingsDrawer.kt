@@ -297,7 +297,14 @@ fun SettingsDrawer(
                                                     .height(40.dp)
                                                     .clip(RoundedCornerShape(10.dp))
                                                     .background(if (!isDarkThemeGlobal) hGold else Color.Transparent)
-                                                    .clickable { isDarkThemeGlobal = false },
+                                                    .clickable {
+                                                        isDarkThemeGlobal = false
+                                                        // Persist: the surah screen re-reads this
+                                                        // file on entry — without a write the
+                                                        // choice reset to light on every surah change.
+                                                        policyContext.getSharedPreferences("Settings", android.content.Context.MODE_PRIVATE)
+                                                            .edit().putBoolean("is_dark_theme", false).apply()
+                                                    },
                                                 contentAlignment = Alignment.Center
                                             ) {
                                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -312,7 +319,11 @@ fun SettingsDrawer(
                                                     .height(40.dp)
                                                     .clip(RoundedCornerShape(10.dp))
                                                     .background(if (isDarkThemeGlobal) hGold else Color.Transparent)
-                                                    .clickable { isDarkThemeGlobal = true },
+                                                    .clickable {
+                                                        isDarkThemeGlobal = true
+                                                        policyContext.getSharedPreferences("Settings", android.content.Context.MODE_PRIVATE)
+                                                            .edit().putBoolean("is_dark_theme", true).apply()
+                                                    },
                                                 contentAlignment = Alignment.Center
                                             ) {
                                                 Row(verticalAlignment = Alignment.CenterVertically) {

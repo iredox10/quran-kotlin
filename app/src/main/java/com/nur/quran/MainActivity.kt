@@ -128,9 +128,16 @@ class MainActivity : ComponentActivity() {
         handleDeepLink(intent)
         ProcessLifecycleOwner.get().lifecycle.addObserver(appLifecycleObserver)
         
-        // Initialize global dark theme preference before composing
+        // Initialize global dark theme preference before composing.
+        // "Settings" is canonical (every toggle writes it); fall back to the
+        // legacy "hifdh_settings" copy so old installs keep their saved theme.
         val prefs = getSharedPreferences("Settings", android.content.Context.MODE_PRIVATE)
-        isDarkThemeGlobal = prefs.getBoolean("is_dark_theme", false)
+        val legacyPrefs = getSharedPreferences("hifdh_settings", android.content.Context.MODE_PRIVATE)
+        isDarkThemeGlobal = when {
+            prefs.contains("is_dark_theme") -> prefs.getBoolean("is_dark_theme", false)
+            legacyPrefs.contains("is_dark_theme") -> legacyPrefs.getBoolean("is_dark_theme", false)
+            else -> false
+        }
         
         setContent {
             val navController = rememberNavController()

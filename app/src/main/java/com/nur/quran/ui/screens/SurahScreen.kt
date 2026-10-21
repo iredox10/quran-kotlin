@@ -475,6 +475,11 @@ fun SurahScreen(
 
     val context = androidx.compose.ui.platform.LocalContext.current
     val prefs = remember { context.getSharedPreferences("hifdh_settings", android.content.Context.MODE_PRIVATE) }
+    // Canonical theme prefs. MainActivity's cold start, the on-entry re-read
+    // below, sync and every other toggle use the "Settings" file — writing
+    // "is_dark_theme" to "hifdh_settings" (the old behavior of the toggles
+    // here) made the re-read flip dark→light on every surah change.
+    val themePrefs = remember { context.getSharedPreferences("Settings", android.content.Context.MODE_PRIVATE) }
     var showTour by remember {
         mutableStateOf(!prefs.getBoolean("has_seen_surah_tour", false))
     }
@@ -820,7 +825,7 @@ fun SurahScreen(
                         icon = if (isDarkThemeGlobal) NurIcons.Sun else NurIcons.Moon,
                         active = isDarkThemeGlobal,
                         label = "Toggle theme"
-                    ) { isDarkThemeGlobal = !isDarkThemeGlobal; prefs.edit().putBoolean("is_dark_theme", isDarkThemeGlobal).apply() }
+                    ) { isDarkThemeGlobal = !isDarkThemeGlobal; themePrefs.edit().putBoolean("is_dark_theme", isDarkThemeGlobal).apply() }
 
                     TopBarIconBtn(
                         icon = NurIcons.Settings,
@@ -1761,7 +1766,7 @@ fun SurahScreen(
                                                         .weight(1f)
                                                         .clip(RoundedCornerShape(8.dp))
                                                         .background(if (!isDarkThemeGlobal) hGoldSoft else Color.Transparent)
-                                                        .clickable { isDarkThemeGlobal = false; prefs.edit().putBoolean("is_dark_theme", false).apply() }
+                                                        .clickable { isDarkThemeGlobal = false; themePrefs.edit().putBoolean("is_dark_theme", false).apply() }
                                                         .padding(vertical = 8.dp),
                                                     contentAlignment = Alignment.Center
                                                 ) {
@@ -1772,7 +1777,7 @@ fun SurahScreen(
                                                         .weight(1f)
                                                         .clip(RoundedCornerShape(8.dp))
                                                         .background(if (isDarkThemeGlobal) hGoldSoft else Color.Transparent)
-                                                        .clickable { isDarkThemeGlobal = true; prefs.edit().putBoolean("is_dark_theme", true).apply() }
+                                                        .clickable { isDarkThemeGlobal = true; themePrefs.edit().putBoolean("is_dark_theme", true).apply() }
                                                         .padding(vertical = 8.dp),
                                                     contentAlignment = Alignment.Center
                                                 ) {

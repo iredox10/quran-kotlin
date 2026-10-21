@@ -41,6 +41,7 @@ import com.nur.quran.ui.components.NurIcons
 import com.nur.quran.ui.components.SettingsDrawer
 import com.nur.quran.ui.components.MushafPageView
 import com.nur.quran.ui.components.audio.AudioSetupSheet
+import com.nur.quran.ui.components.audio.MiniPlayer
 import com.nur.quran.ui.viewmodels.PackViewModel
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.nur.quran.ui.viewmodels.PlannerViewModel
@@ -127,6 +128,7 @@ fun PlannerReaderScreen(
     val chapters by plannerViewModel.chapters.collectAsState()
     val playingVerseKey by surahViewModel.playingVerseKey.collectAsState()
     val isPlaying by surahViewModel.isPlaying.collectAsState()
+    val playbackProgress by surahViewModel.playbackProgress.collectAsState()
     var verseToShare by remember { mutableStateOf<VerseEntity?>(null) }
     // Web parity (PlannerReader.jsx showAudioSetup modal): in-reader audio setup
     // with day-scoped playlist wiring — the sheet plays the current page's
@@ -423,6 +425,10 @@ fun PlannerReaderScreen(
             }
         }
     }
+    // Hidden-by-user gate for the bottom mini-player (reappears on the next
+    // playback session, matching the surah/page screens).
+    var playerHiddenByUser by remember { mutableStateOf(false) }
+
     // Planner Status Card (web parity: PlannerReader.jsx lines 616-671):
     // Page N/M + Surah badge + timer + % + 3dp progress bar. Rendered as
     // the first LazyColumn item so it scrolls away with the verses and
@@ -1210,6 +1216,73 @@ fun PlannerReaderScreen(
                         }
                     }
                 }
+            }
+
+            // ─── MiniPlayer ─── (surah/page screens parity). Lifted above the
+            // dock bar while it is revealed so the two never collide.
+            AnimatedVisibility(
+                visible = isPlaying && !playerHiddenByUser && playingVerseKey != null,
+                enter = slideInVertically(initialOffsetY = { it }),
+                exit = slideOutVertically(targetOffsetY = { it }),
+                modifier = Modifier.padding(bottom = if (isDockRevealed) 104.dp else 0.dp)
+            ) {
+                val playerVerses = (uiState as? SurahUiState.Success)?.verses ?: emptyList()
+                MiniPlayer(
+                    verseKey = playingVerseKey ?: "",
+                    isPlaying = isPlaying,
+                    onPlayPause = {
+                        if (playerVerses.isNotEmpty()) {
+                            surahViewModel.playPauseChapter(playerVerses, playerVerses.first().chapterId)
+                        }
+                    },
+                    onPrevious = {
+                        val idx = playerVerses.indexOfFirst { it.verseKey == playingVerseKey }
+                        if (idx < 0) return@MiniPlayer
+                        // Range clamp (surah-screen parity handlePrev): stay
+                        // inside the playback range; no-op at the boundary.
+                        val rangeStartIdx = playbackSettings.rangeStart
+                            ?.let { startKey -> playerVerses.indexOfFirst { it.verseKey == startKey } }
+                            ?.takeIf { it >= 0 } ?: 0
+                        if (idx - 1 >= rangeStartIdx) {
+                            val prev = playerVerses[idx - 1]
+                            surahViewModel.playVerse(playerVerses, prev.chapterId, prev)
+                        }
+                    },
+                    onNext = {
+                        val idx = playerVerses.indexOfFirst { it.verseKey == playingVerseKey }
+                        if (idx < 0) return@MiniPlayer
+                        // Range clamp (surah-screen parity handleNext): no-op at boundary.
+                        val rangeEndIdx = playbackSettings.rangeEnd
+                            ?.let { endKey -> playerVerses.indexOfFirst { it.verseKey == endKey } }
+                            ?.takeIf { it >= 0 } ?: (playerVerses.size - 1)
+                        if (idx + 1 <= rangeEndIdx) {
+                            val next = playerVerses[idx + 1]
+                            surahViewModel.playVerse(playerVerses, next.chapterId, next)
+                        }
+                    },
+                    onClose = { playerHiddenByUser = true },
+                    onSettings = { showReaderAudioSetup = true },
+                    onStop = { surahViewModel.stopPlaying() },
+                    progress = playbackProgress?.let { (pos, dur) ->
+                        if (dur > 0) (pos.toFloat() / dur).coerceIn(0f, 1f) else null
+                    },
+                    onVerseClick = {
+                        // Jump to the reciting ayah (verse-list mode only — the
+                        // mushaf views don't use per-verse LazyColumn items).
+                        val key = playingVerseKey
+                        if (!key.isNullOrBlank() && !isReadingMode &&
+                            currentMushaf.renderMode != com.nur.quran.data.mushaf.MushafRenderMode.QCF_PAGE
+                        ) {
+                            val idx = playerVerses.indexOfFirst { it.verseKey == key }
+                            if (idx >= 0) {
+                                val jumpOffset = 1 + (if (currentPage == pageStart) 1 else 0)
+                                coroutineScope.launch {
+                                    runCatching { lazyListState.animateScrollToItem(idx + jumpOffset) }
+                                }
+                            }
+                        }
+                    }
+                )
             }
         }
     }

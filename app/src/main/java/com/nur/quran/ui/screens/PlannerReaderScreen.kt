@@ -147,7 +147,6 @@ fun PlannerReaderScreen(
     val sessionTotals by plannerViewModel.sessionTotals.collectAsState()
     val context = LocalContext.current
     val appPrefs = context.getSharedPreferences("PlannerSettings", Context.MODE_PRIVATE)
-    val showIntentionPrompt = appPrefs.getBoolean("show_intention_prompt", true)
 
     // ── Focus mode (web parity: PlannerReader.jsx isFocusMode immersive
     // hide-chrome): explicit user toggle that hides the header + bottom bar.
@@ -424,8 +423,6 @@ fun PlannerReaderScreen(
             }
         }
     }
-    var isIntentionDismissed by remember { mutableStateOf(false) }
-
     // Planner Status Card (web parity: PlannerReader.jsx lines 616-671):
     // Page N/M + Surah badge + timer + % + 3dp progress bar. Rendered as
     // the first LazyColumn item so it scrolls away with the verses and
@@ -815,10 +812,10 @@ fun PlannerReaderScreen(
                     }
 
                     // Web parity (PlannerReader.jsx:215-268): non-verse header items
-                    // (status pill + intention banner + swipe hint) shift LazyColumn indices.
+                    // (status pill + swipe hint) shift LazyColumn indices.
                     // The pill slot always exists (zero-height in focus mode): +1 constant.
                     val verseHeaderOffset =
-                        1 + (if (showIntentionPrompt && !isIntentionDismissed) 1 else 0) + (if (currentPage == pageStart) 1 else 0)
+                        1 + (if (currentPage == pageStart) 1 else 0)
 
                     // Web parity: scroll to top of page on page change.
                     // Prev arrival instead restores that page's saved position
@@ -955,44 +952,6 @@ fun PlannerReaderScreen(
                             // Status pill scrolls with the verses; back at the very top.
                             item {
                                 StatusPillCard()
-                            }
-
-                            // Renewal of Intention Banner (web: intentionPromptEnabled)
-                            if (showIntentionPrompt && !isIntentionDismissed) {
-                                item {
-                                    Surface(
-                                        shape = RoundedCornerShape(16.dp),
-                                        color = hTeal.copy(alpha = 0.06f),
-                                        border = androidx.compose.foundation.BorderStroke(1.dp, hTeal.copy(alpha = 0.18f)),
-                                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
-                                    ) {
-                                        Row(
-                                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Icon(imageVector = NurIcons.Sparkles, contentDescription = null, tint = hTeal, modifier = Modifier.size(16.dp))
-                                            Spacer(modifier = Modifier.width(10.dp))
-                                            Text(
-                                                text = "Pause to renew your intention for Allah's sake before reading.",
-                                                fontSize = 12.sp,
-                                                color = hInk,
-                                                fontFamily = fontFamilyUi,
-                                                modifier = Modifier.weight(1f)
-                                            )
-                                            IconButton(
-                                                onClick = { isIntentionDismissed = true },
-                                                modifier = Modifier.size(24.dp)
-                                            ) {
-                                                Icon(
-                                                    imageVector = NurIcons.X,
-                                                    contentDescription = "Dismiss",
-                                                    tint = hInkMuted,
-                                                    modifier = Modifier.size(14.dp)
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
                             }
 
                             // Swipe hint (shown on first page)

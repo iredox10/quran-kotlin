@@ -946,7 +946,12 @@ fun PlannerReaderScreen(
                         LazyColumn(
                             state = lazyListState,
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 24.dp),
+                            // Surah-screen parity: no extra horizontal list
+                            // padding — VerseItem's own 40dp inset is the same
+                            // on both screens, so verses get the same width.
+                            // Bottom 120dp keeps the last verse clear of the
+                            // mini-player overlay.
+                            contentPadding = PaddingValues(top = 24.dp, bottom = 120.dp),
                             verticalArrangement = Arrangement.spacedBy(28.dp)
                         ) {
                             // Status pill scrolls with the verses; back at the very top.

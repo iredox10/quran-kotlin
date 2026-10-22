@@ -722,6 +722,10 @@ class QuranRepository @Inject constructor(
     suspend fun ensureChapterWordsCached(chapterId: Int): Boolean = withContext(Dispatchers.IO) {
         try {
             if (wordPackManager.isChapterCached(chapterId)) return@withContext true
+            // Bundle-first: the whole-Quran word dataset ships in assets, so
+            // seeding works fully offline; only a missing bundle chapter (or
+            // persist failure) falls back to the API download.
+            if (wordPackManager.seedChapterFromBundle(chapterId)) return@withContext true
             wordPackManager.downloadChapterWords(chapterId)
             wordPackManager.isChapterCached(chapterId)
         } catch (e: CancellationException) {

@@ -5,6 +5,7 @@ import com.google.gson.Gson
 import com.nur.quran.data.api.ApiVerse
 import com.nur.quran.data.api.ApiWord
 import com.nur.quran.data.api.QuranApi
+import com.nur.quran.data.api.VersesResponse
 import com.nur.quran.data.db.dao.QuranDao
 import com.nur.quran.data.db.entities.WordEntity
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -18,6 +19,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
+import java.io.InputStreamReader
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -68,7 +70,7 @@ data class WordPackStatus(
 class WordPackManager @Inject constructor(
     private val quranApi: QuranApi,
     private val quranDao: QuranDao,
-    gson: Gson,
+    private val gson: Gson,
     @ApplicationContext private val context: Context
 ) {
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -194,6 +196,95 @@ class WordPackManager @Inject constructor(
     fun getCachedChapters(): Set<Int> =
         prefs.getStringSet(KEY_CACHED, emptySet())?.mapNotNull { it.toIntOrNull() }?.toSet()
             ?: emptySet()
+
+    // ── Bundled whole-Quran dataset ─────────────────────────────────────────
+
+    /**
+     * Seeds one chapter's word pack from the bundled whole-Quran word dataset
+     * (`assets/data/words/{chapterId}.json` — per-chapter, API-shaped files
+     * carrying verse ids, word ids, uthmani/indopak/qpc texts, tajweed markup,
+     * Saheeh Intl translations, transliteration, char types and line/page
+     * numbers). Fully offline: parses only the chapter being requested, so
+     * memory stays bounded.
+     *
+     * Rows merge through [upsertVerseWords]: by API id when the chapter was
+     * network-downloaded before, else by position for offline synthetic seeds
+     * (`verseId * 100 + index`) — updated in place, never duplicated.
+     * Reports the same [packStates] progress shape as [downloadChapterWords],
+     * so existing UIs read "downloading → done" and finish instantly when
+     * seeded.
+     *
+     * Returns false (without marking cached) when the asset is missing or
+     * empty, or when any verse fails to persist; callers fall back to the
+     * network path. [CancellationException] is re-thrown (cooperative cancel,
+     * same contract as [downloadChapterWords]).
+     */
+    suspend fun seedChapterFromBundle(chapterId: Int): Boolean =
+        withContext(Dispatchers.IO) {
+            try {
+                _packStates.update { it + (chapterId to WordPackStatus(0, 0, true, null)) }
+
+                val verses = try {
+                    context.assets.open("data/words/$chapterId.json").use { stream ->
+                        gson.fromJson(InputStreamReader(stream, Charsets.UTF_8), VersesResponse::class.java)
+                            ?.verses
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    null
+                }
+                if (verses.isNullOrEmpty()) {
+                    _packStates.update {
+                        it + (chapterId to WordPackStatus(0, 0, false, null))
+                    }
+                    return@withContext false
+                }
+
+                var done = 0
+                var lastError: String? = null
+                for (verse in verses) {
+                    ensureActive()
+                    try {
+                        upsertVerseWords(verse)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        lastError = e.message ?: e::class.simpleName ?: "persist_failed"
+                    }
+                    done++
+                    _packStates.update {
+                        it + (chapterId to WordPackStatus(done, verses.size, true, lastError))
+                    }
+                }
+
+                val success = lastError == null
+                if (success) markCached(chapterId)
+                _packStates.update {
+                    it + (chapterId to WordPackStatus(done, verses.size, false, lastError))
+                }
+                success
+            } catch (e: CancellationException) {
+                _packStates.update { current ->
+                    val prev = current[chapterId]
+                    current + (chapterId to (prev?.copy(isDownloading = false, error = null)
+                        ?: WordPackStatus(0, 0, false, null)))
+                }
+                throw e
+            }
+        }
+
+    /**
+     * Bundle-first ensure for background "download all" flows: seeds offline
+     * from the bundled dataset and only hits the network
+     * ([downloadChapterWords]) when the bundle lacks the chapter or seeding
+     * failed.
+     */
+    suspend fun seedOrDownloadChapterWords(chapterId: Int) {
+        if (isChapterCached(chapterId)) return
+        if (seedChapterFromBundle(chapterId)) return
+        downloadChapterWords(chapterId)
+    }
 
     // ── Merge + upsert ──────────────────────────────────────────────────────
 

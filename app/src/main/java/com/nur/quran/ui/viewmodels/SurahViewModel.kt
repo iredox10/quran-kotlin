@@ -255,10 +255,10 @@ class SurahViewModel @Inject constructor(
         }
     }
 
-    /** Non-suspend entry for the word tooltip button; runs in its own scope. */
+    /** Non-suspend entry for the word tooltip button; runs in its own scope (bundle-first, network fallback). */
     fun downloadChapterWords(chapterId: Int) {
         viewModelScope.launch(Dispatchers.IO) {
-            try { wordPackManager.downloadChapterWords(chapterId) } catch (_: Exception) {}
+            try { wordPackManager.seedOrDownloadChapterWords(chapterId) } catch (_: Exception) {}
         }
     }
 
@@ -266,12 +266,12 @@ class SurahViewModel @Inject constructor(
     fun isWordPackCached(chapterId: Int): Boolean =
         runCatching { wordPackManager.isChapterCached(chapterId) }.getOrDefault(false)
 
-    /** Downloads word translations for every chapter missing them. */
+    /** Ensures word packs for every chapter missing them (bundle-first from assets, network fallback). */
     fun downloadAllMissingWordPacks() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 (1..114).filter { !wordPackManager.isChapterCached(it) }.forEach { id ->
-                    try { wordPackManager.downloadChapterWords(id) } catch (_: Exception) {}
+                    try { wordPackManager.seedOrDownloadChapterWords(id) } catch (_: Exception) {}
                 }
             } catch (_: Exception) {}
         }
@@ -285,7 +285,7 @@ class SurahViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 runCatching { repository.getTafsirForChapter(currentTafsirId, chapterId) }
-                runCatching { wordPackManager.downloadChapterWords(chapterId) }
+                runCatching { wordPackManager.seedOrDownloadChapterWords(chapterId) }
             } catch (_: Exception) {}
         }
     }

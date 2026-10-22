@@ -137,7 +137,7 @@ class TafsirPackManager @Inject constructor(
      *
      * Runs [downloadPack] first; only when the tafsir part completes without
      * error do the word chapters follow, sequentially via
-     * [WordPackManager.downloadChapterWords] with per-chapter `runCatching`
+     * [WordPackManager.seedOrDownloadChapterWords] (bundle-first from the bundled whole-Quran dataset, network fallback) with per-chapter `runCatching`
      * (a failed chapter is recorded in [WordPackManager.packStates] and
      * skipped, never aborting the run). Tafsir progress is reported in
      * [packStates] exactly as [downloadPack] does; word progress is visible in
@@ -177,7 +177,7 @@ class TafsirPackManager @Inject constructor(
                 currentCoroutineContext().ensureActive()
                 synchronized(lock) { activeWordChapters[tafsirId] = c }
                 try {
-                    runCatching { wordPackManager.downloadChapterWords(c) }
+                    runCatching { wordPackManager.seedOrDownloadChapterWords(c) }
                         .onFailure { e -> if (e is CancellationException) throw e }
                 } finally {
                     synchronized(lock) {

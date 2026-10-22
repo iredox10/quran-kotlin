@@ -162,13 +162,13 @@ class PackViewModel @Inject constructor(
         }
     }
 
-    /** Downloads word translations for every chapter missing them, sequentially. */
+    /** Ensures word packs for every chapter missing them, sequentially (bundle-first from assets, network fallback). */
     fun downloadAllMissingWordPacks() {
         viewModelScope.launch(Dispatchers.IO) {
             runCatching {
                 (1..114).filter { !wordPackManager.isChapterCached(it) }.forEach { id ->
                     activeWordChapter = id
-                    runCatching { wordPackManager.downloadChapterWords(id) }
+                    runCatching { wordPackManager.seedOrDownloadChapterWords(id) }
                 }
             }
             activeWordChapter = -1

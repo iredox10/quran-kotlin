@@ -207,17 +207,23 @@ fun buildCleanVerseTajweedHtml(fullVerseHtml: String?, words: List<WordEntity>, 
     val baseHtml = cleanInput
         .replace("<(span|tajweed|rule)\\s+class=['\"]?end[^'\">]*['\"]?>.*?</(span|tajweed|rule)>".toRegex(RegexOption.IGNORE_CASE), "")
         .replace("<(span|tajweed|rule)\\s+class=['\"]?end[^'\">]*['\"]?>".toRegex(RegexOption.IGNORE_CASE), "")
-        .replace("[\u06dd\u06de\u06df\u06e0\u06e2\u06ea-\u06ec\u25cc]".toRegex(), "")
+        .replace("[\u06dd\u25cc]".toRegex(), "")
         .replace("&#1757;|&#x0*6dd;|&#x0*6DD;".toRegex(RegexOption.IGNORE_CASE), "")
-        .replace("﴿.*?﴾".toRegex(), "")
-        .replace("\\{.*?\\}".toRegex(), "")
-        .replace("[﴿﴾{}]".toRegex(), "")
 
     return baseHtml.trimEnd() + cleanEndMarker
 }
 
-private val ORNAMENT_EMBEDDED_REGEX = "[\u06dd\u06de\u06df\u06e0\u06e2\u06ea-\u06ec\u25cc﴿﴾{}]".toRegex()
-private val ORNAMENT_PLAIN_REGEX = "[\u06df\u06e0\u06e2\u06ea-\u06ec\u25cc]".toRegex()
+// Keep every Quranic sign visible: all bundled fonts are cmap-verified for the
+// whole Arabic annotation repertoire (saktah U+06DF, ishmam U+06EB, imalah
+// U+06EA, sajda U+06DE, small waw/ya/low-meem, ornate parens U+FD3E/U+FD3F,
+// braces), and Uthman Taha Naskh — the only font with a partial set — falls
+// back to the system Arabic fonts for its missing marks. Strip only:
+//  - U+25CC DOTTED CIRCLE (shaper placeholder, never authoritative text)
+//  - U+06DD end-of-ayah frame in embedded mode: KFGQPC Hafs shapes bare
+//    Arabic-Indic digits into one numbered medallion via GSUB, so keeping the
+//    frame would render a second, empty medallion
+private val ORNAMENT_EMBEDDED_REGEX = "[\u06dd\u25cc]".toRegex()
+private val ORNAMENT_PLAIN_REGEX = "[\u25cc]".toRegex()
 
 private fun foldExtendedArabicDigitsToStandard(text: String): String {
     val sb = StringBuilder(text.length)
@@ -259,9 +265,9 @@ private fun ensureSingleEndMarkerFrame(text: String): String {
  * so tap-target indices stay valid).
  *
  * - Picks the mushaf script (QPC Hafs vs Indopak).
- * - KFGQPC Hafs shapes bare digits into ONE ayah medallion via GSUB, so any
- *   U+06DD/ornament chars are stripped — otherwise TWO medallions render
- *   (empty frame + numbered medallion).
+ * - Every Quranic sign (saktah, sajda, ishmam, small waw/ya…) renders; only
+ *   the U+25CC placeholder — and U+06DD in embedded mode (see ORNAMENT_
+ *   EMBEDDED_REGEX) — is stripped.
  * - Other fonts need the U+06DD frame to draw the medallion, so it is kept
  *   (and ensured) on the single end marker.
  * - Extra `end` words (e.g. stale offline rows surviving alongside network
@@ -297,9 +303,10 @@ fun mushafPlainVerseText(verse: VerseEntity, mushafId: String, fontName: String)
     t = if (usesEmbeddedEndMarker(fontName)) {
         t.replace(ORNAMENT_EMBEDDED_REGEX, "")
     } else {
-        // Strip small ornaments + ornate brackets/braces (keep the U+06DD frame and rub),
-        // then canonicalize to a single U+06DD + standard digits: glyph-identical to ON-path.
-        val stripped = t.replace(ORNAMENT_PLAIN_REGEX, "").filter { c -> c.code != 0xFD3F && c.code != 0xFD3E && c != '{' && c != '}' }
+        // Keep every Quranic sign; only the U+25CC placeholder drops. The U+06DD
+        // frame is preserved and canonicalized to a single frame + standard
+        // digits: glyph-identical to the ON-path rebuilt marker.
+        val stripped = t.replace(ORNAMENT_PLAIN_REGEX, "")
         ensureSingleEndMarkerFrame(stripped)
     }
     return t

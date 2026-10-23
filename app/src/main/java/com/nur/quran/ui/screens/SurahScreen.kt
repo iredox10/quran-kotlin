@@ -1411,7 +1411,11 @@ fun SurahScreen(
                     word = word,
                     onDismiss = { selectedWordForTooltip = null },
                     wordPackDownloaded = !viewModel.isWordPackCached(chapterId),
-                    onDownloadWordPack = { viewModel.downloadChapterWords(chapterId) }
+                    onDownloadWordPack = {
+                        viewModel.downloadChapterWords(chapterId) {
+                            selectedWordForTooltip = viewModel.refreshedWord(word)
+                        }
+                    }
                 )
             }
 

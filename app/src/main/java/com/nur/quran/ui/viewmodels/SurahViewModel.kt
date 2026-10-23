@@ -50,6 +50,7 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 /** Set true for local perf timing logs (first paint / background upgrade). */
@@ -255,11 +256,29 @@ class SurahViewModel @Inject constructor(
         }
     }
 
-    /** Non-suspend entry for the word tooltip button; runs in its own scope (bundle-first, network fallback). */
-    fun downloadChapterWords(chapterId: Int) {
+    /**
+     * Non-suspend entry for the word tooltip button; runs in its own scope
+     * (bundle-first, network fallback). [onWordsReady] runs on the main
+     * thread afterwards so the caller can refresh UI state — e.g. re-read the
+     * tapped word from Room, because the tooltip holds the entity captured at
+     * tap time.
+     */
+    fun downloadChapterWords(chapterId: Int, onWordsReady: suspend () -> Unit = {}) {
         viewModelScope.launch(Dispatchers.IO) {
             try { wordPackManager.seedOrDownloadChapterWords(chapterId) } catch (_: Exception) {}
+            withContext(Dispatchers.Main) { runCatching { onWordsReady() } }
         }
+    }
+
+    /**
+     * Re-reads one tapped word (same verse + position) from Room so the
+     * tooltip shows the seeded translation instead of the stale entity
+     * captured at tap time.
+     */
+    suspend fun refreshedWord(word: WordEntity): WordEntity = withContext(Dispatchers.IO) {
+        runCatching {
+            repository.getWordsForVerse(word.verseId).firstOrNull { it.position == word.position } ?: word
+        }.getOrDefault(word)
     }
 
     /** Whether the chapter's word-translation pack is already cached (offline word taps). */
@@ -1505,9 +1524,23 @@ class SurahViewModel @Inject constructor(
             val chapter = localChapter
             if (chapter != null && cachedVerses.isNotEmpty()) {
                 // Auto word-fill: backfill missing word translations in the
-                // background so word tooltips work offline. No UI impact.
+                // background so word tooltips work offline. When seeding (or
+                // network download) finishes, re-read the words and refresh
+                // the live state + memory cache so word taps see the filled
+                // translations without a chapter reload.
                 viewModelScope.launch(Dispatchers.IO) {
-                    runCatching { repository.ensureChapterWordsCached(chapterId) }
+                    val wordsReady = runCatching {
+                        repository.ensureChapterWordsCached(chapterId)
+                    }.getOrDefault(false)
+                    if (!wordsReady) return@launch
+                    runCatching {
+                        val freshWords = repository.getWordsForVerses(cachedVerses.map { it.id })
+                        val current = _uiState.value as? SurahUiState.Success ?: return@runCatching
+                        if (current.chapter.id != chapterId || currentChapterId != chapterId) return@runCatching
+                        val refreshed = current.copy(wordsMap = freshWords)
+                        chapterMemoryCache[chapterId] = refreshed
+                        withContext(Dispatchers.Main) { _uiState.value = refreshed }
+                    }
                 }
                 currentChapterName = chapter.nameSimple
                 repository.addRecentlyRead(chapter.id, chapter.nameSimple)

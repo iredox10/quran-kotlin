@@ -1458,7 +1458,11 @@ fun PlannerReaderScreen(
             word = word,
             onDismiss = { selectedWordForTooltip = null },
             wordPackDownloaded = !surahViewModel.isWordPackCached(currentChapter?.id ?: 1),
-            onDownloadWordPack = { surahViewModel.downloadChapterWords(currentChapter?.id ?: 1) }
+            onDownloadWordPack = {
+                surahViewModel.downloadChapterWords(currentChapter?.id ?: 1) {
+                    selectedWordForTooltip = surahViewModel.refreshedWord(word)
+                }
+            }
         )
     }
 

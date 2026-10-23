@@ -48,6 +48,7 @@ import com.nur.quran.ui.viewmodels.PlannerViewModel
 import com.nur.quran.ui.viewmodels.SurahUiState
 import com.nur.quran.ui.viewmodels.SurahViewModel
 import com.nur.quran.ui.viewmodels.TafsirUiState
+import com.nur.quran.utils.TajweedProcessor
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -1933,7 +1934,9 @@ fun DayCelebrationCard(
 
                             Spacer(modifier = Modifier.height(10.dp))
 
-                            val arabicText = takeawayVerse.textUthmani ?: takeawayVerse.textQpcHafs ?: ""
+                            val arabicText = TajweedProcessor.foldWaqfMarkSeparator(
+                                takeawayVerse.textUthmani ?: takeawayVerse.textQpcHafs ?: ""
+                            )
                             if (arabicText.isNotBlank()) {
                                 Text(
                                     text = arabicText,

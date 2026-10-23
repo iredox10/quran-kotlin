@@ -279,6 +279,10 @@ fun mushafPlainWordTexts(words: List<WordEntity>, mushafId: String, fontName: St
     var endSeen = false
     return words.map { word ->
         var t = com.nur.quran.data.mushaf.wordTextForMushaf(mushaf, word.textUthmani, word.textIndopak, word.textQpcHafs)
+        // Glue space-separated pause/waqf marks onto their base word, else the
+        // shaper renders the mark's dotted-circle placeholder (see
+        // TajweedProcessor.foldWaqfMarkSeparator).
+        t = TajweedProcessor.foldWaqfMarkSeparator(t)
         t = if (embedded) t.replace(ORNAMENT_EMBEDDED_REGEX, "") else t.replace(ORNAMENT_PLAIN_REGEX, "")
         if (word.charTypeName == "end") {
             if (endSeen) return@map ""
@@ -300,6 +304,7 @@ fun mushafPlainWordTexts(words: List<WordEntity>, mushafId: String, fontName: St
 fun mushafPlainVerseText(verse: VerseEntity, mushafId: String, fontName: String): String {
     val mushaf = com.nur.quran.data.mushaf.Mushaf.fromId(mushafId)
     var t = com.nur.quran.data.mushaf.verseTextForMushaf(mushaf, verse.textUthmani, verse.textIndopak, verse.textQpcHafs)
+    t = TajweedProcessor.foldWaqfMarkSeparator(t)
     t = if (usesEmbeddedEndMarker(fontName)) {
         t.replace(ORNAMENT_EMBEDDED_REGEX, "")
     } else {
@@ -3369,7 +3374,7 @@ fun WordTranslationTooltipDrawer(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = word.textUthmani ?: "",
+                text = TajweedProcessor.foldWaqfMarkSeparator(word.textUthmani ?: ""),
                 fontSize = 36.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = fontFamilyArabic,

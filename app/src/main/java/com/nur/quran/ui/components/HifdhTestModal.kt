@@ -23,6 +23,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.nur.quran.data.db.entities.ChapterEntity
 import com.nur.quran.data.db.entities.VerseEntity
 import com.nur.quran.ui.screens.*
+import com.nur.quran.utils.TajweedProcessor
 import kotlin.random.Random
 
 /**
@@ -223,7 +224,9 @@ fun HifdhTestModal(
                                     )
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Text(
-                                        text = previousAyahTail(previousVerse.textUthmani),
+                                        text = previousAyahTail(
+                                            TajweedProcessor.foldWaqfMarkSeparator(previousVerse.textUthmani)
+                                        ),
                                         fontSize = 22.sp,
                                         lineHeight = 36.sp,
                                         color = hInk,
@@ -269,7 +272,7 @@ fun HifdhTestModal(
                                     Spacer(modifier = Modifier.height(16.dp))
                                     if (currentVerse?.textUthmani != null) {
                                         Text(
-                                            text = currentVerse.textUthmani,
+                                            text = TajweedProcessor.foldWaqfMarkSeparator(currentVerse.textUthmani),
                                             fontSize = 24.sp,
                                             lineHeight = 40.sp,
                                             color = hInk,

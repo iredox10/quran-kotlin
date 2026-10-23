@@ -106,7 +106,10 @@ class SignPreservationTest {
     fun `verse-level fallback on Hafs keeps signs and strips only frame and placeholder`() {
         val raw = "وَٱلْعَصْرِ \u06df \u06dd\u0664"
         val out = mushafPlainVerseText(verse(raw), "madani-standard", "KFGQPC Hafs")
-        assertEquals("وَٱلْعَصْرِ \u06df \u0664", out)
+        // The separator space before the sign is folded away too, so the sign
+        // composes onto the base letter instead of its dotted-circle
+        // placeholder; the end digits keep their spacing space.
+        assertEquals("وَٱلْعَصْرِ\u06df \u0664", out)
     }
 
     @Test

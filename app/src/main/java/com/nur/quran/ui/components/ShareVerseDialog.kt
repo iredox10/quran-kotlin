@@ -30,6 +30,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.core.content.FileProvider
 import com.nur.quran.data.db.entities.VerseEntity
 import com.nur.quran.ui.screens.*
+import com.nur.quran.utils.TajweedProcessor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -49,7 +50,7 @@ fun ShareVerseDialog(
 
     // Card inputs derived from the dialog's existing verse props,
     // matching the existing share-text format ("— chapterName verseKey").
-    val cardArabic = verse.textUthmani ?: verse.textIndopak ?: ""
+    val cardArabic = TajweedProcessor.foldWaqfMarkSeparator(verse.textUthmani ?: verse.textIndopak ?: "")
     val cardTranslation = verse.translation?.replace(Regex("<[^>]*>"), "")?.takeIf { it.isNotBlank() }
     val cardReference = "$chapterName ${verse.verseKey}"
     val imageFileName = "Quran_${verse.verseKey.replace(Regex("[^A-Za-z0-9]+"), "_")}.png"
@@ -109,7 +110,7 @@ fun ShareVerseDialog(
                 } ?: throw IllegalStateException("render failed")
                 val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
                 val cleanTranslation = verse.translation?.replace(Regex("<[^>]*>"), "") ?: ""
-                val shareMessage = "${verse.textUthmani ?: ""}\n\n$cleanTranslation\n— $chapterName ${verse.verseKey}\n\nRead & study via Quran Nur: https://quran-nur.appwrite.network"
+                val shareMessage = "${TajweedProcessor.foldWaqfMarkSeparator(verse.textUthmani ?: "")}\n\n$cleanTranslation\n— $chapterName ${verse.verseKey}\n\nRead & study via Quran Nur: https://quran-nur.appwrite.network"
                 val shareIntent = Intent(Intent.ACTION_SEND).apply {
                     type = "image/png"
                     putExtra(Intent.EXTRA_STREAM, uri)
@@ -199,7 +200,7 @@ fun ShareVerseDialog(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = verse.textUthmani ?: verse.textIndopak ?: "",
+                            text = TajweedProcessor.foldWaqfMarkSeparator(verse.textUthmani ?: verse.textIndopak ?: ""),
                             fontFamily = fontFamilyArabic,
                             fontSize = 22.sp,
                             color = hInk,
@@ -261,7 +262,7 @@ fun ShareVerseDialog(
                     OutlinedButton(
                         onClick = {
                             val cleanTranslation = verse.translation?.replace(Regex("<[^>]*>"), "") ?: ""
-                            val textToCopy = "${verse.textUthmani ?: ""}\n\n$cleanTranslation\n— $chapterName ${verse.verseKey}\n\nVia Quran Nur"
+                            val textToCopy = "${TajweedProcessor.foldWaqfMarkSeparator(verse.textUthmani ?: "")}\n\n$cleanTranslation\n— $chapterName ${verse.verseKey}\n\nVia Quran Nur"
                             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                             clipboard.setPrimaryClip(ClipData.newPlainText("QuranNurVerse", textToCopy))
                             copied = true
@@ -289,7 +290,7 @@ fun ShareVerseDialog(
                     Button(
                         onClick = {
                             val cleanTranslation = verse.translation?.replace(Regex("<[^>]*>"), "") ?: ""
-                            val shareMessage = "${verse.textUthmani ?: ""}\n\n$cleanTranslation\n— $chapterName ${verse.verseKey}\n\nRead & study via Quran Nur: https://quran-nur.appwrite.network"
+                            val shareMessage = "${TajweedProcessor.foldWaqfMarkSeparator(verse.textUthmani ?: "")}\n\n$cleanTranslation\n— $chapterName ${verse.verseKey}\n\nRead & study via Quran Nur: https://quran-nur.appwrite.network"
                             shareTextMessage(shareMessage)
                         },
                         modifier = Modifier.weight(1f),

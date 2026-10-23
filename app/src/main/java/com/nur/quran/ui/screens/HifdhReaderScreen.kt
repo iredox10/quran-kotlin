@@ -1174,16 +1174,19 @@ private fun HifdhTajweedText(
     modifier: Modifier = Modifier,
     lineHeight: TextUnit = TextUnit.Unspecified
 ) {
-    val segments = remember(text, tajweedHtml, defaultColorHex) {
-        TajweedProcessor.getWordTajweedSegments(text, tajweedHtml, defaultColorHex)
+    // Same dotted-circle fold as the surah reader; the segments and the
+    // rendered annotated string must index the same folded text.
+    val displayText = remember(text) { TajweedProcessor.foldWaqfMarkSeparator(text) }
+    val segments = remember(displayText, tajweedHtml, defaultColorHex) {
+        TajweedProcessor.getWordTajweedSegments(displayText, tajweedHtml, defaultColorHex)
     }
-    val annotated = remember(text, segments) {
+    val annotated = remember(displayText, segments) {
         buildAnnotatedString {
             var cursor = 0
             for (seg in segments.sortedBy { it.start }) {
-                if (seg.start > cursor) append(text.substring(cursor, seg.start))
+                if (seg.start > cursor) append(displayText.substring(cursor, seg.start))
                 val segStart = length
-                append(text.substring(seg.start, seg.end))
+                append(displayText.substring(seg.start, seg.end))
                 addStyle(
                     style = SpanStyle(color = Color(android.graphics.Color.parseColor(seg.colorHex))),
                     start = segStart,
@@ -1191,7 +1194,7 @@ private fun HifdhTajweedText(
                 )
                 cursor = seg.end
             }
-            if (cursor < text.length) append(text.substring(cursor))
+            if (cursor < displayText.length) append(displayText.substring(cursor))
         }
     }
     Text(

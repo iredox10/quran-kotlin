@@ -45,6 +45,7 @@ import com.nur.quran.ui.screens.hGoldLight
 import com.nur.quran.ui.screens.hInk
 import com.nur.quran.ui.screens.hInkMuted
 import com.nur.quran.ui.screens.hSurface
+import com.nur.quran.utils.TajweedProcessor
 
 /**
  * 15-line page-accurate physical Mushaf page view.
@@ -253,11 +254,13 @@ fun MushafPageView(
                                 val isAudioPlaying = verseKey == activeAudioVerseKey
                                 val isAssigned = assignedVerseKeys == null || assignedVerseKeys.contains(verseKey)
                                 val isEndMarker = word.charTypeName == "end"
-                                val displayText = wordTextForMushaf(
-                                    mushaf,
-                                    word.textUthmani,
-                                    word.textIndopak,
-                                    word.textQpcHafs
+                                val displayText = TajweedProcessor.foldWaqfMarkSeparator(
+                                    wordTextForMushaf(
+                                        mushaf,
+                                        word.textUthmani,
+                                        word.textIndopak,
+                                        word.textQpcHafs
+                                    )
                                 )
 
                                 Box(

@@ -104,6 +104,31 @@ object TajweedProcessor {
         return rawSegments
     }
 
+    /**
+     * Drop whitespace that separates a Quranic combining mark from its base.
+     *
+     * api.quran.com word texts carry pause/waqf marks AFTER a space inside the
+     * word text ("رَّبِّهِمْ ۖ" = "...مْ" + U+0020 + U+06D6). Per-word display
+     * runs isolate such a mark, the shaper has no base in the same cluster and
+     * renders the mark's dotted-circle placeholder (U+25CC) — the "dotted
+     * circles with signs" artifact. Folding the separator glues the mark to the
+     * word's last glyph; the word-join itself renders the spacing space.
+     *
+     * The class covers the Mn/Lm Quranic sign repertoire (pause marks, small
+     * letters, saktah/imalah/ishmam, superscript alef, ordinary vowel strays in
+     * the Indopak script). Standalone base glyphs are deliberately excluded:
+     * U+06DD end frame (Cf), U+06DE rub-el-hizb medallion (So), U+06E9 place
+     * of sajdah (So) — they render on their own dotted-circle-free and keep
+     * their spacing; folding U+06DD would glue the numbered medallion frame
+     * onto the last letter.
+     */
+    private val WAQF_MARK_SEPARATOR_REGEX = Regex(
+        "[ \t\u00a0\u2000-\u200a\u200b\u2028\u2029\u3000]+([\u0610-\u061a\u064b-\u065f\u0670\u06d6-\u06dc\u06df-\u06e8\u06ea-\u06ed])"
+    )
+
+    fun foldWaqfMarkSeparator(text: String): String =
+        text.replace(WAQF_MARK_SEPARATOR_REGEX) { it.groupValues[1] }
+
     fun stripDiacritics(text: String): String {
         // NOTE: also strips justification/format chars (tatweel U+0640, ZWSP/ZWNJ/ZWJ/LRM/RLM
         // U+200B-U+200F, ZWNBSP U+FEFF). The API tajweed html contains these (ZWNJ, kashida)
@@ -183,20 +208,23 @@ object TajweedProcessor {
     ): List<TajweedSegment> {
         if (plainText.isEmpty() || tajweedHtml.isEmpty()) return emptyList()
 
-        val segs = parseTajweedHtml(tajweedHtml)
+        // Fold space-separated marks on BOTH sides so the markup baseline and
+        // the plain baseline stay index-aligned (folded inputs are idempotent).
+        val plain = foldWaqfMarkSeparator(plainText)
+        val segs = parseTajweedHtml(foldWaqfMarkSeparator(tajweedHtml))
         if (segs.isEmpty()) return emptyList()
 
-        val plainBase = alignmentBase(plainText)
+        val plainBase = alignmentBase(plain)
         val tajweedBase = alignmentBase(segs.joinToString("") { it.text })
 
         if (plainBase.isEmpty() || tajweedBase.isEmpty()) return emptyList()
 
         // Plain-text char -> plain-base index (normalization is 1:1, only
         // stripped chars collapse onto the previous base index).
-        val plainCharToBaseIdx = IntArray(plainText.length)
+        val plainCharToBaseIdx = IntArray(plain.length)
         var baseIdx = 0
-        for (i in plainText.indices) {
-            val ch = plainText[i].toString()
+        for (i in plain.indices) {
+            val ch = plain[i].toString()
             val stripped = stripDiacritics(ch)
             if (stripped.isNotEmpty()) {
                 plainCharToBaseIdx[i] = baseIdx
@@ -221,8 +249,8 @@ object TajweedProcessor {
         // later char. Align instead; unmapped plain chars keep default color.
         val baseAlignment = alignBases(plainBase, tajweedBase)
 
-        val charColors = Array(plainText.length) { defaultColor }
-        for (i in plainText.indices) {
+        val charColors = Array(plain.length) { defaultColor }
+        for (i in plain.indices) {
             val pBase = plainCharToBaseIdx[i]
             val tBase = baseAlignment.getOrElse(pBase) { -1 }
             if (tBase >= 0 && tBase < tajweedBaseToSeg.size) {
@@ -232,8 +260,8 @@ object TajweedProcessor {
             }
         }
 
-        val charRules = Array<String?>(plainText.length) { null }
-        for (i in plainText.indices) {
+        val charRules = Array<String?>(plain.length) { null }
+        for (i in plain.indices) {
             val pBase = plainCharToBaseIdx[i]
             val tBase = baseAlignment.getOrElse(pBase) { -1 }
             if (tBase >= 0 && tBase < tajweedBaseToSeg.size) {

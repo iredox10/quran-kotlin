@@ -20,8 +20,19 @@ import javax.inject.Singleton
  */
 @Singleton
 class RnBackend @Inject constructor() {
-    val isRenderApiEnabled: Boolean = BuildConfig.IS_RENDER_API_ENABLED
-    val configuredBaseUrl: String = BuildConfig.QURAN_NUR_API_BASE_URL
+    /** Test seam: forces the flag independently of the build-configured default. */
+    @androidx.annotation.VisibleForTesting
+    internal var injectedEnabled: Boolean? = null
+
+    /** Test seam: forces the base URL independently of the build-configured default. */
+    @androidx.annotation.VisibleForTesting
+    internal var injectedBaseUrl: String? = null
+
+    val isRenderApiEnabled: Boolean
+        get() = injectedEnabled ?: BuildConfig.IS_RENDER_API_ENABLED
+
+    val configuredBaseUrl: String
+        get() = injectedBaseUrl ?: BuildConfig.QURAN_NUR_API_BASE_URL
 
     /** Retrofit always wants a trailing slash on the base URL. */
     val baseUrl: String get() = configuredBaseUrl.trimEnd('/') + "/"

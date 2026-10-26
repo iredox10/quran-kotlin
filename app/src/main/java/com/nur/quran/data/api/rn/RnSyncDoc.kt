@@ -67,12 +67,12 @@ object RnSyncEnvelope {
         if (map == null) return null
         val doc = findDoc(map)
         val stateData = doc[FIELD_STATE_DATA]?.toString()
+        // No stateData AND no timestamp anywhere: not a sync document (an error
+        // envelope or a 200-empty canary — pull-on-empty semantics stay with the
+        // caller).
+        if (stateData == null && !TIMESTAMP_FIELDS.any { doc.containsKey(it) }) return null
         val userId = doc[FIELD_USER_ID]?.toString() ?: map[FIELD_USER_ID]?.toString()
         val timestamp = TIMESTAMP_FIELDS.firstNotNullOfOrNull { doc[it] ?: map[it] }
-        // No stateData AND no timestamp anywhere: not a sync document.
-        if (stateData == null && doc[FIELD_USER_ID] == null && !TIMESTAMP_FIELDS.any { doc.containsKey(it) }) {
-            return null
-        }
         return RnSyncDoc(userId, stateData, RnTime.parse(timestamp))
     }
 

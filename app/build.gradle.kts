@@ -20,6 +20,14 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        // Render.com backend (quran-nur-api) migration — build-time switch.
+        // IS_RENDER_API_ENABLED=false is the shipping default: Appwrite auth/sync/realtime
+        // and api.quran.com content stay in charge until the flag flips (per build, no
+        // runtime toggle exists in the app). ON routes auth/sync/realtime through
+        // ${QURAN_NUR_API_BASE_URL} and content pulls through the same host.
+        buildConfigField("String", "QURAN_NUR_API_BASE_URL", "\"https://quran-nur-api.onrender.com\"")
+        buildConfigField("boolean", "IS_RENDER_API_ENABLED", "false")
     }
 
     // Release signing credentials live OUTSIDE the repo:
@@ -63,6 +71,9 @@ android {
     }
     buildFeatures {
         compose = true
+        // BuildConfig generation is off by default on AGP 8 — the QURAN_NUR_* fields
+        // above need it (no code read BuildConfig before this).
+        buildConfig = true
     }
     // SyncService/SyncWorker log through android.util.Log; JVM tests must not
     // throw "not mocked" — return default values for framework stubs instead.

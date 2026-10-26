@@ -6,7 +6,9 @@ import com.nur.quran.data.api.ApiVerse
 import com.nur.quran.data.api.ChaptersResponse
 import com.nur.quran.data.api.TajweedResponse
 import com.nur.quran.data.api.VersesResponse
+import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -41,6 +43,16 @@ interface RnApi {
     /** Server-side copy of the bundled `assets/data/words/{ch}.json` pack. */
     @GET("v1/packs/words/{chapterId}.json")
     suspend fun getWordsPack(@Path("chapterId") chapterId: Int): VersesResponse
+
+    // ── sync (Bearer; document fields 1:1 from SyncContract.kt) ──────────────
+
+    /** The user's one sync document (lenient envelope, see [RnSyncEnvelope]). */
+    @GET("v1/sync")
+    suspend fun getSync(): Map<String, Any?>
+
+    /** Upsert with `userId` + `stateData` → `{ lastSyncAt }`. */
+    @PUT("v1/sync")
+    suspend fun putSync(@Body body: RnSyncPushPayload): RnSyncPutResponse
 }
 
 /**

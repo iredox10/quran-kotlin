@@ -80,4 +80,29 @@ class RnApiClient @Inject constructor(
     /** `/v1/packs/words/{ch}.json` — bundle-shape single file, pagination-free. */
     suspend fun getWordsPack(chapterId: Int): com.nur.quran.data.api.VersesResponse =
         RnContent.normalizeVersesResponse(api.getWordsPack(chapterId))
+
+    // ── sync document (field names 1:1 from the app's SyncContract.kt) ────────
+
+    /**
+     * GET /v1/sync → the user's one sync document, or null when none exists /
+     * the payload isn't a sync doc (canary/empty-pull semantics stay with the
+     * caller, exactly like the Appwrite "no document" case).
+     */
+    suspend fun getSyncDoc(): com.nur.quran.data.api.rn.RnSyncDoc? =
+        RnSyncEnvelope.fromMap(api.getSync())
+
+    /**
+     * PUT /v1/sync with the [com.nur.quran.data.sync.SyncContract.buildPushPayload]
+     * map (userId + stateData) — the same map Appwrite received. Returns the
+     * server stamp (epoch ms) for the sync watermark, or null on protocol noise.
+     */
+    suspend fun putSyncDoc(payload: Map<String, Any>): Long? {
+        val response = api.putSync(
+            RnSyncPushPayload(
+                userId = payload[RnSyncShapes.FIELD_USER_ID]?.toString().orEmpty(),
+                stateData = payload[RnSyncShapes.FIELD_STATE_DATA]?.toString().orEmpty(),
+            ),
+        )
+        return RnTime.parse(response.lastSyncAt ?: response.updatedAt).takeIf { it > 0 }
+    }
 }

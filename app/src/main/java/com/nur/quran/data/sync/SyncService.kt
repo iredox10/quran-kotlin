@@ -77,10 +77,14 @@ private const val TAG = "NurSync"
 @Singleton
 class SyncService @Inject constructor(
     private val appwriteClient: AppwriteClient,
+    private val rnApiClient: com.nur.quran.data.api.rn.RnApiClient,
     private val snapshotBuilder: SnapshotBuilder?,
     private val dao: QuranDao?,
     @ApplicationContext private val context: Context,
 ) {
+    /** True when sync/transport routes through the Render API (BuildConfig flag). */
+    private val rnEnabled: Boolean
+        get() = rnApiClient.isEnabled
     private val gson = Gson()
 
     /** Like [runSuspendCatching] but names the section so a silent apply failure is visible in logcat. */
@@ -238,8 +242,14 @@ class SyncService @Inject constructor(
         }
     }
 
-    /** userId from account.get(); null when signed out (or on transport failure). */
+    /**
+     * userId — Appwrite `account.get()` on the legacy path; on the Render API
+     * the persisted session identity (fix/login-restore-pull semantics: userId
+     * survives restarts in [com.nur.quran.data.api.rn.RnTokenStore], refreshed
+     * access token recovers expired ones server-side).
+     */
     private suspend fun currentUserId(): String? {
+        if (rnEnabled) return rnApiClient.storedUserId()
         return runSuspendCatching { appwriteClient.account.get().id }.getOrNull()
     }
 
@@ -267,12 +277,19 @@ class SyncService @Inject constructor(
      * creates when the account really has none (re-resolving first, in case the earlier
      * lookup raced a create) — assuming documentId == userId is what forked a second
      * document per account in the first place.
+     *
+     * Render API path: PUT /v1/sync IS the update-or-create (server-side upsert keyed by
+     * the Bearer identity), so no document id tracking; the server stamp comes back as
+     * `lastSyncAt`.
      */
     private suspend fun writePayload(
         userId: String,
         payload: Map<String, Any>,
         resolvedDocId: String?,
     ): Long {
+        if (rnEnabled) {
+            return rnApiClient.putSyncDoc(payload) ?: 0L
+        }
         val target = resolvedDocId ?: cachedDocId?.takeIf { cachedUserId == userId }
         if (target != null) {
             updateById(target, payload)?.let { doc ->
@@ -317,8 +334,13 @@ class SyncService @Inject constructor(
      * Transport failures propagate on purpose: the entry points catch them and fail the
      * sync, which is the safe outcome — writing blind would drop the remote union and could
      * fork another document.
+     *
+     * Render API path: GET /v1/sync carries THIS user's document already (Bearer-selected
+     * by the access token), so no per-user query/list is needed; the doc id the Appwrite
+     * path tracks has no role on this transport (writes target the PUT upsert).
      */
     private suspend fun fetchRemote(userId: String): RemoteDoc? {
+        if (rnEnabled) return fetchRemoteRn(userId)
         val docs = appwriteClient.databases.listDocuments(
             AppwriteClient.DATABASE_ID,
             AppwriteClient.USER_SYNC_COLLECTION_ID,
@@ -339,6 +361,25 @@ class SyncService @Inject constructor(
         }
         cachedDocId = doc.id
         return RemoteDoc(extractState(doc.data), doc.updatedAtMillis, doc.id)
+    }
+
+    /** Render API pull: GET /v1/sync → [RnSyncDoc] → the same [RemoteDoc] view. */
+    private suspend fun fetchRemoteRn(userId: String): RemoteDoc? {
+        val doc = rnApiClient.getSyncDoc() ?: return null
+        if (doc.userId != null && doc.userId.isNotBlank() && doc.userId != userId) {
+            // Bearer/identity mismatch — treat as "no document for this account".
+            Log.w(TAG, "rn fetchRemote: doc.userId=${doc.userId} != account $userId")
+            return null
+        }
+        return RemoteDoc(
+            state = SyncContract.stateFromDoc(
+                mapOf(
+                    SyncContract.FIELD_STATE_DATA to (doc.stateData ?: ""),
+                ),
+            ) { parseJsonObject(it) },
+            updatedAt = doc.updatedAtMs,
+            id = "rn-sync",
+        )
     }
 
     /**

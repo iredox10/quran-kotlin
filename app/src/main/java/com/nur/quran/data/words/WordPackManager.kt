@@ -69,6 +69,7 @@ data class WordPackStatus(
 @Singleton
 class WordPackManager @Inject constructor(
     private val quranApi: QuranApi,
+    private val rnApiClient: com.nur.quran.data.api.rn.RnApiClient,
     private val quranDao: QuranDao,
     private val gson: Gson,
     @ApplicationContext private val context: Context
@@ -97,25 +98,16 @@ class WordPackManager @Inject constructor(
             withContext(Dispatchers.IO) {
                 _packStates.update { it + (chapterId to WordPackStatus(0, 0, true, null)) }
 
-                val verses = mutableListOf<ApiVerse>()
-                var page = 1
-                var pagesFetched = 0
-                while (true) {
-                    ensureActive()
-                    val response = quranApi.getVersesByChapter(
-                        chapterId = chapterId,
-                        translations = TRANSLATION_ID,
-                        words = true,
-                        wordFields = WORD_FIELDS,
-                        mushaf = null,
-                        page = page,
-                        perPage = PER_PAGE
-                    )
-                    verses += response.verses
-                    pagesFetched++
-                    val next = response.pagination.next_page
-                    if (next == null || pagesFetched >= MAX_PAGES) break
-                    page = next
+                // Word-translation source for the NETWORK fallback (bundle-first
+                // seeding above stays untouched): behind the Render flag the pack
+                // is a single file — `/v1/packs/words/{ch}.json`, the server-side
+                // copy of the bundled asset (same VersesResponse shape); otherwise
+                // the paginated api.quran.com verses endpoint.
+                val verses: List<ApiVerse> = if (rnApiClient.isEnabled) {
+                    runCatching { rnApiClient.getWordsPack(chapterId) }.getOrNull()
+                        ?.verses ?: emptyList()
+                } else {
+                    fetchQuranComVerses(chapterId)
                 }
 
                 val total = verses.size
@@ -182,6 +174,35 @@ class WordPackManager @Inject constructor(
     /** Cancels an in-flight [downloadChapterWords] for the given chapter. */
     fun cancelDownload(chapterId: Int) {
         jobs[chapterId]?.cancel()
+    }
+
+    /**
+     * Legacy api.quran.com verses fetch (page loop) — the word-pack NETWORK
+     * fallback when the Render flag is OFF. Inside [Dispatchers.IO] context so
+     * [ensureActive] still sees the caller's cancellation.
+     */
+    private suspend fun fetchQuranComVerses(chapterId: Int): List<ApiVerse> {
+        val fetched = mutableListOf<ApiVerse>()
+        var page = 1
+        var pagesFetched = 0
+        while (true) {
+            currentCoroutineContext().ensureActive()
+            val response = quranApi.getVersesByChapter(
+                chapterId = chapterId,
+                translations = TRANSLATION_ID,
+                words = true,
+                wordFields = WORD_FIELDS,
+                mushaf = null,
+                page = page,
+                perPage = PER_PAGE
+            )
+            fetched += response.verses
+            pagesFetched++
+            val next = response.pagination.next_page
+            if (next == null || pagesFetched >= MAX_PAGES) break
+            page = next
+        }
+        return fetched
     }
 
     /**

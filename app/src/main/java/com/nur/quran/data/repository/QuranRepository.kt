@@ -41,6 +41,7 @@ class QuranRepository @Inject constructor(
     @dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context,
     private val quranDao: QuranDao,
     private val quranApi: QuranApi,
+    private val rnApiClient: com.nur.quran.data.api.rn.RnApiClient,
     private val gson: Gson,
     private val wordPackManager: WordPackManager
 ) {
@@ -630,16 +631,33 @@ class QuranRepository @Inject constructor(
             }
         }
         try {
-            val response = quranApi.getVersesByChapter(
-                chapterId = chapterId,
-                translations = translationId.toString(),
-                fields = com.nur.quran.data.mushaf.Mushaf.verseFields(mushaf),
-                wordFields = com.nur.quran.data.mushaf.Mushaf.wordFields(mushaf),
-                mushaf = mushaf.apiMushafId,
-                perPage = 300
-            )
-            
-            val tajweedResponse = try {
+            // Render flag: refresh reads `/v1/verses/{ch}?translation=20` (content
+            // contract pins the translation resource); the legacy quran.com path
+            // keeps its tuned paged call below.
+            val effectiveTranslationId = if (rnApiClient.isEnabled) {
+                rnApiClient.translationId
+            } else {
+                translationId
+            }
+            val response = if (rnApiClient.isEnabled) {
+                rnApiClient.getVerses(chapterId)
+            } else {
+                quranApi.getVersesByChapter(
+                    chapterId = chapterId,
+                    translations = translationId.toString(),
+                    fields = com.nur.quran.data.mushaf.Mushaf.verseFields(mushaf),
+                    wordFields = com.nur.quran.data.mushaf.Mushaf.wordFields(mushaf),
+                    mushaf = mushaf.apiMushafId,
+                    perPage = 300
+                )
+            }
+
+            val tajweedResponse = if (rnApiClient.isEnabled) {
+                // RN contract: verse-level tajweed text is OPTIONAL; absent → same
+                // null flow the legacy try/catch produced. Word-level markup rides
+                // the words array wherever the server serves it.
+                com.nur.quran.data.api.rn.RnContent.tajweedFromVerses(response.verses)
+            } else try {
                 quranApi.getUthmaniTajweed(chapterNumber = chapterId)
             } catch (e: Exception) {
                 null
@@ -697,9 +715,12 @@ class QuranRepository @Inject constructor(
                 }
             }
 
-            quranDao.replaceVersesAndWords(backfillBlankTranslations(verseEntities, translationId), wordEntities)
+            quranDao.replaceVersesAndWords(
+                backfillBlankTranslations(verseEntities, effectiveTranslationId),
+                wordEntities
+            )
             quranDao.insertCacheEntry(ApiResponseCacheEntity("verses_mushaf_$chapterId", mushaf.id))
-            translationByChapter[chapterId] = translationId
+            translationByChapter[chapterId] = effectiveTranslationId
         } catch (e: Exception) {
             // Offline fallback: bundled asset rows carry baked-in default text,
             // so override (not just blank-fill) from the packed edition when

@@ -109,6 +109,9 @@ data class ApiVerse(
     val text_uthmani: String? = null,
     val text_indopak: String? = null,
     val text_qpc_hafs: String? = null,
+    // Resolve-nur API optional verse-level tajweed markup (content contract);
+    // api.quran.com never fills it — word-level tajweed below is the source there.
+    val text_uthmani_tajweed: String? = null,
     val words: List<ApiWord>?,
     val translations: List<ApiTranslation>?,
     val audio: ApiAudio?

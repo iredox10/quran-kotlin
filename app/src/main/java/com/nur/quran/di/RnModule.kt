@@ -1,8 +1,12 @@
 package com.nur.quran.di
 
 import android.content.Context
+import com.nur.quran.data.api.rn.RnApi
+import com.nur.quran.data.api.rn.RnApiClient
 import com.nur.quran.data.api.rn.RnAuthApi
 import com.nur.quran.data.api.rn.RnAuthClient
+import com.nur.quran.data.api.rn.RnAuthenticator
+import com.nur.quran.data.api.rn.RnAuthInterceptor
 import com.nur.quran.data.api.rn.RnBackend
 import com.nur.quran.data.api.rn.RnPrefsTokenStore
 import com.nur.quran.data.api.rn.RnTokenStore
@@ -52,4 +56,34 @@ object RnModule {
     @Singleton
     fun provideRnAuthClient(api: RnAuthApi, tokenStore: RnTokenStore): RnAuthClient =
         RnAuthClient(api, tokenStore)
+
+    /** Content + sync surface — Bearer via interceptor, refresh-on-401 replay. */
+    @Provides
+    @Singleton
+    fun provideRnApi(
+        backend: RnBackend,
+        okHttpClient: OkHttpClient,
+        authClient: RnAuthClient,
+        tokenStore: RnTokenStore,
+    ): RnApi {
+        val client = okHttpClient.newBuilder()
+            .addInterceptor(RnAuthInterceptor(tokenStore))
+            .authenticator(RnAuthenticator(authClient))
+            .build()
+        return Retrofit.Builder()
+            .baseUrl(backend.baseUrl)
+            .client(client)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(RnApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideRnApiClient(
+        backend: RnBackend,
+        api: RnApi,
+        authClient: RnAuthClient,
+        tokenStore: RnTokenStore,
+    ): RnApiClient = RnApiClient(backend, api, authClient, tokenStore)
 }

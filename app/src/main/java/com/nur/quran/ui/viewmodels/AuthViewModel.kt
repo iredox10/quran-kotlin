@@ -27,6 +27,7 @@ data class AuthState(
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val appwrite: AppwriteClient,
+    private val rnApiClient: com.nur.quran.data.api.rn.RnApiClient,
     private val syncService: SyncService,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
@@ -54,14 +55,21 @@ class AuthViewModel @Inject constructor(
             runCatching {
                 // NOTE: createSession(userId, secret) is the token/OTP endpoint —
                 // email login must use createEmailPasswordSession (as the web app does).
-                appwrite.account.createEmailPasswordSession(email.trim(), password)
-                appwrite.account.get()
-            }.onSuccess { user ->
+                if (rnApiClient.isEnabled) {
+                    val user = rnApiClient.login(email, password)
+                        ?: error("Login failed") // HttpException messages surface as-is otherwise
+                    Pair(user.email ?: email.trim(), user.name)
+                } else {
+                    appwrite.account.createEmailPasswordSession(email.trim(), password)
+                    val user = appwrite.account.get()
+                    Pair(user.email, user.name.takeIf { it.isNotBlank() })
+                }
+            }.onSuccess { (mail, displayName) ->
                 resetSyncWatermark()
                 _authState.value = AuthState(
                     signedIn = true,
-                    email = user.email,
-                    displayName = user.name.takeIf { it.isNotBlank() },
+                    email = mail,
+                    displayName = displayName,
                     busy = false,
                     error = null
                 )
@@ -99,15 +107,24 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             _authState.value = _authState.value.copy(busy = true, error = null, message = null)
             runCatching {
-                appwrite.account.create(ID.unique(), email.trim(), password, name.trim())
-                appwrite.account.createEmailPasswordSession(email.trim(), password)
-                appwrite.account.get()
-            }.onSuccess { user ->
+                if (rnApiClient.isEnabled) {
+                    // POST /auth/register already establishes the session (tokens
+                    // moved in) — no second login round-trip on this backend.
+                    val user = rnApiClient.register(email.trim(), password, name.trim())
+                        ?: error("Registration failed")
+                    Pair(user.email ?: email.trim(), user.name)
+                } else {
+                    appwrite.account.create(ID.unique(), email.trim(), password, name.trim())
+                    appwrite.account.createEmailPasswordSession(email.trim(), password)
+                    val user = appwrite.account.get()
+                    Pair(user.email, user.name.takeIf { it.isNotBlank() })
+                }
+            }.onSuccess { (mail, displayName) ->
                 resetSyncWatermark()
                 _authState.value = AuthState(
                     signedIn = true,
-                    email = user.email,
-                    displayName = user.name.takeIf { it.isNotBlank() },
+                    email = mail,
+                    displayName = displayName,
                     busy = false,
                     error = null
                 )
@@ -119,6 +136,16 @@ class AuthViewModel @Inject constructor(
     }
 
     fun sendRecovery(email: String) {
+        if (rnApiClient.isEnabled) {
+            // The Render backend has no recovery endpoint in the frozen contract;
+            // say so plainly instead of silently hitting the Appwrite project.
+            _authState.value = _authState.value.copy(
+                busy = false,
+                error = null,
+                message = "Password recovery is not available for this account backend yet"
+            )
+            return
+        }
         viewModelScope.launch(Dispatchers.IO) {
             _authState.value = _authState.value.copy(busy = true, error = null, message = null)
             runCatching {
@@ -149,7 +176,11 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             _authState.value = _authState.value.copy(busy = true, error = null, message = null)
             runCatching {
-                appwrite.account.deleteSession("current")
+                if (rnApiClient.isEnabled) {
+                    rnApiClient.clearSession()
+                } else {
+                    appwrite.account.deleteSession("current")
+                }
             }.onSuccess {
                 resetSyncWatermark()
                 _authState.value = AuthState(signedIn = false, email = null, busy = false, error = null)
@@ -175,6 +206,23 @@ class AuthViewModel @Inject constructor(
 
     fun refresh() {
         viewModelScope.launch(Dispatchers.IO) {
+            if (rnApiClient.isEnabled) {
+                // Persisted RN session (tokens + userId) — no network round trip to
+                // know the app is signed in; a 401 on the next sync recovers itself
+                // via the refresh token.
+                if (rnApiClient.hasSession()) {
+                    _authState.value = AuthState(
+                        signedIn = true,
+                        email = rnApiClient.storedUserEmail(),
+                        displayName = null,
+                        busy = false,
+                        error = null
+                    )
+                } else {
+                    _authState.value = AuthState(signedIn = false, email = null, busy = false, error = null)
+                }
+                return@launch
+            }
             runCatching {
                 appwrite.account.get()
             }.onSuccess { user ->

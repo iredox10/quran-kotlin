@@ -39,8 +39,23 @@ class PackViewModel @Inject constructor(
     private val wordPackManager: WordPackManager,
     private val syncService: SyncService,
     private val appwriteClient: AppwriteClient,
+    private val rnApiClient: com.nur.quran.data.api.rn.RnApiClient,
     private val syncRealtime: com.nur.quran.data.sync.SyncRealtime
 ) : ViewModel() {
+
+    /** Signed-in user identity — Appwrite session when legacy, persisted RN session when flagged. */
+    private suspend fun currentSignedInEmail(): String? {
+        if (rnApiClient.isEnabled) {
+            return rnApiClient.storedUserEmail().takeIf { rnApiClient.hasSession() }
+        }
+        return runCatching { appwriteClient.account.get() }.getOrNull()?.email
+    }
+
+    /** The realtime subscription's owner id (same transport split as [currentSignedInEmail]). */
+    private suspend fun currentSignedInUserId(): String? {
+        if (rnApiClient.isEnabled) return rnApiClient.storedUserId()
+        return runCatching { appwriteClient.account.get() }.getOrNull()?.id
+    }
 
     /** Tafsir packs mapped for Settings UI rows (mirrors the former SurahViewModel bridge). */
     val tafsirPacks: StateFlow<List<PackUiState>> =
@@ -200,10 +215,10 @@ class PackViewModel @Inject constructor(
         val previousError = if (preserveError) _syncUiState.value.error else null
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val user = runCatching { appwriteClient.account.get() }.getOrNull()
+                val email = currentSignedInEmail()
                 _syncUiState.value = SyncUiState(
-                    signedIn = user != null,
-                    email = user?.email,
+                    signedIn = email != null,
+                    email = email,
                     lastSync = syncService.lastSyncAtPublic().takeIf { it > 0 },
                     syncing = false,
                     error = previousError
@@ -250,7 +265,7 @@ class PackViewModel @Inject constructor(
     }
 
     private suspend fun failureMessage(fallback: String): String {
-        val signedIn = runCatching { appwriteClient.account.get() }.getOrNull() != null
+        val signedIn = currentSignedInEmail() != null
         return if (signedIn) fallback else SIGN_IN_REQUIRED_MESSAGE
     }
 
@@ -264,8 +279,8 @@ class PackViewModel @Inject constructor(
 
     fun startRealtimeSync() {
         viewModelScope.launch(Dispatchers.IO) {
-            val user = runCatching { appwriteClient.account.get() }.getOrNull() ?: return@launch
-            syncRealtime.start(user.id)
+            val userId = currentSignedInUserId() ?: return@launch
+            syncRealtime.start(userId)
             if (realtimeCollecting) return@launch
             realtimeCollecting = true
             runCatching {

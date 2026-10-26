@@ -41,7 +41,7 @@ object RnModule {
     fun provideRnTokenStore(@ApplicationContext context: Context): RnTokenStore =
         RnPrefsTokenStore(context)
 
-    /** /auth/* surface — plain client, no auth headers, no 401 authenticator. */
+    /** Auth surface (register/login/refresh) — plain client, no auth headers, no 401 authenticator. */
     @Provides
     @Singleton
     fun provideRnAuthApi(backend: RnBackend, okHttpClient: OkHttpClient): RnAuthApi =

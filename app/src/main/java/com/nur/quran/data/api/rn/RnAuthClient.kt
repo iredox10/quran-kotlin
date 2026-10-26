@@ -16,7 +16,7 @@ import kotlinx.coroutines.runBlocking
 private const val TAG = "NurRnApi"
 
 /**
- * /auth/* Retrofit surface — mounted on the plain OkHttpClient in di/RnModule.
+ * "/auth/…" Retrofit surface — mounted on the plain OkHttpClient in di/RnModule.
  * A failed refresh must 401 out, never recurse through the client-side
  * authenticator, which is why this interface is separate from the full
  * [RnApi] (content + sync).

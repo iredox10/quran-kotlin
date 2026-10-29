@@ -684,50 +684,37 @@ class SyncService @Inject constructor(
      */
     private suspend fun applyPlannerData(state: Map<String, Any?>) {
         val d = dao ?: return
+        val entries = mutableListOf<ApiResponseCacheEntity>()
         val reflections = webPlannerReflectionsByPlan(state["plannerReflections"]).orEmpty()
-        val localPlans = runSuspendCatching { d.getCacheEntry("planner_all_plans")?.dataJson }.getOrNull()
+        val localPlans = d.getCacheEntry("planner_all_plans")?.dataJson
         mergePlansById(localPlans, state["planners"])
             ?.map { plan -> planWithReflections(plan, reflections) }
-            ?.let { plans ->
-                runSuspendCatching {
-                    d.insertCacheEntry(
-                        ApiResponseCacheEntity("planner_all_plans", gson.toJson(plans)),
-                    )
-                }
-            }
-        asString(state["activePlannerId"])?.let { id ->
-            runSuspendCatching { d.insertCacheEntry(ApiResponseCacheEntity("planner_active_id", id)) }
+            ?.let { entries += ApiResponseCacheEntity("planner_all_plans", gson.toJson(it)) }
+        asString(state["activePlannerId"])?.takeIf { it.isNotBlank() }?.let {
+            entries += ApiResponseCacheEntity("planner_active_id", it)
         }
-        val localArchived = runSuspendCatching {
-            d.getCacheEntry("planner_archived_plans")?.dataJson
-        }.getOrNull()
-        mergePlansById(localArchived, state["archivedPlanners"])?.let { archived ->
-            runSuspendCatching {
-                d.insertCacheEntry(
-                    ApiResponseCacheEntity("planner_archived_plans", gson.toJson(archived)),
-                )
-            }
+        val localArchived = d.getCacheEntry("planner_archived_plans")?.dataJson
+        mergePlansById(localArchived, state["archivedPlanners"])?.let {
+            entries += ApiResponseCacheEntity("planner_archived_plans", gson.toJson(it))
         }
         webPlannerExtraEntries(state["plannerBookmarks"])?.forEach { (id, entry) ->
-            webPlannerBookmarkRows(entry)?.let { rows ->
-                runSuspendCatching {
-                    d.insertCacheEntry(
-                        ApiResponseCacheEntity("planner_bookmarks_$id", gson.toJson(rows)),
-                    )
-                }
+            webPlannerBookmarkRows(entry)?.let {
+                entries += ApiResponseCacheEntity("planner_bookmarks_$id", gson.toJson(it))
             }
         }
-        // Web keeps { dayNumber: { totalSeconds, startedAt } }; Android persists
-        // day → seconds only (startedAt is session state it never re-reads).
         webPlannerExtraEntries(state["plannerSessionTimers"])?.forEach { (id, entry) ->
-            webPlannerSessionTotals(entry)?.let { totals ->
-                runSuspendCatching {
-                    d.insertCacheEntry(
-                        ApiResponseCacheEntity("planner_sessions_$id", gson.toJson(totals)),
-                    )
-                }
+            webPlannerTimerCacheJson(id, entry)?.let {
+                entries += ApiResponseCacheEntity("planner_sessions_$id", it)
             }
         }
+        webPlannerExtraEntries(state["plannerReflections"])?.forEach { (id, entry) ->
+            webPlannerReflectionCacheJson(id, entry)?.let {
+                entries += ApiResponseCacheEntity("planner_reflections_$id", it)
+            }
+        }
+        // Publish selection, schedules and extras together. No observer can see
+        // an active id from one snapshot paired with plans from another.
+        if (entries.isNotEmpty()) d.insertCacheEntries(entries)
     }
 
     /** Folds web `plannerReflections[planId]` into a plan's `assignmentReflections`. */

@@ -1,0 +1,609 @@
+{
+  "initial": {
+    "id": "web-pace-regression",
+    "createdAt": "2026-10-29T12:00:00.000Z",
+    "unitType": "page",
+    "title": "Web pace regression",
+    "durationDays": 7,
+    "startDate": "2026-10-29",
+    "startUnit": 582,
+    "endUnit": 604,
+    "isCustomRange": true,
+    "assignmentProgress": {},
+    "assignmentCompletedItems": {},
+    "assignmentCompletedAt": {},
+    "completedDays": [],
+    "assignments": [
+      {
+        "dayNumber": 1,
+        "date": "2026-10-29",
+        "unitType": "page",
+        "title": "Pages 582-585",
+        "subtitle": "Mushaf page view · Mushaf page view",
+        "startUnit": 582,
+        "endUnit": 585,
+        "primaryRoute": "/page/582",
+        "pageStart": 582,
+        "pageEnd": 585,
+        "items": [
+          {
+            "id": 582,
+            "title": "Page 582",
+            "subtitle": "Mushaf page view",
+            "route": "/page/582",
+            "rangeValue": 582,
+            "pageStart": 582,
+            "pageEnd": 582
+          },
+          {
+            "id": 583,
+            "title": "Page 583",
+            "subtitle": "Mushaf page view",
+            "route": "/page/583",
+            "rangeValue": 583,
+            "pageStart": 583,
+            "pageEnd": 583
+          },
+          {
+            "id": 584,
+            "title": "Page 584",
+            "subtitle": "Mushaf page view",
+            "route": "/page/584",
+            "rangeValue": 584,
+            "pageStart": 584,
+            "pageEnd": 584
+          },
+          {
+            "id": 585,
+            "title": "Page 585",
+            "subtitle": "Mushaf page view",
+            "route": "/page/585",
+            "rangeValue": 585,
+            "pageStart": 585,
+            "pageEnd": 585
+          }
+        ]
+      },
+      {
+        "dayNumber": 2,
+        "date": "2026-10-30",
+        "unitType": "page",
+        "title": "Pages 586-589",
+        "subtitle": "Mushaf page view · Mushaf page view",
+        "startUnit": 586,
+        "endUnit": 589,
+        "primaryRoute": "/page/586",
+        "pageStart": 586,
+        "pageEnd": 589,
+        "items": [
+          {
+            "id": 586,
+            "title": "Page 586",
+            "subtitle": "Mushaf page view",
+            "route": "/page/586",
+            "rangeValue": 586,
+            "pageStart": 586,
+            "pageEnd": 586
+          },
+          {
+            "id": 587,
+            "title": "Page 587",
+            "subtitle": "Mushaf page view",
+            "route": "/page/587",
+            "rangeValue": 587,
+            "pageStart": 587,
+            "pageEnd": 587
+          },
+          {
+            "id": 588,
+            "title": "Page 588",
+            "subtitle": "Mushaf page view",
+            "route": "/page/588",
+            "rangeValue": 588,
+            "pageStart": 588,
+            "pageEnd": 588
+          },
+          {
+            "id": 589,
+            "title": "Page 589",
+            "subtitle": "Mushaf page view",
+            "route": "/page/589",
+            "rangeValue": 589,
+            "pageStart": 589,
+            "pageEnd": 589
+          }
+        ]
+      },
+      {
+        "dayNumber": 3,
+        "date": "2026-10-31",
+        "unitType": "page",
+        "title": "Pages 590-592",
+        "subtitle": "Mushaf page view · Mushaf page view",
+        "startUnit": 590,
+        "endUnit": 592,
+        "primaryRoute": "/page/590",
+        "pageStart": 590,
+        "pageEnd": 592,
+        "items": [
+          {
+            "id": 590,
+            "title": "Page 590",
+            "subtitle": "Mushaf page view",
+            "route": "/page/590",
+            "rangeValue": 590,
+            "pageStart": 590,
+            "pageEnd": 590
+          },
+          {
+            "id": 591,
+            "title": "Page 591",
+            "subtitle": "Mushaf page view",
+            "route": "/page/591",
+            "rangeValue": 591,
+            "pageStart": 591,
+            "pageEnd": 591
+          },
+          {
+            "id": 592,
+            "title": "Page 592",
+            "subtitle": "Mushaf page view",
+            "route": "/page/592",
+            "rangeValue": 592,
+            "pageStart": 592,
+            "pageEnd": 592
+          }
+        ]
+      },
+      {
+        "dayNumber": 4,
+        "date": "2026-11-01",
+        "unitType": "page",
+        "title": "Pages 593-595",
+        "subtitle": "Mushaf page view · Mushaf page view",
+        "startUnit": 593,
+        "endUnit": 595,
+        "primaryRoute": "/page/593",
+        "pageStart": 593,
+        "pageEnd": 595,
+        "items": [
+          {
+            "id": 593,
+            "title": "Page 593",
+            "subtitle": "Mushaf page view",
+            "route": "/page/593",
+            "rangeValue": 593,
+            "pageStart": 593,
+            "pageEnd": 593
+          },
+          {
+            "id": 594,
+            "title": "Page 594",
+            "subtitle": "Mushaf page view",
+            "route": "/page/594",
+            "rangeValue": 594,
+            "pageStart": 594,
+            "pageEnd": 594
+          },
+          {
+            "id": 595,
+            "title": "Page 595",
+            "subtitle": "Mushaf page view",
+            "route": "/page/595",
+            "rangeValue": 595,
+            "pageStart": 595,
+            "pageEnd": 595
+          }
+        ]
+      },
+      {
+        "dayNumber": 5,
+        "date": "2026-11-02",
+        "unitType": "page",
+        "title": "Pages 596-598",
+        "subtitle": "Mushaf page view · Mushaf page view",
+        "startUnit": 596,
+        "endUnit": 598,
+        "primaryRoute": "/page/596",
+        "pageStart": 596,
+        "pageEnd": 598,
+        "items": [
+          {
+            "id": 596,
+            "title": "Page 596",
+            "subtitle": "Mushaf page view",
+            "route": "/page/596",
+            "rangeValue": 596,
+            "pageStart": 596,
+            "pageEnd": 596
+          },
+          {
+            "id": 597,
+            "title": "Page 597",
+            "subtitle": "Mushaf page view",
+            "route": "/page/597",
+            "rangeValue": 597,
+            "pageStart": 597,
+            "pageEnd": 597
+          },
+          {
+            "id": 598,
+            "title": "Page 598",
+            "subtitle": "Mushaf page view",
+            "route": "/page/598",
+            "rangeValue": 598,
+            "pageStart": 598,
+            "pageEnd": 598
+          }
+        ]
+      },
+      {
+        "dayNumber": 6,
+        "date": "2026-11-03",
+        "unitType": "page",
+        "title": "Pages 599-601",
+        "subtitle": "Mushaf page view · Mushaf page view",
+        "startUnit": 599,
+        "endUnit": 601,
+        "primaryRoute": "/page/599",
+        "pageStart": 599,
+        "pageEnd": 601,
+        "items": [
+          {
+            "id": 599,
+            "title": "Page 599",
+            "subtitle": "Mushaf page view",
+            "route": "/page/599",
+            "rangeValue": 599,
+            "pageStart": 599,
+            "pageEnd": 599
+          },
+          {
+            "id": 600,
+            "title": "Page 600",
+            "subtitle": "Mushaf page view",
+            "route": "/page/600",
+            "rangeValue": 600,
+            "pageStart": 600,
+            "pageEnd": 600
+          },
+          {
+            "id": 601,
+            "title": "Page 601",
+            "subtitle": "Mushaf page view",
+            "route": "/page/601",
+            "rangeValue": 601,
+            "pageStart": 601,
+            "pageEnd": 601
+          }
+        ]
+      },
+      {
+        "dayNumber": 7,
+        "date": "2026-11-04",
+        "unitType": "page",
+        "title": "Pages 602-604",
+        "subtitle": "Mushaf page view · Mushaf page view",
+        "startUnit": 602,
+        "endUnit": 604,
+        "primaryRoute": "/page/602",
+        "pageStart": 602,
+        "pageEnd": 604,
+        "items": [
+          {
+            "id": 602,
+            "title": "Page 602",
+            "subtitle": "Mushaf page view",
+            "route": "/page/602",
+            "rangeValue": 602,
+            "pageStart": 602,
+            "pageEnd": 602
+          },
+          {
+            "id": 603,
+            "title": "Page 603",
+            "subtitle": "Mushaf page view",
+            "route": "/page/603",
+            "rangeValue": 603,
+            "pageStart": 603,
+            "pageEnd": 603
+          },
+          {
+            "id": 604,
+            "title": "Page 604",
+            "subtitle": "Mushaf page view",
+            "route": "/page/604",
+            "rangeValue": 604,
+            "pageStart": 604,
+            "pageEnd": 604
+          }
+        ]
+      }
+    ],
+    "excludeDays": [],
+    "assignmentsUpdatedAt": 100,
+    "assignmentReadPages": {
+      "1": [
+        582,
+        583
+      ]
+    },
+    "assignmentReflections": {
+      "1": "Preserve this reflection"
+    },
+    "lastReadPage": 583,
+    "lastReadVerseKey": "78:1"
+  },
+  "adjusted": {
+    "id": "web-pace-regression",
+    "createdAt": "2026-10-29T12:00:00.000Z",
+    "unitType": "page",
+    "title": "Web pace regression",
+    "durationDays": 4,
+    "startDate": "2026-10-29",
+    "startUnit": 582,
+    "endUnit": 604,
+    "isCustomRange": true,
+    "assignmentProgress": {
+      "1": 1
+    },
+    "assignmentCompletedItems": {
+      "1": [
+        "582-583"
+      ]
+    },
+    "assignmentCompletedAt": {
+      "1": "2026-10-29"
+    },
+    "completedDays": [
+      1
+    ],
+    "assignments": [
+      {
+        "dayNumber": 1,
+        "date": "2026-10-29",
+        "unitType": "page",
+        "title": "Pages 582-583",
+        "subtitle": "2 pages (Read)",
+        "startUnit": 582,
+        "endUnit": 583,
+        "primaryRoute": "/planner/read/1",
+        "pageStart": 582,
+        "pageEnd": 583,
+        "items": [
+          {
+            "title": "Pages 582-583",
+            "subtitle": "2 pages",
+            "route": "/planner/read/1",
+            "rangeValue": "582-583",
+            "pageStart": 582,
+            "pageEnd": 583
+          }
+        ]
+      },
+      {
+        "unitType": "page",
+        "title": "Pages 584-590",
+        "subtitle": "7 pages",
+        "startUnit": 584,
+        "endUnit": 590,
+        "pageStart": 584,
+        "pageEnd": 590,
+        "items": [
+          {
+            "title": "Page 584",
+            "subtitle": "1 page",
+            "rangeValue": 584,
+            "pageStart": 584,
+            "pageEnd": 584,
+            "route": "/planner/read/2"
+          },
+          {
+            "title": "Page 585",
+            "subtitle": "1 page",
+            "rangeValue": 585,
+            "pageStart": 585,
+            "pageEnd": 585,
+            "route": "/planner/read/2"
+          },
+          {
+            "title": "Page 586",
+            "subtitle": "1 page",
+            "rangeValue": 586,
+            "pageStart": 586,
+            "pageEnd": 586,
+            "route": "/planner/read/2"
+          },
+          {
+            "title": "Page 587",
+            "subtitle": "1 page",
+            "rangeValue": 587,
+            "pageStart": 587,
+            "pageEnd": 587,
+            "route": "/planner/read/2"
+          },
+          {
+            "title": "Page 588",
+            "subtitle": "1 page",
+            "rangeValue": 588,
+            "pageStart": 588,
+            "pageEnd": 588,
+            "route": "/planner/read/2"
+          },
+          {
+            "title": "Page 589",
+            "subtitle": "1 page",
+            "rangeValue": 589,
+            "pageStart": 589,
+            "pageEnd": 589,
+            "route": "/planner/read/2"
+          },
+          {
+            "title": "Page 590",
+            "subtitle": "1 page",
+            "rangeValue": 590,
+            "pageStart": 590,
+            "pageEnd": 590,
+            "route": "/planner/read/2"
+          }
+        ],
+        "dayNumber": 2,
+        "primaryRoute": "/planner/read/2",
+        "date": "2026-10-29"
+      },
+      {
+        "unitType": "page",
+        "title": "Pages 591-597",
+        "subtitle": "7 pages",
+        "startUnit": 591,
+        "endUnit": 597,
+        "pageStart": 591,
+        "pageEnd": 597,
+        "items": [
+          {
+            "title": "Page 591",
+            "subtitle": "1 page",
+            "rangeValue": 591,
+            "pageStart": 591,
+            "pageEnd": 591,
+            "route": "/planner/read/3"
+          },
+          {
+            "title": "Page 592",
+            "subtitle": "1 page",
+            "rangeValue": 592,
+            "pageStart": 592,
+            "pageEnd": 592,
+            "route": "/planner/read/3"
+          },
+          {
+            "title": "Page 593",
+            "subtitle": "1 page",
+            "rangeValue": 593,
+            "pageStart": 593,
+            "pageEnd": 593,
+            "route": "/planner/read/3"
+          },
+          {
+            "title": "Page 594",
+            "subtitle": "1 page",
+            "rangeValue": 594,
+            "pageStart": 594,
+            "pageEnd": 594,
+            "route": "/planner/read/3"
+          },
+          {
+            "title": "Page 595",
+            "subtitle": "1 page",
+            "rangeValue": 595,
+            "pageStart": 595,
+            "pageEnd": 595,
+            "route": "/planner/read/3"
+          },
+          {
+            "title": "Page 596",
+            "subtitle": "1 page",
+            "rangeValue": 596,
+            "pageStart": 596,
+            "pageEnd": 596,
+            "route": "/planner/read/3"
+          },
+          {
+            "title": "Page 597",
+            "subtitle": "1 page",
+            "rangeValue": 597,
+            "pageStart": 597,
+            "pageEnd": 597,
+            "route": "/planner/read/3"
+          }
+        ],
+        "dayNumber": 3,
+        "primaryRoute": "/planner/read/3",
+        "date": "2026-10-30"
+      },
+      {
+        "unitType": "page",
+        "title": "Pages 598-604",
+        "subtitle": "7 pages",
+        "startUnit": 598,
+        "endUnit": 604,
+        "pageStart": 598,
+        "pageEnd": 604,
+        "items": [
+          {
+            "title": "Page 598",
+            "subtitle": "1 page",
+            "rangeValue": 598,
+            "pageStart": 598,
+            "pageEnd": 598,
+            "route": "/planner/read/4"
+          },
+          {
+            "title": "Page 599",
+            "subtitle": "1 page",
+            "rangeValue": 599,
+            "pageStart": 599,
+            "pageEnd": 599,
+            "route": "/planner/read/4"
+          },
+          {
+            "title": "Page 600",
+            "subtitle": "1 page",
+            "rangeValue": 600,
+            "pageStart": 600,
+            "pageEnd": 600,
+            "route": "/planner/read/4"
+          },
+          {
+            "title": "Page 601",
+            "subtitle": "1 page",
+            "rangeValue": 601,
+            "pageStart": 601,
+            "pageEnd": 601,
+            "route": "/planner/read/4"
+          },
+          {
+            "title": "Page 602",
+            "subtitle": "1 page",
+            "rangeValue": 602,
+            "pageStart": 602,
+            "pageEnd": 602,
+            "route": "/planner/read/4"
+          },
+          {
+            "title": "Page 603",
+            "subtitle": "1 page",
+            "rangeValue": 603,
+            "pageStart": 603,
+            "pageEnd": 603,
+            "route": "/planner/read/4"
+          },
+          {
+            "title": "Page 604",
+            "subtitle": "1 page",
+            "rangeValue": 604,
+            "pageStart": 604,
+            "pageEnd": 604,
+            "route": "/planner/read/4"
+          }
+        ],
+        "dayNumber": 4,
+        "primaryRoute": "/planner/read/4",
+        "date": "2026-10-31"
+      }
+    ],
+    "excludeDays": [],
+    "assignmentsUpdatedAt": 101,
+    "assignmentReadPages": {
+      "1": [
+        582,
+        583
+      ]
+    },
+    "assignmentReflections": {
+      "1": "Preserve this reflection"
+    },
+    "lastReadPage": 583,
+    "lastReadVerseKey": "78:1"
+  }
+}

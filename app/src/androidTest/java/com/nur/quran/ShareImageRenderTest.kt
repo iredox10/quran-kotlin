@@ -1,49 +1,71 @@
 package com.nur.quran
 
+import android.content.Context
 import android.graphics.BitmapFactory
-import androidx.activity.ComponentActivity
-import androidx.test.core.app.ActivityScenario
+import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.nur.quran.ui.components.renderVerseCardToFile
+import com.nur.quran.ui.components.ShareCardFormat
+import com.nur.quran.ui.components.ShareCardTheme
+import com.nur.quran.ui.components.paginateVerseCard
+import com.nur.quran.ui.components.renderVerseCardBitmap
+import com.nur.quran.ui.components.renderVerseCardsToFiles
+import com.nur.quran.ui.components.verseCardHeight
+import com.nur.quran.ui.components.verseCardContentHeight
 import kotlinx.coroutines.runBlocking
-import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertTrue
+import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/**
- * Proves the off-screen share-card renderer produces a real PNG.
- * Regression test for blank/1px captures caused by measuring before
- * composition settles (ComposeView.setContent is asynchronous).
- */
 @RunWith(AndroidJUnit4::class)
 class ShareImageRenderTest {
+    private val context = ApplicationProvider.getApplicationContext<Context>()
+    private val arabic = "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ"
+    private val translation = "In the name of Allah, the Entirely Merciful, the Especially Merciful."
 
     @Test
-    fun renderVerseCard_producesNonBlankPng(): Unit = runBlocking {
-        // Renderer needs an Activity window (off-screen ComposeViews have no
-        // recomposer) — same as the real dialog path in MainActivity.
-        val scenario = ActivityScenario.launch(ComponentActivity::class.java)
-        var file: java.io.File? = null
-        scenario.onActivity { activity ->
-            file = runBlocking {
-                renderVerseCardToFile(
-                    context = activity,
-                    verseKey = "2:255",
-                    arabic = "اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ",
-                    translation = "Allah! There is no god but He, the Living, the Self-subsisting, Eternal.",
-                    reference = "Al-Baqarah 2:255"
-                )
+    fun exportMatchesPreviewForEveryThemeAndFormat(): Unit = runBlocking {
+        for (format in ShareCardFormat.entries) {
+            val pages = paginateVerseCard(context, arabic, translation, format)
+            assertEquals(1, pages.size)
+            for (theme in ShareCardTheme.entries) {
+                val files = renderVerseCardsToFiles(context, "1:1", arabic, translation, "Al-Fatihah • Ayah 1:1", theme, format)
+                assertEquals(1, files.size)
+                val exported = requireNotNull(BitmapFactory.decodeFile(files.single().absolutePath))
+                val preview = renderVerseCardBitmap(context, pages.single(), "Al-Fatihah • Ayah 1:1", theme, format)
+                try {
+                    assertEquals(1080, exported.width)
+                    assertEquals(format.height, exported.height)
+                    assertEquals(theme.background, exported.getPixel(0, 0))
+                    assertTrue("Export and preview diverged for $theme / $format", exported.sameAs(preview))
+                    assertTrue("Blank card", files.single().length() > 10_000)
+                } finally {
+                    exported.recycle()
+                    preview.recycle()
+                    files.single().delete()
+                }
             }
         }
-        val out = file
-        assertNotNull("render returned null", out)
-        requireNotNull(out)
-        assertTrue("file missing", out.exists())
-        assertTrue("file suspiciously small: ${out.length()}", out.length() > 10_000)
-        val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        BitmapFactory.decodeFile(out.absolutePath, opts)
-        assertTrue("width wrong: ${opts.outWidth}", opts.outWidth == 1080)
-        assertTrue("height too small (blank capture?): ${opts.outHeight}", opts.outHeight > 100)
+    }
+
+    @Test
+    fun longAyahPreservesEveryCharacterOnOneGrowingCard() {
+        val longArabic = ("اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ ۚ ").repeat(24)
+        val longTranslation = ("Allah! There is no god but He, the Living, the Self-subsisting, Eternal. ").repeat(24)
+        for (format in ShareCardFormat.entries) {
+            val pages = paginateVerseCard(context, longArabic, longTranslation, format)
+            assertEquals("Full ayah must stay on one image", 1, pages.size)
+            val page = pages.single()
+            assertEquals(longArabic, page.arabic)
+            assertEquals(longTranslation, page.translation)
+            val height = verseCardHeight(context, page, format)
+            assertTrue("Card should grow beyond its minimum aspect ratio", height > format.height)
+            assertTrue("Arabic and translation overlap the footer", height >= verseCardContentHeight(context, page) + 320)
+        }
+    }
+
+    @Test
+    fun arabicOnlyAndTranslationOnlyAreSupported() {
+        assertEquals(arabic, paginateVerseCard(context, arabic, null).single().arabic)
+        assertEquals(translation, paginateVerseCard(context, "", translation).single().translation)
     }
 }

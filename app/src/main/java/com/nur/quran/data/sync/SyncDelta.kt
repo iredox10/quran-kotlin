@@ -26,8 +26,11 @@ internal fun syncDelta(before: Map<String, Any?>, after: Map<String, Any?>): Map
                     if (result === unchanged) return@mapNotNull null
                     @Suppress("UNCHECKED_CAST")
                     val patch = mapOf("id" to row["id"]) + (result as Map<String, Any?>)
-                    if (old["assignmentsUpdatedAt"] != row["assignmentsUpdatedAt"] && row["assignments"] is List<*>) {
-                        patch + ("assignments" to row["assignments"])
+                    if (!equal(old["assignmentsUpdatedAt"], row["assignmentsUpdatedAt"]) && row["assignments"] is List<*>) {
+                        patch + mapOf("assignments" to row["assignments"]) +
+                            row.filterKeys { it in PLANNER_DAY_PROGRESS_FIELDS }.mapKeys { it.key.toString() }
+                    } else if (patch.keys.any { it in PLANNER_DAY_PROGRESS_FIELDS } && row.containsKey("assignmentsUpdatedAt")) {
+                        patch + ("assignmentsUpdatedAt" to row["assignmentsUpdatedAt"])
                     } else patch
                 } else row
             } else changes

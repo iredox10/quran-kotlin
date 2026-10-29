@@ -9,24 +9,30 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.widget.Toast
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.FileProvider
 import com.nur.quran.data.db.entities.VerseEntity
 import com.nur.quran.ui.screens.*
@@ -37,362 +43,115 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 @Composable
-fun ShareVerseDialog(
-    verse: VerseEntity,
-    chapterName: String,
-    onDismiss: () -> Unit
-) {
+fun ShareVerseDialog(verse: VerseEntity, chapterName: String, onDismiss: () -> Unit) {
     val context = LocalContext.current
-    var copied by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    var isImageBusy by remember { mutableStateOf(false) }
-    var imageError by remember { mutableStateOf<String?>(null) }
-
-    // Card inputs derived from the dialog's existing verse props,
-    // matching the existing share-text format ("— chapterName verseKey").
-    val cardArabic = TajweedProcessor.foldWaqfMarkSeparator(verse.textUthmani ?: verse.textIndopak ?: "")
-    val cardTranslation = verse.translation?.replace(Regex("<[^>]*>"), "")?.takeIf { it.isNotBlank() }
-    val cardReference = "$chapterName ${verse.verseKey}"
-    val imageFileName = "Quran_${verse.verseKey.replace(Regex("[^A-Za-z0-9]+"), "_")}.png"
-
-    fun onSaveImage() {
-        if (isImageBusy) return
-        scope.launch {
-            isImageBusy = true
-            imageError = null
-            runCatching {
-                val file = withContext(Dispatchers.IO) {
-                    renderVerseCardToFile(context, verse.verseKey, cardArabic, cardTranslation, cardReference)
-                } ?: throw IllegalStateException("render failed")
-                saveVerseCardToGallery(context, file, imageFileName).getOrThrow()
-            }.onSuccess { location ->
-                Toast.makeText(context, "Saved to $location", Toast.LENGTH_LONG).show()
-            }.onFailure {
-                imageError = "Couldn't render image"
-                Toast.makeText(context, "Couldn't save image", Toast.LENGTH_SHORT).show()
+    var theme by remember { mutableStateOf(ShareCardTheme.Ivory) }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var copied by remember { mutableStateOf(false) }
+    val arabic = remember(verse) { TajweedProcessor.foldWaqfMarkSeparator(verse.textQpcHafs?.takeIf { it.isNotBlank() } ?: verse.textUthmani ?: verse.textIndopak ?: "") }
+    val translation = remember(verse) { verse.translation?.replace(Regex("<[^>]*>"), "")?.trim()?.takeIf { it.isNotEmpty() } }
+    val reference = "$chapterName • Ayah ${verse.verseKey.substringAfter(':')}"
+    val shareText = "$arabic\n\n${translation.orEmpty()}\n— $chapterName ${verse.verseKey}\n\nQuran Nur"
+    val page = remember(arabic, translation) { VerseCardPage(arabic, translation.orEmpty()) }
+    val preview by produceState<android.graphics.Bitmap?>(null, page, theme, reference) {
+        value = null
+        error = null
+        try {
+            value = withContext(Dispatchers.Default) {
+                renderVerseCardBitmap(context, page, reference, theme,
+                    outputWidth = 720)
             }
-            isImageBusy = false
+        } catch (exception: kotlinx.coroutines.CancellationException) {
+            throw exception
+        } catch (_: Exception) {
+            error = "Couldn't prepare the card. Please try again."
         }
     }
-
-    fun shareTextMessage(message: String) {
-        // Tier 1: system share sheet. Tier 2: clipboard + toast (web parity:
-        // text-only share -> download+clipboard fallback). Never throws.
-        runCatching {
-            val sendIntent = Intent().apply {
-                action = Intent.ACTION_SEND
-                putExtra(Intent.EXTRA_TEXT, message)
-                setType("text/plain")
-            }
-            val chooser = Intent.createChooser(sendIntent, "Share Ayah")
-            if (context !is android.app.Activity) {
-                chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            context.startActivity(chooser)
-            onDismiss()
-        }.onFailure {
-            runCatching {
-                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                clipboard.setPrimaryClip(ClipData.newPlainText("QuranNurVerse", message))
-            }
-            Toast.makeText(context, "Sharing unavailable — verse copied instead", Toast.LENGTH_LONG).show()
-        }
-    }
-
-    fun onShareImage() {
-        if (isImageBusy) return
+    fun export(save: Boolean) {
+        if (busy) return
         scope.launch {
-            isImageBusy = true
-            imageError = null
-            runCatching {
-                val file = withContext(Dispatchers.IO) {
-                    renderVerseCardToFile(context, verse.verseKey, cardArabic, cardTranslation, cardReference)
-                } ?: throw IllegalStateException("render failed")
-                val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
-                val cleanTranslation = verse.translation?.replace(Regex("<[^>]*>"), "") ?: ""
-                val shareMessage = "${TajweedProcessor.foldWaqfMarkSeparator(verse.textUthmani ?: "")}\n\n$cleanTranslation\n— $chapterName ${verse.verseKey}\n\nRead & study via Quran Nur: https://quran-nur.appwrite.network"
-                val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                    type = "image/png"
-                    putExtra(Intent.EXTRA_STREAM, uri)
-                    putExtra(Intent.EXTRA_TEXT, shareMessage)
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                }
-                val chooser = Intent.createChooser(shareIntent, "Share Ayah image")
-                if (context !is android.app.Activity) {
-                    chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-                // Web parity: file share if a handler exists, else text share.
-                val handlesFile = shareIntent.resolveActivity(context.packageManager) != null
-                if (handlesFile) {
-                    context.startActivity(chooser)
+            busy = true
+            error = null
+            try {
+                val file = renderVerseCardsToFiles(context, verse.verseKey, arabic, translation, reference, theme).single()
+                if (save) {
+                    val location = saveVerseCardToGallery(context, file, file.name).getOrThrow()
+                    Toast.makeText(context, "Saved to $location", Toast.LENGTH_LONG).show()
                 } else {
-                    shareTextMessage(shareMessage)
+                    val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                    val intent = Intent(Intent.ACTION_SEND).apply {
+                        type = "image/png"
+                        putExtra(Intent.EXTRA_STREAM, uri)
+                        putExtra(Intent.EXTRA_TEXT, shareText)
+                        clipData = ClipData.newUri(context.contentResolver, "Ayah card", uri)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    context.startActivity(Intent.createChooser(intent, "Share Ayah").apply {
+                        if (context !is android.app.Activity) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    })
                 }
-            }.onFailure {
-                imageError = "Couldn't render image"
-            }
-            isImageBusy = false
+            } catch (exception: kotlinx.coroutines.CancellationException) {
+                throw exception
+            } catch (_: Exception) {
+                error = if (save) "Couldn't save the image. Please try again." else "Couldn't share the image. Please try again."
+            } finally { busy = false }
         }
     }
-
-    LaunchedEffect(copied) {
-        if (copied) {
-            kotlinx.coroutines.delay(2000)
-            copied = false
-        }
-    }
-
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = RoundedCornerShape(24.dp),
-            color = hWhite,
-            tonalElevation = 8.dp,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // Header Title
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Share Ayah",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = hInk,
-                        fontFamily = fontFamilyUi
-                    )
-                    IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
-                        Icon(
-                            imageVector = NurIcons.X,
-                            contentDescription = "Close",
-                            tint = hInkMuted
-                        )
+    val cream = Color(0xFFFAF7F1)
+    val green = Color(0xFF123D32)
+    val gold = Color(0xFFAA8032)
+    LaunchedEffect(copied) { if (copied) { kotlinx.coroutines.delay(2000); copied = false } }
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+            val cardWidth = minOf(maxWidth, 560.dp) - 32.dp
+            val cardHeight = preview?.let { cardWidth * (it.height.toFloat() / it.width) } ?: 280.dp
+            val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+            val sheetHeight = minOf(maxHeight * .94f, cardHeight + 120.dp + bottomInset)
+            Surface(shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp), color = cream,
+                modifier = Modifier.widthIn(max = 560.dp).fillMaxWidth().height(sheetHeight)) {
+                Column(Modifier.navigationBarsPadding().padding(horizontal = 16.dp)) {
+                    Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(reference, color = green, fontSize = 16.sp, modifier = Modifier.weight(1f), maxLines = 2)
+                        IconButton(onClick = onDismiss) { Icon(NurIcons.X, "Close", tint = green) }
                     }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Card Preview Content
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(18.dp),
-                    color = hCream,
-                    border = androidx.compose.foundation.BorderStroke(1.5.dp, hBoneDark)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(20.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = "﷽",
-                            fontSize = 28.sp,
-                            color = hGold,
-                            textAlign = TextAlign.Center
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = TajweedProcessor.foldWaqfMarkSeparator(verse.textUthmani ?: verse.textIndopak ?: ""),
-                            fontFamily = fontFamilyArabic,
-                            fontSize = 22.sp,
-                            color = hInk,
-                            textAlign = TextAlign.Center,
-                            lineHeight = 44.sp,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        if (!verse.translation.isNullOrEmpty()) {
-                            Spacer(modifier = Modifier.height(12.dp))
-                            val cleanTranslation = verse.translation.replace(Regex("<[^>]*>"), "")
-                            Text(
-                                text = "\"$cleanTranslation\"",
-                                fontFamily = fontFamilyBody,
-                                fontSize = 13.sp,
-                                color = hInkMid,
-                                fontStyle = FontStyle.Italic,
-                                textAlign = TextAlign.Center,
-                                lineHeight = 20.sp,
-                                modifier = Modifier.fillMaxWidth()
-                            )
+                    // Controls stay visible while a long ayah scrolls below them.
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        ShareCardTheme.entries.forEach { option ->
+                            IconButton(onClick = { theme = option }, enabled = !busy,
+                                modifier = Modifier.semantics {
+                                    contentDescription = "${option.label} theme"
+                                    selected = theme == option
+                                }) {
+                                Surface(Modifier.size(26.dp), shape = androidx.compose.foundation.shape.CircleShape,
+                                    color = Color(option.background), border = BorderStroke(if (theme == option) 2.dp else 1.dp,
+                                        if (theme == option) gold else Color(0xFFCBC6BB))) {}
+                            }
                         }
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = "— $chapterName ${verse.verseKey}",
-                            fontSize = 11.sp,
-                            color = hInkMuted,
-                            fontFamily = fontFamilyMono
-                        )
-                        Spacer(modifier = Modifier.height(14.dp))
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            androidx.compose.foundation.Image(
-                                painter = androidx.compose.ui.res.painterResource(id = com.nur.quran.R.drawable.ic_logo),
-                                contentDescription = null,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Text(
-                                text = "Quran Nur 🌙",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = hTeal,
-                                fontFamily = fontFamilyMono,
-                                letterSpacing = 1.sp
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // Action Buttons
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    // Copy Text Button
-                    OutlinedButton(
-                        onClick = {
-                            val cleanTranslation = verse.translation?.replace(Regex("<[^>]*>"), "") ?: ""
-                            val textToCopy = "${TajweedProcessor.foldWaqfMarkSeparator(verse.textUthmani ?: "")}\n\n$cleanTranslation\n— $chapterName ${verse.verseKey}\n\nVia Quran Nur"
-                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                            clipboard.setPrimaryClip(ClipData.newPlainText("QuranNurVerse", textToCopy))
+                        Spacer(Modifier.weight(1f))
+                        IconButton(onClick = {
+                            (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("Quran Nur", shareText))
                             copied = true
-                        },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(14.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.5.dp, if (copied) hGreen else hBoneDark)
-                    ) {
-                        Icon(
-                            imageVector = if (copied) NurIcons.Check else NurIcons.Copy,
-                            contentDescription = null,
-                            tint = if (copied) hGreen else hInkMid,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = if (copied) "Copied!" else "Copy Text",
-                            color = if (copied) hGreen else hInkMid,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-
-                    // Native Share Intent Button
-                    Button(
-                        onClick = {
-                            val cleanTranslation = verse.translation?.replace(Regex("<[^>]*>"), "") ?: ""
-                            val shareMessage = "${TajweedProcessor.foldWaqfMarkSeparator(verse.textUthmani ?: "")}\n\n$cleanTranslation\n— $chapterName ${verse.verseKey}\n\nRead & study via Quran Nur: https://quran-nur.appwrite.network"
-                            shareTextMessage(shareMessage)
-                        },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = hTeal)
-                    ) {
-                        Icon(
-                            imageVector = NurIcons.Share2,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "Share",
-                            color = Color.White,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // Image Export Buttons (PNG card via ShareImageRenderer)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    // Save Image Button
-                    OutlinedButton(
-                        onClick = { onSaveImage() },
-                        enabled = !isImageBusy,
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(14.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.5.dp, hBoneDark)
-                    ) {
-                        if (isImageBusy) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
-                                strokeWidth = 2.dp,
-                                color = hInkMid
-                            )
-                        } else {
-                            Icon(
-                                imageVector = NurIcons.Download,
-                                contentDescription = null,
-                                tint = hInkMid,
-                                modifier = Modifier.size(16.dp)
-                            )
+                        }) { Icon(if (copied) NurIcons.Check else NurIcons.Copy, if (copied) "Copied" else "Copy ayah text", tint = green) }
+                        IconButton(onClick = { export(true) }, enabled = !busy && preview != null) {
+                            Icon(NurIcons.Download, "Save ayah image", tint = green)
                         }
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "Save Image",
-                            color = hInkMid,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-
-                    // Share Image Button
-                    Button(
-                        onClick = { onShareImage() },
-                        enabled = !isImageBusy,
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = hTeal)
-                    ) {
-                        if (isImageBusy) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
-                                strokeWidth = 2.dp,
-                                color = Color.White
-                            )
-                        } else {
-                            Icon(
-                                imageVector = NurIcons.Share2,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(16.dp)
-                            )
+                        IconButton(onClick = { export(false) }, enabled = !busy && preview != null) {
+                            if (busy) CircularProgressIndicator(Modifier.size(20.dp), color = gold, strokeWidth = 2.dp)
+                            else Icon(NurIcons.Share2, "Share ayah image", tint = green)
                         }
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "Share Image",
-                            color = Color.White,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
                     }
-                }
-
-                if (imageError != null) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = imageError!!,
-                        color = hRed,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    if (error != null) Text(error!!, color = Color(0xFFA63232), fontSize = 12.sp, modifier = Modifier.padding(vertical = 6.dp))
+                    Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+                        val bitmap = preview
+                        if (bitmap != null) {
+                            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 16.dp)) {
+                                Image(bitmap.asImageBitmap(), "Complete ayah and translation card",
+                                    modifier = Modifier.fillMaxWidth().aspectRatio(bitmap.width.toFloat() / bitmap.height))
+                            }
+                        } else CircularProgressIndicator(Modifier.padding(top = 40.dp).size(28.dp), color = gold, strokeWidth = 2.dp)
+                    }
                 }
             }
         }
@@ -414,13 +173,20 @@ private suspend fun saveVerseCardToGallery(
                 put(MediaStore.Images.Media.DISPLAY_NAME, displayName)
                 put(MediaStore.Images.Media.MIME_TYPE, "image/png")
                 put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/QuranNur")
+                put(MediaStore.Images.Media.IS_PENDING, 1)
             }
             val resolver = context.contentResolver
             val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
                 ?: throw IllegalStateException("MediaStore insert failed")
-            resolver.openOutputStream(uri)?.use { out ->
-                source.inputStream().use { input -> input.copyTo(out) }
-            } ?: throw IllegalStateException("MediaStore write failed")
+            try {
+                resolver.openOutputStream(uri)?.use { out ->
+                    source.inputStream().use { input -> input.copyTo(out) }
+                } ?: throw IllegalStateException("MediaStore write failed")
+                resolver.update(uri, ContentValues().apply { put(MediaStore.Images.Media.IS_PENDING, 0) }, null, null)
+            } catch (exception: Exception) {
+                resolver.delete(uri, null, null)
+                throw exception
+            }
             "Pictures/QuranNur/$displayName"
         } else {
             val dir = File(context.getExternalFilesDir(Environment.DIRECTORY_PICTURES), "QuranNur")

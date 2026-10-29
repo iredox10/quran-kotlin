@@ -355,6 +355,24 @@ internal fun webPlannerSessionTotals(value: Any?): Map<Int, Long>? {
     }.toMap()
 }
 
+/** Cache readers expect the plan-id wrapper, matching PlannerWire's persisted format. */
+internal fun webPlannerTimerCacheJson(planId: String, entry: Any?): String? {
+    val days = asMap(entry) ?: return null
+    val wrapped = gson.toJson(mapOf(planId to days))
+    val parsed = com.nur.quran.data.planner.PlannerWire.sessionTimersFromJson(wrapped)
+    return com.nur.quran.data.planner.PlannerWire.sessionTimersToJson(mapOf(planId to parsed[planId].orEmpty()))
+}
+
+internal fun webPlannerReflectionCacheJson(planId: String, entry: Any?): String? {
+    val days = asMap(entry) ?: return null
+    val wrapped = gson.toJson(mapOf(planId to days))
+    val parsed = com.nur.quran.data.planner.PlannerWire.reflectionsFromJson(wrapped)[planId].orEmpty()
+    val normalized = webPlannerReflections(days).orEmpty().mapValues { (day, text) ->
+        parsed[day] ?: com.nur.quran.data.planner.PlannerReflection(text, 0L)
+    }
+    return com.nur.quran.data.planner.PlannerWire.reflectionsToJson(mapOf(planId to normalized))
+}
+
 /**
  * Web `plannerReflections[planId]` ({ dayNumber: { text } }) → Android's
  * plan-embedded `assignmentReflections` (day → note text).
@@ -398,16 +416,9 @@ internal fun applyWebReflectionsToPlan(
  * arrived without the local `planners` key can never drop locally known plans.
  */
 internal fun mergePlansById(local: Any?, remote: Any?): List<Any?>? {
-    val localPlans = asList(local) ?: return asList(remote)
-    val remotePlans = asList(remote) ?: return localPlans
-    val out = LinkedHashMap<String, Any?>()
-    localPlans.forEach { out[planIdentity(it)] = it }
-    remotePlans.forEach { out[planIdentity(it)] = it }
-    return out.values.toList()
-}
-
-private fun planIdentity(plan: Any?): String {
-    val map = asMap(plan) ?: return plan?.toString() ?: "null"
-    val id = asString(map["id"]) ?: return gson.toJson(map)
-    return "id:$id"
+    val localPlans = asList(local)
+    val remotePlans = asList(remote)
+    if (localPlans == null && remotePlans == null) return null
+    @Suppress("UNCHECKED_CAST")
+    return mergeField("planners", localPlans.orEmpty(), remotePlans.orEmpty()) as List<Any?>
 }

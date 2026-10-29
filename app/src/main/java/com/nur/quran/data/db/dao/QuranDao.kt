@@ -150,8 +150,15 @@ interface QuranDao {
     @Query("SELECT * FROM api_responses WHERE `key` LIKE '%plan%' OR `key` LIKE '%planner%'")
     fun observePlannerCache(): Flow<List<ApiResponseCacheEntity>>
 
+    @Query("SELECT * FROM api_responses WHERE `key` LIKE '%plan%' OR `key` LIKE '%planner%'")
+    suspend fun getPlannerCacheSnapshot(): List<ApiResponseCacheEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCacheEntry(entry: ApiResponseCacheEntity)
+
+    /** Room wraps a list insert in one transaction, so planner observers see one complete state. */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCacheEntries(entries: List<ApiResponseCacheEntity>)
 
     @Query("DELETE FROM api_responses WHERE `key` LIKE :prefix || '%'")
     suspend fun clearCacheByPrefix(prefix: String)

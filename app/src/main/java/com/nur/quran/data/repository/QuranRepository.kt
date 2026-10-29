@@ -1031,6 +1031,19 @@ class QuranRepository @Inject constructor(
 
     fun observePlannerCache() = quranDao.observePlannerCache().distinctUntilChanged()
 
+    suspend fun getPlannerCacheSnapshot() = quranDao.getPlannerCacheSnapshot()
+
+    /** Parse one Room emission rather than combining reads from different sync transactions. */
+    fun parsePlannerSelection(entries: List<ApiResponseCacheEntity>): Pair<List<com.nur.quran.data.planner.ReadingPlan>, String?> {
+        val rows = entries.associateBy { it.key }
+        val rawPlans = rows["planner_all_plans"]?.dataJson
+        val plans = rawPlans?.takeIf { it.isNotBlank() }?.let {
+            com.nur.quran.data.planner.PlannerEngine.parseReadingPlans(it, gson)
+        }.orEmpty()
+        val activeId = rows["planner_active_id"]?.dataJson?.takeIf { it.isNotBlank() }
+        return plans to activeId
+    }
+
     suspend fun getAllPlans(): List<com.nur.quran.data.planner.ReadingPlan> = withContext(Dispatchers.IO) {
         val entry = quranDao.getCacheEntry("planner_all_plans")
         if (entry != null && entry.dataJson.isNotBlank()) {
@@ -1045,6 +1058,16 @@ class QuranRepository @Inject constructor(
     suspend fun saveAllPlans(plans: List<com.nur.quran.data.planner.ReadingPlan>) = withContext(Dispatchers.IO) {
         val json = gson.toJson(plans)
         quranDao.insertCacheEntry(ApiResponseCacheEntity("planner_all_plans", json))
+    }
+
+    /** Save canonical plans and selection together; observers must never see half an adjustment. */
+    suspend fun savePlannerSelection(plans: List<com.nur.quran.data.planner.ReadingPlan>, activeId: String?) = withContext(Dispatchers.IO) {
+        require(activeId == null || plans.any { it.id == activeId }) { "Active planner must belong to the saved plans" }
+        quranDao.insertCacheEntries(listOf(
+            ApiResponseCacheEntity("planner_all_plans", gson.toJson(plans)),
+            ApiResponseCacheEntity("planner_active_id", activeId.orEmpty()),
+            ApiResponseCacheEntity("planner_active_plan", ""),
+        ))
     }
 
     suspend fun getActivePlannerId(): String? = withContext(Dispatchers.IO) {

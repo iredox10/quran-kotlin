@@ -285,6 +285,45 @@ class PlannerEngineTest {
         assertEquals(1, o.firstIncomplete!!.dayNumber)
     }
 
+    @Test
+    fun `adjusting large mixed schedule preserves every Quran page and saved notes`() {
+        val assignments = (1..302).map { day ->
+            assignment(day, "2025-01-01", (day * 2 - 1)..(day * 2))
+        }
+        val original = plan(
+            assignments,
+            readPages = mapOf(1 to listOf(1, 2), 3 to listOf(5), 100 to listOf(199, 200)),
+            completedDays = listOf(1, 100),
+            completedAt = mapOf(1 to "2025-01-01", 100 to "2025-01-01")
+        ).copy(
+            assignmentReflections = mapOf(1 to "Opening reflection", 3 to "Partial day note"),
+            lastReadPage = 199,
+            lastReadVerseKey = "8:1"
+        )
+        val gson = com.google.gson.Gson()
+        val restored = PlannerEngine.parseReadingPlan(gson.toJson(original), gson)!!
+        val adjusted = PlannerEngine.rebalancePlanner(restored, "custom_pace", 30)
+        val pages = adjusted.assignments.flatMap { day ->
+            day.items.flatMap { (it.pageStart..it.pageEnd).toList() }
+        }
+        assertEquals((1..604).toList(), pages.sorted())
+        assertEquals(604, pages.distinct().size)
+        assertEquals(3, adjusted.completedDays.size)
+        assertEquals(original.assignmentReflections, adjusted.assignmentReflections)
+        assertEquals(original.lastReadPage, adjusted.lastReadPage)
+        assertEquals(original.lastReadVerseKey, adjusted.lastReadVerseKey)
+        assertEquals(adjusted, PlannerEngine.parseReadingPlan(gson.toJson(adjusted), gson))
+    }
+
+    @Test
+    fun `fully completed schedule remains intact after pace adjustment`() {
+        val original = plan(
+            listOf(assignment(1, "2025-01-01", 1..2), assignment(2, "2025-01-02", 3..4)),
+            completedDays = listOf(1, 2)
+        ).copy(assignmentCompletedItems = mapOf(1 to listOf("1", "2"), 2 to listOf("3", "4")))
+        assertEquals(original, PlannerEngine.rebalancePlanner(original, "custom_pace", 15))
+    }
+
     // ── rebalance (mirrors planner.test.js guard + spread) ──────────
 
     @Test

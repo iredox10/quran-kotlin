@@ -39,6 +39,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.nur.quran.data.getHizbByPage
 import com.nur.quran.data.getJuzByPage
 import com.nur.quran.data.db.entities.WordEntity
+import com.nur.quran.ui.components.ShareVerseDialog
+import com.nur.quran.data.db.entities.VerseEntity
 import com.nur.quran.ui.components.NurIcons
 import com.nur.quran.ui.components.audio.MiniPlayer
 import com.nur.quran.ui.viewmodels.PageUiState
@@ -96,6 +98,7 @@ fun PageScreen(
 
     // Word-tap tooltip (tap to translate) — same drawer as the surah/planner readers.
     var selectedWordForTooltip by remember { mutableStateOf<WordEntity?>(null) }
+    var verseToShare by remember { mutableStateOf<VerseEntity?>(null) }
 
     // Holds the last loaded pane (verses or error) so the flip animation can
     // cross-slide two real panes instead of flickering through the transient
@@ -335,7 +338,7 @@ fun PageScreen(
                                         if ((tafsirState as? TafsirUiState.Visible)?.verseKey == verse.verseKey) viewModel.dismissTafsir()
                                         else viewModel.loadTafsir(verse.verseKey)
                                     },
-                                    onShareClick = { /* Share not implemented in page view */ },
+                                    onShareClick = { verseToShare = verse },
                                     onAddToCollection = { /* Collections not implemented in page view */ },
                                     onWordClick = { word ->
                                         // Tap to translate — Room-first word tooltip.
@@ -451,6 +454,12 @@ fun PageScreen(
             )
             is TafsirUiState.Error -> TafsirErrorOverlay(tafsir.message, viewModel::dismissTafsir)
             TafsirUiState.Hidden -> Unit
+        }
+
+        verseToShare?.let { verse ->
+            val chapterName = (uiState as? PageUiState.Success)?.chapterMap?.get(verse.chapterId)?.nameSimple
+                ?: "Surah ${verse.chapterId}"
+            ShareVerseDialog(verse, chapterName, onDismiss = { verseToShare = null })
         }
 
         // ─── Word Tooltip ─── (tap to translate; data comes from Room offline)

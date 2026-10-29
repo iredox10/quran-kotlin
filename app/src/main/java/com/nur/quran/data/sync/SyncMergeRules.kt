@@ -268,24 +268,78 @@ private fun mergeCollections(base: Any?, incoming: Any?): List<Any?> {
     return map.values.toList()
 }
 
-/** JS mergePlanners: union by id, then a full deep merge of both plans. */
+internal val PLANNER_DAY_PROGRESS_FIELDS = setOf(
+    "assignmentProgress", "assignmentReadPages", "assignmentCompletedItems", "assignmentCompletedAt", "completedDays",
+)
+
+private val PLANNER_SCHEDULE_FIELDS = setOf(
+    "assignments", "durationDays", "startDate", "startUnit", "endUnit", "unitType", "isCustomRange", "excludeDays",
+)
+
+private fun hasUsableSchedule(plan: Map<*, *>, requireCompleteRows: Boolean = false): Boolean {
+    val days = plan["assignments"] as? List<*> ?: return false
+    fun number(row: Map<*, *>, key: String, minimum: Double = 0.0): Boolean =
+        (row[key] as? Number)?.toDouble()?.let { it.isFinite() && it >= minimum } == true
+    return days.isNotEmpty() && days.all { raw ->
+        val day = raw as? Map<*, *> ?: return@all false
+        if (!number(day, "dayNumber", 1.0)) return@all false
+        if (!requireCompleteRows) return@all true
+        val items = day["items"] as? List<*> ?: return@all false
+        day["date"] is String && (day["date"] as String).isNotBlank() &&
+            listOf("unitType", "title", "subtitle", "primaryRoute").all { day[it] is String } &&
+            listOf("startUnit", "endUnit", "pageStart", "pageEnd").all { number(day, it) } &&
+            items.all { item -> item is Map<*, *> &&
+                listOf("title", "subtitle", "route").all { item[it] is String } &&
+                (item["rangeValue"] is String || (item["rangeValue"] as? Number)?.toDouble()?.isFinite() == true) &&
+                listOf("pageStart", "pageEnd").all { number(item, it) }
+            }
+    } && (!requireCompleteRows || days.any { ((it as Map<*, *>)["items"] as List<*>).isNotEmpty() })
+}
+
+private fun hasCompleteScheduleShape(plan: Map<*, *>): Boolean =
+    (plan["assignments"] as? List<*>)?.any { it is Map<*, *> && ("items" in it) } == true
+
+/** A schedule and its metadata share a revision; progress and reflections merge independently. */
+internal fun mergePlannerRow(existing: Map<*, *>, incoming: Map<*, *>): Map<String, Any?> {
+    @Suppress("UNCHECKED_CAST")
+    val merged = (mergeValue(existing, incoming) as Map<String, Any?>).toMutableMap()
+    fun revision(row: Map<*, *>) = (row["assignmentsUpdatedAt"] as? Number)?.toLong()?.coerceAtLeast(0L) ?: 0L
+    val oldRevision = revision(existing)
+    val newRevision = revision(incoming)
+    val existingSchedule = hasUsableSchedule(existing, hasCompleteScheduleShape(existing) || hasCompleteScheduleShape(incoming))
+    val incomingSchedule = hasUsableSchedule(incoming, hasCompleteScheduleShape(existing) || hasCompleteScheduleShape(incoming))
+    val invalidReplacement = existingSchedule && incoming.containsKey("assignments") && !incomingSchedule
+    if (oldRevision != 0L || newRevision != 0L || invalidReplacement) {
+        val takeIncoming = incomingSchedule && (!existingSchedule || newRevision > oldRevision)
+        if (takeIncoming) {
+            merged["assignments"] = incoming["assignments"]
+            merged["assignmentsUpdatedAt"] = maxOf(oldRevision, newRevision)
+            for (field in PLANNER_DAY_PROGRESS_FIELDS) {
+                if (incoming[field] is Map<*, *> || incoming[field] is List<*>) merged[field] = incoming[field]
+            }
+        } else {
+            for (field in PLANNER_SCHEDULE_FIELDS) {
+                if (existing.containsKey(field)) merged[field] = existing[field] else merged.remove(field)
+            }
+            if (newRevision != oldRevision) for (field in PLANNER_DAY_PROGRESS_FIELDS) {
+                if (existing.containsKey(field)) merged[field] = existing[field] else merged.remove(field)
+            }
+            if (existing.containsKey("assignmentsUpdatedAt")) merged["assignmentsUpdatedAt"] = oldRevision
+            else merged.remove("assignmentsUpdatedAt")
+        }
+    }
+    return merged
+}
+
+/** JS mergePlanners: union by id, then merge progress around a revisioned schedule. */
 private fun mergePlanners(base: Any?, incoming: Any?): List<Any?> {
     val map = LinkedHashMap<Any?, Any?>()
     (base as? List<*>)?.forEach { map[identityOf(it, "id")] = it }
     (incoming as? List<*>)?.forEach { inc ->
         val id = identityOf(inc, "id")
         val existing = map[id]
-        val merged = if (existing == null) inc else mergeValue(existing, inc)
-        if (existing is Map<*, *> && inc is Map<*, *> && merged is Map<*, *>) {
-            val oldRevision = (existing["assignmentsUpdatedAt"] as? Number)?.toLong() ?: 0L
-            val newRevision = (inc["assignmentsUpdatedAt"] as? Number)?.toLong() ?: 0L
-            if (oldRevision != 0L || newRevision != 0L) {
-                map[id] = merged + mapOf(
-                    "assignments" to (if (newRevision > oldRevision && inc["assignments"] is List<*>) inc["assignments"] else existing["assignments"]),
-                    "assignmentsUpdatedAt" to maxOf(oldRevision,newRevision),
-                )
-            } else map[id] = merged
-        } else map[id] = merged
+        map[id] = if (existing is Map<*, *> && inc is Map<*, *>) mergePlannerRow(existing, inc)
+            else if (existing == null) inc else mergeValue(existing, inc)
     }
     return map.values.toList()
 }

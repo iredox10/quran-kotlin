@@ -1,278 +1,156 @@
 package com.nur.quran.ui.components
 
 import android.content.Context
-import android.content.ContextWrapper
-import android.app.Activity
 import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.util.Log
-import android.view.View
-import android.view.ViewGroup
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.withFrameNanos
-import androidx.compose.ui.platform.AndroidUiDispatcher
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.LayoutDirection
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import android.graphics.Paint
+import android.graphics.RectF
+import android.graphics.Typeface
+import android.text.Layout
+import android.text.StaticLayout
+import android.text.TextDirectionHeuristics
+import android.text.TextPaint
+import androidx.core.content.res.ResourcesCompat
 import com.nur.quran.R
-import com.nur.quran.ui.screens.fontFamilyArabic
-import com.nur.quran.ui.screens.fontFamilyBody
-import com.nur.quran.ui.screens.fontFamilyMono
-import com.nur.quran.ui.screens.hGold
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.FileOutputStream
 
-// Fixed (theme-independent) dark palette so the exported PNG looks identical
-// in light and dark mode. Gold/mono accents mirror ShareVerseDialog preview.
-private val ShareCardBg = Color(0xFF16211F)
-private val ShareCardInnerBg = Color(0xFF20302C)
-private val ShareCardCream = Color(0xFFF7F2E7)
-private val ShareCardMuted = Color(0xFF9DB3AD)
+/** Export coordinates are pixels, independent of screen density and accessibility font scale. */
+enum class ShareCardTheme(val label: String, val background: Int, val ink: Int, val gold: Int) {
+    Ivory("Ivory Gold", 0xFFFAF6ED.toInt(), 0xFF123D32.toInt(), 0xFFAA8032.toInt()),
+    Emerald("Emerald", 0xFF103B30.toInt(), 0xFFF9F3E6.toInt(), 0xFFD2B16D.toInt()),
+    Obsidian("Obsidian", 0xFF1B1D20.toInt(), 0xFFF9F3E6.toInt(), 0xFFC9AD75.toInt())
+}
 
-private const val SHARE_FOOTER_URL = "quran-nur.appwrite.network"
+enum class ShareCardFormat(val label: String, val height: Int) {
+    Square("1:1", 1080), Portrait("9:16", 1920)
+}
 
-/**
- * Pure presentational verse card (no hooks: no remember/effects/context reads).
- * Dark branded card mirroring the ShareVerseDialog preview: logo + "Quran Nur",
- * Bismillah header, Arabic (RTL), translation, mono gold reference, footer URL.
- *
- * The 1000.dp max width gives a 1080px-equivalent export layout when rendered
- * via [renderVerseCardToFile] (measured EXACTLY 1080px wide, height wrapped).
- */
-@Composable
-fun VerseShareCard(
-    verseKey: String,
-    arabic: String,
-    translation: String?,
+data class VerseCardPage(val arabic: String, val translation: String)
+
+private const val CARD_WIDTH = 1080
+private const val TEXT_WIDTH = 864
+private const val ARABIC_SIZE = 96f
+private const val TRANSLATION_SIZE = 44f
+
+private fun arabicPaint(context: Context, color: Int) = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+    typeface = ResourcesCompat.getFont(context, R.font.kfgqpc_hafs) ?: Typeface.DEFAULT
+    textSize = ARABIC_SIZE
+    this.color = color
+}
+
+private fun translationPaint(color: Int) = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+    typeface = Typeface.create("serif", Typeface.ITALIC)
+    textSize = TRANSLATION_SIZE
+    this.color = color
+}
+
+private fun textLayout(text: String, paint: TextPaint, arabic: Boolean): StaticLayout =
+    StaticLayout.Builder.obtain(text, 0, text.length, paint, TEXT_WIDTH)
+        .setAlignment(Layout.Alignment.ALIGN_CENTER)
+        .setTextDirection(if (arabic) TextDirectionHeuristics.RTL else TextDirectionHeuristics.FIRSTSTRONG_LTR)
+        .setIncludePad(true)
+        .setLineSpacing(if (arabic) 26f else 12f, 1f)
+        .build()
+
+/** A single growing canvas keeps the complete ayah and translation together at readable sizes. */
+@Suppress("UNUSED_PARAMETER")
+fun paginateVerseCard(context: Context, arabic: String, translation: String?, format: ShareCardFormat = ShareCardFormat.Square): List<VerseCardPage> =
+    listOf(VerseCardPage(arabic, translation.orEmpty()))
+
+fun verseCardContentHeight(context: Context, page: VerseCardPage): Int {
+    val arabicHeight = if (page.arabic.isEmpty()) 0 else textLayout(page.arabic, arabicPaint(context, android.graphics.Color.BLACK), true).height
+    val translationHeight = if (page.translation.isEmpty()) 0 else textLayout(page.translation, translationPaint(android.graphics.Color.BLACK), false).height
+    return arabicHeight + translationHeight + if (arabicHeight > 0 && translationHeight > 0) 52 else 0
+}
+
+private fun hasBismillahHeader(page: VerseCardPage): Boolean {
+    val letters = page.arabic.replace('ٱ', 'ا').filter { it in '\u0621'..'\u064A' && it != 'ـ' }
+    return letters != "بسماللهالرحمنالرحيم"
+}
+
+fun verseCardHeight(context: Context, page: VerseCardPage, format: ShareCardFormat = ShareCardFormat.Square): Int =
+    maxOf(format.height, verseCardContentHeight(context, page) + 320 + if (hasBismillahHeader(page)) 80 else 0)
+
+/** Preview and export use the same pixel layout; only the optional output resolution differs. */
+@Suppress("UNUSED_PARAMETER")
+fun renderVerseCardBitmap(
+    context: Context,
+    page: VerseCardPage,
     reference: String,
-    modifier: Modifier = Modifier
-) {
-    val cleanTranslation = translation?.replace(Regex("<[^>]*>"), "")?.trim().orEmpty()
-    val refLine = if (reference.isBlank()) verseKey else reference
-
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .widthIn(max = 1000.dp)
-            .background(ShareCardBg)
-            .padding(48.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        // Brand row: logo + app name.
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Image(
-                painter = painterResource(id = R.drawable.ic_logo),
-                contentDescription = null,
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(CircleShape)
-            )
-            Text(
-                text = "Quran Nur",
-                fontFamily = fontFamilyMono,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 2.sp,
-                color = hGold
-            )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Bismillah header.
-        Text(
-            text = "﷽",
-            fontSize = 32.sp,
-            color = hGold,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Inner bordered card with the verse content.
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(
-                    width = 2.dp,
-                    color = hGold.copy(alpha = 0.45f),
-                    shape = RoundedCornerShape(24.dp)
-                )
-                .background(ShareCardInnerBg, RoundedCornerShape(24.dp))
-                .padding(horizontal = 40.dp, vertical = 44.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                Text(
-                    text = arabic,
-                    fontFamily = fontFamilyArabic,
-                    fontSize = 40.sp,
-                    lineHeight = 68.sp,
-                    color = ShareCardCream,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            if (cleanTranslation.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(24.dp))
-                Text(
-                    text = "\"$cleanTranslation\"",
-                    fontFamily = fontFamilyBody,
-                    fontSize = 20.sp,
-                    lineHeight = 32.sp,
-                    fontStyle = FontStyle.Italic,
-                    color = Color.White.copy(alpha = 0.78f),
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            Spacer(modifier = Modifier.height(24.dp))
-            Text(
-                text = "— $refLine",
-                fontFamily = fontFamilyMono,
-                fontSize = 16.sp,
-                letterSpacing = 1.sp,
-                color = hGold,
-                textAlign = TextAlign.Center
-            )
-        }
-
-        Spacer(modifier = Modifier.height(28.dp))
-
-        Text(
-            text = SHARE_FOOTER_URL,
-            fontFamily = fontFamilyMono,
-            fontSize = 14.sp,
-            letterSpacing = 1.sp,
-            color = ShareCardMuted,
-            textAlign = TextAlign.Center
-        )
+    theme: ShareCardTheme = ShareCardTheme.Ivory,
+    format: ShareCardFormat = ShareCardFormat.Square,
+    pageNumber: Int = 1,
+    pageCount: Int = 1,
+    outputWidth: Int = CARD_WIDTH
+): Bitmap {
+    val height = verseCardHeight(context, page, format)
+    val scale = outputWidth.toFloat() / CARD_WIDTH
+    val bitmap = Bitmap.createBitmap(outputWidth, kotlin.math.ceil(height * scale).toInt(), Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+    canvas.scale(scale, scale)
+    canvas.drawColor(theme.background)
+    val accent = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = theme.gold; strokeWidth = 1.5f; style = Paint.Style.STROKE; alpha = 100 }
+    canvas.drawRoundRect(RectF(28f, 28f, 1052f, height - 28f), 28f, 28f, accent)
+    val headerHeight = if (hasBismillahHeader(page)) 80 else 0
+    if (headerHeight > 0) {
+        val bismillahStyle = arabicPaint(context, theme.gold).apply { textSize = 40f }
+        val bismillah = textLayout("بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ", bismillahStyle, true)
+        canvas.save()
+        canvas.translate(108f, 68f)
+        bismillah.draw(canvas)
+        canvas.restore()
     }
+    val arabic = page.arabic.takeIf { it.isNotEmpty() }?.let { textLayout(it, arabicPaint(context, theme.ink), true) }
+    val translation = page.translation.takeIf { it.isNotEmpty() }?.let { textLayout(it, translationPaint(theme.ink), false) }
+    val gap = if (arabic != null && translation != null) 52 else 0
+    val contentHeight = (arabic?.height ?: 0) + (translation?.height ?: 0) + gap
+    var top = 96f + headerHeight + (height - 320 - headerHeight - contentHeight) / 2f
+    listOfNotNull(arabic, translation).forEachIndexed { index, layout ->
+        if (index > 0) top += gap
+        canvas.save()
+        canvas.translate((CARD_WIDTH - TEXT_WIDTH) / 2f, top)
+        layout.draw(canvas)
+        canvas.restore()
+        top += layout.height
+    }
+    val label = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = theme.gold; textSize = 29f; typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+    }
+    val referenceLayout = StaticLayout.Builder.obtain(reference, 0, reference.length, label, TEXT_WIDTH)
+        .setAlignment(Layout.Alignment.ALIGN_CENTER).setIncludePad(true)
+        .setMaxLines(2).setEllipsize(android.text.TextUtils.TruncateAt.END).build()
+    canvas.save()
+    canvas.translate(108f, height - 164f)
+    referenceLayout.draw(canvas)
+    canvas.restore()
+    label.color = theme.ink
+    label.alpha = 160
+    label.textSize = 28f
+    label.textAlign = Paint.Align.CENTER
+    canvas.drawText("Quran Nur", 540f, height - 80f, label)
+    return bitmap
 }
 
-/**
- * Renders [VerseShareCard] off-screen to a PNG under
- * `<cacheDir>/shared/verse-<verseKey>.png` (':' sanitized to '-').
- *
- * Measure/layout run on Dispatchers.Main AFTER awaiting composed frames:
- * [ComposeView.setContent] schedules composition asynchronously, so measuring
- * immediately would capture a blank (often 1px) frame — the #1 cause of
- * broken share images. We await 3 frames, then validate the measured height.
- * PNG compression runs on Dispatchers.IO.
- * Never throws: returns null on any failure (logged under "ShareDebug").
- *
- * Serve the returned file via FileProvider authority
- * `"${context.packageName}.fileprovider"` (see AndroidManifest + xml/file_paths).
- */
-private const val ShareDebugTag = "ShareDebug"
-private const val SHARE_DEBUG = false
-
-private tailrec fun Context.findActivity(): Activity? = when (this) {
-    is Activity -> this
-    is ContextWrapper -> baseContext.findActivity()
-    else -> null
-}
-
-suspend fun renderVerseCardToFile(
+suspend fun renderVerseCardsToFiles(
     context: Context,
     verseKey: String,
     arabic: String,
     translation: String?,
-    reference: String
-): File? = withContext(Dispatchers.IO) {
-    runCatching {
-        // Off-screen ComposeViews have no window and therefore no recomposer
-        // ("Cannot locate windowRecomposer") — composition never runs and the
-        // capture is blank. Attach invisibly to the Activity decor so the
-        // window recomposer drives composition, then detach after draw.
-        val activity = context.findActivity()
-            ?: throw IllegalStateException("share render needs an Activity context")
-        val bitmap = withContext(AndroidUiDispatcher.Main) {
-            val composeView = ComposeView(activity)
-            composeView.visibility = View.INVISIBLE
-            val decor = activity.window.decorView as? ViewGroup
-                ?: throw IllegalStateException("no decor view")
-            decor.addView(
-                composeView,
-                ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-                )
-            )
-            try {
-                composeView.setContent {
-                    VerseShareCard(
-                        verseKey = verseKey,
-                        arabic = arabic,
-                        translation = translation,
-                        reference = reference
-                    )
-                }
-                // Let composition settle before measuring (see KDoc). Frame
-                // callbacks need AndroidUiDispatcher — plain Dispatchers.Main
-                // carries no MonotonicFrameClock.
-                repeat(3) { withFrameNanos { } }
-                val widthSpec = View.MeasureSpec.makeMeasureSpec(1080, View.MeasureSpec.EXACTLY)
-                val heightSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-                composeView.measure(widthSpec, heightSpec)
-                val height = composeView.measuredHeight
-                if (SHARE_DEBUG) Log.d(ShareDebugTag, "render $verseKey measured=${1080}x$height")
-                require(height > 100) { "composed height too small: $height" }
-                val capped = height.coerceAtMost(1920)
-                composeView.layout(0, 0, 1080, capped)
-                // One more frame so layout changes settle before draw.
-                withFrameNanos { }
-                val bmp = Bitmap.createBitmap(1080, capped, Bitmap.Config.ARGB_8888)
-                val canvas = Canvas(bmp)
-                composeView.draw(canvas)
-                bmp
-            } finally {
-                runCatching { decor.removeView(composeView) }
+    reference: String,
+    theme: ShareCardTheme = ShareCardTheme.Ivory,
+    format: ShareCardFormat = ShareCardFormat.Square
+): List<File> = withContext(Dispatchers.IO) {
+    val pages = paginateVerseCard(context, arabic, translation, format)
+    // Separate exports keep permission-granted files stable while another theme is prepared.
+    val directory = File(context.cacheDir, "shared/${java.util.UUID.randomUUID()}").apply { mkdirs() }
+    pages.mapIndexed { index, page ->
+        val bitmap = renderVerseCardBitmap(context, page, reference, theme, format, index + 1, pages.size)
+        try {
+            File(directory, "Quran-${verseKey.replace(Regex("[^A-Za-z0-9]+"), "-")}-${index + 1}.png").also { file ->
+                file.outputStream().use { check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
             }
-        }
-        val safeKey = verseKey.replace(":", "-")
-        val dir = File(context.cacheDir, "shared")
-        dir.mkdirs()
-        val outFile = File(dir, "verse-$safeKey.png")
-        FileOutputStream(outFile).use { fos ->
-            val ok = bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos)
-            fos.flush()
-            require(ok) { "PNG compress failed" }
-        }
-        if (SHARE_DEBUG) Log.d(ShareDebugTag, "render $verseKey saved ${outFile.length()} bytes")
-        outFile
-    }.onFailure {
-        if (SHARE_DEBUG) Log.e(ShareDebugTag, "render $verseKey failed", it)
-    }.getOrNull()
+        } finally { bitmap.recycle() }
+    }
 }

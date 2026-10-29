@@ -57,5 +57,14 @@ internal fun compactSyncPayload(state: Map<String, Any?>, context: Map<String, A
             out.remove("plansJson")
         }
     }
+    val plans = (context["planners"] as? List<*>)?.filterIsInstance<Map<*, *>>()?.associateBy { it["id"] }
+    (out["planners"] as? List<*>)?.let { rows ->
+        out["planners"] = rows.map { row ->
+            if (row !is Map<*, *> || row.containsKey("assignmentsUpdatedAt") ||
+                row.keys.none { it in PLANNER_DAY_PROGRESS_FIELDS }) return@map row
+            val version = plans?.get(row["id"])?.get("assignmentsUpdatedAt") as? Number
+            if (version != null) row + ("assignmentsUpdatedAt" to version) else row
+        }
+    }
     return out
 }

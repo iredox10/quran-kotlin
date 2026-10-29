@@ -348,6 +348,38 @@ class SyncApplyMappingsTest {
         assertNull(mergePlansById(null, null))
     }
 
+    @Test
+    fun `partial planner rows do not erase required fields during cache application`() {
+        val full = mapOf("id" to "a", "title" to "My plan", "durationDays" to 1,
+            "assignments" to listOf(mapOf("dayNumber" to 1)), "assignmentProgress" to mapOf("1" to 1))
+        val partial = mapOf("id" to "a", "assignmentReflections" to mapOf("1" to "Note"))
+        val merged = mergePlansById(listOf(full), listOf(partial))!!.single() as Map<*, *>
+        assertEquals("My plan", merged["title"])
+        assertEquals(full["assignments"], merged["assignments"])
+        assertEquals(full["assignmentProgress"], merged["assignmentProgress"])
+        assertEquals(partial["assignmentReflections"], merged["assignmentReflections"])
+    }
+
+    @Test
+    fun `synced timer cache remains readable after a planner refresh`() {
+        val json = webPlannerTimerCacheJson("p", mapOf("1" to mapOf("totalSeconds" to 120), "2" to 30))!!
+        val cached = com.nur.quran.data.planner.PlannerWire.sessionTimersFromJson(json)["p"]!!
+        assertEquals(120L, cached[1]!!.totalSeconds)
+        assertEquals(30L, cached[2]!!.totalSeconds)
+        assertNull(webPlannerTimerCacheJson("p", "invalid"))
+    }
+
+    @Test
+    fun `synced reflection cache updates the canonical note store`() {
+        val json = webPlannerReflectionCacheJson("p", mapOf("1" to mapOf("text" to "Updated note", "createdAt" to "2026-10-29T10:00:00Z")))!!
+        val cached = com.nur.quran.data.planner.PlannerWire.reflectionsFromJson(json)["p"]!!
+        assertEquals("Updated note", cached[1]!!.text)
+        assertTrue(cached[1]!!.createdAt > 0)
+        val legacy = webPlannerReflectionCacheJson("p", mapOf("1" to "Legacy note"))!!
+        assertEquals("Legacy note", com.nur.quran.data.planner.PlannerWire.reflectionsFromJson(legacy)["p"]!![1]!!.text)
+        assertNull(webPlannerReflectionCacheJson("p", "invalid"))
+    }
+
     // ------------------------------------------------------------- extras ids ---
 
     @Test

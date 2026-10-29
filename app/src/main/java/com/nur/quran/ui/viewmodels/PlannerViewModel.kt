@@ -14,9 +14,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 
 @HiltViewModel
@@ -103,6 +106,10 @@ class PlannerViewModel @Inject constructor(
     val useIntentionPrompt: StateFlow<Boolean> = _useIntentionPrompt.asStateFlow()
 
     private var extrasPlanId: String? = null
+
+    // A cache refresh must not overwrite a local edit between publishing it and
+    // persisting it. Selection and schedule mutations share the same lock.
+    private val plannerMutationMutex = Mutex()
 
     private val plannerPreferenceListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
         _activePrayers.value = PRAYER_NAMES.filter { it in plannerPrefs.getStringSet("active_prayers", PRAYER_NAMES.toSet()).orEmpty() }
@@ -205,8 +212,8 @@ class PlannerViewModel @Inject constructor(
         viewModelScope.launch {
             _chapters.value = repository.getChaptersFlow().firstOrNull() ?: emptyList()
 
-            repository.observePlannerCache().debounce(100).collectLatest {
-                refreshPlannerData()
+            repository.observePlannerCache().debounce(100).collect {
+                plannerMutationMutex.withLock { refreshPlannerData() }
             }
         }
         viewModelScope.launch {
@@ -217,12 +224,14 @@ class PlannerViewModel @Inject constructor(
     }
 
     private suspend fun refreshPlannerData() {
-        var all = repository.getAllPlans()
-        var actId = repository.getActivePlannerId()
+        // Read after acquiring the lock: an emission queued behind a local save
+        // may describe the old schedule. One Room query gives a coherent selection.
+        val selection = repository.parsePlannerSelection(repository.getPlannerCacheSnapshot())
+        var all = selection.first
+        var actId = selection.second
 
         if (all.isEmpty()) {
             val oldActive = repository.getActivePlan()
-            val oldArchived = repository.getArchivedPlans()
 
             val migratedPlans = mutableListOf<ReadingPlan>()
             if (oldActive != null) migratedPlans.add(oldActive)
@@ -230,12 +239,11 @@ class PlannerViewModel @Inject constructor(
             if (migratedPlans.isNotEmpty()) {
                 all = migratedPlans
                 actId = oldActive?.id
-                repository.saveAllPlans(all)
-                repository.saveActivePlannerId(actId)
-                repository.saveActivePlan(null)
+                repository.savePlannerSelection(all, actId)
             }
         }
 
+        actId = actId?.takeIf { selected -> all.any { it.id == selected } } ?: all.firstOrNull()?.id
         _allPlans.value = all
         _activePlannerId.value = actId
         _activePlan.value = all.find { it.id == actId }
@@ -266,52 +274,50 @@ class PlannerViewModel @Inject constructor(
 
     }
 
-    fun setActivePlan(plan: ReadingPlan) {
+    private suspend fun persistActivePlan(plan: ReadingPlan) {
         val previous = _allPlans.value.firstOrNull { it.id == plan.id }
         val updated = if (previous != null && previous.assignments != plan.assignments) {
             plan.copy(assignmentsUpdatedAt = maxOf(System.currentTimeMillis(), previous.assignmentsUpdatedAt + 1))
         } else plan
-        viewModelScope.launch {
-            val updatedAll = _allPlans.value.toMutableList()
-            val index = updatedAll.indexOfFirst { it.id == plan.id }
-            if (index != -1) {
-                updatedAll[index] = updated
-            } else {
-                updatedAll.add(updated)
-            }
-            _allPlans.value = updatedAll
-            _activePlannerId.value = plan.id
-            _activePlan.value = updated
-            repository.saveAllPlans(updatedAll)
-            repository.saveActivePlannerId(plan.id)
-            loadPlanExtras(plan.id)
+        val updatedAll = _allPlans.value.toMutableList()
+        val index = updatedAll.indexOfFirst { it.id == plan.id }
+        if (index != -1) updatedAll[index] = updated else updatedAll.add(updated)
+        _allPlans.value = updatedAll
+        _activePlannerId.value = plan.id
+        _activePlan.value = updated
+        repository.savePlannerSelection(updatedAll, plan.id)
+        loadPlanExtras(plan.id)
+    }
+
+    fun setActivePlan(plan: ReadingPlan) {
+        viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
+            plannerMutationMutex.withLock { persistActivePlan(plan) }
         }
     }
 
     fun switchActivePlan(planId: String) {
-        val plan = _allPlans.value.find { it.id == planId }
-        if (plan != null) {
-            viewModelScope.launch {
+        viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
+            plannerMutationMutex.withLock {
+                val plan = _allPlans.value.find { it.id == planId } ?: return@withLock
                 _activePlannerId.value = planId
                 _activePlan.value = plan
-                repository.saveActivePlannerId(planId)
+                repository.savePlannerSelection(_allPlans.value, planId)
                 loadPlanExtras(planId)
             }
         }
     }
 
     fun deletePlan(planId: String) {
-        viewModelScope.launch {
-            val updatedAll = _allPlans.value.filter { it.id != planId }
-            _allPlans.value = updatedAll
-            repository.saveAllPlans(updatedAll)
-
-            if (_activePlannerId.value == planId) {
-                val nextActive = updatedAll.firstOrNull()
-                _activePlannerId.value = nextActive?.id
-                _activePlan.value = nextActive
-                repository.saveActivePlannerId(nextActive?.id)
-                loadPlanExtras(nextActive?.id)
+        viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
+            plannerMutationMutex.withLock {
+                val updatedAll = _allPlans.value.filter { it.id != planId }
+                val activeId = _activePlannerId.value.takeIf { id -> updatedAll.any { it.id == id } }
+                    ?: updatedAll.firstOrNull()?.id
+                _allPlans.value = updatedAll
+                _activePlannerId.value = activeId
+                _activePlan.value = updatedAll.find { it.id == activeId }
+                repository.savePlannerSelection(updatedAll, activeId)
+                loadPlanExtras(activeId)
             }
         }
     }
@@ -511,9 +517,13 @@ class PlannerViewModel @Inject constructor(
     }
 
     fun rebalancePlan(strategy: String, customDurationDays: Int? = null) {
-        val current = _activePlan.value ?: return
-        val rebalanced = PlannerEngine.rebalancePlanner(current, strategy, customDurationDays)
-        setActivePlan(rebalanced)
+        viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
+            plannerMutationMutex.withLock {
+                val current = _activePlan.value ?: return@withLock
+                val rebalanced = PlannerEngine.rebalancePlanner(current, strategy, customDurationDays)
+                if (rebalanced != current) persistActivePlan(rebalanced)
+            }
+        }
     }
 
     /**
@@ -611,11 +621,15 @@ class PlannerViewModel @Inject constructor(
             updatedEntries.remove(dayNumber)
         }
         _reflectionEntriesByPlan.value = _reflectionEntriesByPlan.value + (planId to updatedEntries.toMap())
-        val updatedAll = _allPlans.value.map { if (it.id == planId) plan.copy(assignmentReflections = updatedEmbedded) else it }
-        _allPlans.value = updatedAll
-        viewModelScope.launch {
-            repository.saveAllPlans(updatedAll)
-            try { repository.savePlannerReflections(planId, updatedEntries) } catch (_: Exception) {}
+        viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
+            plannerMutationMutex.withLock {
+                val updatedAll = _allPlans.value.map {
+                    if (it.id == planId) it.copy(assignmentReflections = updatedEmbedded) else it
+                }
+                _allPlans.value = updatedAll
+                repository.savePlannerSelection(updatedAll, _activePlannerId.value)
+                try { repository.savePlannerReflections(planId, updatedEntries) } catch (_: Exception) {}
+            }
         }
     }
 
@@ -628,27 +642,28 @@ class PlannerViewModel @Inject constructor(
     fun buildRevisionPlan() {
         val current = _activePlan.value ?: return
         val chaptersVal = _chapters.value
-        viewModelScope.launch {
-            // Archive current plan first (web stamps archivedAt on the entry).
-            val updatedArchives = _archivedPlans.value + current.copy(
-                archivedAt = PlannerWire.isoFromEpochMs(System.currentTimeMillis())
-            )
-            _archivedPlans.value = updatedArchives
-            repository.saveArchivedPlans(updatedArchives)
+        viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
+            plannerMutationMutex.withLock {
+                // Archive current plan first (web stamps archivedAt on the entry).
+                val updatedArchives = _archivedPlans.value + current.copy(
+                    archivedAt = PlannerWire.isoFromEpochMs(System.currentTimeMillis())
+                )
+                _archivedPlans.value = updatedArchives
+                repository.saveArchivedPlans(updatedArchives)
 
-            // Note: old buildRevisionPlan logic overwrote active plan. We should probably do similar but just create new one
-            val revision = PlannerEngine.buildRevisionPlanner(current, chaptersVal)
+                // Note: old buildRevisionPlan logic overwrote active plan. We should probably do similar but just create new one
+                val revision = PlannerEngine.buildRevisionPlanner(current, chaptersVal)
 
-            // We should delete current from all plans because we archived it
-            val updatedAll = _allPlans.value.filter { it.id != current.id }
+                // We should delete current from all plans because we archived it
+                val updatedAll = _allPlans.value.filter { it.id != current.id }
 
-            val finalAll = updatedAll + revision
-            _allPlans.value = finalAll
-            _activePlannerId.value = revision.id
-            _activePlan.value = revision
-            repository.saveAllPlans(finalAll)
-            repository.saveActivePlannerId(revision.id)
-            loadPlanExtras(revision.id)
+                val finalAll = updatedAll + revision
+                _allPlans.value = finalAll
+                _activePlannerId.value = revision.id
+                _activePlan.value = revision
+                repository.savePlannerSelection(finalAll, revision.id)
+                loadPlanExtras(revision.id)
+            }
         }
     }
 

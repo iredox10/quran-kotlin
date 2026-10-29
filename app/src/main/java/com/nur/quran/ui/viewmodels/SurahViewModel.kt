@@ -1505,6 +1505,8 @@ class SurahViewModel @Inject constructor(
             val t0 = System.currentTimeMillis()
             // Chapter metadata offline-first (one indexed query when already seeded).
             repository.ensureChaptersFromAssets()
+            // Repair legacy cached scripts before publishing the first colored text.
+            repository.ensureOfflineChapter(chapterId)
             var localChapter = repository.getChapterById(chapterId)
             var cachedVerses = if (localChapter != null) repository.getVersesByChapterDirect(localChapter.id) else emptyList()
 
@@ -1546,7 +1548,7 @@ class SurahViewModel @Inject constructor(
                 currentChapterName = chapter.nameSimple
                 repository.addRecentlyRead(chapter.id, chapter.nameSimple)
                 val wordsMap = repository.getWordsForVerses(cachedVerses.map { it.id })
-                val existingTajweed = (_uiState.value as? SurahUiState.Success)?.tajweedMap ?: emptyMap()
+                val existingTajweed = repository.getTajweedMapForVerses(cachedVerses)
                 val successState = SurahUiState.Success(chapter, cachedVerses, wordsMap, existingTajweed)
                 chapterMemoryCache[chapterId] = successState
                 if (currentChapterId == chapterId) _uiState.value = successState
@@ -1559,7 +1561,7 @@ class SurahViewModel @Inject constructor(
                     val updatedVerses = repository.getVersesByChapterDirect(chapterId)
                     if (updatedVerses.isNotEmpty() && currentChapterId == chapterId) {
                         val updatedWords = repository.getWordsForVerses(updatedVerses.map { it.id })
-                        val tajweed = (_uiState.value as? SurahUiState.Success)?.tajweedMap ?: emptyMap()
+                        val tajweed = repository.getTajweedMapForVerses(updatedVerses)
                         val upgraded = SurahUiState.Success(chapter, updatedVerses, updatedWords, tajweed)
                         chapterMemoryCache[chapterId] = upgraded
                         loadedMushafByChapter[chapterId] = _mushafPreset.value
@@ -1601,7 +1603,7 @@ class SurahViewModel @Inject constructor(
                 val fresh = repository.getVersesByChapterDirect(chapterId)
                 if (fresh.isEmpty()) return@launch
                 val wordsMap = repository.getWordsForVerses(fresh.map { it.id })
-                val tajweed = (_uiState.value as? SurahUiState.Success)?.tajweedMap ?: emptyMap()
+                val tajweed = repository.getTajweedMapForVerses(fresh)
                 val successState = SurahUiState.Success(chapter, fresh, wordsMap, tajweed)
                 chapterMemoryCache[chapterId] = successState
                 loadedMushafByChapter[chapterId] = _mushafPreset.value
@@ -1634,7 +1636,8 @@ class SurahViewModel @Inject constructor(
                     if (bundle.verses.isEmpty()) continue
                     val chapterId = bundle.verses.firstOrNull()?.chapterId ?: 1
                     val chapter = repository.getChapterById(chapterId) ?: continue
-                    pageReaderCache.store(page, params, SurahUiState.Success(chapter, bundle.verses, bundle.wordsMap))
+                    val tajweed = repository.getTajweedMapForVerses(bundle.verses)
+                    pageReaderCache.store(page, params, SurahUiState.Success(chapter, bundle.verses, bundle.wordsMap, tajweed))
                 } catch (e: Exception) {
                     if (e is kotlinx.coroutines.CancellationException) throw e
                 }
@@ -1673,7 +1676,7 @@ class SurahViewModel @Inject constructor(
                 val chapterId = bundle.verses.firstOrNull()?.chapterId ?: 1
                 val chapter = repository.getChapterById(chapterId)
                     ?: ChapterEntity(chapterId, "Surah $chapterId", "سورة", "Surah $chapterId", "Chapter", "makkah", 1, 10, pageNumber, pageNumber)
-                val success = SurahUiState.Success(chapter, bundle.verses, bundle.wordsMap)
+                val success = SurahUiState.Success(chapter, bundle.verses, bundle.wordsMap, repository.getTajweedMapForVerses(bundle.verses))
                 pageReaderCache.store(pageNumber, params, success)
                 if (!pageReaderCache.isCurrent(gen)) return@launch
                 currentChapterId = chapter.id
@@ -1691,7 +1694,7 @@ class SurahViewModel @Inject constructor(
         val cachedVerses = repository.getVersesByChapterDirect(chapter.id)
         if (cachedVerses.isNotEmpty()) {
             val wordsMap = repository.getWordsForVerses(cachedVerses.map { it.id })
-            val tajweed = (_uiState.value as? SurahUiState.Success)?.tajweedMap ?: emptyMap()
+            val tajweed = repository.getTajweedMapForVerses(cachedVerses)
             _uiState.value = SurahUiState.Success(chapter, cachedVerses, wordsMap, tajweed)
 
             val hasTranslations = cachedVerses.any { !it.translation.isNullOrBlank() }
@@ -1714,7 +1717,7 @@ class SurahViewModel @Inject constructor(
                     return
                 }
                 val downloadedWords = repository.getWordsForVerses(downloadedVerses.map { it.id })
-                _uiState.value = SurahUiState.Success(chapter, downloadedVerses, downloadedWords, emptyMap())
+                _uiState.value = SurahUiState.Success(chapter, downloadedVerses, downloadedWords, repository.getTajweedMapForVerses(downloadedVerses))
             } catch (e: Exception) {
                 _uiState.value = SurahUiState.Error("Failed to load Surah ${chapter.nameSimple}.")
             }
@@ -1730,17 +1733,21 @@ class SurahViewModel @Inject constructor(
 
     private suspend fun loadTajweed(chapterId: Int) {
         try {
-            val tajweedResponse = repository.getTajweedHtmlForChapter(chapterId)
-            val map = mutableMapOf<String, String>()
-            tajweedResponse.verses.forEach { v ->
-                map[v.verse_key] = TajweedProcessor.sanitizeTajweedHtml(v.text_uthmani_tajweed)
+            repository.getTajweedHtmlForChapter(chapterId)
+            val current = _uiState.value as? SurahUiState.Success ?: return
+            if (current.verses.none { it.chapterId == chapterId }) return
+            val map = repository.getTajweedMapForVerses(current.verses)
+            // An older chapter request must never recolor the chapter opened after it.
+            if (_uiState.value !== current) return
+            val updated = current.copy(tajweedMap = map)
+            _uiState.value = updated
+            chapterMemoryCache[current.chapter.id]?.takeIf { it === current }?.let {
+                chapterMemoryCache[current.chapter.id] = updated
             }
-            val current = _uiState.value
-            if (current is SurahUiState.Success) {
-                _uiState.value = current.copy(tajweedMap = map)
-            }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (_: Exception) {
-            // Tajweed data not available — UI will show plain text
+            // Keep the complete local markup already published with the reader state.
         }
     }
 

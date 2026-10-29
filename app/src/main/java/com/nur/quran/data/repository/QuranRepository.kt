@@ -796,16 +796,28 @@ class QuranRepository @Inject constructor(
     suspend fun getAllChaptersDirect(): List<ChapterEntity> = quranDao.getAllChaptersDirect()
     suspend fun getChapterById(chapterId: Int): ChapterEntity? = quranDao.getChapterById(chapterId)
 
-    // Tajweed HTML — with offline asset fallback
+    // Full-verse Tajweed must be ready before the reader publishes its first Success state.
     suspend fun getTajweedHtmlForChapter(chapterId: Int): TajweedResponse = withContext(Dispatchers.IO) {
-        try {
-            fetchWithOfflineCache("tajweed_chapter_$chapterId") {
-                getBackendTajweed(chapterId)
+        val bundled = loadOfflineTajweedFromAssets(chapterId)
+        val cached = try {
+            quranDao.getCacheEntry("tajweed_chapter_$chapterId")?.let {
+                gson.fromJson(it.dataJson, TajweedResponse::class.java)
             }
-        } catch (e: Exception) {
-            // Fallback: build TajweedResponse from bundled asset
-            loadOfflineTajweedFromAssets(chapterId)
-        }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) { null }
+        val rows = completeTajweedRows(chapterId, bundled.verses, cached?.verses.orEmpty())
+        if (rows.isNotEmpty()) return@withContext TajweedResponse(rows)
+        try {
+            fetchWithOfflineCache("tajweed_chapter_$chapterId") { getBackendTajweed(chapterId) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) { bundled }
+    }
+
+    suspend fun getTajweedMapForVerses(verses: List<VerseEntity>): Map<String, String> = withContext(Dispatchers.IO) {
+        val rows = verses.map { it.chapterId }.distinct().flatMap { getTajweedHtmlForChapter(it).verses }
+        tajweedMapForKeys(verses.mapTo(hashSetOf()) { it.verseKey }, rows)
     }
 
     private suspend fun getBackendTajweed(chapterId: Int): TajweedResponse =

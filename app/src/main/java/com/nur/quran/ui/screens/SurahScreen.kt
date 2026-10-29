@@ -2561,7 +2561,7 @@ fun VerseItem(
                 val isVerseTajweedAvailable = !fullVerseHtml.isNullOrBlank()
 
                 if (isTajweedEnabled && (isVerseTajweedAvailable || words.any { it.textUthmaniTajweed != null })) {
-                    val finalTajweedHtml = remember(verse.verseKey, fullVerseHtml, selectedArabicFontName) {
+                    val finalTajweedHtml = remember(verse.verseKey, fullVerseHtml, words, selectedArabicFontName) {
                         buildCleanVerseTajweedHtml(fullVerseHtml, words, verse.verseNumber, selectedArabicFontName)
                     }
                     val tajweedPlainText = remember(verse.verseKey, words, mushafId, selectedArabicFontName) {

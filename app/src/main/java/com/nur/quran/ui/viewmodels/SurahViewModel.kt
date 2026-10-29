@@ -73,7 +73,8 @@ sealed interface TafsirUiState {
     data class Visible(
         val verseKey: String,
         val verseNumber: String,
-        val text: String
+        val text: String,
+        val resourceId: Int? = null
     ) : TafsirUiState
     data class Error(val message: String) : TafsirUiState
 }
@@ -139,8 +140,8 @@ class SurahViewModel @Inject constructor(
     private val _isSaukaCompleting = MutableStateFlow(false)
     val isSaukaCompleting: StateFlow<Boolean> = _isSaukaCompleting.asStateFlow()
 
-    private val _tafsirState = MutableStateFlow<TafsirUiState>(TafsirUiState.Hidden)
-    val tafsirState: StateFlow<TafsirUiState> = _tafsirState.asStateFlow()
+    private val tafsirReader = TafsirReader(viewModelScope, repository::getTafsirForChapter)
+    val tafsirState: StateFlow<TafsirUiState> = tafsirReader.state
 
     private val _selectedArabicFontName = MutableStateFlow(hifdhPrefs.getString("arabic_font", "KFGQPC Hafs") ?: "KFGQPC Hafs")
     val selectedArabicFontName: StateFlow<String> = _selectedArabicFontName.asStateFlow()
@@ -326,7 +327,6 @@ class SurahViewModel @Inject constructor(
         hifdhPrefs.getInt("translation_id", 20).let { if (it == 131) 20 else it }
     )
     val currentTranslationId: StateFlow<Int> = _currentTranslationId.asStateFlow()
-    private var cachedTafsirVerses: List<ApiTafsirVerse> = emptyList()
 
     // Reading-session tracking (mirrors the web Surah page's start/unmount timer)
     private var readingSessionStart: Long = 0L
@@ -1487,8 +1487,7 @@ class SurahViewModel @Inject constructor(
             return
         }
         currentChapterId = chapterId
-        _tafsirState.value = TafsirUiState.Hidden
-        cachedTafsirVerses = emptyList()
+        tafsirReader.dismiss()
 
         val memoryCached = chapterMemoryCache[chapterId]
         if (memoryCached != null) {
@@ -1894,34 +1893,11 @@ class SurahViewModel @Inject constructor(
     }
 
     fun loadTafsir(verseKey: String, chapterId: Int) {
-        viewModelScope.launch {
-            _tafsirState.value = TafsirUiState.Loading
-            try {
-                if (cachedTafsirVerses.isEmpty()) {
-                    val response = repository.getTafsirForChapter(currentTafsirId, chapterId)
-                    cachedTafsirVerses = response.tafsirs
-                }
-                val tafsir = cachedTafsirVerses.find { it.verse_key == verseKey }
-                _tafsirState.value = if (tafsir != null && !tafsir.text.isNullOrEmpty()) {
-                    TafsirUiState.Visible(
-                        verseKey = verseKey,
-                        verseNumber = verseKey.split(":")[1],
-                        text = tafsir.text
-                    )
-                } else {
-                    TafsirUiState.Error("Tafsir is not available for this verse in the selected source.")
-                }
-            } catch (e: Exception) {
-                _tafsirState.value = TafsirUiState.Error(
-                    e.localizedMessage ?: "Failed to load tafsir"
-                )
-            }
-        }
+        if (verseKey.substringBefore(':').toIntOrNull() != chapterId) return
+        tafsirReader.open(verseKey, currentTafsirId)
     }
 
-    fun dismissTafsir() {
-        _tafsirState.value = TafsirUiState.Hidden
-    }
+    fun dismissTafsir() = tafsirReader.dismiss()
 
     /** Fetches a translation footnote's HTML text (web: getFootnote), cached in-memory. */
     private val footnoteCache = mutableMapOf<String, String>()
@@ -1970,7 +1946,7 @@ class SurahViewModel @Inject constructor(
         currentTafsirId = tafsirId
         _currentTafsirId.value = tafsirId
         hifdhPrefs.edit().putInt("tafsir_id", tafsirId).apply()
-        cachedTafsirVerses = emptyList()
+        tafsirReader.clear()
     }
 
     fun getCurrentTafsirId(): Int = _currentTafsirId.value

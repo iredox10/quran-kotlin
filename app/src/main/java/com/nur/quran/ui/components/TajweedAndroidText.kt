@@ -7,9 +7,6 @@ import android.graphics.Typeface
 import android.text.Spannable
 import android.text.SpannableString
 import android.text.Spanned
-import android.text.TextPaint
-import android.text.style.ClickableSpan
-import android.text.style.ForegroundColorSpan
 import android.text.style.ReplacementSpan
 import android.view.Gravity
 import android.view.MotionEvent
@@ -31,10 +28,9 @@ import kotlin.math.abs
 /**
  * Renders tajweed-colored Arabic text in a native TextView.
  *
- * Unlike Compose's span-based text, TextView lays out the whole word as a
- * single shaping run first and paints per-span colors afterwards, so
- * per-letter ForegroundColorSpan boundaries do not break Arabic cursive
- * joins / diacritic placement. Tap targets are attached as ClickableSpans.
+ * Shapes the continuous Arabic text without character-style boundaries.
+ * Colors are clipped onto that same layout, preserving lam-alif ligatures
+ * even when the lam and alif have different Tajweed colors.
  */
 @Composable
 fun TajweedAndroidText(
@@ -62,7 +58,6 @@ fun TajweedAndroidText(
             text = text,
             wordRanges = wordRanges,
             segments = segments,
-            textColor = textColor,
             isInteractive = isInteractive,
             onWordClick = onWordClick,
             onTajweedClick = onTajweedClick
@@ -72,7 +67,7 @@ fun TajweedAndroidText(
     AndroidView(
         modifier = modifier,
         factory = { ctx ->
-            TextView(ctx).apply {
+            ShapedTajweedTextView(ctx).apply {
                 textSize = fontSizeSp
                 includeFontPadding = false
                 layoutDirection = View.LAYOUT_DIRECTION_RTL
@@ -83,6 +78,7 @@ fun TajweedAndroidText(
                 breakStrategy = android.text.Layout.BREAK_STRATEGY_SIMPLE
                 applyJustification(this, justified)
                 gravity = textAlign or Gravity.CENTER_VERTICAL
+                setTextColor(textColor.toArgb())
                 this.typeface = typeface
                 applyVerseLineSpacing(this, lineHeightRatio, lineHeightMultiplier)
                 highlightColor = android.graphics.Color.TRANSPARENT
@@ -97,6 +93,8 @@ fun TajweedAndroidText(
             tv.breakStrategy = android.text.Layout.BREAK_STRATEGY_SIMPLE
             applyJustification(tv, justified)
             applyVerseLineSpacing(tv, lineHeightRatio, lineHeightMultiplier)
+            tv.setTextColor(textColor.toArgb())
+            tv.colorSegments = segments
             tv.text = spannable
             scheduleWrapSpaceFix(tv)
         }
@@ -123,13 +121,11 @@ private fun buildTajweedSpannable(
     text: String,
     wordRanges: List<Pair<IntRange, Int>>,
     segments: List<TajweedSegment>,
-    textColor: Color,
     isInteractive: Boolean,
     onWordClick: (Int) -> Unit,
     onTajweedClick: (String) -> Unit
 ): SpannableString {
     val sp = SpannableString(text)
-    val baseArgb = textColor.toArgb()
 
     val sorted = segments.sortedBy { it.start }
     for (seg in sorted) {
@@ -137,16 +133,10 @@ private fun buildTajweedSpannable(
         val end = seg.end.coerceIn(start, text.length)
         if (end <= start) continue
         val isEndRule = seg.ruleClass == "end"
-        val colorArgb = try {
-            android.graphics.Color.parseColor(if (isEndRule) "#B8924A" else seg.colorHex)
-        } catch (t: Throwable) {
-            baseArgb
-        }
-        sp.setSpan(ForegroundColorSpan(colorArgb), start, end, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
         val rule = seg.ruleClass
         if (isInteractive && !rule.isNullOrBlank() && !isEndRule) {
             sp.setSpan(
-                TajweedClickableSpan(colorArgb, underline = false) { onTajweedClick(rule) },
+                TajweedTapTarget { onTajweedClick(rule) },
                 start, end,
                 android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
             )
@@ -165,7 +155,7 @@ private fun buildTajweedSpannable(
             }
             if (overlapsRule) continue
             sp.setSpan(
-                TajweedClickableSpan(baseArgb, underline = false) { onWordClick(wordIndex) },
+                TajweedTapTarget { onWordClick(wordIndex) },
                 start, end,
                 android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
             )
@@ -175,21 +165,8 @@ private fun buildTajweedSpannable(
     return sp
 }
 
-private class TajweedClickableSpan(
-    private val spanColor: Int,
-    private val underline: Boolean,
-    private val onClick: () -> Unit
-) : ClickableSpan() {
-    override fun onClick(widget: View) {
-        onClick()
-    }
-
-    override fun updateDrawState(ds: TextPaint) {
-        super.updateDrawState(ds)
-        ds.color = spanColor
-        ds.isUnderlineText = underline
-    }
-}
+/** Metadata only: CharacterStyle/ClickableSpan would split the ligature's shaping run. */
+private class TajweedTapTarget(val onClick: () -> Unit)
 
 /**
  * Touch listener that differentiates between a single tap (to trigger ClickableSpans)
@@ -227,9 +204,9 @@ private class TajweedTouchListener : View.OnTouchListener {
                     if (layout != null) {
                         val line = layout.getLineForVertical(y)
                         val offset = layout.getOffsetForHorizontal(line, x.toFloat())
-                        val spans = spanned.getSpans(offset, offset, ClickableSpan::class.java)
+                        val spans = spanned.getSpans(offset, offset, TajweedTapTarget::class.java)
                         if (spans.isNotEmpty()) {
-                            spans[0].onClick(tv)
+                            spans[0].onClick()
                             return true
                         }
                     }

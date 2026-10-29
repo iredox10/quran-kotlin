@@ -508,7 +508,7 @@ fun HifdhReaderScreen(
                                                             text = displayText,
                                                             tajweedHtml = verseTajweedHtml,
                                                             defaultColorHex = if (isDarkThemeGlobal) "#EFECE4" else "#2B3F3C",
-                                                            fontFamily = fontFamilyArabic,
+                                                            selectedArabicFontName = selectedArabicFontName,
                                                             fontSize = (28 * arabicFontScale).sp,
                                                             lineHeight = 48.sp,
                                                             baseColor = textColor,
@@ -567,7 +567,7 @@ fun HifdhReaderScreen(
                                                                         text = cleanWord,
                                                                         tajweedHtml = rawWord,
                                                                         defaultColorHex = if (isDarkThemeGlobal) "#EFECE4" else "#2B3F3C",
-                                                                        fontFamily = fontFamilyArabic,
+                                                                        selectedArabicFontName = selectedArabicFontName,
                                                                         fontSize = (26 * arabicFontScale).sp,
                                                                         lineHeight = TextUnit.Unspecified,
                                                                         baseColor = hInk,
@@ -629,7 +629,7 @@ fun HifdhReaderScreen(
                                                                         text = cleanWord,
                                                                         tajweedHtml = rawWord,
                                                                         defaultColorHex = if (isDarkThemeGlobal) "#EFECE4" else "#2B3F3C",
-                                                                        fontFamily = fontFamilyArabic,
+                                                                        selectedArabicFontName = selectedArabicFontName,
                                                                         fontSize = (26 * arabicFontScale).sp,
                                                                         lineHeight = TextUnit.Unspecified,
                                                                         baseColor = hInk,
@@ -661,7 +661,7 @@ fun HifdhReaderScreen(
                                                         text = displayText,
                                                         tajweedHtml = verseTajweedHtml,
                                                         defaultColorHex = if (isDarkThemeGlobal) "#EFECE4" else "#2B3F3C",
-                                                        fontFamily = fontFamilyArabic,
+                                                        selectedArabicFontName = selectedArabicFontName,
                                                         fontSize = (28 * arabicFontScale).sp,
                                                         lineHeight = 48.sp,
                                                         baseColor = textColor,
@@ -1167,7 +1167,7 @@ private fun HifdhTajweedText(
     text: String,
     tajweedHtml: String,
     defaultColorHex: String,
-    fontFamily: FontFamily,
+    selectedArabicFontName: String,
     fontSize: TextUnit,
     baseColor: Color,
     textAlign: TextAlign,
@@ -1180,34 +1180,18 @@ private fun HifdhTajweedText(
     val segments = remember(displayText, tajweedHtml, defaultColorHex) {
         TajweedProcessor.getWordTajweedSegments(displayText, tajweedHtml, defaultColorHex)
     }
-    val annotated = remember(displayText, segments) {
-        buildAnnotatedString {
-            var cursor = 0
-            for (seg in segments.sortedBy { it.start }) {
-                if (seg.start > cursor) append(displayText.substring(cursor, seg.start))
-                val segStart = length
-                append(displayText.substring(seg.start, seg.end))
-                addStyle(
-                    style = SpanStyle(color = Color(android.graphics.Color.parseColor(seg.colorHex))),
-                    start = segStart,
-                    end = length
-                )
-                cursor = seg.end
-            }
-            if (cursor < displayText.length) append(displayText.substring(cursor))
-        }
-    }
-    Text(
-        text = annotated,
-        fontFamily = fontFamily,
-        fontSize = fontSize,
-        lineHeight = lineHeight,
-        color = baseColor,
-        textAlign = textAlign,
+    com.nur.quran.ui.components.TajweedAndroidText(
+        text = displayText,
+        wordRanges = emptyList(),
+        segments = segments,
+        selectedArabicFontName = selectedArabicFontName,
+        fontSizeSp = fontSize.value,
+        lineHeightRatio = if (lineHeight == TextUnit.Unspecified) 1.5f else lineHeight.value / fontSize.value,
+        textColor = baseColor,
+        isInteractive = false,
+        onWordClick = {},
+        onTajweedClick = {},
+        textAlign = if (textAlign == TextAlign.Center) android.view.Gravity.CENTER_HORIZONTAL else android.view.Gravity.RIGHT,
         modifier = modifier,
-        style = androidx.compose.ui.text.TextStyle(
-            platformStyle = arabicPlatformStyle(),
-            lineHeightStyle = arabicLineHeightStyle()
-        )
     )
 }

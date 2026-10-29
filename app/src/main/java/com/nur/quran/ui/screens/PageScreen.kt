@@ -42,6 +42,7 @@ import com.nur.quran.data.db.entities.WordEntity
 import com.nur.quran.ui.components.NurIcons
 import com.nur.quran.ui.components.audio.MiniPlayer
 import com.nur.quran.ui.viewmodels.PageUiState
+import com.nur.quran.ui.viewmodels.TafsirUiState
 import com.nur.quran.ui.viewmodels.PageViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,6 +55,7 @@ fun PageScreen(
 ) {
     // Read during composition so completion invalidates the initial loading pane.
     val uiState = viewModel.uiState.collectAsState().value
+    val tafsirState by viewModel.tafsirState.collectAsState()
     val isTajweedEffective by viewModel.isTajweedEffective.collectAsState()
     val currentMushaf by viewModel.currentMushaf.collectAsState()
     val isTranslationEnabled by viewModel.isTranslationEnabled.collectAsState()
@@ -316,7 +318,7 @@ fun PageScreen(
                                     mushafId = currentMushaf.id,
                                     isCurrentlyPlaying = isPlayingVerse,
                                     isBookmarked = verse.verseKey in bookmarkedVerses,
-                                    isTafsirOpen = false,
+                                    isTafsirOpen = (tafsirState as? TafsirUiState.Visible)?.verseKey == verse.verseKey,
                                     onPlayClick = { viewModel.startPlayback(verses, index) },
                                     onBookmarkClick = {
                                         // Bookmark remembers the page reader context,
@@ -329,7 +331,10 @@ fun PageScreen(
                                             sourcePage = pageNumber
                                         )
                                     },
-                                    onTafsirClick = { /* Tafsir not implemented in page view */ },
+                                    onTafsirClick = {
+                                        if ((tafsirState as? TafsirUiState.Visible)?.verseKey == verse.verseKey) viewModel.dismissTafsir()
+                                        else viewModel.loadTafsir(verse.verseKey)
+                                    },
                                     onShareClick = { /* Share not implemented in page view */ },
                                     onAddToCollection = { /* Collections not implemented in page view */ },
                                     onWordClick = { word ->
@@ -434,6 +439,18 @@ fun PageScreen(
                     if (dur > 0) (pos.toFloat() / dur).coerceIn(0f, 1f) else null
                 }
             )
+        }
+
+        when (val tafsir = tafsirState) {
+            TafsirUiState.Loading -> TafsirLoadingOverlay()
+            is TafsirUiState.Visible -> TafsirBottomSheet(
+                verseNumber = tafsir.verseNumber,
+                text = tafsir.text,
+                resourceId = tafsir.resourceId,
+                onDismiss = viewModel::dismissTafsir,
+            )
+            is TafsirUiState.Error -> TafsirErrorOverlay(tafsir.message, viewModel::dismissTafsir)
+            TafsirUiState.Hidden -> Unit
         }
 
         // ─── Word Tooltip ─── (tap to translate; data comes from Room offline)

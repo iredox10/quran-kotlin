@@ -1069,6 +1069,7 @@ fun PlannerReaderScreen(
                 is TafsirUiState.Visible -> TafsirBottomSheet(
                     // Web: "Tafsir (Ayah N)" — ayah number only, not the full key.
                     verseNumber = tState.verseNumber,
+                    resourceId = tState.resourceId,
                     text = tState.text,
                     onDismiss = { surahViewModel.dismissTafsir() }
                 )

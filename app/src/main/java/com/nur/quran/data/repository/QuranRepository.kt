@@ -604,14 +604,20 @@ class QuranRepository @Inject constructor(
     @Volatile
     private var cachedOfflineTafsirs: List<OfflineTafsirItem>? = null
 
+    @Synchronized
     private fun getAllOfflineTafsirs(): List<OfflineTafsirItem> {
         cachedOfflineTafsirs?.let { return it }
         return try {
             val jsonString = context.assets.open("data/tafsir_ibn_kathir.json").bufferedReader().use { it.readText() }
             val type = object : TypeToken<List<OfflineTafsirItem>>() {}.type
             val parsed: List<OfflineTafsirItem> = gson.fromJson(jsonString, type)
-            cachedOfflineTafsirs = parsed
-            parsed
+            val supplements: List<OfflineTafsirItem> = context.assets.open("data/tafsir_ibn_kathir_supplement.json")
+                .bufferedReader().use { gson.fromJson(it, type) }
+            val completed = completeBundledTafsir((parsed + supplements).map {
+                ApiTafsirVerse(it.verse_key, it.text, it.resource_id)
+            }).map { OfflineTafsirItem(it.verse_key, it.text, it.resource_id) }
+            cachedOfflineTafsirs = completed
+            completed
         } catch (e: Exception) {
             emptyList()
         }
@@ -819,14 +825,20 @@ class QuranRepository @Inject constructor(
 
     // Tafsir — with offline asset fallback
     suspend fun getTafsirForChapter(tafsirId: Int, chapterId: Int): TafsirResponse = withContext(Dispatchers.IO) {
-        try {
-            fetchWithOfflineCache("tafsir_${tafsirId}_chapter_$chapterId") {
-                rnApiClient.getTafsirByChapter(tafsirId, chapterId)
-            }
-        } catch (e: Exception) {
-            // Fallback: load from bundled Ibn Kathir asset
-            loadOfflineTafsirFromAssets(chapterId)
-        }
+        val key = "tafsir_${tafsirId}_chapter_$chapterId"
+        val cached = try {
+            quranDao.getCacheEntry(key)?.let { gson.fromJson(it.dataJson, TafsirResponse::class.java) }?.tafsirs.orEmpty()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) { emptyList() }
+        loadTafsirOfflineFirst(
+            chapterId = chapterId,
+            cached = cached,
+            bundled = loadOfflineTafsirFromAssets(chapterId).tafsirs,
+            network = { rnApiClient.getTafsirByChapter(tafsirId, chapterId) },
+            // Never save the bundled fallback under a different edition's cache key.
+            persist = { quranDao.insertCacheEntry(ApiResponseCacheEntity(key, gson.toJson(it))) },
+        )
     }
 
     // Footnote

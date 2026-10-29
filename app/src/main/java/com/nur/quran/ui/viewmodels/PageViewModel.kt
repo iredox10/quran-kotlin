@@ -58,6 +58,16 @@ class PageViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<PageUiState>(PageUiState.Loading)
     val uiState: StateFlow<PageUiState> = _uiState.asStateFlow()
 
+    private val tafsirReader = TafsirReader(viewModelScope, repository::getTafsirForChapter)
+    val tafsirState = tafsirReader.state
+
+    fun loadTafsir(verseKey: String) {
+        val sourceId = context.getSharedPreferences("hifdh_settings", Context.MODE_PRIVATE).getInt("tafsir_id", 169)
+        tafsirReader.open(verseKey, sourceId)
+    }
+
+    fun dismissTafsir() = tafsirReader.dismiss()
+
     private val _currentPageNumber = MutableStateFlow(1)
     val currentPageNumber: StateFlow<Int> = _currentPageNumber.asStateFlow()
 
@@ -152,6 +162,7 @@ class PageViewModel @Inject constructor(
 
     fun loadPage(pageNumber: Int) {
         if (pageNumber !in 1..604) return
+        tafsirReader.dismiss()
         loadJob?.cancel()
         prefetchJob?.cancel()
         _currentPageNumber.value = pageNumber

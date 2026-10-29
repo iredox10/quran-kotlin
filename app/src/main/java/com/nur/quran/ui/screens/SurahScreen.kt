@@ -1431,6 +1431,7 @@ fun SurahScreen(
                 is TafsirUiState.Visible -> {
                     TafsirBottomSheet(
                         verseNumber = tafsir.verseNumber,
+                        resourceId = tafsir.resourceId,
                         text = tafsir.text,
                         onDismiss = { viewModel.dismissTafsir() }
                     )
@@ -3543,7 +3544,8 @@ fun TafsirErrorOverlay(
 fun TafsirBottomSheet(
     verseNumber: String,
     text: String,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    resourceId: Int? = null,
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -3595,6 +3597,9 @@ fun TafsirBottomSheet(
                         modifier = Modifier.size(18.dp)
                     )
                 }
+            }
+            com.nur.quran.data.tafsir.SUPPORTED_TAFSIRS.firstOrNull { it.first == resourceId }?.second?.let { source ->
+                Text(source, fontSize = 13.sp, color = hInkMuted, fontFamily = fontFamilyUi)
             }
             Spacer(modifier = Modifier.height(16.dp))
             // Span-preserving trim: CharSequence.trim() would drop formatting spans.

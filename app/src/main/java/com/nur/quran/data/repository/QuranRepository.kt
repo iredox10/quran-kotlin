@@ -844,8 +844,12 @@ class QuranRepository @Inject constructor(
     }
 
     suspend fun setSingleBookmark(bookmark: BookmarkEntity) = withContext(Dispatchers.IO) {
-        quranDao.deleteAllBookmarks()
-        quranDao.insertBookmark(bookmark)
+        val prefs = context.getSharedPreferences("library_sync", android.content.Context.MODE_PRIVATE)
+        val removed = runCatching {
+            val map = gson.fromJson<Map<String, Long>>(prefs.getString("bookmark_removals:${rnApiClient.storedUserId()}", "{}"), object : TypeToken<Map<String, Long>>() {}.type)
+            map[bookmark.verseKey] ?: -1L
+        }.getOrDefault(-1L)
+        quranDao.upsertBookmarkByVerseKey(bookmark.copy(id = bookmark.verseKey.hashCode(),timestamp=maxOf(bookmark.timestamp,removed+1)))
     }
 
     suspend fun clearBookmarks() = withContext(Dispatchers.IO) {
@@ -853,6 +857,13 @@ class QuranRepository @Inject constructor(
     }
 
     suspend fun deleteBookmark(verseKey: String) = withContext(Dispatchers.IO) {
+        val prefs = context.getSharedPreferences("library_sync", android.content.Context.MODE_PRIVATE)
+        val key = "bookmark_removals:${rnApiClient.storedUserId()}"
+        val removals: MutableMap<String, Long> = runCatching {
+            gson.fromJson<MutableMap<String, Long>>(prefs.getString(key, "{}"), object : TypeToken<MutableMap<String, Long>>() {}.type)
+        }.getOrDefault(mutableMapOf())
+        removals[verseKey] = System.currentTimeMillis()
+        check(prefs.edit().putString(key, gson.toJson(removals)).commit())
         quranDao.deleteBookmark(verseKey)
     }
 
@@ -904,6 +915,7 @@ class QuranRepository @Inject constructor(
         verseKey: String? = null,
         pageNumber: Int? = null
     ) {
+        if (verseKey != null && verseKey.substringBefore(":").toIntOrNull() != chapterId) return
         withContext(Dispatchers.IO) {
             quranDao.upsertRecentlyRead(
                 RecentlyReadEntity(

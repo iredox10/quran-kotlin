@@ -1,5 +1,7 @@
 package com.nur.quran.ui.screens
 
+import kotlinx.coroutines.flow.collectLatest
+
 import android.content.Intent
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -965,14 +967,13 @@ fun SurahScreen(
                     }
 
                     // Track the verse in view → recently read with verseKey (web: VerseItem inView)
-                    LaunchedEffect(chapterId, verses.isNotEmpty()) {
+                    LaunchedEffect(chapterId, verses) {
                         if (verses.isEmpty()) return@LaunchedEffect
                         snapshotFlow { listState.layoutInfo.visibleItemsInfo }
-                            .collect { visibleItems ->
-                                val verseId = visibleItems
-                                    .firstOrNull { it.key is Int && it.offset >= -it.size / 2 }
-                                    ?.key as? Int ?: return@collect
-                                val verseKey = verses.find { it.id == verseId }?.verseKey ?: return@collect
+                            .collectLatest { visibleItems ->
+                                val verseKey = visibleItems.firstNotNullOfOrNull { item ->
+                                    if (item.offset + item.size > 0) readingVerseForItem(verses, item.key) else null
+                                } ?: return@collectLatest
                                 delay(600)
                                 viewModel.updateRecentlyReadVerse(verseKey)
                             }

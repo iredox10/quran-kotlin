@@ -219,7 +219,7 @@ class SyncService @Inject constructor(
                 else -> out[field] = mergeField(field, out[field], inc)
             }
         }
-        return out
+        return normalizeSyncLibrary(out)
     }
 
     // ------------------------------------------------------------------ push/pull ---
@@ -274,8 +274,9 @@ class SyncService @Inject constructor(
                 val saved = pending(userId)
                 val changes = if (saved != null) {
                     @Suppress("UNCHECKED_CAST")
-                    (saved["changes"] as? Map<String, Any?>) ?: error("Invalid pending sync")
-                } else syncDelta(acknowledged(userId),local)
+                    compactSyncPayload((saved["changes"] as? Map<String, Any?>) ?: error("Invalid pending sync"),
+                        (saved["snapshot"] as? Map<String, Any?>) ?: local)
+                } else syncDelta(compactSyncPayload(acknowledged(userId)),local)
                 if (changes.isEmpty()) return true
                 val mutationId = saved?.get("id")?.toString() ?: java.util.UUID.randomUUID().toString()
                 @Suppress("UNCHECKED_CAST")
@@ -352,7 +353,7 @@ class SyncService @Inject constructor(
         // Flat web keys (web getSyncableState) ride alongside the legacy blobs so
         // the web client reads everything Android knows. Absent data is omitted.
         return runSuspendCatching {
-            SyncContract.stripStateMetadata(base.toMutableMap().also { it.putAll(flatWebKeys()) })
+            normalizeSyncLibrary(compactSyncPayload(SyncContract.stripStateMetadata(base.toMutableMap().also { it.putAll(flatWebKeys()) })))
         }.getOrNull() ?: SyncContract.stripStateMetadata(base)
     }
 
@@ -402,6 +403,8 @@ class SyncService @Inject constructor(
         tours.all.mapNotNull { (key, value) ->
             if (key.startsWith("visit_")) key.removePrefix("visit_") to ((value as? Number)?.toInt() ?: 0) else null
         }.toMap().takeIf { it.isNotEmpty() }?.let { out["pageVisitCounts"] = it }
+        out["bookmarkRemovals"] = prefs("library_sync").getString("bookmark_removals:${currentUserId()}", null)?.let { parseJsonObject(it) } ?: emptyMap<String, Any?>()
+        out["bookmark"] = null
         // Library arrays (web shapes; timestamp is epoch ms like web createdAt).
         runSuspendCatching { daoBookmarks() }.getOrNull()?.let { rows ->
             out["bookmarks"] = rows.map {
@@ -465,7 +468,7 @@ class SyncService @Inject constructor(
                     }
                 }.getOrNull()?.let { days ->
                     timersByPlan[planId] = days.mapValues { (_, timer) ->
-                        mapOf("startedAt" to timer.startedAt, "totalSeconds" to timer.totalSeconds)
+                        mapOf("startedAt" to (timer.startedAt ?: 0L), "totalSeconds" to timer.totalSeconds)
                     }.mapKeys { (day, _) -> day.toString() }
                 }
                 runSuspendCatching {
@@ -658,7 +661,7 @@ class SyncService @Inject constructor(
                         RecentlyReadEntity(
                             chapterId = row.chapterId,
                             chapterName = row.chapterName,
-                            verseKey = row.verseKey,
+                            verseKey = row.verseKey?.takeIf { it.substringBefore(":").toIntOrNull() == row.chapterId },
                             timestamp = row.timestamp.takeIf { it > 0 }
                                 ?: System.currentTimeMillis(),
                         ),
@@ -741,9 +744,15 @@ class SyncService @Inject constructor(
      */
     private suspend fun applyLibraryData(state: Map<String, Any?>) {
         val d = dao ?: return
-        webBookmarkRows(state["bookmarks"])?.forEach { row ->
+        val normalized = normalizeSyncLibrary(state)
+        asMap(normalized["bookmarkRemovals"])?.let { removals ->
+            prefs("library_sync").edit().putString("bookmark_removals:${currentUserId()}", gson.toJson(removals)).apply()
+            val kept = webBookmarkRows(normalized["bookmarks"]).orEmpty().map { it.verseKey }.toSet()
+            removals.keys.filterNot { it in kept }.forEach { d.deleteBookmark(it) }
+        }
+        webBookmarkRows(normalized["bookmarks"])?.forEach { row ->
             runSuspendCatching {
-                d.insertBookmark(
+                d.upsertBookmarkByVerseKey(
                     BookmarkEntity(
                         // BookmarkEntity PK defaults to 1 (single-row); derive a stable id
                         // per verse so unioned bookmarks don't clobber each other.

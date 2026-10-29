@@ -13,7 +13,10 @@ internal fun syncDelta(before: Map<String, Any?>, after: Map<String, Any?>): Map
     fun difference(base: Any?, incoming: Any?, field: String): Any? {
         if (equal(base, incoming)) return unchanged
         if (base is List<*> && incoming is List<*>) {
-            fun id(row: Any?): String = keys[field]?.let { (row as? Map<*, *>)?.get(it)?.toString() } ?: gson.toJson(row)
+            fun id(row: Any?): Any? {
+                val value = keys[field]?.let { (row as? Map<*, *>)?.get(it) } ?: row
+                return if (value is Number) value.toDouble() else if (keys.containsKey(field)) value else gson.toJson(value)
+            }
             val previous = base.associateBy(::id)
             val changes = incoming.filter { !previous.containsKey(id(it)) || !equal(previous[id(it)], it) }
             return changes.takeIf { it.isNotEmpty() } ?: unchanged

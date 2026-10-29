@@ -298,7 +298,7 @@ fun mergeField(field: String, existing: Any?, value: Any?): Any? = when {
     field == "recentlyRead" -> mergeArray(existing, value, field)
     field == "collections" -> mergeCollections(existing, value)
     field == "planners" -> mergePlanners(existing, value)
-    field == "pageVisitCounts" -> mergePageVisitCounts(existing, value)
+    field in setOf("pageVisitCounts", "bookmarkRemovals") -> mergePageVisitCounts(existing, value)
     ARRAY_KEY.containsKey(field) -> mergeArray(existing, value, field)
     field in DEEP_MERGE_FIELDS -> mergeValue(
         existing.takeIf { isPlainObject(it) } ?: emptyMap<String, Any?>(),
@@ -337,7 +337,7 @@ fun mergeStateInto(base: Any?, incoming: Any?): Any? {
         }
         out["planner"] = byActive ?: byCurrent ?: current
     }
-    return out
+    return normalizeSyncLibrary(out)
 }
 
 /** JS clampCount: trunc, clamp to 0..10000, drop non-numeric values. */

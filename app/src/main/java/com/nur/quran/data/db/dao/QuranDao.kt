@@ -99,7 +99,7 @@ interface QuranDao {
     @Query("SELECT * FROM bookmarks ORDER BY timestamp DESC LIMIT 1")
     fun getAllBookmarks(): Flow<List<BookmarkEntity>>
 
-    @Query("SELECT verseKey FROM bookmarks ORDER BY timestamp DESC LIMIT 1")
+    @Query("SELECT verseKey FROM bookmarks ORDER BY timestamp DESC")
     fun getBookmarkedVerseKeys(): Flow<List<String>>
 
     @Query("SELECT * FROM bookmarks WHERE verseKey = :verseKey LIMIT 1")
@@ -107,6 +107,12 @@ interface QuranDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertBookmark(bookmark: BookmarkEntity)
+
+    @Transaction
+    suspend fun upsertBookmarkByVerseKey(bookmark: BookmarkEntity) {
+        deleteBookmark(bookmark.verseKey)
+        insertBookmark(bookmark)
+    }
 
     @Query("DELETE FROM bookmarks WHERE verseKey = :verseKey")
     suspend fun deleteBookmark(verseKey: String)

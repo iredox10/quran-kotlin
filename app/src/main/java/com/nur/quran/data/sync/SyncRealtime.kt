@@ -227,7 +227,7 @@ class SyncRealtime @Inject constructor(
     /** Observe actual local stores instead of waiting for the 60-second safety poll. */
     private fun localChanges() = merge(
         callbackFlow<Unit> {
-            val prefs = listOf("hifdh_settings","Settings","PlannerSettings","tour_prefs")
+            val prefs = listOf("hifdh_settings","Settings","PlannerSettings","tour_prefs","library_sync")
                 .map { context.getSharedPreferences(it,Context.MODE_PRIVATE) }
             val listener = SharedPreferences.OnSharedPreferenceChangeListener { _,_ -> trySend(Unit) }
             prefs.forEach { it.registerOnSharedPreferenceChangeListener(listener) }

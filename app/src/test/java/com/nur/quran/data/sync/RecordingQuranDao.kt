@@ -39,6 +39,8 @@ internal class RecordingQuranDao : InvocationHandler {
         val call = args?.dropLast(if (completion == null) 0 else 1)
         val result: Any? = when (method.name) {
             "insertBookmark" -> { bookmarks += call!![0] as BookmarkEntity; Unit }
+            "upsertBookmarkByVerseKey" -> { val row=call!![0] as BookmarkEntity;bookmarks.removeAll { it.verseKey==row.verseKey };bookmarks+=row;Unit }
+            "deleteBookmark" -> { bookmarks.removeAll { it.verseKey==call!![0] };Unit }
             "insertCollection" -> { collections += call!![0] as CollectionEntity; Unit }
             "insertCollectionItem" -> { items += call!![0] as CollectionItemEntity; Unit }
             "insertReadingSession" -> { sessions += call!![0] as ReadingSessionEntity; Unit }

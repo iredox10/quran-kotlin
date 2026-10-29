@@ -110,7 +110,7 @@ class PageViewModel @Inject constructor(
     ) {
         viewModelScope.launch {
             if (bookmarkedVerses.value.contains(verseKey)) {
-                repository.clearBookmarks()
+                repository.deleteBookmark(verseKey)
             } else {
                 repository.setSingleBookmark(
                     BookmarkEntity(

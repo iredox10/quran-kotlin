@@ -1,13 +1,16 @@
 package com.nur.quran.ui.viewmodels
 
 import android.content.Context
+import com.nur.quran.data.auth.GoogleSignIn
+import androidx.credentials.exceptions.GetCredentialCancellationException
+import androidx.credentials.exceptions.NoCredentialException
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.withContext
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.nur.quran.data.sync.AppwriteClient
 import com.nur.quran.data.sync.SyncService
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.lifecycle.HiltViewModel
-import io.appwrite.ID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,14 +24,15 @@ data class AuthState(
     val displayName: String? = null,
     val busy: Boolean = false,
     val error: String? = null,
-    val message: String? = null
+    val message: String? = null,
+    val googleAvailable: Boolean = false
 )
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
-    private val appwrite: AppwriteClient,
     private val rnApiClient: com.nur.quran.data.api.rn.RnApiClient,
     private val syncService: SyncService,
+    private val syncRealtime: com.nur.quran.data.sync.SyncRealtime,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -37,6 +41,46 @@ class AuthViewModel @Inject constructor(
 
     init {
         refresh()
+        loadGoogleAvailability()
+    }
+
+    private fun loadGoogleAvailability() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val enabled = try { rnApiClient.googleProviders().google.enabled }
+                catch (cancelled: CancellationException) { throw cancelled }
+                catch (_: Exception) { false }
+            _authState.value = _authState.value.copy(googleAvailable = enabled)
+        }
+    }
+
+    /** Runs on Main so Credential Manager receives the Activity's UI context. */
+    fun continueWithGoogle(activityContext: Context) {
+        if (_authState.value.busy) return
+        viewModelScope.launch {
+            _authState.value = _authState.value.copy(busy = true, error = null, message = null)
+            try {
+                val challenge = withContext(Dispatchers.IO) { rnApiClient.googleChallenge() }
+                val token = GoogleSignIn.idToken(activityContext, challenge.clientId, challenge.nonce)
+                val user = withContext(Dispatchers.IO) { rnApiClient.signInWithGoogle(token, challenge.nonce) }
+                    ?: error("Incomplete authentication response")
+                resetSyncWatermark()
+                _authState.value = AuthState(signedIn = true, email = user.email, displayName = user.name,
+                    googleAvailable = true)
+                restoreFromCloud()
+            } catch (_: GetCredentialCancellationException) {
+                _authState.value = _authState.value.copy(busy = false)
+            } catch (_: NoCredentialException) {
+                _authState.value = _authState.value.copy(busy = false,
+                    error = "Add a Google account on this device, then try again.")
+            } catch (cancelled: CancellationException) {
+                _authState.value = _authState.value.copy(busy = false)
+                throw cancelled
+            } catch (error: Exception) {
+                _authState.value = _authState.value.copy(busy = false,
+                    error = if (error is retrofit2.HttpException) authErrorMessage(error, "Google sign-in is unavailable. Please try again.")
+                        else "Google sign-in is unavailable. Please try again.")
+            }
+        }
     }
 
     fun isPasswordValid(pw: String) = pw.length >= 8
@@ -53,17 +97,8 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             _authState.value = _authState.value.copy(busy = true, error = null, message = null)
             runCatching {
-                // NOTE: createSession(userId, secret) is the token/OTP endpoint —
-                // email login must use createEmailPasswordSession (as the web app does).
-                if (rnApiClient.isEnabled) {
-                    val user = rnApiClient.login(email, password)
-                        ?: error("Login failed") // HttpException messages surface as-is otherwise
-                    Pair(user.email ?: email.trim(), user.name)
-                } else {
-                    appwrite.account.createEmailPasswordSession(email.trim(), password)
-                    val user = appwrite.account.get()
-                    Pair(user.email, user.name.takeIf { it.isNotBlank() })
-                }
+                val user = rnApiClient.login(email, password) ?: error("Login failed")
+                Pair(user.email ?: email.trim(), user.name)
             }.onSuccess { (mail, displayName) ->
                 resetSyncWatermark()
                 _authState.value = AuthState(
@@ -71,7 +106,8 @@ class AuthViewModel @Inject constructor(
                     email = mail,
                     displayName = displayName,
                     busy = false,
-                    error = null
+                    error = null,
+                    googleAvailable = _authState.value.googleAvailable
                 )
                 // Web CloudSync.jsx (login transition): reset watermark then pull
                 // immediately so a fresh device restores its cloud data right after
@@ -89,6 +125,7 @@ class AuthViewModel @Inject constructor(
      * [SyncService.pull] makes a stale/no-op pull harmless.
      */
     private fun restoreFromCloud() {
+        rnApiClient.storedUserId()?.let { syncRealtime.start(it) }
         viewModelScope.launch(Dispatchers.IO) {
             val ok = runCatching { syncService.pull() }.getOrDefault(false)
             android.util.Log.d("NurSync", "restoreFromCloud after login: pull ok=$ok")
@@ -107,18 +144,10 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             _authState.value = _authState.value.copy(busy = true, error = null, message = null)
             runCatching {
-                if (rnApiClient.isEnabled) {
-                    // POST /auth/register already establishes the session (tokens
-                    // moved in) — no second login round-trip on this backend.
-                    val user = rnApiClient.register(email.trim(), password, name.trim())
-                        ?: error("Registration failed")
-                    Pair(user.email ?: email.trim(), user.name)
-                } else {
-                    appwrite.account.create(ID.unique(), email.trim(), password, name.trim())
-                    appwrite.account.createEmailPasswordSession(email.trim(), password)
-                    val user = appwrite.account.get()
-                    Pair(user.email, user.name.takeIf { it.isNotBlank() })
-                }
+                // Registration establishes the session in one backend request.
+                val user = rnApiClient.register(email.trim(), password, name.trim())
+                    ?: error("Registration failed")
+                Pair(user.email ?: email.trim(), user.name)
             }.onSuccess { (mail, displayName) ->
                 resetSyncWatermark()
                 _authState.value = AuthState(
@@ -126,43 +155,31 @@ class AuthViewModel @Inject constructor(
                     email = mail,
                     displayName = displayName,
                     busy = false,
-                    error = null
+                    error = null,
+                    googleAvailable = _authState.value.googleAvailable
                 )
                 restoreFromCloud()
             }.onFailure { e ->
-                _authState.value = _authState.value.copy(busy = false, error = e.message ?: "Registration failed")
+                _authState.value = _authState.value.copy(busy = false, error = authErrorMessage(e, "Registration failed"))
             }
         }
     }
 
     fun sendRecovery(email: String) {
-        if (rnApiClient.isEnabled) {
-            // The Render backend has no recovery endpoint in the frozen contract;
-            // say so plainly instead of silently hitting the Appwrite project.
-            _authState.value = _authState.value.copy(
-                busy = false,
-                error = null,
-                message = "Password recovery is not available for this account backend yet"
-            )
-            return
-        }
         viewModelScope.launch(Dispatchers.IO) {
             _authState.value = _authState.value.copy(busy = true, error = null, message = null)
             runCatching {
-                appwrite.account.createRecovery(
-                    email.trim(),
-                    "https://quran-nur.appwrite.network/profile"
-                )
+                rnApiClient.requestRecovery(email)
             }.onSuccess {
                 _authState.value = _authState.value.copy(
                     busy = false,
                     error = null,
-                    message = "Recovery email sent — check your inbox"
+                    message = "If an account exists for this email, a password reset link will be sent."
                 )
             }.onFailure { e ->
                 _authState.value = _authState.value.copy(
                     busy = false,
-                    error = e.message ?: "Recovery failed"
+                    error = authErrorMessage(e, "Recovery failed")
                 )
             }
         }
@@ -176,14 +193,14 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             _authState.value = _authState.value.copy(busy = true, error = null, message = null)
             runCatching {
-                if (rnApiClient.isEnabled) {
-                    rnApiClient.clearSession()
-                } else {
-                    appwrite.account.deleteSession("current")
-                }
+                syncRealtime.stop()
+                rnApiClient.clearSession()
+                try { GoogleSignIn.clear(context) }
+                catch (cancelled: CancellationException) { throw cancelled }
+                catch (_: Exception) { /* Local tokens are already cleared. */ }
             }.onSuccess {
                 resetSyncWatermark()
-                _authState.value = AuthState(signedIn = false, email = null, busy = false, error = null)
+                _authState.value = AuthState(signedIn = false, email = null, busy = false, error = null, googleAvailable = _authState.value.googleAvailable)
             }.onFailure { e ->
                 _authState.value = _authState.value.copy(busy = false, error = e.message ?: "Logout failed")
             }
@@ -206,36 +223,31 @@ class AuthViewModel @Inject constructor(
 
     fun refresh() {
         viewModelScope.launch(Dispatchers.IO) {
-            if (rnApiClient.isEnabled) {
-                // Persisted RN session (tokens + userId) — no network round trip to
-                // know the app is signed in; a 401 on the next sync recovers itself
-                // via the refresh token.
-                if (rnApiClient.hasSession()) {
-                    _authState.value = AuthState(
-                        signedIn = true,
-                        email = rnApiClient.storedUserEmail(),
-                        displayName = null,
-                        busy = false,
-                        error = null
-                    )
-                } else {
-                    _authState.value = AuthState(signedIn = false, email = null, busy = false, error = null)
-                }
-                return@launch
-            }
-            runCatching {
-                appwrite.account.get()
-            }.onSuccess { user ->
-                _authState.value = AuthState(
-                    signedIn = true,
-                    email = user.email,
-                    displayName = user.name.takeIf { it.isNotBlank() },
-                    busy = false,
-                    error = null
-                )
-            }.onFailure {
-                _authState.value = AuthState(signedIn = false, email = null, busy = false, error = null)
-            }
+            _authState.value = AuthState(
+                signedIn = rnApiClient.hasSession(),
+                email = rnApiClient.storedUserEmail().takeIf { rnApiClient.hasSession() },
+                busy = false,
+                googleAvailable = _authState.value.googleAvailable
+            )
         }
     }
+}
+
+internal fun authErrorMessage(error: Throwable, fallback: String): String {
+    if (error is retrofit2.HttpException) {
+        val body = runCatching { com.google.gson.JsonParser.parseString(error.response()?.errorBody()?.string()).asJsonObject }.getOrNull()
+        return when (body?.get("error")?.asString) {
+            "google_not_configured" -> "Google sign-in is temporarily unavailable."
+            "invalid_google_token", "invalid_google_challenge" -> "Google sign-in expired. Please choose your account again."
+            "google_email_verification_required" -> "Google cannot confirm ownership of this email. Sign in with email or use Forgot password."
+            "google_account_conflict" -> "This email is linked to a different Google account. Use your original sign-in method."
+            "google_sign_in_busy" -> "Google sign-in is busy. Please try again shortly."
+            "account_requires_recovery" -> "This account already exists. Use Forgot password to verify your email and set your password."
+            "recovery_not_configured" -> "Password recovery is temporarily unavailable. Please try again later."
+            "email_exists" -> "An account already exists for this email. Sign in or use Forgot password."
+            "invalid_input" -> "Check your email and password and try again."
+            else -> error.message ?: fallback
+        }
+    }
+    return error.message ?: fallback
 }

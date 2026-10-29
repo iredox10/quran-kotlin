@@ -15,7 +15,7 @@ package com.nur.quran.data.sync
  * The document timestamp is the server's `$updatedAt`, and it is the sync watermark.
  *
  * Pure by design (no Appwrite/Android types, no I/O) so it is unit-testable on the JVM;
- * the transport glue lives in [AppwriteClient] and [SyncService].
+ * the transport glue lives in [com.nur.quran.data.api.rn.RnApiClient] and [SyncService].
  */
 object SyncContract {
     /** Lookup key: the only attribute documents are queried by. */

@@ -1,7 +1,7 @@
 package com.nur.quran.data.api.rn
 
 /**
- * Auth wire shapes of `https://quran-nur-api.onrender.com` (quran-backend
+ * Auth wire shapes of `https://qurannur-backend-d7d7312f118d.herokuapp.com` (quran-backend
  * Stream C contract — docs/contract-auth-sync.md):
  *
  *   POST /auth/register { email, password, name? }
@@ -36,3 +36,12 @@ data class RnAuthResponse(
     val accessToken: String? = null,
     val refreshToken: String? = null,
 )
+
+data class RnRecoveryRequest(val email: String)
+data class RnRecoveryResponse(val message: String?)
+
+/** Google tokens are sent only in HTTPS request bodies, never URLs or logs. */
+data class RnGoogleRequest(val idToken: String, val nonce: String)
+data class RnGoogleChallenge(val clientId: String, val nonce: String, val expiresAt: Long)
+data class RnGoogleProvider(val enabled: Boolean = false)
+data class RnAuthProviders(val google: RnGoogleProvider = RnGoogleProvider())

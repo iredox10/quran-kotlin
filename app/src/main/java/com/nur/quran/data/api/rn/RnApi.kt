@@ -6,8 +6,12 @@ import com.nur.quran.data.api.ApiVerse
 import com.nur.quran.data.api.ChaptersResponse
 import com.nur.quran.data.api.TajweedResponse
 import com.nur.quran.data.api.VersesResponse
+import com.google.gson.JsonObject
+import com.google.gson.Gson
+import com.nur.quran.data.api.TafsirResponse
 import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
@@ -34,15 +38,34 @@ interface RnApi {
     suspend fun getVerses(
         @Path("chapterId") chapterId: Int,
         @Query("translation") translation: Int = RnBackend.TRANSLATION_ID,
-        /** Query dropped entirely when null (words add back at the caller's gate). */
+        /** Explicit 0 opts out: the backend defaults to words=1. */
         @Query("words") words: Int? = 1,
         /** Optional per contract; omitted from the query when null. */
         @Query("tajweed") tajweed: Int? = null,
+        @Query("page") page: Int = 1,
+        @Query("per_page") perPage: Int = 300,
+        @Query("mushaf") mushaf: Int = 5,
     ): VersesResponse
 
     /** Server-side copy of the bundled `assets/data/words/{ch}.json` pack. */
     @GET("v1/packs/words/{chapterId}.json")
-    suspend fun getWordsPack(@Path("chapterId") chapterId: Int): VersesResponse
+    suspend fun getWordsPack(@Path("chapterId") chapterId: Int): JsonObject
+
+    @GET("v1/tafsir/{tafsirId}/by_chapter/{chapterId}")
+    suspend fun getTafsirByChapter(@Path("tafsirId") tafsirId: Int, @Path("chapterId") chapterId: Int): TafsirResponse
+
+    @GET("v1/pages/{page}")
+    suspend fun getPage(@Path("page") page: Int, @Query("translation") translation: Int = 20, @Query("mushaf") mushaf: Int = 5): VersesResponse
+
+    @GET("v1/footnotes/{id}")
+    suspend fun getFootnote(@Path("id") id: String): com.nur.quran.data.api.FootnoteResponse
+
+    @GET("v1/reciters")
+    suspend fun getReciters(): RnRecitersResponse
+
+    /** Completion is persisted by the backend, which verifies the assignment owner. */
+    @POST("v1/sauka/assignments/{id}/complete")
+    suspend fun completeSaukaAssignment(@Path("id") assignmentId: String): JsonObject
 
     // ── sync (Bearer; document fields 1:1 from SyncContract.kt) ──────────────
 
@@ -61,7 +84,27 @@ interface RnApi {
  * happily leaves them runtime-null), so every content read funnels through
  * [normalizeVersesResponse] before use.
  */
+data class RnRecitersResponse(val reciters: List<RnReciter> = emptyList())
+data class RnReciter(val id: String?, val name: String?, val style: String?, val audio_path: String?)
+
 object RnContent {
+    /** Packs preserve bundle strings; the regular verses API uses {text} objects. */
+    fun parseWordsPack(raw: JsonObject): VersesResponse {
+        val normalized = raw.deepCopy()
+        normalized.get("verses")?.takeIf { it.isJsonArray }?.asJsonArray?.forEach { verse ->
+            verse.asJsonObject.get("words")?.takeIf { it.isJsonArray }?.asJsonArray?.forEach { word ->
+                val row = word.asJsonObject
+                for (key in listOf("translation", "transliteration")) {
+                    val value = row.get(key)
+                    if (value != null && value.isJsonPrimitive) {
+                        row.add(key, JsonObject().apply { add("text", value) })
+                    }
+                }
+            }
+        }
+        return normalizeVersesResponse(Gson().fromJson(normalized, VersesResponse::class.java))
+    }
+
     fun normalizeVersesResponse(raw: VersesResponse): VersesResponse {
         if (raw.verses != null && raw.pagination != null) return raw
         val pagination = raw.pagination

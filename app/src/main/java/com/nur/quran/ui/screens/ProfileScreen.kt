@@ -256,6 +256,8 @@ fun ProfileScreen(
             // 8. Cloud Sync
             item {
                 ProfileCloudSyncCard(
+                    googleAvailable = authState.googleAvailable,
+                    onContinueWithGoogle = { authVm.continueWithGoogle(context) },
                     signedIn = authState.signedIn,
                     busy = authState.busy,
                     error = authState.error,

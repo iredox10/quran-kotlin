@@ -47,6 +47,7 @@ data class RnSyncDoc(
     val stateData: String?,
     /** Server stamp epoch ms; 0 when the response carried nothing parseable. */
     val updatedAtMs: Long,
+    val legacyFields: Map<String, Any?> = emptyMap(),
 )
 
 /**
@@ -73,7 +74,11 @@ object RnSyncEnvelope {
         if (stateData == null && !TIMESTAMP_FIELDS.any { doc.containsKey(it) }) return null
         val userId = doc[FIELD_USER_ID]?.toString() ?: map[FIELD_USER_ID]?.toString()
         val timestamp = TIMESTAMP_FIELDS.firstNotNullOfOrNull { doc[it] ?: map[it] }
-        return RnSyncDoc(userId, stateData, RnTime.parse(timestamp))
+        val watermark = RnTime.parse(timestamp)
+        val metadata = setOf("id", "userId", "stateData", "state", "updatedAt", "createdAt", "lastSyncAt")
+        val legacy = doc.filterKeys { it !in metadata && !it.startsWith("$") && !it.startsWith("_") }
+        if (stateData == null && watermark == 0L && legacy.isEmpty()) return null
+        return RnSyncDoc(userId, stateData, watermark, legacy)
     }
 
     /** Top-level state wins; else the first nested wrapper carrying stateData/timestamps. */

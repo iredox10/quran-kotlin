@@ -2,7 +2,6 @@ package com.nur.quran.data.tafsir
 
 import android.content.Context
 import com.google.gson.Gson
-import com.nur.quran.data.api.QuranApi
 import com.nur.quran.data.db.dao.QuranDao
 import com.nur.quran.data.db.entities.ApiResponseCacheEntity
 import com.nur.quran.data.words.WordPackManager
@@ -52,7 +51,7 @@ data class TafsirPackStatus(
 class TafsirPackManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val quranDao: QuranDao,
-    private val quranApi: QuranApi,
+    private val rnApiClient: com.nur.quran.data.api.rn.RnApiClient,
     private val gson: Gson,
     private val wordPackManager: WordPackManager
 ) {
@@ -102,7 +101,8 @@ class TafsirPackManager @Inject constructor(
                 val key = cacheKey(tafsirId, c)
                 try {
                     if (quranDao.getCacheEntry(key) == null) {
-                        val response = quranApi.getTafsirByChapter(tafsirId, c)
+                        val response = rnApiClient.getTafsirByChapter(tafsirId, c)
+                        check(response.tafsirs.isNotEmpty()) { "Tafsir $tafsirId is unavailable for chapter $c" }
                         quranDao.insertCacheEntry(ApiResponseCacheEntity(key, gson.toJson(response)))
                     }
                 } catch (e: CancellationException) {

@@ -21,12 +21,8 @@ import retrofit2.converter.gson.GsonConverterFactory
 import javax.inject.Singleton
 
 /**
- * Hilt wiring for the Render.com backend (quran-nur-api). The Rn graph is
- * built even when the migration flag is OFF: RnBackend.isRenderApiEnabled
- * decides at runtime which transport the consumers use, and the Rn
- * singletons wait unused. The /auth surface is deliberately registered
- * WITHOUT the bearer interceptor and WITHOUT the 401 authenticator — a
- * failed refresh must 401 out, never recurse.
+ * Heroku transport wiring. Authentication uses the plain client so a rejected
+ * refresh cannot recurse through the authenticated content/sync client.
  */
 @Module
 @InstallIn(SingletonComponent::class)
@@ -38,8 +34,8 @@ object RnModule {
 
     @Provides
     @Singleton
-    fun provideRnTokenStore(@ApplicationContext context: Context): RnTokenStore =
-        RnPrefsTokenStore(context)
+    fun provideRnTokenStore(@ApplicationContext context: Context, backend: RnBackend): RnTokenStore =
+        RnPrefsTokenStore(context, backend)
 
     /** Auth surface (register/login/refresh) — plain client, no auth headers, no 401 authenticator. */
     @Provides

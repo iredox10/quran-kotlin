@@ -42,8 +42,11 @@ private const val KEY_USER_EMAIL = "user_email"
 /** SharedPreferences implementation consumed by Hilt (see di/RnModule). */
 class RnPrefsTokenStore @Inject constructor(
     @ApplicationContext context: Context,
+    backend: RnBackend,
 ) : RnTokenStore {
-    private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    private val originKey = java.security.MessageDigest.getInstance("SHA-256")
+        .digest(backend.baseUrl.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
+    private val prefs = context.getSharedPreferences("${PREFS_NAME}_$originKey", Context.MODE_PRIVATE)
 
     private fun get(key: String): String? =
         prefs.getString(key, null)?.takeIf { it.isNotBlank() }

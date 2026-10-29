@@ -1,5 +1,10 @@
 package com.nur.quran.data.audio
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import com.nur.quran.data.api.rn.RnRecitersResponse
+
 /**
  * Canonical list of reciters (GreenTech-style).
  *
@@ -29,7 +34,7 @@ object Reciters {
     const val STYLE_MUJAWWAD = "Mujawwad"
     const val STYLE_MUALLIM = "Muallim"
 
-    val ALL: List<Reciter> = listOf(
+    private val bundled: List<Reciter> = listOf(
         Reciter(7, "Mishari Rashid al-Afasy", STYLE_MURATTAL, "Alafasy/mp3"),
         Reciter(1, "AbdulBaset AbdulSamad", STYLE_MURATTAL, "AbdulBaset/Murattal/mp3"),
         Reciter(2, "Abdur-Rahman as-Sudais", STYLE_MURATTAL, "Sudais/mp3"),
@@ -50,6 +55,21 @@ object Reciters {
         Reciter(19, "Maher Al Muaiqly (Haramain)", STYLE_MURATTAL, "everyayah/Maher_AlMuaiqly_64kbps"),
         Reciter(20, "Yasser Ad-Dussary", STYLE_MURATTAL, "everyayah/Yasser_Ad-Dussary_128kbps")
     )
+
+    var ALL: List<Reciter> by mutableStateOf(bundled)
+        private set
+
+    fun applyManifest(response: RnRecitersResponse) {
+        val remote = response.reciters.mapNotNull { row ->
+            // Android stores numeric ids in preferences and audio folder names.
+            val id = row.id?.toIntOrNull()?.takeIf { it > 0 } ?: return@mapNotNull null
+            val name = row.name?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            val local = bundled.find { it.id == id }
+            Reciter(id, name, row.style ?: local?.style ?: STYLE_MURATTAL,
+                row.audio_path?.takeIf { it.isNotBlank() } ?: local?.audioPath)
+        }
+        if (remote.isNotEmpty()) ALL = (remote + bundled).distinctBy { it.id }
+    }
 
     /** Web parity: buildReciterUrl — deterministic per-ayah mp3 URL without API. */
     fun buildAudioUrl(reciterId: Int, verseKey: String): String? {

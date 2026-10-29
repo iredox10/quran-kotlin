@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit
  * Periodic auto-sync worker (no hilt-work — plain [CoroutineWorker]).
  *
  * Resolves [SyncService] via a Hilt [EntryPoint] instead of manual
- * construction: the SyncService dependency graph (Appwrite client, snapshot
+ * construction: the SyncService dependency graph (Heroku client, snapshot
  * builder, Room DAO, …) is owned by the DI graph and the build fixer aligns
  * it, so the worker must not duplicate that construction. EntryPoint access
  * needs only the application context and compiles against the assumed API

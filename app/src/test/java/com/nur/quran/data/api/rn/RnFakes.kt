@@ -1,11 +1,6 @@
 package com.nur.quran.data.api.rn
 
-/**
- * Shared JVM fakes for the Rn API layer (constructor-injected; no new deps).
- * `unusedRnApiClient()` yields a facade whose flag is pinned OFF, so legacy
- * tests (the sync rig) can construct [com.nur.quran.data.sync.SyncService]
- * without touching the Render transport.
- */
+/** JVM fakes for the shared backend; no network is used unless overridden. */
 internal class FakeRnTokenStore : RnTokenStore {
     var access: String? = null
     var refresh: String? = null
@@ -47,10 +42,28 @@ internal open class FakeRnApi : RnApi {
         translation: Int,
         words: Int?,
         tajweed: Int?,
+        page: Int,
+        perPage: Int,
+        mushaf: Int,
     ): com.nur.quran.data.api.VersesResponse =
         throw UnsupportedOperationException("not under test")
 
-    override suspend fun getWordsPack(chapterId: Int): com.nur.quran.data.api.VersesResponse =
+    override suspend fun getWordsPack(chapterId: Int): com.google.gson.JsonObject =
+        throw UnsupportedOperationException("not under test")
+
+    override suspend fun getTafsirByChapter(tafsirId: Int, chapterId: Int): com.nur.quran.data.api.TafsirResponse =
+        throw UnsupportedOperationException("not under test")
+
+    override suspend fun getPage(page: Int, translation: Int, mushaf: Int): com.nur.quran.data.api.VersesResponse =
+        throw UnsupportedOperationException("not under test")
+
+    override suspend fun getFootnote(id: String): com.nur.quran.data.api.FootnoteResponse =
+        throw UnsupportedOperationException("not under test")
+
+    override suspend fun getReciters(): RnRecitersResponse =
+        throw UnsupportedOperationException("not under test")
+
+    override suspend fun completeSaukaAssignment(assignmentId: String): com.google.gson.JsonObject =
         throw UnsupportedOperationException("not under test")
 
     override suspend fun getSync(): Map<String, Any?> =
@@ -61,10 +74,19 @@ internal open class FakeRnApi : RnApi {
 }
 
 internal open class FakeRnAuthApi : RnAuthApi {
+    override suspend fun providers(): RnAuthProviders = RnAuthProviders()
+    override suspend fun googleChallenge(): RnGoogleChallenge =
+        throw UnsupportedOperationException("not under test")
+    override suspend fun google(body: RnGoogleRequest): RnAuthResponse =
+        throw UnsupportedOperationException("not under test")
+
     override suspend fun register(body: RnRegisterRequest): RnAuthResponse =
         throw UnsupportedOperationException("not under test")
 
     override suspend fun login(body: RnLoginRequest): RnAuthResponse =
+        throw UnsupportedOperationException("not under test")
+
+    override suspend fun requestRecovery(body: RnRecoveryRequest): RnRecoveryResponse =
         throw UnsupportedOperationException("not under test")
 
     override suspend fun refresh(body: RnRefreshRequest): RnAuthResponse =
@@ -74,12 +96,11 @@ internal open class FakeRnAuthApi : RnAuthApi {
 internal fun unusedAuthClient(store: RnTokenStore = FakeRnTokenStore()): RnAuthClient =
     RnAuthClient(FakeRnAuthApi(), store)
 
-/** Fully disabled Rn facade for legacy (Appwrite-path) test rigs. */
-internal fun disabledRnApiClient(
+/** Signed-out backend facade for pure merge/apply test rigs. */
+internal fun signedOutRnApiClient(
     store: RnTokenStore = FakeRnTokenStore(),
 ): RnApiClient = RnApiClient(
     backend = RnBackend().apply {
-        injectedEnabled = false
         injectedBaseUrl = "https://rn.test/"
     },
     api = FakeRnApi(),

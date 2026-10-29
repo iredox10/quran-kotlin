@@ -1,3 +1,5 @@
+import java.net.URI
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -21,13 +23,16 @@ android {
             useSupportLibrary = true
         }
 
-        // Render.com backend (quran-nur-api) migration — build-time switch.
-        // IS_RENDER_API_ENABLED=false is the shipping default: Appwrite auth/sync/realtime
-        // and api.quran.com content stay in charge until the flag flips (per build, no
-        // runtime toggle exists in the app). ON routes auth/sync/realtime through
-        // ${QURAN_NUR_API_BASE_URL} and content pulls through the same host.
-        buildConfigField("String", "QURAN_NUR_API_BASE_URL", "\"https://quran-nur-api.onrender.com\"")
-        buildConfigField("boolean", "IS_RENDER_API_ENABLED", "false")
+        // All builds use the shared Heroku backend. Override only the HTTPS API origin.
+        val renderApiBaseUrl = providers.gradleProperty("quranNur.apiBaseUrl")
+            .orElse("https://qurannur-backend-d7d7312f118d.herokuapp.com").get()
+        val renderUri = URI(renderApiBaseUrl)
+        require(renderUri.scheme == "https" && !renderUri.host.isNullOrBlank() &&
+            renderUri.userInfo == null && renderUri.rawQuery == null && renderUri.rawFragment == null) {
+            "quranNur.apiBaseUrl must be an HTTPS URL without credentials, query, or fragment"
+        }
+        buildConfigField("String", "QURAN_NUR_API_BASE_URL", "\"$renderApiBaseUrl\"")
+
     }
 
     // Release signing credentials live OUTSIDE the repo:
@@ -111,6 +116,7 @@ dependencies {
     // Network
     implementation(libs.retrofit)
     implementation(libs.retrofit.converter.gson)
+    implementation(libs.gson)
     implementation(libs.okhttp.logging)
 
     // Hilt
@@ -134,8 +140,10 @@ dependencies {
     // WorkManager (background audio downloads)
     implementation(libs.androidx.work.runtime)
 
-    // Appwrite
-    implementation(libs.appwrite.android)
+    // Google Credential Manager (compatible with this project's compileSdk 34).
+    implementation("androidx.credentials:credentials:1.3.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

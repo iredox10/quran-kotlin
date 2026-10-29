@@ -1,6 +1,7 @@
 package com.nur.quran.data.api.rn
 
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.async
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -159,4 +160,85 @@ class RnAuthFlowTest {
         assertFalse(store.hasSession())
         assertNull(store.userId)
     }
+
+    @Test
+    fun `concurrent rejected requests reuse a single refreshed token`() = runBlocking {
+        val api = RecordingRnAuthApi()
+        val store = FakeRnTokenStore()
+        val client = RnAuthClient(api, store)
+        client.login("u@test.io", "pw-12345678")
+        val results = kotlinx.coroutines.coroutineScope {
+            (1..8).map {
+                async {
+                    client.refreshAccessToken("acc-reg")
+                }
+            }.map { it.await() }
+        }
+        assertEquals(1, api.refreshes)
+        assertTrue(results.all { it == "acc-rotated" })
+    }
+
+    @Test
+    fun `incomplete login does not overwrite a saved session`() = runBlocking {
+        val api = RecordingRnAuthApi()
+        val store = FakeRnTokenStore()
+        val client = RnAuthClient(api, store)
+        client.login("u@test.io", "pw-12345678")
+        api.loginResponse = RnAuthResponse(user = RnAuthUser("bad", "bad@test.io"), accessToken = "partial")
+        try {
+            client.login("bad@test.io", "pw-12345678")
+            org.junit.Assert.fail("Expected invalid auth response")
+        } catch (_: IllegalArgumentException) { }
+        assertEquals("u-reg", store.userId)
+        assertEquals("acc-reg", store.accessToken)
+        assertEquals("ref-reg", store.refreshToken)
+    }
+    @Test
+    fun `refresh completing after logout cannot resurrect the session`() = runBlocking {
+        val entered = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val finish = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val store = FakeRnTokenStore().apply {
+            userId = "u1"; accessToken = "old"; refreshToken = "refresh"
+        }
+        val api = object : FakeRnAuthApi() {
+            override suspend fun refresh(body: RnRefreshRequest): RnAuthResponse {
+                entered.complete(Unit)
+                finish.await()
+                return RnAuthResponse(RnAuthUser("u1", "u1@test.io"), "new", "rotated")
+            }
+        }
+        val client = RnAuthClient(api, store)
+        val pending = async { client.refreshAccessToken() }
+        entered.await()
+        client.clearSession()
+        finish.complete(Unit)
+        assertNull(pending.await())
+        assertFalse(store.hasSession())
+        assertNull(store.accessToken)
+    }
+
+    @Test
+    fun `old rejected refresh cannot clear a newer account session`() = runBlocking {
+        val entered = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val finish = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val store = FakeRnTokenStore().apply {
+            userId = "old"; accessToken = "old-access"; refreshToken = "old-refresh"
+        }
+        val api = object : FakeRnAuthApi() {
+            override suspend fun refresh(body: RnRefreshRequest): RnAuthResponse {
+                entered.complete(Unit); finish.await(); throw httpError(401)
+            }
+            override suspend fun login(body: RnLoginRequest) =
+                RnAuthResponse(RnAuthUser("new", "new@test.io"), "new-access", "new-refresh")
+        }
+        val client = RnAuthClient(api, store)
+        val pending = async { client.refreshAccessToken() }
+        entered.await()
+        client.login("new@test.io", "password")
+        finish.complete(Unit)
+        assertNull(pending.await())
+        assertEquals("new", store.userId)
+        assertEquals("new-access", store.accessToken)
+    }
+
 }

@@ -519,7 +519,7 @@ fun ReciterPickerDropdown(
     modifier: Modifier = Modifier
 ) {
     val menuBg = if (isDarkThemeGlobal) hSurface else Color(0xFFFCFAF6)
-    val grouped = remember {
+    val grouped = remember(Reciters.ALL) {
         runCatching { Reciters.groupedByStyle() }.getOrDefault(emptyMap())
     }
     val styleOrder = remember {
@@ -676,7 +676,7 @@ fun ReciterPickerModalSheet(
     modifier: Modifier = Modifier
 ) {
     var query by remember { mutableStateOf("") }
-    val filtered = remember(query) {
+    val filtered = remember(query, Reciters.ALL) {
         val q = query.trim().lowercase()
         if (q.isEmpty()) Reciters.ALL
         else runCatching { Reciters.ALL.filter { it.name.lowercase().contains(q) } }.getOrDefault(Reciters.ALL)

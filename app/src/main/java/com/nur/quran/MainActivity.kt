@@ -108,6 +108,8 @@ class MainActivity : ComponentActivity() {
             // flushReadingSession() resets start=now, so resume continues cleanly
             // (timer restarts naturally, no double-count on return).
             runCatching { surahViewModel.flushReadingSession() }
+            // Persist pending edits when leaving the app; retry once connectivity returns.
+            com.nur.quran.data.sync.SyncWorker.enqueueOnce(this@MainActivity)
             // Drop the realtime sync subscription; it re-opens on foreground.
             runCatching { packViewModel.stopRealtimeSync() }
         }

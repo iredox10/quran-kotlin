@@ -16,25 +16,23 @@ internal class SyncRig(
         kotlinx.coroutines.runBlocking { service.applyRemoteState(state) }
 }
 
-internal fun syncRig(seedPrefs: Map<String, Any?> = emptyMap()): SyncRig {
+internal fun syncRig(
+    seedPrefs: Map<String, Any?> = emptyMap(),
+    rnClient: com.nur.quran.data.api.rn.RnApiClient = com.nur.quran.data.api.rn.signedOutRnApiClient(),
+): SyncRig {
     val prefs = FakePrefs().apply { values.putAll(seedPrefs) }
     val context = FakePrefsContext(prefs)
-    // Android-only collaborators the sync engine never touches on these paths:
-    // `Context` only serves prefs (faked above) and `AppwriteClient` is unused by
-    // merge/apply. The Rn facade is pinned OFF so the legacy Appwrite transport
-    // is exercised even if the shipped BuildConfig flag flips.
-    val appwriteClient = allocateUnchecked(AppwriteClient::class.java)
     val recording = RecordingQuranDao()
     val builder = SnapshotBuilder(Gson(), context, recording.dao)
     return SyncRig(
         prefs,
         recording,
-        SyncService(appwriteClient, com.nur.quran.data.api.rn.disabledRnApiClient(), builder, recording.dao, context),
+        SyncService(rnClient, builder, recording.dao, context),
         builder,
     )
 }
 
-/** Allocates an Android/Appwrite instance without running its constructor. */
+/** Allocates an Android instance without running its constructor. */
 internal fun <T> allocateUnchecked(clazz: Class<T>): T {
     val unsafe = Class.forName("sun.misc.Unsafe")
     val field = unsafe.getDeclaredField("theUnsafe").apply { isAccessible = true }

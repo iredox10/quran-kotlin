@@ -2,7 +2,6 @@ package com.nur.quran.ui.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.nur.quran.data.sync.AppwriteClient
 import com.nur.quran.data.sync.SyncService
 import com.nur.quran.data.tafsir.TafsirPackManager
 import com.nur.quran.data.translation.TranslationPackManager
@@ -38,24 +37,15 @@ class PackViewModel @Inject constructor(
     private val translationPackManager: TranslationPackManager,
     private val wordPackManager: WordPackManager,
     private val syncService: SyncService,
-    private val appwriteClient: AppwriteClient,
     private val rnApiClient: com.nur.quran.data.api.rn.RnApiClient,
     private val syncRealtime: com.nur.quran.data.sync.SyncRealtime
 ) : ViewModel() {
 
-    /** Signed-in user identity — Appwrite session when legacy, persisted RN session when flagged. */
-    private suspend fun currentSignedInEmail(): String? {
-        if (rnApiClient.isEnabled) {
-            return rnApiClient.storedUserEmail().takeIf { rnApiClient.hasSession() }
-        }
-        return runCatching { appwriteClient.account.get() }.getOrNull()?.email
-    }
+    /** Identity belongs to the same Heroku session used by cloud sync. */
+    private fun currentSignedInEmail(): String? =
+        rnApiClient.storedUserEmail().takeIf { rnApiClient.hasSession() }
 
-    /** The realtime subscription's owner id (same transport split as [currentSignedInEmail]). */
-    private suspend fun currentSignedInUserId(): String? {
-        if (rnApiClient.isEnabled) return rnApiClient.storedUserId()
-        return runCatching { appwriteClient.account.get() }.getOrNull()?.id
-    }
+    private fun currentSignedInUserId(): String? = rnApiClient.storedUserId()
 
     /** Tafsir packs mapped for Settings UI rows (mirrors the former SurahViewModel bridge). */
     val tafsirPacks: StateFlow<List<PackUiState>> =

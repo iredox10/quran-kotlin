@@ -87,7 +87,8 @@ class SurahViewModel @Inject constructor(
     private val timingImporter: TimingImporter,
     private val tafsirPackManager: TafsirPackManager,
     private val wordPackManager: WordPackManager,
-    private val syncService: com.nur.quran.data.sync.SyncService
+    private val syncService: com.nur.quran.data.sync.SyncService,
+    private val backend: com.nur.quran.data.api.rn.RnApiClient
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<SurahUiState>(SurahUiState.Loading)
@@ -2129,11 +2130,21 @@ class SurahViewModel @Inject constructor(
     }
 
     fun completeSaukaJuz(assignmentId: String, backToSauka: String, onDone: () -> Unit) {
+        if (_isSaukaCompleting.value) return
         viewModelScope.launch {
             _isSaukaCompleting.value = true
-            delay(1000)
-            _isSaukaCompleting.value = false
-            onDone()
+            try {
+                withContext(Dispatchers.IO) { backend.completeSaukaAssignment(assignmentId) }
+                onDone()
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                android.widget.Toast.makeText(context,
+                    "Could not submit progress. Check your connection and group assignment, then try again.",
+                    android.widget.Toast.LENGTH_LONG).show()
+            } finally {
+                _isSaukaCompleting.value = false
+            }
         }
     }
 

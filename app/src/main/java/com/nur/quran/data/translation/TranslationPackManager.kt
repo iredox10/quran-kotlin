@@ -2,8 +2,6 @@ package com.nur.quran.data.translation
 
 import android.content.Context
 import com.google.gson.Gson
-import com.nur.quran.data.api.ApiVerse
-import com.nur.quran.data.api.QuranApi
 import com.nur.quran.data.db.dao.QuranDao
 import com.nur.quran.data.db.entities.TranslationTextEntity
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -44,7 +42,7 @@ data class TranslationPackStatus(
  */
 @Singleton
 class TranslationPackManager @Inject constructor(
-    private val quranApi: QuranApi,
+    private val rnApiClient: com.nur.quran.data.api.rn.RnApiClient,
     private val quranDao: QuranDao,
     gson: Gson,
     @ApplicationContext private val context: Context
@@ -110,28 +108,10 @@ class TranslationPackManager @Inject constructor(
             for (c in 1..TOTAL) {
                 currentCoroutineContext().ensureActive()
                 try {
-                    val verses = mutableListOf<ApiVerse>()
-                    var page = 1
-                    var pagesFetched = 0
-                    while (true) {
-                        currentCoroutineContext().ensureActive()
-                        val response = quranApi.getVersesByChapter(
-                            chapterId = c,
-                            translations = translationId.toString(),
-                            words = false,
-                            page = page,
-                            perPage = PER_PAGE
-                        )
-                        verses += response.verses
-                        pagesFetched++
-                        val next = response.pagination.next_page
-                        if (next == null || pagesFetched >= MAX_PAGES) break
-                        page = next
-                    }
+                    val verses = rnApiClient.getVerses(c, words = false, translation = translationId).verses
                     val rows = verses.mapNotNull { apiVerse ->
                         val text = apiVerse.translations
                             ?.firstOrNull { it.resource_id == translationId }?.text
-                            ?: apiVerse.translations?.firstOrNull()?.text
                         if (text.isNullOrBlank()) null
                         else TranslationTextEntity(
                             translationId = translationId,
@@ -139,7 +119,8 @@ class TranslationPackManager @Inject constructor(
                             text = text
                         )
                     }
-                    if (rows.isNotEmpty()) quranDao.upsertTranslationTexts(rows)
+                    check(rows.isNotEmpty() && rows.size == verses.size) { "Translation $translationId is incomplete for chapter $c" }
+                    quranDao.upsertTranslationTexts(rows)
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {

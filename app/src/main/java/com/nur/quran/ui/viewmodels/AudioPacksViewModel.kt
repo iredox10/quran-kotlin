@@ -110,6 +110,9 @@ class AudioPacksViewModel @Inject constructor(
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
+            androidx.compose.runtime.snapshotFlow { Reciters.ALL }.collect { refreshInternal() }
+        }
+        viewModelScope.launch(Dispatchers.IO) {
             runCatching {
                 repository.getChaptersFlow().collect { chapters ->
                     versesCountByChapter =

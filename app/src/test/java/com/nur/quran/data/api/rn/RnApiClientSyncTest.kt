@@ -39,7 +39,7 @@ class RnApiClientSyncTest {
     @Test
     fun `putSyncDoc keeps the contract payload byte-identical`() = kotlinx.coroutines.runBlocking {
         val api = KnobRnApi()
-        val client = RnApiClient(RnBackend().apply { injectedEnabled = false }, api, unusedAuthClient(), FakeRnTokenStore())
+        val client = RnApiClient(RnBackend(), api, unusedAuthClient(), FakeRnTokenStore())
         val payload = SyncContract.buildPushPayload("u1", """{"theme":"dark"}""")
 
         client.putSyncDoc(payload)
@@ -52,7 +52,7 @@ class RnApiClientSyncTest {
     @Test
     fun `putSyncDoc maps lastSyncAt (epoch ms number string) to the watermark`() = kotlinx.coroutines.runBlocking {
         val api = KnobRnApi().apply { putResponse = RnSyncPutResponse(lastSyncAt = "1769000000000") }
-        val client = RnApiClient(RnBackend().apply { injectedEnabled = false }, api, unusedAuthClient(), FakeRnTokenStore())
+        val client = RnApiClient(RnBackend(), api, unusedAuthClient(), FakeRnTokenStore())
 
         assertEquals(1769000000000L, client.putSyncDoc(mapOf("userId" to "u", "stateData" to "{}")))
     }
@@ -62,7 +62,7 @@ class RnApiClientSyncTest {
         val api = KnobRnApi().apply {
             putResponse = RnSyncPutResponse(updatedAt = "2026-01-20T12:00:00.000Z")
         }
-        val client = RnApiClient(RnBackend().apply { injectedEnabled = false }, api, unusedAuthClient(), FakeRnTokenStore())
+        val client = RnApiClient(RnBackend(), api, unusedAuthClient(), FakeRnTokenStore())
         assertEquals(
             java.time.Instant.parse("2026-01-20T12:00:00.000Z").toEpochMilli(),
             client.putSyncDoc(mapOf()),
@@ -80,7 +80,7 @@ class RnApiClientSyncTest {
                     """"updatedAt":"2023-11-14T22:13:20.000Z"}""",
             )
         }
-        val client = RnApiClient(RnBackend().apply { injectedEnabled = false }, api, unusedAuthClient(), FakeRnTokenStore())
+        val client = RnApiClient(RnBackend(), api, unusedAuthClient(), FakeRnTokenStore())
 
         val doc = client.getSyncDoc()!!
         assertEquals("u1", doc.userId)
@@ -92,7 +92,7 @@ class RnApiClientSyncTest {
     @Test
     fun `getSyncDoc propagates the no-document case as null`() = kotlinx.coroutines.runBlocking {
         val api = KnobRnApi().apply { syncResponse = mapOfJson("""{}""") }
-        val client = RnApiClient(RnBackend().apply { injectedEnabled = false }, api, unusedAuthClient(), FakeRnTokenStore())
+        val client = RnApiClient(RnBackend(), api, unusedAuthClient(), FakeRnTokenStore())
 
         assertNull(client.getSyncDoc())
     }
@@ -101,7 +101,7 @@ class RnApiClientSyncTest {
     fun `session accessors read the store and honor the session gate`() {
         val store = FakeRnTokenStore()
         val client = RnApiClient(
-            RnBackend().apply { injectedEnabled = false },
+            RnBackend(),
             KnobRnApi(),
             RnAuthClient(FakeRnAuthApi(), store),
             store,

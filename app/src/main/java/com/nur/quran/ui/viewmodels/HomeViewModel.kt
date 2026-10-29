@@ -225,6 +225,7 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try { repository.warmOfflineCaches() } catch (_: Exception) {}
         }
+        viewModelScope.launch { repository.refreshReciters() }
         loadChapters()
     }
 

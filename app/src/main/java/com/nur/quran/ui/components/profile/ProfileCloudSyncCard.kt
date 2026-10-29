@@ -12,6 +12,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import com.nur.quran.R
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
@@ -47,7 +51,9 @@ fun ProfileCloudSyncCard(
     onBackup: () -> Unit,
     onRestore: () -> Unit,
     onClearMessage: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    googleAvailable: Boolean = false,
+    onContinueWithGoogle: () -> Unit = {}
 ) {
     var showAuthForm by remember { mutableStateOf(false) }
     var authMode by remember { mutableStateOf(AuthFormMode.LOGIN) }
@@ -174,6 +180,31 @@ fun ProfileCloudSyncCard(
                                         color = Color(0xFF10B981)
                                     )
                                 }
+                            }
+
+                            if (googleAvailable && authMode != AuthFormMode.FORGOT) {
+                                OutlinedButton(
+                                    onClick = onContinueWithGoogle,
+                                    enabled = !busy,
+                                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                                    shape = RoundedCornerShape(24.dp),
+                                    border = BorderStroke(1.dp, Color(0xFF747775)),
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        containerColor = Color.White,
+                                        contentColor = Color(0xFF1F1F1F)
+                                    )
+                                ) {
+                                    // Official Google asset. Clip only its surrounding button chrome.
+                                    Box(Modifier.size(20.dp).clipToBounds(), contentAlignment = Alignment.Center) {
+                                        Image(painterResource(R.drawable.google_signin_icon), null,
+                                            modifier = Modifier.requiredSize(40.dp))
+                                    }
+                                    Spacer(Modifier.width(12.dp))
+                                    Text("Continue with Google", fontWeight = FontWeight.Medium, fontSize = 14.sp,
+                                        fontFamily = androidx.compose.ui.text.font.FontFamily.SansSerif)
+                                }
+                                Text("or continue with email", modifier = Modifier.align(Alignment.CenterHorizontally),
+                                    color = hInkMuted, fontSize = 12.sp)
                             }
 
                             // Optional Name Field for Registration

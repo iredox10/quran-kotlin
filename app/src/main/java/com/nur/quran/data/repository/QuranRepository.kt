@@ -2,7 +2,6 @@ package com.nur.quran.data.repository
 
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import com.nur.quran.data.api.QuranApi
 import com.nur.quran.data.api.ApiTafsirVerse
 import com.nur.quran.data.api.ApiTajweedVerse
 import com.nur.quran.data.api.TafsirResponse
@@ -40,7 +39,6 @@ import com.nur.quran.utils.TajweedProcessor
 class QuranRepository @Inject constructor(
     @dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context,
     private val quranDao: QuranDao,
-    private val quranApi: QuranApi,
     private val rnApiClient: com.nur.quran.data.api.rn.RnApiClient,
     private val gson: Gson,
     private val wordPackManager: WordPackManager
@@ -71,6 +69,22 @@ class QuranRepository @Inject constructor(
         }
     }
 
+    suspend fun refreshReciters() = withContext(Dispatchers.IO) {
+        val key = "render_reciters"
+        fun apply(json: String) {
+            val response = gson.fromJson(json, com.nur.quran.data.api.rn.RnRecitersResponse::class.java)
+            com.nur.quran.data.audio.Reciters.applyManifest(response)
+        }
+        quranDao.getCacheEntry(key)?.let { runCatching { apply(it.dataJson) } }
+        try {
+            val response = rnApiClient.getReciters()
+            com.nur.quran.data.audio.Reciters.applyManifest(response)
+            quranDao.insertCacheEntry(ApiResponseCacheEntity(key, gson.toJson(response)))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) { /* Cached manifest and built-ins remain usable offline. */ }
+    }
+
     // Chapters
     fun getChaptersFlow(): Flow<List<ChapterEntity>> = quranDao.getAllChapters()
 
@@ -78,13 +92,13 @@ class QuranRepository @Inject constructor(
         id = apiChapter.id,
         nameSimple = apiChapter.name_simple,
         nameArabic = apiChapter.name_arabic,
-        nameComplex = apiChapter.name_complex,
+        nameComplex = apiChapter.name_complex ?: apiChapter.name_simple,
         translatedName = apiChapter.translated_name?.name ?: "",
-        revelationPlace = apiChapter.revelation_place,
+        revelationPlace = apiChapter.revelation_place ?: "",
         revelationOrder = apiChapter.revelation_order,
         versesCount = apiChapter.verses_count,
-        pagesStart = apiChapter.pages.firstOrNull() ?: 1,
-        pagesEnd = apiChapter.pages.lastOrNull() ?: 1
+        pagesStart = apiChapter.pages?.firstOrNull() ?: 1,
+        pagesEnd = apiChapter.pages?.lastOrNull() ?: 1
     )
 
     suspend fun refreshChapters() = withContext(Dispatchers.IO) {
@@ -93,7 +107,7 @@ class QuranRepository @Inject constructor(
             return@withContext
         }
         try {
-            val response = quranApi.getChapters()
+            val response = rnApiClient.getChapters()
             quranDao.insertChapters(response.chapters.map(::apiChapterToEntity))
         } catch (e: Exception) {
             ensureChaptersFromAssets()
@@ -268,14 +282,8 @@ class QuranRepository @Inject constructor(
         val packed: Map<String, String> = bundle.packedTranslations.associateBy({ it.verseKey }, { it.text })
         if (verses.isEmpty() || verses.any { it.textUthmani.isNullOrBlank() }) {
             try {
-                val response = quranApi.getVersesByPage(
-                    pageNumber = pageNumber,
-                    translations = "20",
-                    fields = com.nur.quran.data.mushaf.Mushaf.verseFields(mushaf),
-                    wordFields = com.nur.quran.data.mushaf.Mushaf.wordFields(mushaf),
-                    mushaf = mushaf.apiMushafId,
-                    perPage = 50
-                )
+                val response = rnApiClient.getPage(pageNumber, translationId, mushaf.apiMushafId)
+                check(response.verses.isNotEmpty()) { "Page $pageNumber is unavailable" }
                 val verseEntities = mutableListOf<VerseEntity>()
                 val wordEntities = mutableListOf<WordEntity>()
 
@@ -631,37 +639,11 @@ class QuranRepository @Inject constructor(
             }
         }
         try {
-            // Render flag: refresh reads `/v1/verses/{ch}?translation=20` (content
-            // contract pins the translation resource); the legacy quran.com path
-            // keeps its tuned paged call below.
-            val effectiveTranslationId = if (rnApiClient.isEnabled) {
-                rnApiClient.translationId
-            } else {
-                translationId
-            }
-            val response = if (rnApiClient.isEnabled) {
-                rnApiClient.getVerses(chapterId)
-            } else {
-                quranApi.getVersesByChapter(
-                    chapterId = chapterId,
-                    translations = translationId.toString(),
-                    fields = com.nur.quran.data.mushaf.Mushaf.verseFields(mushaf),
-                    wordFields = com.nur.quran.data.mushaf.Mushaf.wordFields(mushaf),
-                    mushaf = mushaf.apiMushafId,
-                    perPage = 300
-                )
-            }
-
-            val tajweedResponse = if (rnApiClient.isEnabled) {
-                // RN contract: verse-level tajweed text is OPTIONAL; absent → same
-                // null flow the legacy try/catch produced. Word-level markup rides
-                // the words array wherever the server serves it.
-                com.nur.quran.data.api.rn.RnContent.tajweedFromVerses(response.verses)
-            } else try {
-                quranApi.getUthmaniTajweed(chapterNumber = chapterId)
-            } catch (e: Exception) {
-                null
-            }
+            val effectiveTranslationId = translationId
+            val response = rnApiClient.getVerses(
+                chapterId, tajweed = true, translation = translationId, mushaf = mushaf.apiMushafId
+            )
+            val tajweedResponse = com.nur.quran.data.api.rn.RnContent.tajweedFromVerses(response.verses)
             // Store for getTajweedHtmlForChapter's offline cache (same key/format as
             // fetchWithOfflineCache) so the UI's tajweed load doesn't re-hit network.
             if (tajweedResponse != null) {
@@ -770,7 +752,7 @@ class QuranRepository @Inject constructor(
     suspend fun getTajweedHtmlForChapter(chapterId: Int): TajweedResponse = withContext(Dispatchers.IO) {
         try {
             fetchWithOfflineCache("tajweed_chapter_$chapterId") {
-                quranApi.getUthmaniTajweed(chapterNumber = chapterId)
+                getBackendTajweed(chapterId)
             }
         } catch (e: Exception) {
             // Fallback: build TajweedResponse from bundled asset
@@ -778,11 +760,16 @@ class QuranRepository @Inject constructor(
         }
     }
 
+    private suspend fun getBackendTajweed(chapterId: Int): TajweedResponse =
+        com.nur.quran.data.api.rn.RnContent.tajweedFromVerses(
+            rnApiClient.getVerses(chapterId, words = false, tajweed = true).verses
+        ) ?: loadOfflineTajweedFromAssets(chapterId)
+
     // Tafsir — with offline asset fallback
     suspend fun getTafsirForChapter(tafsirId: Int, chapterId: Int): TafsirResponse = withContext(Dispatchers.IO) {
         try {
             fetchWithOfflineCache("tafsir_${tafsirId}_chapter_$chapterId") {
-                quranApi.getTafsirByChapter(tafsirId, chapterId)
+                rnApiClient.getTafsirByChapter(tafsirId, chapterId)
             }
         } catch (e: Exception) {
             // Fallback: load from bundled Ibn Kathir asset
@@ -792,7 +779,7 @@ class QuranRepository @Inject constructor(
 
     // Footnote
     suspend fun getFootnote(footnoteId: String) = fetchWithOfflineCache("footnote_$footnoteId") {
-        quranApi.getFootnote(footnoteId)
+        rnApiClient.getFootnote(footnoteId)
     }
 
     // Bookmarks

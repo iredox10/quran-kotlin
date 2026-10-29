@@ -3,7 +3,6 @@ package com.nur.quran.data.sync
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.nur.quran.data.api.rn.RnApiClient
-import io.appwrite.models.RealtimeSubscription
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
@@ -12,7 +11,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,7 +24,7 @@ import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 
 /**
- * Live cross-device sync: subscribes to the `user_sync` collection channel so
+ * Live cross-device sync: listens to the authenticated Heroku WebSocket so
  * a change made on the web app (or another device) triggers a pull within
  * seconds — no waiting for the periodic worker. The pull itself still goes
  * through [SyncService.sync], so watermark + union-merge rules apply and a
@@ -36,17 +34,15 @@ import okhttp3.WebSocketListener
  * and logout. Events are debounced; only documents belonging to [userId] are
  * honored.
  *
- * Render API path (`RnApiClient.isEnabled`): Appwrite Realtime is replaced by
- * `GET wss://…/ws?token=<accessToken>` — the server tells every open socket of
+ * The backend sends notifications over
+ * `GET wss://…/ws` with a Bearer header — the server tells every open socket of
  * the user `{ type: "sync.updated", changedAt }` (no payload; clients pull)
- * after any PUT /v1/sync by that user. The same loop owns the documented poll
- * fallback: while the socket is reconnecting/paused it runs [SyncService.sync]
- * every ≤60s (and once on every socket incident/resume — the client start()
- * is on-foreground anyway).
+ * after any PUT /v1/sync by that user. A reconciliation loop runs
+ * [SyncService.sync] every 60s, including while connected, to upload local edits.
+ * Foregrounding and socket interruptions also trigger an immediate sync.
  */
 @Singleton
 class SyncRealtime @Inject constructor(
-    private val appwriteClient: AppwriteClient,
     private val syncService: SyncService,
     private val rnApiClient: RnApiClient,
     private val okHttpClient: OkHttpClient,
@@ -54,7 +50,7 @@ class SyncRealtime @Inject constructor(
 ) {
     companion object {
         /**
-         * Poll fallback cadence while no live socket (contract ceiling: ≤60s) —
+         * Periodic reconciliation cadence (also uploads local edits with a live socket) —
          * README P4/P5 documents "≤60s + on-resume".
          */
         const val POLL_FALLBACK_MS = 60_000L
@@ -69,13 +65,13 @@ class SyncRealtime @Inject constructor(
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    private var subscription: RealtimeSubscription? = null
     private var debounceJob: Job? = null
     private var activeUserId: String? = null
 
-    /** Render-path supervision loop with its live socket (stopped via [stop]). */
+    /** Heroku supervision loop with its live socket (stopped via [stop]). */
     private var rnJob: Job? = null
     private var rnSocket: WebSocket? = null
+    @Volatile private var rnRejectedToken: String? = null
 
     private val _lastRemoteSyncAt = MutableStateFlow<Long?>(null)
     val lastRemoteSyncAt: StateFlow<Long?> = _lastRemoteSyncAt.asStateFlow()
@@ -86,13 +82,7 @@ class SyncRealtime @Inject constructor(
      * Opens the subscription/monitoring for [userId]. Safe to call repeatedly;
      * a live subscription for the same user is kept as-is.
      */
-    fun start(userId: String) {
-        if (rnApiClient.isEnabled) {
-            startRn(userId)
-            return
-        }
-        startAppwrite(userId)
-    }
+    fun start(userId: String) = startRn(userId)
 
     fun stop() {
         debounceJob?.cancel()
@@ -101,48 +91,26 @@ class SyncRealtime @Inject constructor(
         rnJob = null
         runCatching { rnSocket?.close(NORMAL_CLOSE, "stop") }
         rnSocket = null
-        runCatching { subscription?.close() }
-        subscription = null
         activeUserId = null
+        rnRejectedToken = null
     }
-
-    // ── Appwrite path (legacy transport, unchanged) ───────────────────────────
-
-    private fun startAppwrite(userId: String) {
-        if (activeUserId == userId && subscription != null) return
-        stop()
-        activeUserId = userId
-        runCatching {
-            subscription = appwriteClient.realtime.subscribe(
-                collectionChannel()
-            ) { event ->
-                onEvent(userId, event.events, event.payload)
-            }
-        }.onFailure {
-            subscription = null
-            activeUserId = null
-        }
-    }
-
-    private fun collectionChannel(): String =
-        "databases.${AppwriteClient.DATABASE_ID}" +
-            ".collections.${AppwriteClient.USER_SYNC_COLLECTION_ID}.documents"
-
-    private fun onEvent(userId: String, events: Collection<String>, payload: Any?) {
-        if (!events.any { it.contains(".create") || it.contains(".update") }) return
-        @Suppress("UNCHECKED_CAST")
-        val payloadUserId = (payload as? Map<*, *>)?.get("userId")?.toString()
-        if (payloadUserId != null && payloadUserId != userId) return
-        debouncedSync()
-    }
-
-    // ── Render path (ws w/ ≤60s poll fallback) ────────────────────────────────
 
     private fun startRn(userId: String) {
         if (activeUserId == userId && rnJob != null) return
         stop()
         activeUserId = userId
-        rnJob = scope.launch { rnListenLoop(userId) }
+        rnJob = scope.launch {
+            kotlinx.coroutines.coroutineScope {
+                // Reconcile local edits even while the WebSocket remains connected.
+                launch {
+                    while (true) {
+                        delay(POLL_FALLBACK_MS)
+                        syncService.sync()
+                    }
+                }
+                rnListenLoop(userId)
+            }
+        }
     }
 
     /**
@@ -153,26 +121,31 @@ class SyncRealtime @Inject constructor(
      * the polite poll; the caller stops this loop on logout.
      */
     private suspend fun rnListenLoop(userId: String) {
+        syncService.sync() // Pull on foreground even when the socket stays open indefinitely.
         while (true) {
-            val connected = try {
-                val token = rnApiClient.ensureValidAccessToken()
-                if (token.isNullOrBlank()) false else awaitRnSocket(userId, token)
+            try {
+                val rejected = rnRejectedToken
+                val token = if (rejected != null) {
+                    rnRejectedToken = null
+                    rnApiClient.refreshRejectedAccessToken(rejected)
+                } else rnApiClient.ensureValidAccessToken()
+                if (!token.isNullOrBlank()) awaitRnSocket(userId, token)
             } catch (e: CancellationException) {
                 throw e
-            } catch (e: Exception) {
-                false
+            } catch (_: Exception) {
+                // The independent poll loop keeps sync alive while reconnecting.
             }
             runCatching { syncService.sync() }
-            delay(if (connected) RECONNECT_MS else POLL_FALLBACK_MS)
+            delay(RECONNECT_MS)
         }
     }
 
     /** URL of the RN realtime socket: same host, token at upgrade (wss://…/ws). */
-    internal fun rnSocketUrl(token: String): String {
+    internal fun rnSocketUrl(): String {
         val httpsUrl = rnApiClient.baseUrl.trimEnd('/') + "/ws"
         return httpsUrl
             .replace("https://", "wss://")
-            .replace("http://", "ws://") + "?token=" + token
+            .replace("http://", "ws://")
     }
 
     /**
@@ -190,7 +163,8 @@ class SyncRealtime @Inject constructor(
                     cont.resume(value)
                 }
             }
-            val request = Request.Builder().url(rnSocketUrl(token)).build()
+            val request = Request.Builder().url(rnSocketUrl())
+                .header("Authorization", "Bearer $token").build()
             val socket = okHttpClient.newWebSocket(request, object : WebSocketListener() {
                 override fun onOpen(webSocket: WebSocket, response: Response) {
                     rnSocket = webSocket
@@ -203,10 +177,17 @@ class SyncRealtime @Inject constructor(
 
                 override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                     rnSocket = null
+                    if (response?.code == 401 || response?.code == 403) rnRejectedToken = token
                     finish(connected)
                 }
 
+                override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                    if (code == 1008) rnRejectedToken = token
+                    webSocket.close(code, reason)
+                }
+
                 override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                    if (code == 1008) rnRejectedToken = token
                     rnSocket = null
                     finish(connected)
                 }
@@ -222,7 +203,8 @@ class SyncRealtime @Inject constructor(
             gson.fromJson<Map<String, Any?>>(text, rnMessageType)
         }.getOrNull() ?: return
         val type = frame["type"]?.toString() ?: return
-        if (type != FRAME_TYPE_SYNC_UPDATED) return
+        if (type != FRAME_TYPE_SYNC_UPDATED || activeUserId != userId ||
+            rnApiClient.storedUserId() != userId) return
         // Contract: no payload — the socket only announces "some sync changed for
         // this user"; the pull itself validates the watermark + owner.
         debouncedSync()

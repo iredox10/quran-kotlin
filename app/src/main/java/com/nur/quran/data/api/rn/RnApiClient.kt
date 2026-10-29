@@ -1,21 +1,10 @@
 package com.nur.quran.data.api.rn
 
+import kotlinx.coroutines.ensureActive
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * High-level facade over the quran-nur-api surface — the single dependency
- * every flag-gated consumer holds ([com.nur.quran.data.sync.SyncService],
- * [com.nur.quran.data.sync.SyncRealtime], word packs, verses refresh, auth
- * UIs). [isEnabled] is the one switch: when it is false the consumers never
- * call into this class, so legacy paths stay byte-identical.
- *
- * Auth delegates to [RnAuthClient]; content methods normalize the wire
- * responses ([RnContent]) so callers read the same DTO structures they get
- * from api.quran.com; the sync-document methods (added with the sync client)
- * follow the app's own `SyncContract.kt` field names (userId/stateData) per
- * the auth/sync contract.
- */
+/** Shared Heroku transport for authentication, Quran content, and cross-device sync. */
 @Singleton
 class RnApiClient @Inject constructor(
     private val backend: RnBackend,
@@ -23,13 +12,10 @@ class RnApiClient @Inject constructor(
     private val authClient: RnAuthClient,
     private val tokenStore: RnTokenStore,
 ) {
-    /** The migration switch — every consumer's first branch. */
-    val isEnabled: Boolean get() = backend.isRenderApiEnabled
-
-    /** Normalized base URL ("https://quran-nur-api.onrender.com/"). */
+    /** Normalized base URL ("https://qurannur-backend-d7d7312f118d.herokuapp.com/"). */
     val baseUrl: String get() = backend.baseUrl
 
-    /** The pinned translation resource (content contract — `translation=20`). */
+    /** Default translation resource; callers can request their selected edition. */
     val translationId: Int get() = RnBackend.TRANSLATION_ID
 
     // ── session (fix/login-restore-pull: identity is persisted) ──────────────
@@ -47,6 +33,8 @@ class RnApiClient @Inject constructor(
     /** Access token usable for a request now (refreshes when absent). */
     suspend fun ensureValidAccessToken(): String? = authClient.ensureValidAccessToken()
 
+    suspend fun refreshRejectedAccessToken(token: String): String? = authClient.refreshAccessToken(token)
+
     /** POST /auth/register — tokens + user persisted inline (single call). */
     suspend fun register(email: String, password: String, name: String = ""): RnAuthUser? =
         authClient.register(email, password, name).user
@@ -54,6 +42,15 @@ class RnApiClient @Inject constructor(
     /** POST /auth/login — tokens + user persisted. */
     suspend fun login(email: String, password: String): RnAuthUser? =
         authClient.login(email, password).user
+
+    suspend fun googleProviders() = authClient.googleProviders()
+    suspend fun googleChallenge() = authClient.googleChallenge()
+    suspend fun signInWithGoogle(idToken: String, nonce: String): RnAuthUser? =
+        authClient.signInWithGoogle(idToken, nonce).user
+
+    suspend fun requestRecovery(email: String) = authClient.requestRecovery(email)
+
+    suspend fun getFootnote(id: String) = api.getFootnote(id)
 
     /** Logout: forget the whole RN session (identity included). */
     fun clearSession() = authClient.clearSession()
@@ -64,22 +61,56 @@ class RnApiClient @Inject constructor(
     suspend fun getChapters(): com.nur.quran.data.api.ChaptersResponse = api.getChapters()
 
     /**
-     * `/v1/verses/{ch}?translation=20` — verses refresh path; [words] toggles
+     * `/v1/verses/{ch}?translation={id}` — verses refresh path; [words] toggles
      * the optional per-word array, [tajweed] the optional verse-level markup.
      */
-    suspend fun getVerses(chapterId: Int, words: Boolean = true, tajweed: Boolean = false) =
-        RnContent.normalizeVersesResponse(
-            api.getVerses(
+    suspend fun getVerses(
+        chapterId: Int,
+        words: Boolean = true,
+        tajweed: Boolean = false,
+        translation: Int = translationId,
+        mushaf: Int = 5,
+    ): com.nur.quran.data.api.VersesResponse {
+        val verses = mutableListOf<com.nur.quran.data.api.ApiVerse>()
+        val visited = mutableSetOf<Int>()
+        var page = 1
+        while (true) {
+            kotlinx.coroutines.currentCoroutineContext().ensureActive()
+            check(visited.add(page) && visited.size <= 1000) { "Invalid verses pagination" }
+            val response = RnContent.normalizeVersesResponse(api.getVerses(
                 chapterId = chapterId,
-                translation = translationId,
-                words = if (words) 1 else null,
-                tajweed = if (tajweed) 1 else null,
-            ),
+                translation = translation,
+                words = if (words) 1 else 0,
+                tajweed = if (tajweed) 1 else 0,
+                page = page,
+                perPage = 300,
+                mushaf = mushaf,
+            ))
+            verses += response.verses
+            page = response.pagination.next_page ?: break
+        }
+        return com.nur.quran.data.api.VersesResponse(
+            verses, com.nur.quran.data.api.ApiPagination(1, null, 1)
         )
+    }
+
+    suspend fun getPage(page: Int, translation: Int = translationId, mushaf: Int = 5) =
+        RnContent.normalizeVersesResponse(api.getPage(page, translation, mushaf))
+
+    suspend fun getTafsirByChapter(tafsirId: Int, chapterId: Int) =
+        api.getTafsirByChapter(tafsirId, chapterId)
+
+    suspend fun getReciters() = api.getReciters()
+
+    suspend fun completeSaukaAssignment(assignmentId: String) {
+        require(hasSession()) { "Sign in to submit your group progress" }
+        require(assignmentId.matches(Regex("[A-Za-z0-9._-]{1,64}"))) { "Invalid assignment" }
+        api.completeSaukaAssignment(assignmentId)
+    }
 
     /** `/v1/packs/words/{ch}.json` — bundle-shape single file, pagination-free. */
     suspend fun getWordsPack(chapterId: Int): com.nur.quran.data.api.VersesResponse =
-        RnContent.normalizeVersesResponse(api.getWordsPack(chapterId))
+        RnContent.parseWordsPack(api.getWordsPack(chapterId))
 
     // ── sync document (field names 1:1 from the app's SyncContract.kt) ────────
 

@@ -20,6 +20,8 @@ import java.util.Locale
 import java.util.TimeZone
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -30,18 +32,10 @@ private const val KEY_LAST_SYNC_AT = "last_sync_at"
 private const val TAG = "NurSync"
 
 /**
- * Cloud sync engine. Owns ONLY orchestration + merge; snapshot construction belongs to
- * [SnapshotBuilder] and transport constants/client to [AppwriteClient].
- *
- * Document contract (mirrors quran-app/src/services/appwrite.js + scripts/setup-appwrite-new.js):
- * exactly ONE doc per account in `AppwriteClient.USER_SYNC_COLLECTION_ID`, found by
- * `Query.equal("userId", userId)` (the id is server-generated — `unique()` on create, never
- * the userId), and carrying ONLY the attributes `userId` and `stateData`, where `stateData`
- * is the JSON string of [SnapshotBuilder]'s map (scalar settings + JSON-string section
- * fields bookmarksJson, collectionsJson, plansJson, hifdhJson, readingStatsJson).
- * `version`/`updatedAt` are NOT written: the server's `$updatedAt` is the only document
- * timestamp, and it is the sync watermark. Legacy Android docs (flattened attributes, no
- * `stateData`) are still READ, and migrate in place on the next push. See [SyncContract].
+ * Cloud sync orchestration for the shared Heroku backend. Snapshot construction
+ * belongs to [SnapshotBuilder]. Each account has one server-owned sync document
+ * with `userId` and JSON-string `stateData`; server timestamps are the watermark.
+ * Legacy flattened documents are read for migration compatibility.
  *
  * Merge rules (mirror of quran-app/src/utils/syncMerge.js `mergeStateInto`):
  * - Settings / scalars: LAST-WRITE-WINS (incoming wins; absent local keys serialize as
@@ -76,16 +70,13 @@ private const val TAG = "NurSync"
  */
 @Singleton
 class SyncService @Inject constructor(
-    private val appwriteClient: AppwriteClient,
     private val rnApiClient: com.nur.quran.data.api.rn.RnApiClient,
     private val snapshotBuilder: SnapshotBuilder?,
     private val dao: QuranDao?,
     @ApplicationContext private val context: Context,
 ) {
-    /** True when sync/transport routes through the Render API (BuildConfig flag). */
-    private val rnEnabled: Boolean
-        get() = rnApiClient.isEnabled
     private val gson = Gson()
+    private val syncMutex = Mutex()
 
     /** Like [runSuspendCatching] but names the section so a silent apply failure is visible in logcat. */
     private suspend fun applySection(name: String, block: suspend () -> Unit) {
@@ -105,23 +96,12 @@ class SyncService @Inject constructor(
     private val _syncApplied = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val syncApplied: SharedFlow<Unit> = _syncApplied.asSharedFlow()
 
-    /**
-     * Id of this account's sync document, so an update targets the real document and never
-     * has to guess (or mint) one. Keyed to [cachedUserId] — an id learned for one account
-     * must never be written for another.
-     */
-    @Volatile
-    private var cachedDocId: String? = null
-
-    @Volatile
-    private var cachedUserId: String? = null
-
     // ------------------------------------------------------------------ public API ---
 
     /** Build local snapshot and upload (merge local over remote, update-or-create). */
-    suspend fun push(): Boolean {
-        return try {
-            val userId = currentUserId() ?: return false
+    suspend fun push(): Boolean = syncMutex.withLock {
+        try {
+            val userId = currentUserId() ?: return@withLock false
             pushInternal(userId)
         } catch (_: Exception) {
             false
@@ -132,19 +112,20 @@ class SyncService @Inject constructor(
      * Download remote doc; if remote is newer than local, union-merge into local state and
      * apply (prefs via `apply()`, DAO via existing inserts). True when ok or already current.
      */
-    suspend fun pull(): Boolean {
-        return try {
+    suspend fun pull(): Boolean = syncMutex.withLock {
+        try {
             val userId = currentUserId() ?: run {
-                Log.w(TAG, "pull: no userId (signed out or account.get failed)")
-                return false
+                Log.w(TAG, "pull: no userId (signed out)")
+                return@withLock false
             }
             val remote = fetchRemote(userId) ?: run {
                 Log.w(TAG, "pull: no remote doc for user $userId")
-                return false
+                return@withLock false
             }
             // Web parity (CloudSync.jsx:102): gate ONLY on the persisted watermark.
             // The old maxOf() with the snapshot build clock (≈ now) could never fire.
             // lastSyncAt()==0 (fresh login/reset) force-applies like web's login pull.
+            checkOwner(userId)
             val gate = remote.updatedAt > lastSyncAt()
             Log.d(TAG, "pull: remote.updatedAt=${remote.updatedAt} lastSyncAt=${lastSyncAt()} gate=$gate stateKeys=${remote.state.keys}")
             if (gate) {
@@ -162,12 +143,13 @@ class SyncService @Inject constructor(
      * One-shot bidirectional sync. Returns "pushed" / "pulled" / "up-to-date" /
      * "signed-out" / "error:<message>".
      */
-    suspend fun sync(): String {
-        return try {
-            val userId = currentUserId() ?: return "signed-out"
+    suspend fun sync(): String = syncMutex.withLock {
+        try {
+            val userId = currentUserId() ?: return@withLock "signed-out"
             val remote = fetchRemote(userId)
             val lastSync = lastSyncAt()
             val local = localStateMap()
+            checkOwner(userId)
             Log.d(
                 TAG,
                 "sync: user=$userId remote=${if (remote == null) "null" else "ts=${remote.updatedAt} keys=${remote.state.keys}"} lastSync=$lastSync localKeys=${local.keys}"
@@ -177,15 +159,18 @@ class SyncService @Inject constructor(
                 saveLastSync(remote.updatedAt)
                 // Web parity (CloudSync.jsx:116-139): push back when the merge
                 // changed anything, so the cloud converges to the union.
-                val converged = mergeStateInto(remote.state, local)
-                if (converged != remote.state) {
-                    pushInternal(userId)
+                val converged = mergeStateInto(remote.state, localStateMap())
+                if (!sameState(converged, remote.state) && !pushInternal(userId)) {
+                    return@withLock "error:push failed"
                 }
                 "pulled"
             } else if (remote == null) {
                 if (pushInternal(userId)) "pushed" else "error:push failed"
             } else {
-                "up-to-date"
+                val merged = mergeStateInto(remote.state, local)
+                if (!sameState(merged, remote.state)) {
+                    if (pushInternal(userId)) "pushed" else "error:push failed"
+                } else "up-to-date"
             }
         } catch (e: Exception) {
             Log.w(TAG, "sync failed", e)
@@ -242,16 +227,16 @@ class SyncService @Inject constructor(
         }
     }
 
-    /**
-     * userId — Appwrite `account.get()` on the legacy path; on the Render API
-     * the persisted session identity (fix/login-restore-pull semantics: userId
-     * survives restarts in [com.nur.quran.data.api.rn.RnTokenStore], refreshed
-     * access token recovers expired ones server-side).
-     */
-    private suspend fun currentUserId(): String? {
-        if (rnEnabled) return rnApiClient.storedUserId()
-        return runSuspendCatching { appwriteClient.account.get().id }.getOrNull()
+    private fun checkOwner(userId: String) {
+        check(currentUserId() == userId) { "Account changed during sync" }
     }
+
+    private fun sameState(first: Map<String, Any?>, second: Map<String, Any?>): Boolean =
+        gson.toJsonTree(SyncContract.stripStateMetadata(first)) ==
+            gson.toJsonTree(SyncContract.stripStateMetadata(second))
+
+    /** Persisted identity from the Heroku session, shared by web and mobile. */
+    private fun currentUserId(): String? = rnApiClient.storedUserId()
 
     private suspend fun pushInternal(userId: String): Boolean {
         return try {
@@ -263,117 +248,33 @@ class SyncService @Inject constructor(
                 userId,
                 gson.toJson(SyncContract.stripStateMetadata(merged)),
             )
-            val remoteTs = writePayload(userId, payload, existing?.id)
-            // Watermark = the document's server stamp; local clock only if it is missing.
-            saveLastSync(if (remoteTs > 0) remoteTs else System.currentTimeMillis())
+            checkOwner(userId)
+            val remoteTs = writePayload(payload)
+            checkOwner(userId)
+            saveLastSync(remoteTs)
             true
         } catch (_: Exception) {
             false
         }
     }
 
-    /**
-     * Update-or-create, targeting the document resolved for this account. It only ever
-     * creates when the account really has none (re-resolving first, in case the earlier
-     * lookup raced a create) — assuming documentId == userId is what forked a second
-     * document per account in the first place.
-     *
-     * Render API path: PUT /v1/sync IS the update-or-create (server-side upsert keyed by
-     * the Bearer identity), so no document id tracking; the server stamp comes back as
-     * `lastSyncAt`.
-     */
-    private suspend fun writePayload(
-        userId: String,
-        payload: Map<String, Any>,
-        resolvedDocId: String?,
-    ): Long {
-        if (rnEnabled) {
-            return rnApiClient.putSyncDoc(payload) ?: 0L
-        }
-        val target = resolvedDocId ?: cachedDocId?.takeIf { cachedUserId == userId }
-        if (target != null) {
-            updateById(target, payload)?.let { doc ->
-                cachedDocId = doc.id
-                return parseUpdatedAt(doc.updatedAt)
-            }
-        }
-        val resolved = fetchRemote(userId)
-        if (resolved != null) {
-            updateById(resolved.id, payload)?.let { doc ->
-                cachedDocId = doc.id
-                return parseUpdatedAt(doc.updatedAt)
-            }
-        }
-        // Web creates with the magic id; the server generates the real one.
-        val created = appwriteClient.databases.createDocument(
-            AppwriteClient.DATABASE_ID,
-            AppwriteClient.USER_SYNC_COLLECTION_ID,
-            appwriteClient.uniqueDocumentId,
-            payload,
-        )
-        cachedUserId = userId
-        cachedDocId = created.id
-        return parseUpdatedAt(created.updatedAt)
-    }
+    /** PUT is a server-side upsert, keyed by the authenticated account. */
+    private suspend fun writePayload(payload: Map<String, Any>): Long =
+        rnApiClient.putSyncDoc(payload) ?: error("Sync response is missing its server timestamp")
 
-    /** Update one document; null when the id is stale (deleted) or transport failed. */
-    private suspend fun updateById(docId: String, payload: Map<String, Any>) =
-        runSuspendCatching {
-            appwriteClient.databases.updateDocument(
-                AppwriteClient.DATABASE_ID,
-                AppwriteClient.USER_SYNC_COLLECTION_ID,
-                docId,
-                payload,
-            )
-        }.getOrNull()
-
-    /**
-     * This account's document, resolved by attribute (web's `Query.equal("userId", userId)`),
-     * so it works whichever id the document was created with. Null = no document yet.
-     *
-     * Transport failures propagate on purpose: the entry points catch them and fail the
-     * sync, which is the safe outcome — writing blind would drop the remote union and could
-     * fork another document.
-     *
-     * Render API path: GET /v1/sync carries THIS user's document already (Bearer-selected
-     * by the access token), so no per-user query/list is needed; the doc id the Appwrite
-     * path tracks has no role on this transport (writes target the PUT upsert).
-     */
+    /** Failed reads propagate so a blind upload cannot replace the remote union. */
     private suspend fun fetchRemote(userId: String): RemoteDoc? {
-        if (rnEnabled) return fetchRemoteRn(userId)
-        val docs = appwriteClient.databases.listDocuments(
-            AppwriteClient.DATABASE_ID,
-            AppwriteClient.USER_SYNC_COLLECTION_ID,
-            appwriteClient.userSyncQueries(userId),
-        )
-        val doc = SyncContract.resolveDoc(
-            docs.documents.map {
-                Log.d(TAG, "fetchRemote: raw \$updatedAt='${it.updatedAt}' docId=${it.id}")
-                SyncContract.DocRef(id = it.id, data = it.data, updatedAtMillis = parseUpdatedAt(it.updatedAt))
-            },
-            userId,
-        )
-        cachedUserId = userId
-        if (doc == null) {
-            // Account has no doc yet: writes must CREATE, never update a guessed id.
-            cachedDocId = null
-            return null
-        }
-        cachedDocId = doc.id
-        return RemoteDoc(extractState(doc.data), doc.updatedAtMillis, doc.id)
-    }
-
-    /** Render API pull: GET /v1/sync → [RnSyncDoc] → the same [RemoteDoc] view. */
-    private suspend fun fetchRemoteRn(userId: String): RemoteDoc? {
-        val doc = rnApiClient.getSyncDoc() ?: return null
+        val doc = rnApiClient.getSyncDoc()
+        checkOwner(userId)
+        doc ?: return null
+        check(doc.updatedAtMs > 0) { "Sync document is missing its server timestamp" }
         if (doc.userId != null && doc.userId.isNotBlank() && doc.userId != userId) {
-            // Bearer/identity mismatch — treat as "no document for this account".
-            Log.w(TAG, "rn fetchRemote: doc.userId=${doc.userId} != account $userId")
-            return null
+            // Fail closed: treating a protocol mismatch as empty could overwrite remote data.
+            error("Sync document belongs to a different account")
         }
         return RemoteDoc(
             state = SyncContract.stateFromDoc(
-                mapOf(
+                doc.legacyFields + mapOf(
                     SyncContract.FIELD_STATE_DATA to (doc.stateData ?: ""),
                 ),
             ) { parseJsonObject(it) },
@@ -403,8 +304,8 @@ class SyncService @Inject constructor(
         // Flat web keys (web getSyncableState) ride alongside the legacy blobs so
         // the web client reads everything Android knows. Absent data is omitted.
         return runSuspendCatching {
-            base.toMutableMap().also { it.putAll(flatWebKeys()) }
-        }.getOrNull() ?: base
+            SyncContract.stripStateMetadata(base.toMutableMap().also { it.putAll(flatWebKeys()) })
+        }.getOrNull() ?: SyncContract.stripStateMetadata(base)
     }
 
     /**

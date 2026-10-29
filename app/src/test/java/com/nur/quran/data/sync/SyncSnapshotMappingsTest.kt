@@ -17,6 +17,24 @@ import org.junit.Test
 class SyncSnapshotMappingsTest {
 
     @Test
+    fun `current appearance setting wins over an older restored legacy copy`() = kotlinx.coroutines.runBlocking {
+        val settings = FakePrefs().apply { values["is_dark_theme"] = true }
+        val legacy = FakePrefs().apply { values["is_dark_theme"] = false }
+        val context = object : android.content.ContextWrapper(null) {
+            override fun getSharedPreferences(name: String, mode: Int): android.content.SharedPreferences =
+                if (name == "Settings") settings else legacy
+        }
+        val builder = SnapshotBuilder(com.google.gson.Gson(), context, RecordingQuranDao().dao)
+        assertEquals("dark", builder.build().theme)
+        settings.values["is_dark_theme"] = false
+        legacy.values["is_dark_theme"] = true
+        assertEquals("light", builder.build().theme)
+        settings.values.clear()
+        assertEquals("dark", builder.build().theme)
+    }
+
+
+    @Test
     fun `default scale maps to web default font index`() {
         assertEquals(2, fontScaleToWebFontSizeIndex(1f))
     }

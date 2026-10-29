@@ -142,6 +142,14 @@ class MainActivity : ComponentActivity() {
         }
         
         setContent {
+            // Remote restores write Settings too; observe them while the app is open.
+            DisposableEffect(prefs) {
+                val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { source, key ->
+                    if (key == "is_dark_theme") isDarkThemeGlobal = source.getBoolean(key, false)
+                }
+                prefs.registerOnSharedPreferenceChangeListener(listener)
+                onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+            }
             val navController = rememberNavController()
 
             LaunchedEffect(pendingDeepLink) {

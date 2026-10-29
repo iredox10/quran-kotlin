@@ -23,7 +23,7 @@ import javax.inject.Singleton
  * stores allow.
  *
  * Web → Android source mapping:
- * - theme ("light"/"dark") ← `is_dark_theme` boolean in `hifdh_settings`
+ * - theme ("light"/"dark") ← `Settings.is_dark_theme`, with legacy `hifdh_settings` fallback
  *   (SurahScreen) with fallback to the `Settings` file (MainActivity).
  * - translationId / tafsirId ← `translation_id` / `tafsir_id` ints in
  *   `hifdh_settings`. `reciter_id` is deliberately never emitted: web uses
@@ -112,10 +112,10 @@ class SnapshotBuilder @Inject constructor(
         val settings = context.getSharedPreferences("Settings", Context.MODE_PRIVATE)
 
         val theme: String? = when {
-            hifdh.contains("is_dark_theme") ->
-                if (hifdh.getBoolean("is_dark_theme", false)) "dark" else "light"
             settings.contains("is_dark_theme") ->
                 if (settings.getBoolean("is_dark_theme", false)) "dark" else "light"
+            hifdh.contains("is_dark_theme") ->
+                if (hifdh.getBoolean("is_dark_theme", false)) "dark" else "light"
             else -> null
         }
 

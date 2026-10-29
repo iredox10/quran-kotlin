@@ -52,9 +52,17 @@ fun ProfileScreen(
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("Settings", Context.MODE_PRIVATE) }
 
-    var isDarkTheme by remember { mutableStateOf(isDarkThemeGlobal) }
+    val isDarkTheme = isDarkThemeGlobal
     var dailyGoalMins by remember { mutableIntStateOf(prefs.getInt("daily_reading_goal", 20)) }
     var showSettingsDrawer by remember { mutableStateOf(false) }
+    DisposableEffect(prefs) {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { source, key ->
+            if (key == "daily_reading_goal") dailyGoalMins = source.getInt(key, 20)
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
+
 
     val authVm: AuthViewModel = hiltViewModel()
     val authState by authVm.authState.collectAsState()
@@ -243,7 +251,6 @@ fun ProfileScreen(
                     onToggleTheme = {
                         val newDark = !isDarkThemeGlobal
                         isDarkThemeGlobal = newDark
-                        isDarkTheme = newDark
                         prefs.edit().putBoolean("is_dark_theme", newDark).apply()
                     },
                     onNavigateToDownloads = {

@@ -505,8 +505,8 @@ class SyncService @Inject constructor(
         val hifdh = prefs("hifdh_settings")
         val settings = prefs("Settings")
         if (hifdh.contains("is_dark_theme") || settings.contains("is_dark_theme")) {
-            val dark = if (hifdh.contains("is_dark_theme")) hifdh.getBoolean("is_dark_theme", false)
-            else settings.getBoolean("is_dark_theme", false)
+            val dark = if (settings.contains("is_dark_theme")) settings.getBoolean("is_dark_theme", false)
+            else hifdh.getBoolean("is_dark_theme", false)
             out["theme"] = if (dark) "dark" else "light"
         }
         hifdh.getString("arabic_font", null)?.let { out["arabicFont"] = it }

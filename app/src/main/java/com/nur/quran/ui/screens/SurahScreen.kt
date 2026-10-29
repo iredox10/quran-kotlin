@@ -969,14 +969,15 @@ fun SurahScreen(
                     // Track the verse in view → recently read with verseKey (web: VerseItem inView)
                     LaunchedEffect(chapterId, verses) {
                         if (verses.isEmpty()) return@LaunchedEffect
-                        snapshotFlow { listState.layoutInfo.visibleItemsInfo }
-                            .collectLatest { visibleItems ->
-                                val verseKey = visibleItems.firstNotNullOfOrNull { item ->
-                                    if (item.offset + item.size > 0) readingVerseForItem(verses, item.key) else null
-                                } ?: return@collectLatest
-                                delay(600)
-                                viewModel.updateRecentlyReadVerse(verseKey)
+                        snapshotFlow {
+                            listState.layoutInfo.visibleItemsInfo.firstNotNullOfOrNull { item ->
+                                if (item.offset + item.size > 0) readingVerseForItem(verses, item.key) else null
                             }
+                        }.collectLatest { verseKey ->
+                            if (verseKey == null) return@collectLatest
+                            delay(600)
+                            viewModel.updateRecentlyReadVerse(verseKey)
+                        }
                     }
 
                     val versesByPage = remember(verses) { verses.groupBy { it.pageNumber }.toSortedMap() }

@@ -27,6 +27,7 @@ import com.nur.quran.data.repository.QuranRepository
 import com.nur.quran.services.QuranAudioService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -146,97 +147,69 @@ class PageViewModel @Inject constructor(
         }
 
     private var loadJob: Job? = null
+    private var prefetchJob: Job? = null
+    private val pageCache = PageReaderCache<PageUiState.Success>()
 
     fun loadPage(pageNumber: Int) {
         if (pageNumber !in 1..604) return
         loadJob?.cancel()
+        prefetchJob?.cancel()
         _currentPageNumber.value = pageNumber
-        
+        val params = PageCacheParams(_mushafPreset.value, _currentTranslationId.value)
+        val generation = pageCache.beginLoad()
+        val cached = pageCache.cached(pageNumber, params)
+        _uiState.value = cached ?: PageUiState.Loading
         loadJob = viewModelScope.launch(Dispatchers.IO) {
-            _uiState.value = PageUiState.Loading
             try {
-                val verses = repository.getVersesByPage(pageNumber, _mushafPreset.value, _currentTranslationId.value)
-                if (verses.isEmpty()) {
-                    _uiState.value = PageUiState.Error("No verses found for page $pageNumber")
-                    return@launch
+                val state = cached ?: buildPageState(pageNumber, params)
+                kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                if (!pageCache.isCurrent(generation)) return@launch
+                pageCache.store(pageNumber, params, state)
+                _uiState.value = state
+                val first = state.verses.first()
+                repository.addRecentlyRead(first.chapterId, state.chapterMap[first.chapterId]?.nameSimple ?: "Surah ${first.chapterId}", pageNumber = pageNumber)
+                prefetchPages(pageNumber + 1, pageNumber + 3, params)
+                // Bundled page words already have translations. Only backfill genuinely missing data.
+                val missing = state.verses.filter { verse -> state.wordsMap[verse.id].orEmpty().any {
+                    it.charTypeName == "word" && it.translation.isNullOrBlank() && it.transliteration.isNullOrBlank()
+                } }.map { it.chapterId }.distinct()
+                if (missing.isNotEmpty()) viewModelScope.launch(Dispatchers.IO) {
+                    missing.forEach { repository.ensureChapterWordsCached(it) }
                 }
-                
-                val chapterIds = verses.map { it.chapterId }.distinct()
-                val chapterMap = mutableMapOf<Int, ChapterEntity>()
-                val tajweedMap = mutableMapOf<String, String>()
-                
-                for (cId in chapterIds) {
-                    repository.getChapterById(cId)?.let { chapterMap[cId] = it }
-                    if (isTajweedEffective.value) {
-                        try {
-                            val taj = repository.getTajweedHtmlForChapter(cId)
-                            taj.verses.forEach { tajweedMap[it.verse_key] = it.text_uthmani_tajweed }
-                        } catch (_: Exception) {}
-                    }
-                }
-                
-                val wordsMap = repository.getWordsForVerses(verses.map { it.id })
-
-                // Word-tap tooltips offline-first: Room words paint instantly;
-                // backfill missing translation packs in the background so the
-                // next open works fully offline (surah load does the same).
-                viewModelScope.launch(Dispatchers.IO) {
-                    chapterIds.forEach { cId ->
-                        runCatching { repository.ensureChapterWordsCached(cId) }
-                    }
-                }
-
-                var pageVerses = verses
-                if (pageVerses.any { it.translation.isNullOrBlank() }) {
-                    repository.repairBlankTranslations()
-                    pageVerses = repository.getVersesByPage(pageNumber, _mushafPreset.value, _currentTranslationId.value)
-                }
-                val sanitizedVerses = pageVerses.map { verse ->
-                    if (!verse.translation.isNullOrBlank()) {
-                        verse
-                    } else {
-                        val packed = repository.getStoredTranslation(_currentTranslationId.value, verse.verseKey)
-                            ?: repository.getStoredTranslation(20, verse.verseKey)
-                        if (!packed.isNullOrBlank()) {
-                            verse.copy(translation = packed)
-                        } else {
-                            verse.copy(translation = "Translation unavailable")
-                        }
-                    }
-                }
-                
-                _uiState.value = PageUiState.Success(
-                    verses = sanitizedVerses,
-                    wordsMap = wordsMap,
-                    chapterMap = chapterMap,
-                    tajweedMap = tajweedMap,
-                    pageNumber = pageNumber
-                )
-                
-                // Track recently read using the first chapter on the page.
-                // pageNumber (not verseKey) marks this as a page/juz/hizb read,
-                // so the Continue card reopens the page screen.
-                val firstChapterId = verses.first().chapterId
-                val firstChapterName = chapterMap[firstChapterId]?.nameSimple ?: "Surah $firstChapterId"
-                repository.addRecentlyRead(firstChapterId, firstChapterName, pageNumber = pageNumber)
-                
-                // Prefetch next 3 pages
-                prefetchPages(pageNumber + 1, pageNumber + 3)
-                
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (e: Exception) {
-                _uiState.value = PageUiState.Error(e.localizedMessage ?: "Failed to load page $pageNumber")
+                if (pageCache.isCurrent(generation)) _uiState.value = PageUiState.Error(e.localizedMessage ?: "Failed to load page $pageNumber")
             }
         }
     }
 
-    private fun prefetchPages(startPage: Int, endPage: Int) {
-        viewModelScope.launch(Dispatchers.IO) {
-            for (p in startPage..endPage) {
-                if (p <= 604) {
-                    try {
-                        repository.getVersesByPage(p, _mushafPreset.value, _currentTranslationId.value)
-                    } catch (_: Exception) {}
-                }
+    private suspend fun buildPageState(pageNumber: Int, params: PageCacheParams): PageUiState.Success {
+        repository.ensureChaptersFromAssets()
+        val bundle = repository.getPageVerses(pageNumber, params.mushafId, params.translationId)
+        check(bundle.verses.isNotEmpty()) { "No verses found for page $pageNumber" }
+        val chapters = mutableMapOf<Int, ChapterEntity>()
+        for (id in bundle.verses.map { it.chapterId }.distinct()) repository.getChapterById(id)?.let { chapters[id] = it }
+        return PageUiState.Success(
+            verses = bundle.verses.map { if (it.translation.isNullOrBlank()) it.copy(translation = "Translation unavailable") else it },
+            wordsMap = bundle.wordsMap,
+            chapterMap = chapters,
+            tajweedMap = repository.getTajweedMapForVerses(bundle.verses),
+            pageNumber = pageNumber,
+        )
+    }
+
+    private fun prefetchPages(startPage: Int, endPage: Int, params: PageCacheParams) {
+        prefetchJob?.cancel()
+        prefetchJob = viewModelScope.launch(Dispatchers.IO) {
+            for (page in startPage..minOf(604, endPage)) {
+                kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                if (pageCache.cached(page, params) != null) continue
+                try {
+                    pageCache.store(page, params, buildPageState(page, params))
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (_: Exception) { /* Foreground reads surface their own error. */ }
             }
         }
     }

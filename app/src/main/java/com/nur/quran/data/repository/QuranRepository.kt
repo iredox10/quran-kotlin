@@ -277,92 +277,82 @@ class QuranRepository @Inject constructor(
         val wordsMap: Map<Int, List<WordEntity>>
     )
 
-    /**
-     * Offline-first page paint in ONE Room transaction (verses + words +
-     * packed translations). Network only seeds Room on a cold page. The old
-     * path collected a Flow plus N per-verse translation queries per swipe.
-     */
+    /** Room + bundled Quran content always precede the network, including on a cold page. */
     suspend fun getPageVerses(pageNumber: Int, mushafId: String? = null, translationId: Int = 20): PageVerses = withContext(Dispatchers.IO) {
         val mushaf = com.nur.quran.data.mushaf.Mushaf.fromId(mushafId)
         val bundle = quranDao.getPageBundle(pageNumber, translationId)
-        var verses: List<VerseEntity> = bundle.verses
-        var words: List<WordEntity> = bundle.words
-        if (verses.isNotEmpty()) {
-            val repaired = restoreBundledScripts(verses, words, onlyLegacy = true)
-            if (repaired.first != verses || repaired.second != words) {
-                quranDao.replaceVersesAndWords(repaired.first, repaired.second)
-                verses = repaired.first; words = repaired.second
-            }
-        }
-        val packed: Map<String, String> = bundle.packedTranslations.associateBy({ it.verseKey }, { it.text })
-        if (verses.isEmpty() || verses.any { it.textUthmani.isNullOrBlank() }) {
-            try {
-                val response = rnApiClient.getPage(pageNumber, translationId, mushaf.apiMushafId)
-                check(response.verses.isNotEmpty()) { "Page $pageNumber is unavailable" }
-                val verseEntities = mutableListOf<VerseEntity>()
-                val wordEntities = mutableListOf<WordEntity>()
-
-                for (apiVerse in response.verses) {
-                    val wordsUthmani = apiVerse.words?.joinToString(" ") { it.text_uthmani ?: "" }?.trim() ?: ""
-                    val wordsIndopak = apiVerse.words?.joinToString(" ") { it.text_indopak ?: "" }?.trim() ?: ""
-                    val wordsQpcHafs = apiVerse.words?.joinToString(" ") { it.text_qpc_hafs ?: "" }?.trim() ?: ""
-
-                    val uthmani = if (wordsUthmani.isNotBlank()) wordsUthmani else (apiVerse.text_uthmani ?: "")
-                    val indopak = if (wordsIndopak.isNotBlank()) wordsIndopak else (apiVerse.text_indopak ?: "")
-                    val qpcHafs = if (wordsQpcHafs.isNotBlank()) wordsQpcHafs else (apiVerse.text_qpc_hafs ?: "")
-
-                    verseEntities.add(
-                        VerseEntity(
-                            id = apiVerse.id,
-                            chapterId = apiVerse.verse_key.split(":")[0].toIntOrNull() ?: 1,
-                            verseNumber = apiVerse.verse_number,
-                            verseKey = apiVerse.verse_key,
-                            textUthmani = if (uthmani.isNotBlank()) uthmani else (apiVerse.words?.joinToString(" ") { it.text_uthmani_tajweed ?: "" } ?: ""),
-                            textIndopak = indopak,
-                            textQpcHafs = qpcHafs,
-                            pageNumber = apiVerse.page_number ?: pageNumber,
-                            juzNumber = apiVerse.juz_number ?: 1,
-                            translation = apiVerse.translations?.firstOrNull()?.text?.takeIf { it.isNotBlank() } ?: offlineTranslationsByVerseKey[apiVerse.verse_key]
-                        )
-                    )
-
-                    apiVerse.words?.forEachIndexed { index, apiWord ->
-                        wordEntities.add(
-                            WordEntity(
-                                id = apiWord.id,
-                                verseId = apiVerse.id,
-                                position = apiWord.position,
-                                textUthmani = apiWord.text_uthmani,
-                                textIndopak = apiWord.text_indopak,
-                                textQpcHafs = apiWord.text_qpc_hafs,
-                                textUthmaniTajweed = apiWord.text_uthmani_tajweed,
-                                translation = apiWord.translation?.text,
-                                transliteration = apiWord.transliteration?.text,
-                                charTypeName = apiWord.char_type_name,
-                                lineNumber = apiWord.line_number ?: 0
-                            )
-                        )
-                    }
-                }
-                if (verseEntities.isNotEmpty()) {
-                    quranDao.replaceVersesAndWords(verseEntities, wordEntities)
-                    verses = verseEntities
-                    words = wordEntities
-                }
-            } catch (e: Exception) {
-                // Offline fallback: load from bundled asset
-                val (offlineVerses, offlineWords) = loadOfflineVersesForPage(pageNumber)
-                if (offlineVerses.isNotEmpty()) {
-                    quranDao.insertVersesAndWords(offlineVerses, offlineWords)
-                    verses = offlineVerses
-                    words = offlineWords
-                }
-            }
-        }
-        val merged = com.nur.quran.data.TranslationFallback.mergePageTranslations(
-            verses, packed, { offlineTranslationsByVerseKey[it] }, false
+        val content = loadPageOfflineFirst(
+            cached = LocalPageContent(bundle.verses, bundle.words),
+            bundled = {
+                val (verses, words) = loadOfflineVersesForPage(pageNumber)
+                LocalPageContent(verses, words)
+            },
+            persist = { quranDao.replaceVersesAndWords(it.verses, it.words) },
+            network = { fetchNetworkPage(pageNumber, translationId, mushaf.apiMushafId) },
         )
-        PageVerses(merged, words.groupBy { it.verseId })
+        val repaired = restoreBundledScripts(content.verses, content.words, onlyLegacy = true)
+        if (repaired.first != content.verses || repaired.second != content.words) {
+            quranDao.replaceVersesAndWords(repaired.first, repaired.second)
+        }
+        val cachedKeys = bundle.verses.mapTo(hashSetOf()) { it.verseKey }
+        val packed = if (repaired.first.any { it.verseKey !in cachedKeys }) {
+            quranDao.getTranslationTexts(translationId, repaired.first.map { it.verseKey })
+        } else bundle.packedTranslations
+        val merged = com.nur.quran.data.TranslationFallback.mergePageTranslations(
+            repaired.first, packed.associateBy({ it.verseKey }, { it.text }), { offlineTranslationsByVerseKey[it] }, true
+        )
+        PageVerses(merged, repaired.second.groupBy { it.verseId })
+    }
+
+    private suspend fun fetchNetworkPage(pageNumber: Int, translationId: Int, mushafApiId: Int): LocalPageContent {
+        val response = rnApiClient.getPage(pageNumber, translationId, mushafApiId)
+        check(response.verses.isNotEmpty()) { "Page $pageNumber is unavailable" }
+        val verseEntities = mutableListOf<VerseEntity>()
+        val wordEntities = mutableListOf<WordEntity>()
+
+        for (apiVerse in response.verses) {
+            val wordsUthmani = apiVerse.words?.joinToString(" ") { it.text_uthmani ?: "" }?.trim() ?: ""
+            val wordsIndopak = apiVerse.words?.joinToString(" ") { it.text_indopak ?: "" }?.trim() ?: ""
+            val wordsQpcHafs = apiVerse.words?.joinToString(" ") { it.text_qpc_hafs ?: "" }?.trim() ?: ""
+
+            val uthmani = if (wordsUthmani.isNotBlank()) wordsUthmani else (apiVerse.text_uthmani ?: "")
+            val indopak = if (wordsIndopak.isNotBlank()) wordsIndopak else (apiVerse.text_indopak ?: "")
+            val qpcHafs = if (wordsQpcHafs.isNotBlank()) wordsQpcHafs else (apiVerse.text_qpc_hafs ?: "")
+
+            verseEntities.add(
+                VerseEntity(
+                    id = apiVerse.id,
+                    chapterId = apiVerse.verse_key.split(":")[0].toIntOrNull() ?: 1,
+                    verseNumber = apiVerse.verse_number,
+                    verseKey = apiVerse.verse_key,
+                    textUthmani = if (uthmani.isNotBlank()) uthmani else (apiVerse.words?.joinToString(" ") { it.text_uthmani_tajweed ?: "" } ?: ""),
+                    textIndopak = indopak,
+                    textQpcHafs = qpcHafs,
+                    pageNumber = apiVerse.page_number ?: pageNumber,
+                    juzNumber = apiVerse.juz_number ?: 1,
+                    translation = apiVerse.translations?.firstOrNull()?.text?.takeIf { it.isNotBlank() } ?: offlineTranslationsByVerseKey[apiVerse.verse_key]
+                )
+            )
+
+            apiVerse.words?.forEach { apiWord ->
+                wordEntities.add(
+                    WordEntity(
+                        id = apiWord.id,
+                        verseId = apiVerse.id,
+                        position = apiWord.position,
+                        textUthmani = apiWord.text_uthmani,
+                        textIndopak = apiWord.text_indopak,
+                        textQpcHafs = apiWord.text_qpc_hafs,
+                        textUthmaniTajweed = apiWord.text_uthmani_tajweed,
+                        translation = apiWord.translation?.text,
+                        transliteration = apiWord.transliteration?.text,
+                        charTypeName = apiWord.char_type_name,
+                        lineNumber = apiWord.line_number ?: 0
+                    )
+                )
+            }
+        }
+        return LocalPageContent(verseEntities, wordEntities)
     }
 
     data class OfflineVerseItem(
@@ -398,6 +388,7 @@ class QuranRepository @Inject constructor(
     @Volatile
     private var cachedOfflineVerses: List<OfflineVerseItem>? = null
 
+    @Synchronized
     private fun getAllOfflineVerses(): List<OfflineVerseItem> {
         cachedOfflineVerses?.let { return it }
         return try {
@@ -527,10 +518,11 @@ class QuranRepository @Inject constructor(
     /**
      * Load verses for a specific page from the offline asset.
      */
+    private val offlineVersesByPage by lazy { getAllOfflineVerses().groupBy { it.page_number } }
+
     private fun loadOfflineVersesForPage(pageNumber: Int): Pair<List<VerseEntity>, List<WordEntity>> {
         return try {
-            val allVerses = getAllOfflineVerses()
-            val filtered = allVerses.filter { it.page_number == pageNumber }
+            val filtered = offlineVersesByPage[pageNumber].orEmpty()
             val verseEntities = mutableListOf<VerseEntity>()
             val wordEntities = mutableListOf<WordEntity>()
 

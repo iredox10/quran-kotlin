@@ -52,7 +52,8 @@ fun PageScreen(
     onBackClick: () -> Unit,
     onNavigateToPage: (Int) -> Unit = {}
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    // Read during composition so completion invalidates the initial loading pane.
+    val uiState = viewModel.uiState.collectAsState().value
     val isTajweedEffective by viewModel.isTajweedEffective.collectAsState()
     val currentMushaf by viewModel.currentMushaf.collectAsState()
     val isTranslationEnabled by viewModel.isTranslationEnabled.collectAsState()

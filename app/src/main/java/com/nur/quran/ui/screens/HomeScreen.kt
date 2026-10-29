@@ -149,7 +149,6 @@ fun HomeScreen(
     val latestBookmark by viewModel.latestBookmark.collectAsState()
     val stats by viewModel.stats.collectAsState()
     val onboardingState by viewModel.onboardingState.collectAsState()
-    val isOnline by viewModel.isOnline.collectAsState()
     val completedTours by viewModel.completedTours.collectAsState()
     val homeVisits by viewModel.homeVisits.collectAsState()
     val context = LocalContext.current
@@ -162,9 +161,8 @@ fun HomeScreen(
     val lazyListState: LazyListState = rememberLazyListState()
 
     // Item indices of the tour-targeted sections (mirrors the LazyColumn order below).
-    val sectionIndices = remember(onboardingState.isDismissed, isOnline, latestBookmark, recentlyRead) {
+    val sectionIndices = remember(onboardingState.isDismissed, latestBookmark, recentlyRead) {
         buildSectionIndexMap(
-            isOnline = isOnline,
             onboardingDismissed = onboardingState.isDismissed,
             hasBookmark = latestBookmark != null,
             hasRecentlyRead = recentlyRead.isNotEmpty()
@@ -256,37 +254,6 @@ fun HomeScreen(
                         .background(hWhite),
                     contentPadding = PaddingValues(horizontal = 16.dp)
                 ) {
-                    // ─── Offline Banner ───
-                    if (!isOnline) {
-                        item {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 12.dp, bottom = 16.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .border(1.5.dp, hGold, RoundedCornerShape(12.dp))
-                                    .background(hGoldSoft)
-                                    .padding(horizontal = 16.dp, vertical = 13.dp),
-                                horizontalArrangement = Arrangement.Center,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(8.dp)
-                                        .clip(CircleShape)
-                                        .background(hGold)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Offline Mode — Using Cached Data",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = hGold
-                                )
-                            }
-                        }
-                    }
-
                     // ─── Continue Reading (web Home.jsx parity) ───
                     item {
                         Column(
@@ -1481,13 +1448,11 @@ private fun OnboardingProgressCard(
 
 // ── Tour target indices (mirrors the LazyColumn item order) ─────────────
 private fun buildSectionIndexMap(
-    isOnline: Boolean,
     onboardingDismissed: Boolean,
     hasBookmark: Boolean,
     hasRecentlyRead: Boolean
 ): Map<String, Int> {
     var idx = 0
-    if (!isOnline) idx++ // offline banner
     idx++ // hero (continue reading)
     if (!onboardingDismissed) idx++ // onboarding card
     val stats = idx; idx++ // weekly heatmap

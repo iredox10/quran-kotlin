@@ -141,6 +141,9 @@ interface QuranDao {
     @Query("SELECT * FROM api_responses WHERE `key` = :key LIMIT 1")
     suspend fun getCacheEntry(key: String): ApiResponseCacheEntity?
 
+    @Query("SELECT * FROM api_responses WHERE `key` LIKE '%plan%' OR `key` LIKE '%planner%'")
+    fun observePlannerCache(): Flow<List<ApiResponseCacheEntity>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCacheEntry(entry: ApiResponseCacheEntity)
 

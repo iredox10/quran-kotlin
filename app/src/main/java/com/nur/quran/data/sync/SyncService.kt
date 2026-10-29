@@ -66,7 +66,7 @@ private const val TAG = "NurSync"
  * The key → store value translations are pure and unit tested in
  * [SyncApplyMappings] (see SyncApplyMappingsTest).
  *
- * All entry points never throw: [push]/[pull] return Boolean, [sync] returns a status string.
+ * [push]/[pull] return Boolean and [sync] returns a status string. Coroutine cancellation propagates.
  */
 @Singleton
 class SyncService @Inject constructor(
@@ -82,6 +82,8 @@ class SyncService @Inject constructor(
     private suspend fun applySection(name: String, block: suspend () -> Unit) {
         try {
             block()
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            throw cancelled
         } catch (e: Exception) {
             Log.w(TAG, "apply section '$name' failed", e)
         }
@@ -103,6 +105,8 @@ class SyncService @Inject constructor(
         try {
             val userId = currentUserId() ?: return@withLock false
             pushInternal(userId)
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            throw cancelled
         } catch (_: Exception) {
             false
         }
@@ -118,6 +122,7 @@ class SyncService @Inject constructor(
                 Log.w(TAG, "pull: no userId (signed out)")
                 return@withLock false
             }
+            val beforeRead = localStateMap()
             val remote = fetchRemote(userId) ?: run {
                 Log.w(TAG, "pull: no remote doc for user $userId")
                 return@withLock false
@@ -129,10 +134,11 @@ class SyncService @Inject constructor(
             val gate = remote.updatedAt > lastSyncAt()
             Log.d(TAG, "pull: remote.updatedAt=${remote.updatedAt} lastSyncAt=${lastSyncAt()} gate=$gate stateKeys=${remote.state.keys}")
             if (gate) {
-                applyState(mergeStateInto(localStateMap(), remote.state))
-                saveLastSync(remote.updatedAt)
+                applyIncoming(userId, remote.state, remote.updatedAt, beforeRead)
             }
             true
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            throw cancelled
         } catch (e: Exception) {
             Log.w(TAG, "pull failed", e)
             false
@@ -146,6 +152,7 @@ class SyncService @Inject constructor(
     suspend fun sync(): String = syncMutex.withLock {
         try {
             val userId = currentUserId() ?: return@withLock "signed-out"
+            val beforeRead = localStateMap()
             val remote = fetchRemote(userId)
             val lastSync = lastSyncAt()
             val local = localStateMap()
@@ -155,23 +162,22 @@ class SyncService @Inject constructor(
                 "sync: user=$userId remote=${if (remote == null) "null" else "ts=${remote.updatedAt} keys=${remote.state.keys}"} lastSync=$lastSync localKeys=${local.keys}"
             )
             if (remote != null && remote.updatedAt > lastSync) {
-                applyState(mergeStateInto(local, remote.state))
-                saveLastSync(remote.updatedAt)
+                applyIncoming(userId, remote.state, remote.updatedAt, beforeRead)
                 // Web parity (CloudSync.jsx:116-139): push back when the merge
                 // changed anything, so the cloud converges to the union.
-                val converged = mergeStateInto(remote.state, localStateMap())
-                if (!sameState(converged, remote.state) && !pushInternal(userId)) {
+                if (syncDelta(remote.state,localStateMap()).isNotEmpty() && !pushInternal(userId)) {
                     return@withLock "error:push failed"
                 }
                 "pulled"
             } else if (remote == null) {
                 if (pushInternal(userId)) "pushed" else "error:push failed"
             } else {
-                val merged = mergeStateInto(remote.state, local)
-                if (!sameState(merged, remote.state)) {
+                if (syncDelta(remote.state,local).isNotEmpty()) {
                     if (pushInternal(userId)) "pushed" else "error:push failed"
                 } else "up-to-date"
             }
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            throw cancelled
         } catch (e: Exception) {
             Log.w(TAG, "sync failed", e)
             "error:${e.message}"
@@ -222,6 +228,8 @@ class SyncService @Inject constructor(
     private suspend fun <T> runSuspendCatching(block: suspend () -> T): Result<T> {
         return try {
             Result.success(block())
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            throw cancelled
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -238,29 +246,69 @@ class SyncService @Inject constructor(
     /** Persisted identity from the Heroku session, shared by web and mobile. */
     private fun currentUserId(): String? = rnApiClient.storedUserId()
 
-    private suspend fun pushInternal(userId: String): Boolean {
-        return try {
-            // Merge local over remote (web's pushState does the same), then upload the
-            // union as one `stateData` string.
-            val existing = fetchRemote(userId)
-            val merged = mergeStateInto(existing?.state ?: emptyMap(), localStateMap())
-            val payload = SyncContract.buildPushPayload(
-                userId,
-                gson.toJson(SyncContract.stripStateMetadata(merged)),
-            )
-            checkOwner(userId)
-            val remoteTs = writePayload(payload)
-            checkOwner(userId)
-            saveLastSync(remoteTs)
-            true
-        } catch (_: Exception) {
-            false
-        }
+    private fun outbox() = context.getSharedPreferences("sync_outbox", Context.MODE_PRIVATE)
+    private fun syncKey(userId: String, suffix: String) = "${rnApiClient.baseUrl}:$userId:$suffix"
+    private fun acknowledged(userId: String): Map<String, Any?> =
+        outbox().getString(syncKey(userId,"baseline"),null)?.let { parseJsonObject(it) } ?: emptyMap()
+    private fun pending(userId: String): Map<String, Any?>? =
+        outbox().getString(syncKey(userId,"pending"),null)?.let { parseJsonObject(it) }
+
+    private suspend fun applyIncoming(userId: String, state: Map<String, Any?>, stamp: Long, before: Map<String, Any?>) {
+        val edited = syncDelta(before,localStateMap())
+        @Suppress("UNCHECKED_CAST")
+        val waiting = pending(userId)?.get("changes") as? Map<String, Any?> ?: emptyMap()
+        var merged = mergeStateInto(localStateMap(),state)
+        merged = mergeStateInto(mergeStateInto(merged,waiting),edited)
+        checkOwner(userId)
+        applyState(merged)
+        checkOwner(userId)
+        outbox().edit().putString(syncKey(userId,"baseline"),gson.toJson(state)).apply()
+        saveLastSync(maxOf(stamp,lastSyncAt()))
     }
 
-    /** PUT is a server-side upsert, keyed by the authenticated account. */
-    private suspend fun writePayload(payload: Map<String, Any>): Long =
-        rnApiClient.putSyncDoc(payload) ?: error("Sync response is missing its server timestamp")
+    /** Upload directly; changed sections merge under the backend's per-account lock. */
+    private suspend fun pushInternal(userId: String): Boolean {
+        try {
+            repeat(3) {
+                val local = localStateMap()
+                val saved = pending(userId)
+                val changes = if (saved != null) {
+                    @Suppress("UNCHECKED_CAST")
+                    (saved["changes"] as? Map<String, Any?>) ?: error("Invalid pending sync")
+                } else syncDelta(acknowledged(userId),local)
+                if (changes.isEmpty()) return true
+                val mutationId = saved?.get("id")?.toString() ?: java.util.UUID.randomUUID().toString()
+                @Suppress("UNCHECKED_CAST")
+                val sent = (saved?.get("snapshot") as? Map<String, Any?>) ?: local
+                checkOwner(userId)
+                // commit() makes the retry packet durable before it leaves this device.
+                check(outbox().edit().putString(syncKey(userId,"pending"),gson.toJson(mapOf(
+                    "id" to mutationId,"changes" to changes,"snapshot" to sent
+                ))).commit()) { "Could not save pending backup" }
+                val doc = try {
+                    rnApiClient.patchSyncDoc(userId,changes,mutationId)
+                } catch (error: retrofit2.HttpException) {
+                    if (error.code() !in listOf(404,405)) throw error
+                    // Safe fallback during a rolling backend deployment.
+                    val current = fetchRemote(userId)
+                    val union = mergeStateInto(current?.state ?: emptyMap(),changes)
+                    val stamp = rnApiClient.putSyncDoc(SyncContract.buildPushPayload(userId,gson.toJson(union)) +
+                        ("baseUpdatedAt" to (current?.updatedAt ?: 0L))) ?: error("Missing sync timestamp")
+                    com.nur.quran.data.api.rn.RnSyncDoc(userId,gson.toJson(union),stamp,emptyMap())
+                }
+                checkOwner(userId)
+                val canonical = doc.stateData?.let { parseJsonObject(it) }
+                val expected = acknowledged(userId) + sent
+                outbox().edit().remove(syncKey(userId,"pending"))
+                    .putString(syncKey(userId,"baseline"),gson.toJson(canonical ?: sent)).commit()
+                if (canonical != null && !sameState(canonical,expected)) applyIncoming(userId,canonical,doc.updatedAtMs,sent)
+                else saveLastSync(maxOf(doc.updatedAtMs,lastSyncAt()))
+            }
+            return true
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            throw cancelled
+        } catch (_: Exception) { return false }
+    }
 
     /** Failed reads propagate so a blind upload cannot replace the remote union. */
     private suspend fun fetchRemote(userId: String): RemoteDoc? {

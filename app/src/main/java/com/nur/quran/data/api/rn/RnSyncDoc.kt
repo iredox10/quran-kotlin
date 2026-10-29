@@ -24,6 +24,7 @@ object RnSyncShapes {
 data class RnSyncPushPayload(
     val userId: String,
     val stateData: String,
+    val baseUpdatedAt: Long? = null,
 )
 
 /**
@@ -96,3 +97,6 @@ object RnSyncEnvelope {
         return map
     }
 }
+
+/** An idempotent changed-section upload; response is the canonical compact document. */
+data class RnSyncPatchPayload(val userId: String, val mutationId: String, val changes: Map<String, Any?>)

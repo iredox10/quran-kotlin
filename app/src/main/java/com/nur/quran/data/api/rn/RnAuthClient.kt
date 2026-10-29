@@ -73,6 +73,8 @@ class RnAuthClient @Inject constructor(
     private val sessionLock = Any()
     private var sessionGeneration = 0L
 
+    val revision: Long get() = generation()
+
     private fun generation(): Long = synchronized(sessionLock) { sessionGeneration }
 
     private fun beginSignIn(): Long = synchronized(sessionLock) { ++sessionGeneration }

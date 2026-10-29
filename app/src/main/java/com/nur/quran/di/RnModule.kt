@@ -63,6 +63,7 @@ object RnModule {
         tokenStore: RnTokenStore,
     ): RnApi {
         val client = okHttpClient.newBuilder()
+            .callTimeout(45, java.util.concurrent.TimeUnit.SECONDS)
             .addInterceptor(RnAuthInterceptor(tokenStore))
             .authenticator(RnAuthenticator(authClient))
             .build()

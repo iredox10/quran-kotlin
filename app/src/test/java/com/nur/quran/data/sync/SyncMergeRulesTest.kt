@@ -127,7 +127,7 @@ class SyncMergeRulesTest {
         val collections = listField(out, "collections")
         assertEquals(2, collections.size)
         val first = collections[0] as Map<*, *>
-        assertEquals("Base", first["name"])
+        assertEquals("Incoming", first["name"])
         val items = first["items"] as List<*>
         assertEquals(2, items.size)
         assertEquals("new", (items[0] as Map<*, *>)["note"])

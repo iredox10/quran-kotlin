@@ -188,8 +188,36 @@ class RnMigrationRegressionTest {
         }
         val client = RnApiClient(RnBackend(), api, unusedAuthClient(store), store)
         val rig = syncRig(rnClient = client)
-        assertTrue(rig.service.sync().startsWith("error:"))
+        try {
+            rig.service.sync()
+            fail("Old account request must be cancelled")
+        } catch (_: kotlinx.coroutines.CancellationException) { }
         assertFalse(rig.prefs.contains("is_dark_theme"))
+    }
+
+    @Test
+    fun `lost acknowledgment retries the original mutation without dropping a newer edit`() = runBlocking {
+        val ids = mutableListOf<String>()
+        val changes = mutableListOf<Map<String, Any?>>()
+        val api = object : FakeRnApi() {
+            override suspend fun patchSync(body: RnSyncPatchPayload): Map<String, Any?> {
+                ids += body.mutationId
+                changes += body.changes
+                if (ids.size == 1) throw java.io.IOException("Lost acknowledgment")
+                return super.patchSync(body)
+            }
+            override suspend fun putSync(body: RnSyncPushPayload) = RnSyncPutResponse(updatedAt = 1000L + ids.size)
+        }
+        val rig = syncRig(rnClient = client(api))
+        rig.prefs.values["is_dark_theme"] = true
+        assertFalse(rig.service.push())
+        rig.prefs.values["is_dark_theme"] = false
+        assertTrue(rig.service.push())
+        assertEquals(ids[0], ids[1])
+        assertEquals(changes[0], changes[1])
+        assertTrue(ids.size >= 3)
+        assertNotEquals(ids[1], ids[2])
+        assertEquals("light", changes.last()["theme"])
     }
 
 }

@@ -11,6 +11,8 @@ import com.google.gson.Gson
 import com.nur.quran.data.api.TafsirResponse
 import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.PATCH
+import retrofit2.http.Header
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
@@ -70,8 +72,14 @@ interface RnApi {
     // ── sync (Bearer; document fields 1:1 from SyncContract.kt) ──────────────
 
     /** The user's one sync document (lenient envelope, see [RnSyncEnvelope]). */
-    @GET("v1/sync")
+    @GET("v1/sync?compact=1")
     suspend fun getSync(): Map<String, Any?>
+
+    @GET("v1/sync?compact=1")
+    suspend fun getSyncTagged(@Header("If-None-Match") etag: String?): retrofit2.Response<Map<String, Any?>>
+
+    @PATCH("v1/sync")
+    suspend fun patchSync(@Body body: RnSyncPatchPayload): Map<String, Any?>
 
     /** Upsert with `userId` + `stateData` → `{ lastSyncAt }`. */
     @PUT("v1/sync")

@@ -261,6 +261,7 @@ private fun mergeCollections(base: Any?, incoming: Any?): List<Any?> {
         }
         val out = LinkedHashMap<String, Any?>()
         (existing as Map<*, *>).forEach { (k, v) -> out[k.toString()] = v }
+        (inc as? Map<*, *>)?.forEach { (k, v) -> out[k.toString()] = v }
         out["items"] = items.values.toList()
         map[id] = out
     }

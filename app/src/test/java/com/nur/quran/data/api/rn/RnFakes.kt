@@ -34,6 +34,7 @@ internal class FakeRnTokenStore : RnTokenStore {
 
 /** Everything on the full surface throws unless a test overrides a member. */
 internal open class FakeRnApi : RnApi {
+    private var patchState = emptyMap<String, Any?>()
     override suspend fun getChapters(): com.nur.quran.data.api.ChaptersResponse =
         throw UnsupportedOperationException("not under test")
 
@@ -68,6 +69,15 @@ internal open class FakeRnApi : RnApi {
 
     override suspend fun getSync(): Map<String, Any?> =
         throw UnsupportedOperationException("not under test")
+
+    override suspend fun getSyncTagged(etag: String?) = retrofit2.Response.success(getSync())
+
+    override suspend fun patchSync(body: RnSyncPatchPayload): Map<String, Any?> {
+        patchState = patchState + body.changes
+        val raw = com.google.gson.Gson().toJson(patchState)
+        val response = putSync(RnSyncPushPayload(body.userId, raw))
+        return mapOf("userId" to body.userId, "stateData" to raw, "updatedAt" to (response.updatedAt ?: response.lastSyncAt))
+    }
 
     override suspend fun putSync(body: RnSyncPushPayload): RnSyncPutResponse =
         throw UnsupportedOperationException("not under test")

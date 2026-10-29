@@ -20,6 +20,8 @@ class RnApiClient @Inject constructor(
 
     // ── session (fix/login-restore-pull: identity is persisted) ──────────────
 
+    val sessionRevision: Long get() = authClient.revision
+
     /** Persisted account id; null while signed out. */
     fun storedUserId(): String? {
         if (!tokenStore.hasSession()) return null
@@ -119,8 +121,32 @@ class RnApiClient @Inject constructor(
      * the payload isn't a sync doc (canary/empty-pull semantics stay with the
      * caller, exactly like the Appwrite "no document" case).
      */
-    suspend fun getSyncDoc(): com.nur.quran.data.api.rn.RnSyncDoc? =
-        RnSyncEnvelope.fromMap(api.getSync())
+    private var cachedSync: RnSyncDoc? = null
+    private var cachedSyncOwner: String? = null
+    private var cachedSyncRevision: Long = -1
+
+    suspend fun getSyncDoc(): RnSyncDoc? {
+        val owner = storedUserId()
+        val revision = sessionRevision
+        val cached = cachedSync.takeIf { cachedSyncOwner == owner && cachedSyncRevision == revision }
+        val response = api.getSyncTagged(cached?.updatedAtMs?.takeIf { it > 0 }?.let { "\"sync-$it\"" })
+        if (sessionRevision != revision || storedUserId() != owner) throw kotlinx.coroutines.CancellationException("Session changed")
+        if (response.code() == 304) return cached ?: error("Missing conditional sync snapshot")
+        if (!response.isSuccessful) throw retrofit2.HttpException(response)
+        val doc = RnSyncEnvelope.fromMap(response.body())
+        cachedSync = doc; cachedSyncOwner = owner; cachedSyncRevision = revision
+        return doc
+    }
+
+    suspend fun patchSyncDoc(userId: String, changes: Map<String, Any?>, mutationId: String): RnSyncDoc {
+        val revision = sessionRevision
+        val doc = RnSyncEnvelope.fromMap(api.patchSync(RnSyncPatchPayload(userId, mutationId, changes)))
+            ?: error("Missing sync document")
+        if (sessionRevision != revision || storedUserId() != userId) throw kotlinx.coroutines.CancellationException("Session changed")
+        check(doc.userId == userId && doc.updatedAtMs > 0) { "Invalid sync acknowledgement" }
+        if (doc.stateData != null) { cachedSync = doc; cachedSyncOwner = userId; cachedSyncRevision = revision }
+        return doc
+    }
 
     /**
      * PUT /v1/sync with the [com.nur.quran.data.sync.SyncContract.buildPushPayload]
@@ -132,6 +158,7 @@ class RnApiClient @Inject constructor(
             RnSyncPushPayload(
                 userId = payload[RnSyncShapes.FIELD_USER_ID]?.toString().orEmpty(),
                 stateData = payload[RnSyncShapes.FIELD_STATE_DATA]?.toString().orEmpty(),
+                baseUpdatedAt = (payload["baseUpdatedAt"] as? Number)?.toLong(),
             ),
         )
         return RnTime.parse(response.lastSyncAt ?: response.updatedAt).takeIf { it > 0 }

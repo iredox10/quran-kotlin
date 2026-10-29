@@ -199,8 +199,9 @@ class WordPackManager @Inject constructor(
 
                 val verses = try {
                     context.assets.open("data/words/$chapterId.json").use { stream ->
-                        gson.fromJson(InputStreamReader(stream, Charsets.UTF_8), VersesResponse::class.java)
-                            ?.verses
+                        com.nur.quran.data.api.rn.RnContent.parseWordsPack(
+                            gson.fromJson(InputStreamReader(stream, Charsets.UTF_8), com.google.gson.JsonObject::class.java)
+                        ).verses
                     }
                 } catch (e: CancellationException) {
                     throw e
@@ -288,7 +289,7 @@ class WordPackManager @Inject constructor(
                     transliteration = apiWord.transliteration?.text ?: current.transliteration,
                     textUthmani = current.textUthmani ?: apiWord.text_uthmani,
                     textIndopak = current.textIndopak ?: apiWord.text_indopak,
-                    textQpcHafs = current.textQpcHafs ?: apiWord.text_qpc_hafs,
+                    textQpcHafs = apiWord.text_qpc_hafs?.takeIf { it.isNotBlank() } ?: current.textQpcHafs,
                     textUthmaniTajweed = current.textUthmaniTajweed ?: apiWord.text_uthmani_tajweed,
                     lineNumber = if (current.lineNumber == 0) apiWord.line_number ?: 0 else current.lineNumber
                 )

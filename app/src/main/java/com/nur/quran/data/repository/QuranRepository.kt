@@ -145,6 +145,14 @@ class QuranRepository @Inject constructor(
     suspend fun ensureOfflineChapter(chapterId: Int): Boolean = withContext(Dispatchers.IO) {
         val existing = quranDao.getVersesByChapter(chapterId).firstOrNull()
         if (!existing.isNullOrEmpty()) {
+            val oldWords = quranDao.getWordsForVerses(existing.map { it.id })
+            val repaired = restoreBundledScripts(existing, oldWords, onlyLegacy = true)
+            val byId = existing.associateBy { it.id }
+            val oldByVerse = oldWords.groupBy { it.verseId }
+            val repairedByVerse = repaired.second.groupBy { it.verseId }
+            val changed = repaired.first.filter { it != byId[it.id] || repairedByVerse[it.id] != oldByVerse[it.id] }
+            val changedIds = changed.map { it.id }.toSet()
+            if (changed.isNotEmpty()) quranDao.replaceVersesAndWords(changed, repaired.second.filter { it.verseId in changedIds })
             if (existing.any { it.translation.isNullOrBlank() }) {
                 repairBlankTranslations()
             }
@@ -279,6 +287,13 @@ class QuranRepository @Inject constructor(
         val bundle = quranDao.getPageBundle(pageNumber, translationId)
         var verses: List<VerseEntity> = bundle.verses
         var words: List<WordEntity> = bundle.words
+        if (verses.isNotEmpty()) {
+            val repaired = restoreBundledScripts(verses, words, onlyLegacy = true)
+            if (repaired.first != verses || repaired.second != words) {
+                quranDao.replaceVersesAndWords(repaired.first, repaired.second)
+                verses = repaired.first; words = repaired.second
+            }
+        }
         val packed: Map<String, String> = bundle.packedTranslations.associateBy({ it.verseKey }, { it.text })
         if (verses.isEmpty() || verses.any { it.textUthmani.isNullOrBlank() }) {
             try {
@@ -396,6 +411,39 @@ class QuranRepository @Inject constructor(
         }
     }
 
+    private val bundledScripts = object : LinkedHashMap<Int, Map<String, com.nur.quran.data.api.ApiVerse>>(8, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Int, Map<String, com.nur.quran.data.api.ApiVerse>>?): Boolean = size > 8
+    }
+
+    @Synchronized
+    private fun chapterScripts(chapterId: Int): Map<String, com.nur.quran.data.api.ApiVerse> =
+        bundledScripts.getOrPut(chapterId) {
+            try {
+                context.assets.open("data/words/$chapterId.json").bufferedReader().use {
+                    com.nur.quran.data.api.rn.RnContent.parseWordsPack(gson.fromJson(it, com.google.gson.JsonObject::class.java)).verses.associateBy { verse -> verse.verse_key }
+                }
+            } catch (_: Exception) { emptyMap() }
+        }
+
+    /** Also repairs old offline rows in place; bookmarks and other user data are untouched. */
+    private fun restoreBundledScripts(
+        verses: List<VerseEntity>, words: List<WordEntity>, onlyLegacy: Boolean = false,
+    ): Pair<List<VerseEntity>, List<WordEntity>> {
+        val byVerse = words.groupBy { it.verseId }
+        val repaired = mutableMapOf<Int, Pair<VerseEntity, List<WordEntity>>>()
+        for (verse in verses) {
+            val legacy = verse.textQpcHafs.isNullOrBlank() || verse.textQpcHafs == verse.textUthmani ||
+                byVerse[verse.id].orEmpty().any { it.textQpcHafs == it.textUthmani && it.textQpcHafs?.contains('\u06df') == true }
+            if (onlyLegacy && !legacy) continue
+            val bundled = chapterScripts(verse.chapterId)[verse.verseKey] ?: continue
+            withBundledQuranScript(verse, bundled)?.let { replacement ->
+                if (replacement.first != verse || replacement.second != byVerse[verse.id]) repaired[verse.id] = replacement
+            }
+        }
+        return verses.map { repaired[it.id]?.first ?: it } to
+            (words.filterNot { it.verseId in repaired } + repaired.values.flatMap { it.second })
+    }
+
     private fun loadOfflineVersesFromAssets(chapterId: Int): Pair<List<VerseEntity>, List<WordEntity>> {
         return try {
             val allVerses = getAllOfflineVerses()
@@ -470,7 +518,7 @@ class QuranRepository @Inject constructor(
                     )
                 }
             }
-            Pair(verseEntities, wordEntities)
+            restoreBundledScripts(verseEntities, wordEntities)
         } catch (e: Exception) {
             Pair(emptyList(), emptyList())
         }
@@ -554,7 +602,7 @@ class QuranRepository @Inject constructor(
                     )
                 }
             }
-            Pair(verseEntities, wordEntities)
+            restoreBundledScripts(verseEntities, wordEntities)
         } catch (e: Exception) {
             Pair(emptyList(), emptyList())
         }

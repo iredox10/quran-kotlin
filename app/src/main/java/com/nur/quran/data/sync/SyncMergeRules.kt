@@ -35,7 +35,7 @@ private val DEEP_MERGE_FIELDS: Set<String> = setOf(
     "offlinePackStatus"
 )
 
-private const val PAYLOAD_SIZE_LIMIT = 950_000
+private const val PAYLOAD_SIZE_LIMIT = 8_000_000
 private const val SESSION_CAP = 500
 private const val SLIM_SESSION_CAP = 100
 private const val RECENTLY_READ_CAP = 20
@@ -275,7 +275,17 @@ private fun mergePlanners(base: Any?, incoming: Any?): List<Any?> {
     (incoming as? List<*>)?.forEach { inc ->
         val id = identityOf(inc, "id")
         val existing = map[id]
-        map[id] = if (existing == null) inc else mergeValue(existing, inc)
+        val merged = if (existing == null) inc else mergeValue(existing, inc)
+        if (existing is Map<*, *> && inc is Map<*, *> && merged is Map<*, *>) {
+            val oldRevision = (existing["assignmentsUpdatedAt"] as? Number)?.toLong() ?: 0L
+            val newRevision = (inc["assignmentsUpdatedAt"] as? Number)?.toLong() ?: 0L
+            if (oldRevision != 0L || newRevision != 0L) {
+                map[id] = merged + mapOf(
+                    "assignments" to (if (newRevision > oldRevision && inc["assignments"] is List<*>) inc["assignments"] else existing["assignments"]),
+                    "assignmentsUpdatedAt" to maxOf(oldRevision,newRevision),
+                )
+            } else map[id] = merged
+        } else map[id] = merged
     }
     return map.values.toList()
 }
@@ -392,8 +402,7 @@ private fun trimTail(state: MutableMap<String, Any?>, field: String, keep: Int) 
 
 /**
  * Web slimStatePayload: drop the derived `planner`, clamp pageVisitCounts,
- * dedupe assignment arrays, and if the JSON payload still exceeds 950k
- * chars trim sessions to their last 100 entries.
+ * dedupe assignment arrays and enforce the backend's 8-million-character bound without truncating history.
  */
 fun slimStatePayload(state: Map<String, Any?>): Map<String, Any?> {
     val result = LinkedHashMap<String, Any?>()
@@ -410,14 +419,7 @@ fun slimStatePayload(state: Map<String, Any?>): Map<String, Any?> {
     }
 
     val slimmed = slimDeep(result) as MutableMap<String, Any?>
-    var size = jsonString(slimmed).length
-    if (size > PAYLOAD_SIZE_LIMIT) {
-        trimTail(slimmed, "readingSessions", SLIM_SESSION_CAP)
-        trimTail(slimmed, "pomodoroHistory", SLIM_SESSION_CAP)
-        size = jsonString(slimmed).length
-        if (size > PAYLOAD_SIZE_LIMIT) {
-            throw IllegalStateException("sync payload too large: $size chars")
-        }
-    }
+    val size = jsonString(slimmed).length
+    check(size <= PAYLOAD_SIZE_LIMIT) { "sync payload too large: $size chars" }
     return slimmed
 }

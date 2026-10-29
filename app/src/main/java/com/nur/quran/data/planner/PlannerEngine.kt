@@ -90,6 +90,7 @@ data class ReadingPlan(
     val lastReadPage: Int? = null,
     val lastReadVerseKey: String? = null,
     /** Web: archivePlanner stamps `new Date().toISOString()` on the archived entry. */
+    val assignmentsUpdatedAt: Long = 0L,
     val archivedAt: String? = null
 )
 

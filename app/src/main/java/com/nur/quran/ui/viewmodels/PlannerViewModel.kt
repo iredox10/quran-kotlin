@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -102,6 +104,17 @@ class PlannerViewModel @Inject constructor(
 
     private var extrasPlanId: String? = null
 
+    private val plannerPreferenceListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
+        _activePrayers.value = PRAYER_NAMES.filter { it in plannerPrefs.getStringSet("active_prayers", PRAYER_NAMES.toSet()).orEmpty() }
+        _readPreference.value = plannerPrefs.getString("reading_preference", "after") ?: "after"
+        _useIntentionPrompt.value = plannerPrefs.getBoolean("show_intention_prompt", true)
+    }
+
+    override fun onCleared() {
+        plannerPrefs.unregisterOnSharedPreferenceChangeListener(plannerPreferenceListener)
+        super.onCleared()
+    }
+
     init {
         _useDeviceLocation.value = plannerPrefs.getBoolean("use_device_location", false)
         _activePrayers.value = plannerPrefs.getStringSet("active_prayers", null)
@@ -112,6 +125,7 @@ class PlannerViewModel @Inject constructor(
             ?.takeIf { it == "before" || it == "after" || it == "split" } ?: "after"
         // Same key the screens already read/write ("show_intention_prompt") so both stay in sync.
         _useIntentionPrompt.value = plannerPrefs.getBoolean("show_intention_prompt", true)
+        plannerPrefs.registerOnSharedPreferenceChangeListener(plannerPreferenceListener)
         loadData()
         if (_useDeviceLocation.value) {
             refreshPrayerTimingsWithDeviceLocation()
@@ -186,70 +200,88 @@ class PlannerViewModel @Inject constructor(
         }
     }
 
+    @OptIn(kotlinx.coroutines.FlowPreview::class)
     private fun loadData() {
         viewModelScope.launch {
             _chapters.value = repository.getChaptersFlow().firstOrNull() ?: emptyList()
-            
-            var all = repository.getAllPlans()
-            var actId = repository.getActivePlannerId()
 
-            if (all.isEmpty()) {
-                val oldActive = repository.getActivePlan()
-                val oldArchived = repository.getArchivedPlans()
-                
-                val migratedPlans = mutableListOf<ReadingPlan>()
-                if (oldActive != null) migratedPlans.add(oldActive)
-                
-                if (migratedPlans.isNotEmpty()) {
-                    all = migratedPlans
-                    actId = oldActive?.id
-                    repository.saveAllPlans(all)
-                    repository.saveActivePlannerId(actId)
-                    repository.saveActivePlan(null)
-                }
+            repository.observePlannerCache().debounce(100).collectLatest {
+                refreshPlannerData()
             }
-            
-            _allPlans.value = all
-            _activePlannerId.value = actId
-            _activePlan.value = all.find { it.id == actId }
-            _archivedPlans.value = repository.getArchivedPlans()
-            // Persisted plannerReflections win over the plan-embedded map: the
-            // repository is the web-parity source, the embedded map is legacy.
-            val persistedReflections = all.mapNotNull { plan ->
-                try {
-                    repository.getPlannerReflections(plan.id).takeIf { it.isNotEmpty() }
-                        ?.let { plan.id to it }
-                } catch (_: Exception) {
-                    null
-                }
-            }.toMap()
-            // Migration: seed any plan still missing entries from its embedded
-            // assignmentReflections (source before the planId-keyed store).
-            val seededReflections = all
-                .filter { it.assignmentReflections.isNotEmpty() }
-                .associate { it.id to PlannerWire.reflectionsFromEmbedded(it.assignmentReflections) }
-                .filterKeys { persistedReflections[it].isNullOrEmpty() }
-            _reflectionEntriesByPlan.value = persistedReflections + seededReflections
-            loadPlanExtras(actId)
-
+        }
+        viewModelScope.launch {
             repository.getAllBookmarksFlow().collect { bmList ->
                 _bookmarks.value = bmList
             }
         }
     }
 
+    private suspend fun refreshPlannerData() {
+        var all = repository.getAllPlans()
+        var actId = repository.getActivePlannerId()
+
+        if (all.isEmpty()) {
+            val oldActive = repository.getActivePlan()
+            val oldArchived = repository.getArchivedPlans()
+
+            val migratedPlans = mutableListOf<ReadingPlan>()
+            if (oldActive != null) migratedPlans.add(oldActive)
+
+            if (migratedPlans.isNotEmpty()) {
+                all = migratedPlans
+                actId = oldActive?.id
+                repository.saveAllPlans(all)
+                repository.saveActivePlannerId(actId)
+                repository.saveActivePlan(null)
+            }
+        }
+
+        _allPlans.value = all
+        _activePlannerId.value = actId
+        _activePlan.value = all.find { it.id == actId }
+        _archivedPlans.value = repository.getArchivedPlans()
+        // Persisted plannerReflections win over the plan-embedded map: the
+        // repository is the web-parity source, the embedded map is legacy.
+        val persistedReflections = all.mapNotNull { plan ->
+            try {
+                repository.getPlannerReflections(plan.id).takeIf { it.isNotEmpty() }
+                    ?.let { plan.id to it }
+            } catch (_: Exception) {
+                null
+            }
+        }.toMap()
+        // Migration: seed any plan still missing entries from its embedded
+        // assignmentReflections (source before the planId-keyed store).
+        val seededReflections = all
+            .filter { it.assignmentReflections.isNotEmpty() }
+            .associate { it.id to PlannerWire.reflectionsFromEmbedded(it.assignmentReflections) }
+            .filterKeys { persistedReflections[it].isNullOrEmpty() }
+        _reflectionEntriesByPlan.value = persistedReflections + seededReflections
+        for (id in (all.map { it.id } + listOfNotNull(actId)).distinct()) {
+            _plannerBookmarksByPlan.value = _plannerBookmarksByPlan.value + (id to repository.getPlannerBookmarks(id))
+            _sessionTimersByPlan.value = _sessionTimersByPlan.value + (id to repository.getPlannerSessionTimers(id))
+        }
+        extrasPlanId = actId
+        refreshActiveExtrasViews(actId)
+
+    }
+
     fun setActivePlan(plan: ReadingPlan) {
+        val previous = _allPlans.value.firstOrNull { it.id == plan.id }
+        val updated = if (previous != null && previous.assignments != plan.assignments) {
+            plan.copy(assignmentsUpdatedAt = maxOf(System.currentTimeMillis(), previous.assignmentsUpdatedAt + 1))
+        } else plan
         viewModelScope.launch {
             val updatedAll = _allPlans.value.toMutableList()
             val index = updatedAll.indexOfFirst { it.id == plan.id }
             if (index != -1) {
-                updatedAll[index] = plan
+                updatedAll[index] = updated
             } else {
-                updatedAll.add(plan)
+                updatedAll.add(updated)
             }
             _allPlans.value = updatedAll
             _activePlannerId.value = plan.id
-            _activePlan.value = plan
+            _activePlan.value = updated
             repository.saveAllPlans(updatedAll)
             repository.saveActivePlannerId(plan.id)
             loadPlanExtras(plan.id)
@@ -273,7 +305,7 @@ class PlannerViewModel @Inject constructor(
             val updatedAll = _allPlans.value.filter { it.id != planId }
             _allPlans.value = updatedAll
             repository.saveAllPlans(updatedAll)
-            
+
             if (_activePlannerId.value == planId) {
                 val nextActive = updatedAll.firstOrNull()
                 _activePlannerId.value = nextActive?.id
@@ -603,13 +635,13 @@ class PlannerViewModel @Inject constructor(
             )
             _archivedPlans.value = updatedArchives
             repository.saveArchivedPlans(updatedArchives)
-            
+
             // Note: old buildRevisionPlan logic overwrote active plan. We should probably do similar but just create new one
             val revision = PlannerEngine.buildRevisionPlanner(current, chaptersVal)
-            
+
             // We should delete current from all plans because we archived it
             val updatedAll = _allPlans.value.filter { it.id != current.id }
-            
+
             val finalAll = updatedAll + revision
             _allPlans.value = finalAll
             _activePlannerId.value = revision.id

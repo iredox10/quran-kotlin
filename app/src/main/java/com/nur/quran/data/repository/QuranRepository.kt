@@ -22,6 +22,7 @@ import com.nur.quran.data.words.WordPackManager
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.firstOrNull
@@ -1027,6 +1028,8 @@ class QuranRepository @Inject constructor(
         val json = gson.toJson(plans)
         quranDao.insertCacheEntry(ApiResponseCacheEntity("planner_archived_plans", json))
     }
+
+    fun observePlannerCache() = quranDao.observePlannerCache().distinctUntilChanged()
 
     suspend fun getAllPlans(): List<com.nur.quran.data.planner.ReadingPlan> = withContext(Dispatchers.IO) {
         val entry = quranDao.getCacheEntry("planner_all_plans")

@@ -391,19 +391,19 @@ class SyncMergeRulesTest {
     }
 
     @Test
-    fun oversizedPayloadTrimsSessionsToLastHundred() {
+    fun largePayloadPreservesSessions() {
         val big = "x".repeat(8_000)
         val sessions = (1..120).map { mapOf("timestamp" to it.toLong(), "note" to big) }
         val slim = slimStatePayload(mapOf("readingSessions" to sessions))
         val kept = slim["readingSessions"] as List<*>
-        assertEquals(100, kept.size)
-        assertEquals(21L, (kept.first() as Map<*, *>)["timestamp"])
+        assertEquals(120, kept.size)
+        assertEquals(1L, (kept.first() as Map<*, *>)["timestamp"])
         assertEquals(120L, (kept.last() as Map<*, *>)["timestamp"])
     }
 
     @Test
     fun payloadStillTooLargeAfterSlimThrows() {
-        val state = mapOf("notes" to "y".repeat(1_000_000))
+        val state = mapOf("notes" to "y".repeat(8_000_001))
         val error = try {
             slimStatePayload(state)
             null

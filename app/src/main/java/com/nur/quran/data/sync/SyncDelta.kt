@@ -6,7 +6,7 @@ import com.google.gson.Gson
 internal fun syncDelta(before: Map<String, Any?>, after: Map<String, Any?>): Map<String, Any?> {
     val keys = mapOf("bookmarks" to "verseKey", "collections" to "id", "planners" to "id",
         "hifdhGoals" to "id", "archivedPlanners" to "id", "readingSessions" to "timestamp",
-        "recentlyRead" to "chapterId", "pomodoroHistory" to "completedAt")
+        "recentlyRead" to "chapterId", "pomodoroHistory" to "completedAt", "assignments" to "dayNumber")
     val gson = Gson()
     val unchanged = Any()
     fun equal(a: Any?, b: Any?): Boolean = gson.toJsonTree(a) == gson.toJsonTree(b)
@@ -19,7 +19,19 @@ internal fun syncDelta(before: Map<String, Any?>, after: Map<String, Any?>): Map
             }
             val previous = base.associateBy(::id)
             val changes = incoming.filter { !previous.containsKey(id(it)) || !equal(previous[id(it)], it) }
-            return changes.takeIf { it.isNotEmpty() } ?: unchanged
+            val rows = if (field == "planners") changes.mapNotNull { row ->
+                val old = previous[id(row)]
+                if (old is Map<*, *> && row is Map<*, *>) {
+                    val result = difference(old, row, "")
+                    if (result === unchanged) return@mapNotNull null
+                    @Suppress("UNCHECKED_CAST")
+                    val patch = mapOf("id" to row["id"]) + (result as Map<String, Any?>)
+                    if (old["assignmentsUpdatedAt"] != row["assignmentsUpdatedAt"] && row["assignments"] is List<*>) {
+                        patch + ("assignments" to row["assignments"])
+                    } else patch
+                } else row
+            } else changes
+            return rows.takeIf { it.isNotEmpty() } ?: unchanged
         }
         if (base is Map<*, *> && incoming is Map<*, *>) {
             val changes = linkedMapOf<String, Any?>()

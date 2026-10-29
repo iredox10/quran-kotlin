@@ -308,7 +308,10 @@ class SyncService @Inject constructor(
             return true
         } catch (cancelled: kotlinx.coroutines.CancellationException) {
             throw cancelled
-        } catch (_: Exception) { return false }
+        } catch (error: Exception) {
+            Log.w(TAG, "Pending backup upload failed", error)
+            return false
+        }
     }
 
     /** Failed reads propagate so a blind upload cannot replace the remote union. */

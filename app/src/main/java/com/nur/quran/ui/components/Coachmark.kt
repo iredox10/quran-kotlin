@@ -1,5 +1,9 @@
 package com.nur.quran.ui.components
 
+
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -64,18 +68,18 @@ fun Coachmark(
         }
     }
 
-    val pulse = rememberInfiniteTransition(label = "coachmark-$id")
+    val pulse = rememberInfiniteTransition(label = stringResource(R.string.ui_coachmark_1_s_a980e9, id))
     val pingAlpha by pulse.animateFloat(
         initialValue = 0.75f,
         targetValue = 0f,
         animationSpec = infiniteRepeatable(tween(1200), RepeatMode.Restart),
-        label = "coachmark-ping-alpha"
+        label = stringResource(R.string.ui_coachmark_ping_alpha_58a583)
     )
     val pingScale by pulse.animateFloat(
         initialValue = 1f,
         targetValue = 2.2f,
         animationSpec = infiniteRepeatable(tween(1200), RepeatMode.Restart),
-        label = "coachmark-ping-scale"
+        label = stringResource(R.string.ui_coachmark_ping_scale_30c104)
     )
 
     Box {
@@ -129,7 +133,7 @@ fun Coachmark(
                     Spacer(modifier = Modifier.width(4.dp))
                     Icon(
                         imageVector = NurIcons.X,
-                        contentDescription = "Dismiss hint",
+                        contentDescription = stringResource(R.string.ui_dismiss_hint_660f4a),
                         tint = if (isDarkThemeGlobal) Color(0xFF334155) else Color(0xFFCBD5E1),
                         modifier = Modifier
                             .size(14.dp)

@@ -1,5 +1,7 @@
 package com.nur.quran.ui.components.planner
 
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
 import android.app.DatePickerDialog
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -30,7 +32,7 @@ import com.nur.quran.ui.screens.*
 import java.util.Calendar
 
 /**
- * "Create Custom Plan" modal dialog matching web Planner.jsx lines 395-506.
+ * stringResource(R.string.planner_create_custom_plan) modal dialog matching web Planner.jsx lines 395-506.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,7 +53,7 @@ fun CustomPlanModal(
     var buildError by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
 
-    val daysList = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
+    val daysList = plannerWeekdays()
     val maxUnit = PLANNER_UNITS[unitType]?.max ?: 604
     val sUnit = (startUnitText.toIntOrNull() ?: 1).coerceIn(1, maxUnit)
     val eUnit = (endUnitText.toIntOrNull() ?: maxUnit).coerceIn(sUnit, maxUnit)
@@ -60,12 +62,14 @@ fun CustomPlanModal(
     val pagesPerDay = Math.max(pagesPerDayText.toIntOrNull() ?: 1, 1)
     val computedDuration = Math.ceil(totalSelectedUnits.toDouble() / pagesPerDay).toInt().coerceAtLeast(1)
 
-    val stats = remember(computedDuration, excludeDays, startDateText, totalSelectedUnits) {
+    val displayLocale = androidx.compose.ui.platform.LocalConfiguration.current.locales[0]
+    val stats = remember(displayLocale, computedDuration, excludeDays, startDateText, totalSelectedUnits) {
         PlannerUtils.getPaceStats(
             durationDays = computedDuration,
             excludeDays = excludeDays.toList(),
             startDateStr = startDateText,
-            totalUnits = totalSelectedUnits
+            totalUnits = totalSelectedUnits,
+            displayLocale = displayLocale
         )
     }
 
@@ -89,7 +93,7 @@ fun CustomPlanModal(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Create Custom Plan",
+                        text = stringResource(R.string.planner_create_custom_plan),
                         fontFamily = fontFamilyUi,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.SemiBold,
@@ -99,7 +103,7 @@ fun CustomPlanModal(
                         onClick = onDismiss,
                         modifier = Modifier.size(32.dp)
                     ) {
-                        Icon(NurIcons.X, contentDescription = "Close", tint = hInkMid, modifier = Modifier.size(18.dp))
+                        Icon(NurIcons.X, contentDescription = stringResource(R.string.planner_close), tint = hInkMid, modifier = Modifier.size(18.dp))
                     }
                 }
 
@@ -116,7 +120,7 @@ fun CustomPlanModal(
                     // Plan name
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
-                            text = "Plan name (optional)",
+                            text = stringResource(R.string.planner_plan_name_optional),
                             fontFamily = fontFamilyMono,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Medium,
@@ -126,7 +130,7 @@ fun CustomPlanModal(
                         OutlinedTextField(
                             value = customTitle,
                             onValueChange = { customTitle = it },
-                            placeholder = { Text("e.g. Morning Routine, Juz Amma...", fontSize = 13.sp, color = hInkMuted) },
+                            placeholder = { Text(stringResource(R.string.planner_routine_example), fontSize = 13.sp, color = hInkMuted) },
                             singleLine = true,
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.fillMaxWidth()
@@ -136,7 +140,7 @@ fun CustomPlanModal(
                     // Reading Unit Pills
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
-                            text = "Reading unit",
+                            text = stringResource(R.string.planner_reading_unit),
                             fontFamily = fontFamilyMono,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Medium,
@@ -144,7 +148,7 @@ fun CustomPlanModal(
                             color = hInkMuted
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            listOf("page" to "Page", "juz" to "Juz", "hizb" to "Hizb", "surah" to "Surah").forEach { (key, label) ->
+                            listOf("page" to stringResource(R.string.planner_page), "juz" to stringResource(R.string.planner_juz), "hizb" to stringResource(R.string.planner_hizb), "surah" to stringResource(R.string.planner_surah)).forEach { (key, label) ->
                                 val isSelected = unitType == key
                                 Surface(
                                     shape = RoundedCornerShape(20.dp),
@@ -170,11 +174,11 @@ fun CustomPlanModal(
                     }
 
                     // Range From / To
-                    val unitLabel = PLANNER_UNITS[unitType]?.label ?: "Page"
-                    val unitPlural = PLANNER_UNITS[unitType]?.plural ?: "Pages"
+                    val unitLabel = plannerUnitName(unitType)
+                    val unitPlural = plannerUnitName(unitType, true)
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
-                            text = "$unitLabel range",
+                            text = stringResource(R.string.planner_unit_range , unitLabel),
                             fontFamily = fontFamilyMono,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Medium,
@@ -186,7 +190,7 @@ fun CustomPlanModal(
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("From", fontFamily = fontFamilyMono, fontSize = 9.sp, color = hInkMuted)
+                                Text(stringResource(R.string.planner_from), fontFamily = fontFamilyMono, fontSize = 9.sp, color = hInkMuted)
                                 OutlinedTextField(
                                     value = startUnitText,
                                     onValueChange = { startUnitText = it },
@@ -194,9 +198,9 @@ fun CustomPlanModal(
                                     shape = RoundedCornerShape(10.dp)
                                 )
                             }
-                            Text("→", fontSize = 18.sp, color = hInkMuted, modifier = Modifier.padding(top = 16.dp))
+                            Text(stringResource(R.string.planner_forward_arrow), fontSize = 18.sp, color = hInkMuted, modifier = Modifier.padding(top = 16.dp))
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("To", fontFamily = fontFamilyMono, fontSize = 9.sp, color = hInkMuted)
+                                Text(stringResource(R.string.planner_to), fontFamily = fontFamilyMono, fontSize = 9.sp, color = hInkMuted)
                                 OutlinedTextField(
                                     value = endUnitText,
                                     onValueChange = { endUnitText = it },
@@ -206,7 +210,7 @@ fun CustomPlanModal(
                             }
                         }
                         Text(
-                            text = "$totalSelectedUnits $unitPlural selected",
+                            text = stringResource(R.string.planner_selected_units , totalSelectedUnits, unitPlural),
                             fontFamily = fontFamilyMono,
                             fontSize = 10.5.sp,
                             color = hInkMuted,
@@ -219,7 +223,7 @@ fun CustomPlanModal(
                     // min 1 / max totalUnits, clamped on blur; slider is 1..min(total,50))
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
-                            text = "$unitPlural per day",
+                            text = stringResource(R.string.planner_unit_daily , unitPlural),
                             fontFamily = fontFamilyMono,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Medium,
@@ -282,7 +286,7 @@ fun CustomPlanModal(
                     // Start Date (web parity: Planner.jsx startDate picker)
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
-                            text = "Start date",
+                            text = stringResource(R.string.planner_start_date),
                             fontFamily = fontFamilyMono,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Medium,
@@ -323,7 +327,7 @@ fun CustomPlanModal(
                     // Days Off (Exclude Days)
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
-                            text = "Days Off (Optional)",
+                            text = stringResource(R.string.planner_days_off_optional),
                             fontFamily = fontFamilyMono,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Medium,
@@ -359,7 +363,7 @@ fun CustomPlanModal(
                             }
                         }
                         Text(
-                            text = "Reading assignments will skip these days.",
+                            text = stringResource(R.string.planner_skip_days_explanation),
                             fontFamily = fontFamilyBody,
                             fontSize = 11.sp,
                             color = hInkMuted
@@ -381,21 +385,21 @@ fun CustomPlanModal(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "$pagesPerDay ${PLANNER_UNITS[unitType]?.plural ?: "units"}/day",
+                            text = stringResource(R.string.planner_unit_daily_value, pagesPerDay, plannerUnitName(unitType, true)),
                             fontFamily = fontFamilyMono,
                             fontSize = 11.sp,
                             color = hInkMid
                         )
                         Text("·", color = hBoneDark, fontWeight = FontWeight.Bold)
                         Text(
-                            text = "$computedDuration days",
+                            text = stringResource(R.string.planner_duration_days_value , computedDuration),
                             fontFamily = fontFamilyMono,
                             fontSize = 11.sp,
                             color = hInkMid
                         )
                         Text("·", color = hBoneDark, fontWeight = FontWeight.Bold)
                         Text(
-                            text = "Done by ${stats.endLabel}",
+                            text = stringResource(R.string.planner_finish_date , stats.endLabel),
                             fontFamily = fontFamilyMono,
                             fontSize = 11.sp,
                             color = hInkMid
@@ -408,7 +412,7 @@ fun CustomPlanModal(
                     val surahNotReady = unitType == "surah" && chapters.isEmpty()
                     if (duplicateTitle) {
                         Text(
-                            text = "A plan with this title already exists.",
+                            text = stringResource(R.string.planner_existing_title),
                             fontFamily = fontFamilyBody,
                             fontSize = 12.sp,
                             color = Color(0xFFDC2626),
@@ -419,7 +423,7 @@ fun CustomPlanModal(
                     }
                     if (surahNotReady) {
                         Text(
-                            text = "Surah data is still loading — please try again in a moment.",
+                            text = stringResource(R.string.planner_surah_loading),
                             fontFamily = fontFamilyBody,
                             fontSize = 12.sp,
                             color = Color(0xFFDC2626),
@@ -457,7 +461,7 @@ fun CustomPlanModal(
                                 onCreatePlan(built)
                                 onDismiss()
                             } catch (e: IllegalArgumentException) {
-                                buildError = "Could not build plan: ${e.message}"
+                                buildError = context.getString(R.string.planner_build_failed)
                             }
                         },
                         enabled = !duplicateTitle && !surahNotReady,
@@ -468,7 +472,7 @@ fun CustomPlanModal(
                             .height(48.dp)
                     ) {
                         Text(
-                            text = "CREATE PLAN",
+                            text = stringResource(R.string.planner_create_plan_upper),
                             fontFamily = fontFamilyMono,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,

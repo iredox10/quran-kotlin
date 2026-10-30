@@ -1,5 +1,9 @@
 package com.nur.quran.ui.screens
 
+
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.spring
@@ -173,7 +177,7 @@ fun PageScreen(
                             fadeOut(fade))
                 }
             },
-            label = "pageFlip"
+            label = stringResource(R.string.ui_pageflip_7954df)
         ) { pane ->
             // Pane-scoped page number: the sliding-out pane keeps showing its
             // own page while it animates (header flips with the content).
@@ -191,7 +195,7 @@ fun PageScreen(
                 IconButton(onClick = onBackClick) {
                     Icon(
                         imageVector = NurIcons.ArrowLeft,
-                        contentDescription = "Back",
+                        contentDescription = stringResource(R.string.ui_back_b52b36),
                         tint = hInk,
                         modifier = Modifier.size(20.dp)
                     )
@@ -201,7 +205,7 @@ fun PageScreen(
                     horizontalAlignment = Alignment.Start
                 ) {
                     Text(
-                        text = "Page $panePage",
+                        text = stringResource(R.string.ui_page_1_s_6654d7, panePage),
                         fontFamily = fontFamilyUi,
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp,
@@ -211,7 +215,7 @@ fun PageScreen(
                         val juz = getJuzByPage(panePage)
                         val hizb = getHizbByPage(panePage)
                         Text(
-                            text = "Juz ${juz.id} · Hizb ${hizb.id}",
+                            text = stringResource(R.string.ui_juz_1_s_hizb_2_s_bdd621, juz.id, hizb.id),
                             fontFamily = fontFamilyUi,
                             fontSize = 12.sp,
                             color = hInkMuted
@@ -236,7 +240,7 @@ fun PageScreen(
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                text = "Loading Page $pageNumber...",
+                                text = stringResource(R.string.ui_loading_page_1_s_154cf5, pageNumber),
                                 fontFamily = fontFamilyUi,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp,
@@ -260,7 +264,7 @@ fun PageScreen(
                                 onClick = { viewModel.loadPage(pageNumber) },
                                 colors = ButtonDefaults.buttonColors(containerColor = hGold)
                             ) {
-                                Text("Retry", color = hWhite)
+                                Text(stringResource(R.string.ui_retry_9f5cd8), color = hWhite)
                             }
                         }
                     }
@@ -365,7 +369,7 @@ fun PageScreen(
                                     // PREVIOUS on the right — RTL mushaf page order.
                                     // Next (left)
                                     Text(
-                                        text = "← Next",
+                                        text = stringResource(R.string.ui_next_0fed81),
                                         fontFamily = fontFamilyUi,
                                         fontWeight = FontWeight.Bold,
                                         color = if (state.pageNumber < 604) hTeal else hInkMuted,
@@ -380,14 +384,14 @@ fun PageScreen(
                                     // Center
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         Text(
-                                            text = "PAGE",
+                                            text = stringResource(R.string.ui_page_618c75),
                                             fontFamily = fontFamilyMono,
                                             fontSize = 10.sp,
                                             color = hInkMuted,
                                             letterSpacing = 1.sp
                                         )
                                         Text(
-                                            text = "${state.pageNumber} / 604",
+                                            text = stringResource(R.string.ui_1_s_604_504ca1, state.pageNumber),
                                             fontFamily = fontFamilyUi,
                                             fontWeight = FontWeight.ExtraBold,
                                             fontSize = 16.sp,
@@ -397,7 +401,7 @@ fun PageScreen(
 
                                     // Previous (right)
                                     Text(
-                                        text = "Previous →",
+                                        text = stringResource(R.string.ui_previous_f67a76),
                                         fontFamily = fontFamilyUi,
                                         fontWeight = FontWeight.Bold,
                                         color = if (state.pageNumber > 1) hTeal else hInkMuted,

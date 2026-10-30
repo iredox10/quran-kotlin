@@ -1,5 +1,7 @@
 package com.nur.quran.ui.screens
 
+import androidx.compose.ui.res.stringResource
+
 import android.content.Context
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -87,47 +89,49 @@ private data class BrowseItem(
 )
 
 // ── Guided tours (identical steps to the web app's Home.jsx) ────────────
-private val HOME_TOUR_STEPS = listOf(
+@Composable
+private fun homeTourSteps() = listOf(
     TourStep(
-        title = "Welcome to Quran Nur",
-        description = "This is your personal companion for reading, memorizing, and studying the Quran.",
+        title = stringResource(R.string.ui_welcome_to_quran_nur_3e4675),
+        description = stringResource(R.string.ui_this_is_your_personal_companion_for_reading_memo_01f627),
         icon = NurIcons.Sparkles
     ),
     TourStep(
-        title = "Resume Reading",
-        description = "Pick up exactly where you left off last time.",
+        title = stringResource(R.string.ui_resume_reading_ba8c6b),
+        description = stringResource(R.string.ui_pick_up_exactly_where_you_left_off_last_time_a2318e),
         icon = NurIcons.ArrowRight,
         target = "resume"
     ),
     TourStep(
-        title = "Browse the Quran",
-        description = "Navigate quickly to any Surah, Juz, or Page.",
+        title = stringResource(R.string.ui_browse_the_quran_d892dc),
+        description = stringResource(R.string.ui_navigate_quickly_to_any_surah_juz_or_page_92dee7),
         icon = NurIcons.Search,
         target = "browse"
     ),
     TourStep(
-        title = "Set a Reading Goal 📅",
-        description = "Head to the Planner tab to create a personalized Khatm plan with daily assignments.",
+        title = stringResource(R.string.ui_set_a_reading_goal_83f485),
+        description = stringResource(R.string.ui_head_to_the_planner_tab_to_create_a_personalized_6dc411),
         icon = NurIcons.CalendarDays,
         link = "planner"
     ),
     TourStep(
-        title = "Start Memorizing 🧠",
-        description = "Use the Memorize tab to practice Hifdh with spaced repetition and word-by-word reveal.",
+        title = stringResource(R.string.ui_start_memorizing_756aad),
+        description = stringResource(R.string.ui_use_the_memorize_tab_to_practice_hifdh_with_spac_cbb3b8),
         icon = NurIcons.Brain,
         link = "memorize"
     )
 )
 
-private val HOME_ADVANCED_TOUR_STEPS = listOf(
+@Composable
+private fun homeAdvancedTourSteps() = listOf(
     TourStep(
-        title = "Swipe Between Surahs",
-        description = "While reading, try swiping left or right to quickly jump between Surahs.",
+        title = stringResource(R.string.ui_swipe_between_surahs_82bf82),
+        description = stringResource(R.string.ui_while_reading_try_swiping_left_or_right_to_quick_bc1534),
         icon = NurIcons.ArrowRight
     ),
     TourStep(
-        title = "Create a Habit",
-        description = "Consistency is key. Use the Planner to build a daily reading habit.",
+        title = stringResource(R.string.ui_create_a_habit_56a3d9),
+        description = stringResource(R.string.ui_consistency_is_key_use_the_planner_to_build_a_da_781e2c),
         icon = NurIcons.CalendarDays,
         link = "planner"
     )
@@ -215,7 +219,7 @@ fun HomeScreen(
                                 modifier = Modifier.size(36.dp)
                             )
                             Spacer(modifier = Modifier.height(16.dp))
-                            Text(text = "Loading...", color = hInkMuted, fontSize = 14.sp)
+                            Text(text = stringResource(R.string.ui_loading_b04ba4), color = hInkMuted, fontSize = 14.sp)
                         }
                     }
                 }
@@ -228,7 +232,7 @@ fun HomeScreen(
                         contentAlignment = Alignment.TopCenter
                     ) {
                         Text(
-                            text = "Error fetching data. Please try again later.",
+                            text = stringResource(R.string.ui_error_fetching_data_please_try_again_later_69594e),
                             color = hInkMuted,
                             fontSize = 14.sp,
                             fontStyle = FontStyle.Italic,
@@ -240,7 +244,7 @@ fun HomeScreen(
                     val chapters = state.chapters
                     val lastRead = recentlyRead.firstOrNull()
                     val browseItems = remember(browseMode, chapters, searchQuery) {
-                        filterBrowseItems(buildBrowseItems(browseMode, chapters), searchQuery)
+                        filterBrowseItems(buildBrowseItems(browseMode, chapters, context), searchQuery)
                     }
 
             androidx.compose.animation.AnimatedVisibility(
@@ -354,7 +358,7 @@ fun HomeScreen(
                                             modifier = Modifier.size(16.dp)
                                         )
                                         Text(
-                                            text = "Recently Read",
+                                            text = stringResource(R.string.ui_recently_read_6f71b4),
                                             fontSize = 18.sp,
                                             fontWeight = FontWeight.SemiBold,
                                             color = hInk,
@@ -399,7 +403,7 @@ fun HomeScreen(
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
-                                        text = "Browse the Quran",
+                                        text = stringResource(R.string.ui_browse_the_quran_d892dc),
                                         fontSize = 21.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = hInk,
@@ -408,7 +412,7 @@ fun HomeScreen(
                                 }
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = "Select a Surah, Page, Juz, or Hizb to begin.",
+                                    text = stringResource(R.string.ui_select_a_surah_page_juz_or_hizb_to_begin_badc18),
                                     fontSize = 13.sp,
                                     color = hInkMuted
                                 )
@@ -416,10 +420,10 @@ fun HomeScreen(
 
                                 // Mode pills
                                 val modes = listOf(
-                                    Triple("surah", "Surah", NurIcons.BookOpen),
-                                    Triple("page", "Page", NurIcons.Rows3),
-                                    Triple("juz", "Juz", NurIcons.LibraryBig),
-                                    Triple("hizb", "Hizb", NurIcons.Layers3)
+                                    Triple("surah", stringResource(R.string.ui_surah_a9f7c5), NurIcons.BookOpen),
+                                    Triple("page", stringResource(R.string.ui_page_fb0627), NurIcons.Rows3),
+                                    Triple("juz", stringResource(R.string.ui_juz_b60a3b), NurIcons.LibraryBig),
+                                    Triple("hizb", stringResource(R.string.ui_hizb_922ec9), NurIcons.Layers3)
                                 )
                                 FlowRow(
                                     horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -472,7 +476,7 @@ fun HomeScreen(
                             onValueChange = { viewModel.setSearchQuery(it) },
                             placeholder = {
                                 Text(
-                                    "Search ${browseMode.replaceFirstChar { it.uppercase() }}...",
+                                    stringResource(R.string.ui_search_1_s_b63680, when (browseMode) { "page" -> stringResource(R.string.ui_page_fb0627); "juz" -> stringResource(R.string.ui_juz_b60a3b); "hizb" -> stringResource(R.string.ui_hizb_922ec9); else -> stringResource(R.string.ui_surah_a9f7c5) }),
                                     color = hInkMuted,
                                     fontSize = 15.sp,
                                     fontFamily = fontFamilyBody
@@ -481,7 +485,7 @@ fun HomeScreen(
                             leadingIcon = {
                                 Icon(
                                     NurIcons.Search,
-                                    contentDescription = "Search",
+                                    contentDescription = stringResource(R.string.ui_search_bce064),
                                     tint = hInkMuted,
                                     modifier = Modifier.size(18.dp)
                                 )
@@ -494,7 +498,7 @@ fun HomeScreen(
                                     ) {
                                         Icon(
                                             NurIcons.X,
-                                            contentDescription = "Clear Search",
+                                            contentDescription = stringResource(R.string.ui_clear_search_87e328),
                                             tint = hInkMuted,
                                             modifier = Modifier.size(16.dp)
                                         )
@@ -566,7 +570,7 @@ fun HomeScreen(
                                         modifier = Modifier.padding(top = 4.dp)
                                     ) {
                                         Text(
-                                            text = "Clear Search",
+                                            text = stringResource(R.string.ui_clear_search_87e328),
                                             fontSize = 12.sp,
                                             fontWeight = FontWeight.SemiBold,
                                             color = hInk,
@@ -619,7 +623,7 @@ fun HomeScreen(
         pageId = "home",
         visitThreshold = 1,
         enabled = toursEnabled,
-        steps = HOME_TOUR_STEPS,
+        steps = homeTourSteps(),
         completedTours = completedTours,
         pageVisits = homeVisits,
         isDark = isDarkThemeGlobal,
@@ -634,7 +638,7 @@ fun HomeScreen(
         pageId = "home",
         visitThreshold = 3,
         enabled = toursEnabled,
-        steps = HOME_ADVANCED_TOUR_STEPS,
+        steps = homeAdvancedTourSteps(),
         completedTours = completedTours,
         pageVisits = homeVisits,
         isDark = isDarkThemeGlobal,
@@ -682,7 +686,7 @@ fun TopNavbar(
                         ) {
                             Icon(
                                 imageVector = NurIcons.ArrowLeft,
-                                contentDescription = "Back",
+                                contentDescription = stringResource(R.string.ui_back_b52b36),
                                 tint = hInk,
                                 modifier = Modifier.size(20.dp)
                             )
@@ -691,7 +695,7 @@ fun TopNavbar(
                     }
                     androidx.compose.foundation.Image(
                         painter = androidx.compose.ui.res.painterResource(id = com.nur.quran.R.drawable.ic_logo),
-                        contentDescription = "Quran Nur Logo",
+                        contentDescription = stringResource(R.string.ui_quran_nur_logo_5e0764),
                         modifier = Modifier.size(28.dp).clip(RoundedCornerShape(8.dp))
                     )
                     Spacer(modifier = Modifier.width(10.dp))
@@ -733,7 +737,7 @@ fun TopNavbar(
                     ) {
                         Icon(
                             imageVector = if (isDarkThemeGlobal) NurIcons.Sun else NurIcons.Moon,
-                            contentDescription = "Toggle Theme",
+                            contentDescription = stringResource(R.string.ui_toggle_theme_b74c4e),
                             tint = hInkMuted,
                             modifier = Modifier.size(18.dp)
                         )
@@ -749,7 +753,7 @@ fun TopNavbar(
                     ) {
                         Icon(
                             imageVector = NurIcons.Settings,
-                            contentDescription = "Settings",
+                            contentDescription = stringResource(R.string.ui_settings_c7f73b),
                             tint = hInkMuted,
                             modifier = Modifier.size(18.dp)
                         )
@@ -796,7 +800,7 @@ private fun ContinueReadingCard(item: RecentlyReadEntity, onClick: () -> Unit) {
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Continue: ${item.chapterName}",
+                    text = stringResource(R.string.ui_continue_1_s_a3e532, item.chapterName),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = Color.White,
@@ -806,9 +810,9 @@ private fun ContinueReadingCard(item: RecentlyReadEntity, onClick: () -> Unit) {
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 val verseLabel = item.verseKey?.split(":")?.getOrNull(1)?.let { "Verse $it" }
-                    ?: "From the beginning"
+                    ?: stringResource(R.string.ui_from_the_beginning_8c8e8d)
                 Text(
-                    text = "$verseLabel · ${timeAgo(item.timestamp)}",
+                    text = stringResource(R.string.ui_1_s_2_s_c1aacd, verseLabel, com.nur.quran.i18n.relativeTime(item.timestamp)),
                     fontSize = 11.sp,
                     color = Color.White.copy(alpha = 0.75f),
                     fontFamily = fontFamilyMono,
@@ -857,7 +861,7 @@ private fun ZeroStateContinueCard(onClick: () -> Unit) {
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Begin Your Journey",
+                text = stringResource(R.string.ui_begin_your_journey_02d598),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = hInk,
@@ -865,7 +869,7 @@ private fun ZeroStateContinueCard(onClick: () -> Unit) {
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = "Start reading with Surah Al-Fatihah (The Opening).",
+                text = stringResource(R.string.ui_start_reading_with_surah_al_fatihah_the_opening_db108d),
                 fontSize = 12.sp,
                 color = hInkMuted
             )
@@ -881,7 +885,7 @@ private fun ZeroStateContinueCard(onClick: () -> Unit) {
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text(
-                        text = "Start Reading",
+                        text = stringResource(R.string.ui_start_reading_ec8c2d),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
@@ -918,7 +922,7 @@ private fun WeeklyHeatmapCard(stats: HomeStats) {
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = "This Week",
+                    text = stringResource(R.string.ui_this_week_4e68dc),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = hInk,
@@ -950,7 +954,7 @@ private fun WeeklyHeatmapCard(stats: HomeStats) {
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = day.label,
+                            text = com.nur.quran.i18n.localizedWeekday(day.label),
                             fontSize = 9.sp,
                             fontFamily = fontFamilyMono,
                             letterSpacing = 0.5.sp,
@@ -986,7 +990,7 @@ private fun WeeklyHeatmapCard(stats: HomeStats) {
                         }
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "${day.mins}m",
+                            text = stringResource(R.string.ui_1_sm_830877, day.mins),
                             fontSize = 9.sp,
                             fontFamily = fontFamilyMono,
                             fontWeight = if (day.isToday) FontWeight.Bold else FontWeight.Normal,
@@ -1039,7 +1043,7 @@ private fun BookmarkCard(bookmark: BookmarkEntity, onClick: () -> Unit) {
                 Spacer(modifier = Modifier.height(2.dp))
                 val verseNum = bookmark.verseKey.split(":").getOrNull(1) ?: ""
                 Text(
-                    text = "Verse $verseNum · Resume reading",
+                    text = stringResource(R.string.ui_verse_1_s_resume_reading_8168fe, verseNum),
                     fontSize = 11.sp,
                     color = hInkMuted
                 )
@@ -1092,13 +1096,13 @@ private fun RecentlyReadCard(item: RecentlyReadEntity, onClick: () -> Unit) {
             )
             item.verseKey?.split(":")?.getOrNull(1)?.let { verseNum ->
                 Text(
-                    text = "Verse $verseNum",
+                    text = stringResource(R.string.ui_verse_1_s_7e45d7, verseNum),
                     fontSize = 11.sp,
                     color = hInkMuted
                 )
             }
             Text(
-                text = timeAgo(item.timestamp),
+                text = com.nur.quran.i18n.relativeTime(item.timestamp),
                 fontSize = 11.sp,
                 color = hInkMuted
             )
@@ -1218,16 +1222,16 @@ private fun BrowseItemCard(
 // ── Helpers ─────────────────────────────────────────────────────────────
 
 /** Mirrors the web app's getBrowseItems(). */
-private fun buildBrowseItems(mode: String, chapters: List<ChapterEntity>): List<BrowseItem> {
+private fun buildBrowseItems(mode: String, chapters: List<ChapterEntity>, context: Context): List<BrowseItem> {
     val chapMap = chapters.associateBy { it.id }
     return when (mode) {
         "page" -> (1..MUSHAF_PAGE_COUNT).map { n ->
             val juz = getJuzByPage(n)
             BrowseItem(
                 key = "page-$n",
-                title = "Page $n",
-                subtitle = "Juz ${juz.id} · Mushaf View",
-                meta = "Page ${n.toString().padStart(3, '0')}",
+                title = context.getString(R.string.ui_page_1_s_6654d7, n),
+                subtitle = context.getString(R.string.ui_juz_1_s_mushaf_view_98d63e, juz.id),
+                meta = context.getString(R.string.ui_page_1_s_6654d7, n.toString().padStart(3, '0')),
                 arabic = "صفحة $n",
                 prefix = n,
                 pageNumber = n
@@ -1235,12 +1239,12 @@ private fun buildBrowseItems(mode: String, chapters: List<ChapterEntity>): List<
         }
         "juz" -> JUZ_STARTS.map { juz ->
             val chapId = juz.verseKey.substringBefore(":").toIntOrNull() ?: 1
-            val surahName = chapMap[chapId]?.nameSimple ?: "Surah $chapId"
+            val surahName = chapMap[chapId]?.nameSimple ?: context.getString(R.string.ui_surah_1_s_ffa393, chapId)
             BrowseItem(
                 key = "juz-${juz.id}",
-                title = "Juz ${juz.id}",
+                title = context.getString(R.string.ui_juz_1_s_146e8b, juz.id),
                 subtitle = "$surahName (${juz.verseKey})",
-                meta = "Page ${juz.pageNumber}",
+                meta = context.getString(R.string.ui_page_1_s_6654d7, juz.pageNumber),
                 arabic = "الجزء ${juz.id}",
                 prefix = juz.id,
                 pageNumber = juz.pageNumber,
@@ -1249,12 +1253,12 @@ private fun buildBrowseItems(mode: String, chapters: List<ChapterEntity>): List<
         }
         "hizb" -> HIZB_STARTS.map { hizb ->
             val chapId = hizb.verseKey.substringBefore(":").toIntOrNull() ?: 1
-            val surahName = chapMap[chapId]?.nameSimple ?: "Surah $chapId"
+            val surahName = chapMap[chapId]?.nameSimple ?: context.getString(R.string.ui_surah_1_s_ffa393, chapId)
             BrowseItem(
                 key = "hizb-${hizb.id}",
-                title = "Hizb ${hizb.id}",
+                title = context.getString(R.string.ui_hizb_1_s_ab29bf, hizb.id),
                 subtitle = "$surahName (${hizb.verseKey})",
-                meta = "Page ${hizb.pageNumber}",
+                meta = context.getString(R.string.ui_page_1_s_6654d7, hizb.pageNumber),
                 arabic = "حزب ${hizb.id}",
                 prefix = hizb.id,
                 pageNumber = hizb.pageNumber,
@@ -1262,12 +1266,12 @@ private fun buildBrowseItems(mode: String, chapters: List<ChapterEntity>): List<
             )
         }
         else -> chapters.map { chapter ->
-            val place = if (chapter.revelationPlace.equals("makkah", ignoreCase = true)) "Meccan" else "Medinan"
+            val place = if (chapter.revelationPlace.equals("makkah", ignoreCase = true)) context.getString(R.string.ui_meccan_c6f6fb) else context.getString(R.string.ui_medinan_609839)
             BrowseItem(
                 key = "surah-${chapter.id}",
                 title = chapter.nameSimple,
-                subtitle = chapter.translatedName.ifEmpty { "Surah ${chapter.id}" },
-                meta = "$place • ${chapter.versesCount} Ayahs",
+                subtitle = chapter.translatedName.ifEmpty { context.getString(R.string.ui_surah_1_s_ffa393, chapter.id) },
+                meta = context.getString(R.string.ui_1_s_2_s_ayahs_165547, place, chapter.versesCount),
                 arabic = chapter.nameArabic,
                 prefix = chapter.id,
                 chapterId = chapter.id
@@ -1353,7 +1357,7 @@ private fun OnboardingProgressCard(
                 ) {
                     Icon(
                         imageVector = NurIcons.X,
-                        contentDescription = "Dismiss",
+                        contentDescription = stringResource(R.string.ui_dismiss_70afe9),
                         tint = hInkMuted,
                         modifier = Modifier.size(14.dp)
                     )
@@ -1361,7 +1365,7 @@ private fun OnboardingProgressCard(
 
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Welcome to Quran Nur",
+                    text = stringResource(R.string.ui_welcome_to_quran_nur_3e4675),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = hInk,
@@ -1369,7 +1373,7 @@ private fun OnboardingProgressCard(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "${state.completedSteps} of ${state.totalSteps} steps completed",
+                    text = stringResource(R.string.ui_1_s_of_2_s_steps_completed_8c2687, state.completedSteps, state.totalSteps),
                     fontSize = 13.sp,
                     color = hInkMid,
                     fontFamily = fontFamilyBody

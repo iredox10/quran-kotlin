@@ -1,5 +1,8 @@
 package com.nur.quran.ui.components.profile
 
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -82,14 +85,14 @@ fun ProfileGoalCard(
 
                     Column {
                         Text(
-                            text = "Daily Goal",
+                            text = stringResource(R.string.ui_daily_goal_b63f21),
                             fontFamily = fontFamilyUi,
                             fontSize = 17.sp,
                             fontWeight = FontWeight.Bold,
                             color = hInk
                         )
                         Text(
-                            text = "${ProfileUtils.formatMinutes(todayTotalSeconds)} / ${dailyGoalMins}m today",
+                            text = stringResource(R.string.ui_1_s_2_sm_today_e989b8, ProfileUtils.formatMinutes(todayTotalSeconds), dailyGoalMins),
                             fontFamily = fontFamilyBody,
                             fontSize = 12.sp,
                             color = hInkMuted
@@ -107,7 +110,7 @@ fun ProfileGoalCard(
                 ) {
                     Icon(
                         imageVector = NurIcons.Settings,
-                        contentDescription = "Configure Goal",
+                        contentDescription = stringResource(R.string.ui_configure_goal_fbc8e0),
                         tint = hInkMuted,
                         modifier = Modifier
                             .size(14.dp)
@@ -154,7 +157,7 @@ fun ProfileGoalCard(
                     Divider(color = hBoneDark.copy(alpha = 0.6f), thickness = 1.dp)
 
                     Text(
-                        text = "SELECT DAILY GOAL (MINUTES)",
+                        text = stringResource(R.string.ui_select_daily_goal_minutes_505590),
                         fontFamily = fontFamilyMono,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
@@ -186,7 +189,7 @@ fun ProfileGoalCard(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = "${mins}m",
+                                    text = stringResource(R.string.ui_1_sm_830877, mins),
                                     fontFamily = fontFamilyMono,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,

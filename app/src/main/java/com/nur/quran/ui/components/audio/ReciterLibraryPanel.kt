@@ -1,5 +1,9 @@
 package com.nur.quran.ui.components.audio
 
+
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import android.media.MediaPlayer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -273,7 +277,7 @@ private fun ReciterLibraryRow(
                     if (selected) {
                         Icon(
                             imageVector = NurIcons.Check,
-                            contentDescription = "Selected reciter",
+                            contentDescription = stringResource(R.string.ui_selected_reciter_9f6719),
                             tint = hGold,
                             modifier = Modifier.size(16.dp),
                         )
@@ -290,7 +294,7 @@ private fun ReciterLibraryRow(
                         color = hInkMuted,
                     )
                     Text(
-                        text = "•  $downloadedSurahs/114",
+                        text = stringResource(R.string.ui_1_s_114_bba161, downloadedSurahs),
                         fontFamily = fontFamilyMono,
                         fontSize = 11.sp,
                         color = hInkMuted,
@@ -311,7 +315,7 @@ private fun ReciterLibraryRow(
                                 modifier = Modifier.size(12.dp),
                             )
                             Text(
-                                text = "OFFLINE",
+                                text = stringResource(R.string.ui_offline_c68993),
                                 fontFamily = fontFamilyMono,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 10.sp,
@@ -335,7 +339,7 @@ private fun ReciterLibraryRow(
                         IconButton(onClick = onPreview, modifier = Modifier.size(36.dp)) {
                             Icon(
                                 imageVector = NurIcons.PauseFilled,
-                                contentDescription = "Stop preview",
+                                contentDescription = stringResource(R.string.ui_stop_preview_598779),
                                 tint = hGold,
                                 modifier = Modifier.size(20.dp),
                             )
@@ -345,7 +349,7 @@ private fun ReciterLibraryRow(
                         IconButton(onClick = onPreview, modifier = Modifier.size(36.dp)) {
                             Icon(
                                 imageVector = NurIcons.Play,
-                                contentDescription = "Preview ${reciter.name}",
+                                contentDescription = stringResource(R.string.ui_preview_1_s_af4d2b, reciter.name),
                                 tint = hInkMid,
                                 modifier = Modifier.size(20.dp),
                             )
@@ -358,8 +362,8 @@ private fun ReciterLibraryRow(
         // Live per-surah progress lines ("reciter:chapter" keys).
         activeProgress.forEach { (chapter, p) ->
             Text(
-                text = if (p.total > 0) "Surah $chapter — ${p.downloaded}/${p.total}"
-                else "Surah $chapter — starting…",
+                text = if (p.total > 0) stringResource(R.string.ui_surah_1_s_2_s_3_s_0ce9fc, chapter, p.downloaded, p.total)
+                else stringResource(R.string.ui_surah_1_s_starting_4210ee, chapter),
                 fontFamily = fontFamilyMono,
                 fontSize = 11.sp,
                 color = hGold,
@@ -396,7 +400,7 @@ private fun ReciterLibraryRow(
                     modifier = Modifier.size(14.dp),
                 )
                 Text(
-                    text = " Surah",
+                    text = stringResource(R.string.ui_surah_60fea6),
                     color = hGold,
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp,
@@ -411,7 +415,7 @@ private fun ReciterLibraryRow(
                     modifier = Modifier.size(14.dp),
                 )
                 Text(
-                    text = " All",
+                    text = stringResource(R.string.ui_all_85f3b4),
                     color = hGold,
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp,
@@ -421,7 +425,7 @@ private fun ReciterLibraryRow(
             if (fullyOffline) {
                 TextButton(onClick = onDeleteAll) {
                     Text(
-                        text = "Delete all",
+                        text = stringResource(R.string.ui_delete_all_081705),
                         color = hRed,
                         fontSize = 13.sp,
                         fontFamily = fontFamilyUi,
@@ -480,7 +484,7 @@ private fun ReciterSurahsView(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack, modifier = Modifier.size(32.dp)) {
-                Icon(imageVector = NurIcons.ChevronLeft, contentDescription = "Back to reciters", tint = hInk, modifier = Modifier.size(20.dp))
+                Icon(imageVector = NurIcons.ChevronLeft, contentDescription = stringResource(R.string.ui_back_to_reciters_b42423), tint = hInk, modifier = Modifier.size(20.dp))
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -491,14 +495,14 @@ private fun ReciterSurahsView(
                     color = hInk,
                 )
                 Text(
-                    text = "$downloadedCount/${chapters.size.coerceAtLeast(114)} surahs offline",
+                    text = stringResource(R.string.ui_1_s_2_s_surahs_offline_4f7dd3, downloadedCount, chapters.size.coerceAtLeast(114)),
                     fontFamily = fontFamilyMono,
                     fontSize = 11.sp,
                     color = hInkMuted,
                 )
             }
             TextButton(onClick = { onSelectReciter(reciterId) }) {
-                Text("Select", color = hGold, fontWeight = FontWeight.Bold, fontSize = 13.sp, fontFamily = fontFamilyUi)
+                Text(stringResource(R.string.ui_select_859822), color = hGold, fontWeight = FontWeight.Bold, fontSize = 13.sp, fontFamily = fontFamilyUi)
             }
         }
 
@@ -509,21 +513,21 @@ private fun ReciterSurahsView(
             shape = RoundedCornerShape(12.dp),
         ) {
             Icon(imageVector = NurIcons.Download, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
-            Text(" Download all surahs", color = Color.White, fontWeight = FontWeight.Bold, fontFamily = fontFamilyUi, fontSize = 14.sp)
+            Text(stringResource(R.string.ui_download_all_surahs_83fe6c), color = Color.White, fontWeight = FontWeight.Bold, fontFamily = fontFamilyUi, fontSize = 14.sp)
         }
 
         OutlinedTextField(
             value = query,
             onValueChange = { query = it },
             modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text(text = "Search surahs…", color = hInkMuted, fontFamily = fontFamilyBody, fontSize = 14.sp) },
+            placeholder = { Text(text = stringResource(R.string.ui_search_surahs_6e3b9b), color = hInkMuted, fontFamily = fontFamilyBody, fontSize = 14.sp) },
             singleLine = true,
             shape = RoundedCornerShape(12.dp),
         )
 
         if (busy) {
             Text(
-                text = "Downloading…",
+                text = stringResource(R.string.ui_downloading_c177e4),
                 fontFamily = fontFamilyMono,
                 fontSize = 11.sp,
                 color = hGold,
@@ -532,7 +536,7 @@ private fun ReciterSurahsView(
         val anyQueued = remember(enqueuedKeys) { enqueuedKeys.any { it.startsWith("$reciterId:") } }
         if (!busy && anyQueued && waitingForWifi) {
             Text(
-                text = "Waiting for WiFi — downloads resume automatically. Turn off WiFi-only in Settings → Data to use mobile data.",
+                text = stringResource(R.string.ui_waiting_for_wifi_downloads_resume_automatically_ffd4a7),
                 fontFamily = fontFamilyBody,
                 fontSize = 11.sp,
                 color = hInkMuted,
@@ -614,19 +618,19 @@ private fun ReciterSurahsView(
                                 CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = hGold)
                             }
                             IconButton(onClick = { runCatching { packVm.cancelSurah(reciterId, chapter.id) } }, modifier = Modifier.size(30.dp)) {
-                                Icon(imageVector = NurIcons.X, contentDescription = "Cancel", tint = hInkMuted, modifier = Modifier.size(16.dp))
+                                Icon(imageVector = NurIcons.X, contentDescription = stringResource(R.string.ui_cancel_77dfd2), tint = hInkMuted, modifier = Modifier.size(16.dp))
                             }
                         }
                         queued -> {
                             CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = hInkMuted)
                             IconButton(onClick = { runCatching { packVm.cancelSurah(reciterId, chapter.id) } }, modifier = Modifier.size(30.dp)) {
-                                Icon(imageVector = NurIcons.X, contentDescription = "Cancel", tint = hInkMuted, modifier = Modifier.size(16.dp))
+                                Icon(imageVector = NurIcons.X, contentDescription = stringResource(R.string.ui_cancel_77dfd2), tint = hInkMuted, modifier = Modifier.size(16.dp))
                             }
                         }
                         done -> {
-                            Icon(imageVector = NurIcons.CheckCircle2, contentDescription = "Downloaded", tint = hGreen, modifier = Modifier.size(20.dp))
+                            Icon(imageVector = NurIcons.CheckCircle2, contentDescription = stringResource(R.string.ui_downloaded_c61970), tint = hGreen, modifier = Modifier.size(20.dp))
                             IconButton(onClick = { runCatching { packVm.deleteSurah(reciterId, chapter.id) } }, modifier = Modifier.size(30.dp)) {
-                                Icon(imageVector = NurIcons.X, contentDescription = "Delete", tint = hInkMuted, modifier = Modifier.size(16.dp))
+                                Icon(imageVector = NurIcons.X, contentDescription = stringResource(R.string.ui_delete_f6fdbe), tint = hInkMuted, modifier = Modifier.size(16.dp))
                             }
                         }
                         else -> {
@@ -637,7 +641,7 @@ private fun ReciterSurahsView(
                                 },
                                 modifier = Modifier.size(32.dp),
                             ) {
-                                Icon(imageVector = NurIcons.Download, contentDescription = "Download ${chapter.nameSimple}", tint = hGold, modifier = Modifier.size(20.dp))
+                                Icon(imageVector = NurIcons.Download, contentDescription = stringResource(R.string.ui_download_1_s_77eb17, chapter.nameSimple), tint = hGold, modifier = Modifier.size(20.dp))
                             }
                         }
                     }

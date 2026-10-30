@@ -1,5 +1,7 @@
 package com.nur.quran.ui.components.planner
 
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -44,7 +46,7 @@ fun AdjustPaceDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Adjust Pace",
+                text = stringResource(R.string.planner_adjust_pace),
                 fontFamily = fontFamilyUi,
                 fontWeight = FontWeight.Bold,
                 fontSize = 19.sp,
@@ -54,14 +56,14 @@ fun AdjustPaceDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    text = "Choose the total reading days, including days already read. Your completed reading is kept.",
+                    text = stringResource(R.string.planner_adjust_explanation),
                     fontSize = 13.5.sp,
                     fontFamily = fontFamilyBody,
                     color = hInkMid,
                     lineHeight = 19.sp
                 )
                 Text(
-                    text = "New Total Days",
+                    text = stringResource(R.string.planner_new_total_days),
                     fontFamily = fontFamilyMono,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
@@ -74,27 +76,27 @@ fun AdjustPaceDialog(
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
                     isError = !validDays,
                     supportingText = {
-                        Text(if (validDays) "At least $minimumDays total days needed to keep your reading progress."
-                            else "Enter $minimumDays–1000 days.")
+                        Text(if (validDays) stringResource(R.string.planner_minimum_duration , minimumDays)
+                            else stringResource(R.string.planner_enter_duration , minimumDays))
                     },
                     singleLine = true,
                     shape = RoundedCornerShape(12.dp),
                     trailingIcon = {
-                        Text("DAYS", fontFamily = fontFamilyMono, fontSize = 11.sp, color = hInkMuted, modifier = Modifier.padding(end = 12.dp))
+                        Text(stringResource(R.string.planner_days_upper), fontFamily = fontFamilyMono, fontSize = 11.sp, color = hInkMuted, modifier = Modifier.padding(end = 12.dp))
                     },
                     modifier = Modifier.fillMaxWidth()
                 )
                 if (preview != null) {
-                    val range = if (pageCounts.isEmpty()) "Complete" else {
+                    val range = if (pageCounts.isEmpty()) stringResource(R.string.planner_complete) else {
                         val low = pageCounts.minOrNull() ?: 0
                         val high = pageCounts.maxOrNull() ?: 0
-                        if (low == high) "$low pages/day" else "$low–$high pages/day"
+                        if (low == high) stringResource(R.string.planner_pages_day_fixed, low) else stringResource(R.string.planner_pages_day_range, low, high)
                     }
-                    val endDate = PlannerEngine.formatPlannerDateLabel(PlannerEngine.getPlanEndDate(preview))
-                    Text("${preview.assignments.size} total days · $range\nFinish $endDate",
+                    val endDate = plannerDateLabel(PlannerEngine.getPlanEndDate(preview))
+                    Text(stringResource(R.string.planner_preview_duration, preview.assignments.size, range, endDate),
                         fontFamily = fontFamilyBody, fontSize = 12.sp, color = hTeal)
                     if (preview.assignments.size < (enteredDays ?: 0)) {
-                        Text("Limited to one unread page per day.", fontSize = 12.sp, color = hInkMid)
+                        Text(stringResource(R.string.planner_limit_unread), fontSize = 12.sp, color = hInkMid)
                     }
                 }
             }
@@ -108,12 +110,12 @@ fun AdjustPaceDialog(
                 colors = ButtonDefaults.buttonColors(containerColor = hGold),
                 shape = RoundedCornerShape(10.dp)
             ) {
-                Text("Apply", fontFamily = fontFamilyUi, fontWeight = FontWeight.Bold, color = Color.White)
+                Text(stringResource(R.string.planner_apply), fontFamily = fontFamilyUi, fontWeight = FontWeight.Bold, color = Color.White)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel", fontFamily = fontFamilyUi, color = hInkMid)
+                Text(stringResource(R.string.planner_cancel), fontFamily = fontFamilyUi, color = hInkMid)
             }
         },
         containerColor = hCream
@@ -150,14 +152,14 @@ fun PlannerSettingsDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Planner Settings",
+                        text = stringResource(R.string.planner_planner_settings),
                         fontFamily = fontFamilyUi,
                         fontSize = 19.sp,
                         fontWeight = FontWeight.Bold,
                         color = hInk
                     )
                     IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
-                        Icon(NurIcons.X, contentDescription = "Close", tint = hInkMid, modifier = Modifier.size(18.dp))
+                        Icon(NurIcons.X, contentDescription = stringResource(R.string.planner_close), tint = hInkMid, modifier = Modifier.size(18.dp))
                     }
                 }
 
@@ -165,7 +167,7 @@ fun PlannerSettingsDialog(
 
                 // Daily Prayers Section
                 Text(
-                    text = "Daily Prayers",
+                    text = stringResource(R.string.planner_daily_prayers),
                     fontFamily = fontFamilyMono,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
@@ -174,7 +176,7 @@ fun PlannerSettingsDialog(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Select which prayers you want to distribute reading across.",
+                    text = stringResource(R.string.planner_prayer_distribution),
                     fontFamily = fontFamilyBody,
                     fontSize = 12.5.sp,
                     color = hInkMid
@@ -196,7 +198,7 @@ fun PlannerSettingsDialog(
                                 .clickable { onTogglePrayer(pName) }
                         ) {
                             Text(
-                                text = pName,
+                                text = plannerPrayerName(pName),
                                 fontFamily = fontFamilyBody,
                                 fontSize = 11.5.sp,
                                 fontWeight = FontWeight.SemiBold,
@@ -212,7 +214,7 @@ fun PlannerSettingsDialog(
 
                 // Reading Preference
                 Text(
-                    text = "Reading Preference",
+                    text = stringResource(R.string.planner_reading_preference),
                     fontFamily = fontFamilyMono,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
@@ -221,7 +223,7 @@ fun PlannerSettingsDialog(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
 
-                listOf("after" to "Read After Prayer", "before" to "Read Before Prayer", "split" to "Split Before & After").forEach { (key, label) ->
+                listOf("after" to stringResource(R.string.planner_read_after), "before" to stringResource(R.string.planner_read_before), "split" to stringResource(R.string.planner_read_split)).forEach { (key, label) ->
                     val isSelected = readingPreference == key
                     Surface(
                         shape = RoundedCornerShape(12.dp),
@@ -261,7 +263,7 @@ fun PlannerSettingsDialog(
                     ) {
                         Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
                             Text(
-                                text = "Intention Prompts",
+                                text = stringResource(R.string.planner_intention_prompts),
                                 fontFamily = fontFamilyMono,
                                 fontSize = 9.5.sp,
                                 fontWeight = FontWeight.Bold,
@@ -270,7 +272,7 @@ fun PlannerSettingsDialog(
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "Show a mindfulness prompt before reading.",
+                                text = stringResource(R.string.planner_intention_explanation),
                                 fontFamily = fontFamilyBody,
                                 fontSize = 12.sp,
                                 color = hInkMid
@@ -297,7 +299,7 @@ fun PlannerSettingsDialog(
                     colors = ButtonDefaults.buttonColors(containerColor = hTeal),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Done", fontFamily = fontFamilyUi, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text(stringResource(R.string.planner_done), fontFamily = fontFamilyUi, fontWeight = FontWeight.Bold, color = Color.White)
                 }
             }
         }
@@ -317,7 +319,7 @@ fun RebalancePlanDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Rebalance Plan",
+                text = stringResource(R.string.planner_rebalance_plan),
                 fontFamily = fontFamilyUi,
                 fontWeight = FontWeight.Bold,
                 fontSize = 19.sp,
@@ -327,7 +329,7 @@ fun RebalancePlanDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    text = "You missed some pages from past assignments. How would you like to catch up?",
+                    text = stringResource(R.string.planner_rebalance_explanation),
                     fontSize = 13.5.sp,
                     fontFamily = fontFamilyBody,
                     color = hInkMid,
@@ -341,10 +343,10 @@ fun RebalancePlanDialog(
                     border = BorderStroke(1.5.dp, hBoneDark),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Extend Plan", fontFamily = fontFamilyUi, fontWeight = FontWeight.SemiBold, color = hInk)
+                    Text(stringResource(R.string.planner_extend_plan), fontFamily = fontFamilyUi, fontWeight = FontWeight.SemiBold, color = hInk)
                 }
                 Text(
-                    text = "Keep your daily reading amount exactly the same, but add extra days to the end of your plan.",
+                    text = stringResource(R.string.planner_extend_explanation),
                     fontSize = 12.sp,
                     fontFamily = fontFamilyBody,
                     color = hInkMid,
@@ -356,10 +358,10 @@ fun RebalancePlanDialog(
                     colors = ButtonDefaults.buttonColors(containerColor = hGold),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Spread Pages", fontFamily = fontFamilyUi, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text(stringResource(R.string.planner_spread_pages), fontFamily = fontFamilyUi, fontWeight = FontWeight.Bold, color = Color.White)
                 }
                 Text(
-                    text = "Keep your original deadline, but evenly distribute the missed pages across your remaining days.",
+                    text = stringResource(R.string.planner_spread_explanation),
                     fontSize = 12.sp,
                     fontFamily = fontFamilyBody,
                     color = hInkMid,
@@ -370,7 +372,7 @@ fun RebalancePlanDialog(
         confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel", fontFamily = fontFamilyUi, color = hInkMid)
+                Text(stringResource(R.string.planner_cancel), fontFamily = fontFamilyUi, color = hInkMid)
             }
         },
         containerColor = hCream
@@ -400,14 +402,14 @@ fun ArchivesDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Past Plans Archive",
+                        text = stringResource(R.string.planner_past_archive),
                         fontFamily = fontFamilyUi,
                         fontSize = 19.sp,
                         fontWeight = FontWeight.Bold,
                         color = hInk
                     )
                     IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
-                        Icon(NurIcons.X, contentDescription = "Close", tint = hInkMid, modifier = Modifier.size(18.dp))
+                        Icon(NurIcons.X, contentDescription = stringResource(R.string.planner_close), tint = hInkMid, modifier = Modifier.size(18.dp))
                     }
                 }
 
@@ -422,7 +424,7 @@ fun ArchivesDialog(
                 ) {
                     if (archivedPlans.isEmpty()) {
                         Text(
-                            text = "No archived plans yet.",
+                            text = stringResource(R.string.planner_no_archived),
                             fontFamily = fontFamilyBody,
                             fontSize = 13.5.sp,
                             color = hInkMuted,
@@ -456,7 +458,7 @@ fun ArchivesDialog(
                                             color = if (isCompleted) Color(0x26B8924A) else hBone
                                         ) {
                                             Text(
-                                                text = if (isCompleted) "Completed" else "Ended",
+                                                text = if (isCompleted) stringResource(R.string.planner_completed) else stringResource(R.string.planner_ended),
                                                 fontFamily = fontFamilyMono,
                                                 fontSize = 9.5.sp,
                                                 fontWeight = FontWeight.Medium,
@@ -467,7 +469,7 @@ fun ArchivesDialog(
                                     }
                                     Spacer(modifier = Modifier.height(2.dp))
                                     Text(
-                                        text = "${plan.durationDays} days · ${plan.completedDays.size} days finished",
+                                        text = stringResource(R.string.planner_days_finished , plan.durationDays, plan.completedDays.size),
                                         fontFamily = fontFamilyMono,
                                         fontSize = 11.sp,
                                         color = hInkMuted
@@ -495,7 +497,7 @@ fun DeletePlanConfirmDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Delete this plan?",
+                text = stringResource(R.string.planner_delete_plan_question),
                 fontFamily = fontFamilyUi,
                 fontWeight = FontWeight.Bold,
                 fontSize = 19.sp,
@@ -504,7 +506,7 @@ fun DeletePlanConfirmDialog(
         },
         text = {
             Text(
-                text = "All progress will be permanently lost. This cannot be undone.",
+                text = stringResource(R.string.planner_delete_warning),
                 fontSize = 13.5.sp,
                 fontFamily = fontFamilyBody,
                 color = hInkMid
@@ -516,12 +518,12 @@ fun DeletePlanConfirmDialog(
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626)),
                 shape = RoundedCornerShape(10.dp)
             ) {
-                Text("Delete", fontFamily = fontFamilyUi, fontWeight = FontWeight.Bold, color = Color.White)
+                Text(stringResource(R.string.planner_delete), fontFamily = fontFamilyUi, fontWeight = FontWeight.Bold, color = Color.White)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel", fontFamily = fontFamilyUi, color = hInkMid)
+                Text(stringResource(R.string.planner_cancel), fontFamily = fontFamilyUi, color = hInkMid)
             }
         },
         containerColor = hCream

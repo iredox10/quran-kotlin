@@ -1,5 +1,9 @@
 package com.nur.quran.ui.components.analytics
 
+
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -94,7 +98,7 @@ fun AnalyticsLogActivityCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Log activity", fontFamily = fontFamilyUi, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = hInk)
+                Text(stringResource(R.string.ui_log_activity_a9f073), fontFamily = fontFamilyUi, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = hInk)
                 Box(
                     modifier = Modifier.clip(CircleShape).background(if (open) hSurface else hWhite)
                         .clickable { if (open) resetGen++; open = !open }.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -102,7 +106,7 @@ fun AnalyticsLogActivityCard(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         Icon(NurIcons.Plus, null, tint = hGold, modifier = Modifier.size(12.dp))
-                        Text(if (open) "CLOSE" else "LOG", fontFamily = fontFamilyMono, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = hInk)
+                        Text(if (open) stringResource(R.string.ui_close_dbc874) else stringResource(R.string.ui_log_94b160), fontFamily = fontFamilyMono, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = hInk)
                     }
                 }
             }
@@ -159,7 +163,7 @@ fun AnalyticsLogActivityForm(
                     Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                         OutlinedTextField(
                             value = minutes, onValueChange = { minutes = it; error = null },
-                            label = { Text("Minutes") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            label = { Text(stringResource(R.string.ui_minutes_092f99)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             singleLine = true, modifier = Modifier.width(110.dp)
                         )
                         ActivityRecord.MINUTES_CHIPS.forEach { m ->
@@ -170,7 +174,7 @@ fun AnalyticsLogActivityForm(
                                     .padding(horizontal = 10.dp, vertical = 10.dp),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text("$m", fontFamily = fontFamilyMono, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = hInkMuted)
+                                Text(stringResource(R.string.ui_1_s_c79f71, m), fontFamily = fontFamilyMono, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = hInkMuted)
                             }
                         }
                     }
@@ -179,15 +183,15 @@ fun AnalyticsLogActivityForm(
                         ExposedDropdownMenuBox(expanded = surahExpanded, onExpandedChange = { surahExpanded = it }) {
                             OutlinedTextField(
                                 value = chapters.find { it.id.toString() == chapterId }?.let { "${it.id}. ${it.nameSimple}" } ?: "None",
-                                onValueChange = {}, readOnly = true, label = { Text("Surah (optional)") },
+                                onValueChange = {}, readOnly = true, label = { Text(stringResource(R.string.ui_surah_optional_bb58e9)) },
                                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(surahExpanded) },
                                 modifier = Modifier.fillMaxWidth().menuAnchor()
                             )
                             ExposedDropdownMenu(expanded = surahExpanded, onDismissRequest = { surahExpanded = false }) {
-                                DropdownMenuItem(text = { Text("None") }, onClick = { chapterId = ""; surahExpanded = false })
+                                DropdownMenuItem(text = { Text(stringResource(R.string.ui_none_6eef66)) }, onClick = { chapterId = ""; surahExpanded = false })
                                 chapters.forEach { c ->
                                     DropdownMenuItem(
-                                        text = { Text("${c.id}. ${c.nameSimple}") },
+                                        text = { Text(stringResource(R.string.ui_1_s_2_s_8f71df, c.id, c.nameSimple)) },
                                         onClick = { chapterId = c.id.toString(); surahExpanded = false }
                                     )
                                 }
@@ -210,7 +214,7 @@ fun AnalyticsLogActivityForm(
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = hGold)
                         ) {
-                            Text("LOG SESSION", fontFamily = fontFamilyMono, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Text(stringResource(R.string.ui_log_session_a2e239), fontFamily = fontFamilyMono, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
                     }
     }

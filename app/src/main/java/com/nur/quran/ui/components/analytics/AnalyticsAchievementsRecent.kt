@@ -1,5 +1,9 @@
 package com.nur.quran.ui.components.analytics
 
+
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -90,7 +94,7 @@ fun AchievementsSection(
                     modifier = Modifier.size(18.dp)
                 )
                 Text(
-                    text = "Achievements",
+                    text = stringResource(R.string.ui_achievements_a6634f),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = fontFamilyUi,
@@ -112,7 +116,7 @@ fun AchievementsSection(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "Read consistently to unlock badges!",
+                        text = stringResource(R.string.ui_read_consistently_to_unlock_badges_0e5ee7),
                         fontSize = 13.sp,
                         color = hInkMuted,
                         textAlign = TextAlign.Center
@@ -199,13 +203,13 @@ fun AchievementsBoard(
             Row(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Icon(imageVector = NurIcons.Award, contentDescription = null, tint = hGold, modifier = Modifier.size(18.dp))
-                    Text(text = "Achievements", fontSize = 18.sp, fontWeight = FontWeight.Bold, fontFamily = fontFamilyUi, color = hInk)
+                    Text(text = stringResource(R.string.ui_achievements_a6634f), fontSize = 18.sp, fontWeight = FontWeight.Bold, fontFamily = fontFamilyUi, color = hInk)
                 }
-                Text(text = "${badges.count { it.unlocked }} / ${badges.size}", fontSize = 10.sp, fontFamily = fontFamilyMono, color = hInkMuted, modifier = Modifier.clip(CircleShape).background(hSurface).padding(horizontal = 10.dp, vertical = 4.dp))
+                Text(text = stringResource(R.string.ui_1_s_2_s_5935d7, badges.count { it.unlocked }, badges.size), fontSize = 10.sp, fontFamily = fontFamilyMono, color = hInkMuted, modifier = Modifier.clip(CircleShape).background(hSurface).padding(horizontal = 10.dp, vertical = 4.dp))
             }
             if (!hasSessions) {
                 Box(modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
-                    Text(text = "Read consistently to unlock badges!", fontSize = 13.sp, color = hInkMuted, textAlign = TextAlign.Center)
+                    Text(text = stringResource(R.string.ui_read_consistently_to_unlock_badges_0e5ee7), fontSize = 13.sp, color = hInkMuted, textAlign = TextAlign.Center)
                 }
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -216,7 +220,7 @@ fun AchievementsBoard(
                 }
                 if (ordered.size > AnalyticsStats.COLLAPSED_BADGE_COUNT) {
                     Box(modifier = Modifier.fillMaxWidth().padding(top = 12.dp).clip(RoundedCornerShape(20.dp)).background(hWhite).border(BorderStroke(1.5.dp, hBoneDark), RoundedCornerShape(20.dp)).clickable { expanded = !expanded }.padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
-                        Text(text = if (expanded) "SHOW LESS" else "SHOW ALL", fontSize = 10.sp, fontFamily = fontFamilyMono, color = hInkMuted)
+                        Text(text = if (expanded) stringResource(R.string.ui_show_less_6226d6) else stringResource(R.string.ui_show_all_1ac37f), fontSize = 10.sp, fontFamily = fontFamilyMono, color = hInkMuted)
                     }
                 }
             }
@@ -233,7 +237,7 @@ private fun LockedBadgeRow(badge: AnalyticsStats.AchievementBadge, modifier: Mod
         Column(modifier = Modifier.weight(1f)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text(text = badge.title, fontSize = 14.sp, fontWeight = FontWeight.Bold, fontFamily = fontFamilyUi, color = hInk)
-                Text(text = "${formatBadgeCount(badge.current)} / ${formatBadgeCount(badge.target)}", fontSize = 10.sp, fontFamily = fontFamilyMono, color = hInkMuted)
+                Text(text = stringResource(R.string.ui_1_s_2_s_5935d7, formatBadgeCount(badge.current), formatBadgeCount(badge.target)), fontSize = 10.sp, fontFamily = fontFamilyMono, color = hInkMuted)
             }
             Text(text = badge.desc, fontSize = 12.sp, color = hInkMuted)
             Spacer(modifier = Modifier.height(6.dp))
@@ -276,7 +280,7 @@ fun FreshUnlockCelebration(
             Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(text = "🎉", fontSize = 26.sp, textAlign = TextAlign.Center)
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(text = "New badge unlocked!", fontSize = 14.sp, fontWeight = FontWeight.Bold, fontFamily = fontFamilyUi, color = hInk)
+                    Text(text = stringResource(R.string.ui_new_badge_unlocked_7121b6), fontSize = 14.sp, fontWeight = FontWeight.Bold, fontFamily = fontFamilyUi, color = hInk)
                     Text(text = freshTitles.take(3).joinToString(", "), fontSize = 12.sp, color = hInkMuted, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
             }
@@ -321,12 +325,12 @@ fun RecentActivityTimeline(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Icon(imageVector = NurIcons.BookOpen, contentDescription = null, tint = hGold, modifier = Modifier.size(18.dp))
-                    Text(text = "Recent Activity", fontSize = 18.sp, fontWeight = FontWeight.Bold, fontFamily = fontFamilyUi, color = hInk)
+                    Text(text = stringResource(R.string.ui_recent_activity_8aebf3), fontSize = 18.sp, fontWeight = FontWeight.Bold, fontFamily = fontFamilyUi, color = hInk)
                 }
                 if (onSeeAllClick != null) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.clip(CircleShape).background(hWhite).border(BorderStroke(1.5.dp, hBoneDark), CircleShape).clickable(onClick = onSeeAllClick).padding(horizontal = 10.dp, vertical = 6.dp)) {
-                        Text(text = "SEE ALL", fontSize = 10.sp, fontFamily = fontFamilyMono, color = hInkMuted)
-                        Icon(imageVector = NurIcons.ChevronRight, contentDescription = "See all activity", tint = hInkMuted, modifier = Modifier.size(13.dp))
+                        Text(text = stringResource(R.string.ui_see_all_b99e71), fontSize = 10.sp, fontFamily = fontFamilyMono, color = hInkMuted)
+                        Icon(imageVector = NurIcons.ChevronRight, contentDescription = stringResource(R.string.ui_see_all_activity_c8a4ba), tint = hInkMuted, modifier = Modifier.size(13.dp))
                     }
                 }
             }
@@ -370,7 +374,7 @@ fun RecentActivityTimeline(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "No recent activity found.",
+                        text = stringResource(R.string.ui_no_recent_activity_found_05af68),
                         fontSize = 13.sp,
                         color = hInkMuted,
                         textAlign = TextAlign.Center
@@ -436,12 +440,12 @@ private fun effectiveTime(session: ReadingSessionEntity): Long {
  */
 private fun formatSessionSubtitle(timestamp: Long, dateString: String): String {
     val datePart = if (timestamp > 0L) {
-        SimpleDateFormat("MMM d", Locale.US).format(Date(timestamp))
+        SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(timestamp))
     } else {
         try {
             val parsed = SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(dateString)
             if (parsed != null) {
-                SimpleDateFormat("MMM d", Locale.US).format(parsed)
+                SimpleDateFormat("MMM d", Locale.getDefault()).format(parsed)
             } else {
                 dateString
             }
@@ -450,7 +454,7 @@ private fun formatSessionSubtitle(timestamp: Long, dateString: String): String {
         }
     }
     val timePart = if (timestamp > 0L) {
-        SimpleDateFormat("h:mm a", Locale.US).format(Date(timestamp))
+        SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date(timestamp))
     } else {
         "Logged"
     }

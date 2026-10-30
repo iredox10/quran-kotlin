@@ -1,5 +1,7 @@
 package com.nur.quran.ui.components.planner
 
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -40,7 +42,7 @@ fun PlanDashboardHeader(
     var showPlanSwitcher by remember { mutableStateOf(false) }
 
     Column(modifier = modifier.fillMaxWidth()) {
-        Text("YOUR READING PLAN", fontFamily = fontFamilyMono, fontSize = 10.sp,
+        Text(stringResource(R.string.planner_your_reading_plan), fontFamily = fontFamilyMono, fontSize = 10.sp,
             letterSpacing = 1.6.sp, color = plannerAccentInk, modifier = Modifier.padding(bottom = 18.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -59,7 +61,7 @@ fun PlanDashboardHeader(
             ) {
                 Icon(
                     imageVector = NurIcons.ArrowLeft,
-                    contentDescription = "Back to intention",
+                    contentDescription = stringResource(R.string.planner_back_intention),
                     tint = hGold,
                     modifier = Modifier.size(18.dp)
                 )
@@ -73,7 +75,7 @@ fun PlanDashboardHeader(
                         modifier = Modifier.clickable { showPlanSwitcher = true }
                     ) {
                         Text(
-                            text = planner.title.ifBlank { "${planner.durationDays} Day Plan" },
+                            text = planner.title.ifBlank { stringResource(R.string.planner_day_plan_fallback , planner.durationDays) },
                             fontFamily = fontFamilyUi,
                             fontSize = 29.sp,
                             fontWeight = FontWeight.SemiBold,
@@ -84,7 +86,7 @@ fun PlanDashboardHeader(
                         )
                         Icon(
                             imageVector = NurIcons.ChevronDown,
-                            contentDescription = "Switch Plan",
+                            contentDescription = stringResource(R.string.planner_switch_plan),
                             tint = hInkMid,
                             modifier = Modifier
                                 .size(18.dp)
@@ -101,7 +103,7 @@ fun PlanDashboardHeader(
                             DropdownMenuItem(
                                 text = {
                                     Text(
-                                        text = p.title.ifBlank { "${p.durationDays} Day Plan" },
+                                        text = p.title.ifBlank { stringResource(R.string.planner_day_plan_switch , p.durationDays) },
                                         fontFamily = fontFamilyBody,
                                         fontWeight = if (p.id == planner.id) FontWeight.Bold else FontWeight.Normal,
                                         color = if (p.id == planner.id) hGold else hInk
@@ -116,7 +118,7 @@ fun PlanDashboardHeader(
                     }
                 } else {
                     Text(
-                        text = planner.title.ifBlank { "Quran Plan" },
+                        text = planner.title.ifBlank { stringResource(R.string.planner_quran_plan) },
                         fontFamily = fontFamilyUi,
                         fontSize = 29.sp,
                         fontWeight = FontWeight.SemiBold,
@@ -129,7 +131,7 @@ fun PlanDashboardHeader(
                 Spacer(modifier = Modifier.height(2.dp))
 
                 Text(
-                    text = "Day $currentDay of ${planner.durationDays}",
+                    text = stringResource(R.string.planner_day_of , currentDay, planner.durationDays),
                     fontFamily = fontFamilyUi,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,

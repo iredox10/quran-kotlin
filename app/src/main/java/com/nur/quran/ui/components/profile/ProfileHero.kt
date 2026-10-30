@@ -1,5 +1,8 @@
 package com.nur.quran.ui.components.profile
 
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -38,12 +41,12 @@ fun ProfileHero(
         displayName?.takeIf { it.isNotBlank() }
             ?: email?.substringBefore("@")?.takeIf { it.isNotBlank() }
                 ?.replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.US) else it.toString() }
-            ?: "Quran Student"
+            ?: stringResource(R.string.ui_quran_student_cfc479)
     } else greeting
 
     val subtitle = if (signedIn) {
         email ?: ""
-    } else "Your personal Quran companion"
+    } else stringResource(R.string.ui_your_personal_quran_companion_60a4ae)
 
     Box(
         modifier = modifier
@@ -91,7 +94,7 @@ fun ProfileHero(
                 } else {
                     Icon(
                         imageVector = NurIcons.User,
-                        contentDescription = "Guest",
+                        contentDescription = stringResource(R.string.ui_guest_face83),
                         tint = hInkMuted.copy(alpha = 0.5f),
                         modifier = Modifier.size(40.dp)
                     )
@@ -102,7 +105,7 @@ fun ProfileHero(
 
             // Upper category tag
             Text(
-                text = "YOUR PROFILE",
+                text = stringResource(R.string.ui_your_profile_df0eb4),
                 fontFamily = fontFamilyMono,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,

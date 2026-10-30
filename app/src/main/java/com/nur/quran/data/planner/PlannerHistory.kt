@@ -84,7 +84,7 @@ object PlannerHistory {
     }
 
     fun dateLabel(date: String): String = runCatching {
-        java.text.SimpleDateFormat("EEE, MMM d, yyyy", java.util.Locale.US).format(PlannerEngine.parsePlannerDate(date))
+        java.text.SimpleDateFormat("EEE, MMM d, yyyy", java.util.Locale.getDefault()).format(PlannerEngine.parsePlannerDate(date))
     }.getOrDefault(date)
 
     fun duration(seconds: Long): String {

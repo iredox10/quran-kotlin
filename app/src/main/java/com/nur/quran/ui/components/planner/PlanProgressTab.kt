@@ -1,5 +1,7 @@
 package com.nur.quran.ui.components.planner
 
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -69,14 +71,14 @@ fun PlanProgressTab(
                         .background(hInkMuted)
                 )
                 Text(
-                    text = "Timeline",
+                    text = stringResource(R.string.planner_timeline),
                     fontFamily = fontFamilyUi,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = hInk
                 )
                 Text(
-                    text = "($completedDays/${planner.durationDays} done)",
+                    text = stringResource(R.string.planner_timeline_done , completedDays, planner.durationDays),
                     fontFamily = fontFamilyMono,
                     fontSize = 11.sp,
                     color = hInkMuted
@@ -97,7 +99,7 @@ fun PlanProgressTab(
                     ) {
                         Icon(NurIcons.RotateCcw, contentDescription = null, tint = hInkMid, modifier = Modifier.size(13.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Rebalance", fontFamily = fontFamilyBody, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = hInk)
+                        Text(stringResource(R.string.planner_rebalance), fontFamily = fontFamilyBody, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = hInk)
                     }
                 }
 
@@ -114,7 +116,7 @@ fun PlanProgressTab(
                     ) {
                         Icon(NurIcons.Sliders, contentDescription = null, tint = hInkMid, modifier = Modifier.size(13.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Adjust", fontFamily = fontFamilyBody, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = hInk)
+                        Text(stringResource(R.string.planner_adjust), fontFamily = fontFamilyBody, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = hInk)
                     }
                 }
 
@@ -131,7 +133,7 @@ fun PlanProgressTab(
                     ) {
                         Icon(NurIcons.Share2, contentDescription = null, tint = hInkMid, modifier = Modifier.size(13.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Export", fontFamily = fontFamilyBody, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = hInk)
+                        Text(stringResource(R.string.planner_export), fontFamily = fontFamilyBody, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = hInk)
                     }
                 }
             }
@@ -261,11 +263,11 @@ fun PlanProgressTab(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    LegendItem(color = hGold, label = "Done")
-                    LegendItem(color = hGoldSoft, label = "Today")
-                    LegendItem(color = hInk, label = "Partial")
-                    LegendItem(color = Color(0xFFDC2626), label = "Missed")
-                    LegendItem(color = hInkMuted, label = "Upcoming")
+                    LegendItem(color = hGold, label = stringResource(R.string.planner_done))
+                    LegendItem(color = hGoldSoft, label = stringResource(R.string.planner_today))
+                    LegendItem(color = hInk, label = stringResource(R.string.planner_partial))
+                    LegendItem(color = Color(0xFFDC2626), label = stringResource(R.string.planner_missed))
+                    LegendItem(color = hInkMuted, label = stringResource(R.string.planner_upcoming))
                 }
                 // Difficulty legend (web parity)
                 Row(
@@ -273,9 +275,9 @@ fun PlanProgressTab(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    LegendItem(color = Color(0xFFDC2626), label = "Heavy", dotSize = 7)
+                    LegendItem(color = Color(0xFFDC2626), label = stringResource(R.string.planner_heavy), dotSize = 7)
                     Spacer(modifier = Modifier.width(16.dp))
-                    LegendItem(color = Color(0xFF10B981), label = "Light", dotSize = 7)
+                    LegendItem(color = Color(0xFF10B981), label = stringResource(R.string.planner_light), dotSize = 7)
                 }
 
                 // Selected Day Details Card
@@ -298,7 +300,7 @@ fun PlanProgressTab(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
-                                text = "Day ${sel.dayNumber}: ${sel.title}",
+                                text = stringResource(R.string.planner_day_title , sel.dayNumber, plannerAssignmentTitle(sel)),
                                 fontFamily = fontFamilyUi,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
@@ -307,11 +309,11 @@ fun PlanProgressTab(
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
                                 text = when (status) {
-                                    "completed" -> "✓ Completed"
-                                    "today" -> if (selPct > 0) "Today's plan ($selPct%)" else "Today's Reading"
-                                    "partial" -> "Partially finished ($selPct%)"
-                                    "overdue" -> if (selPct > 0) "Missed ($selPct% done)" else "Missed completely"
-                                    else -> "Upcoming"
+                                    "completed" -> stringResource(R.string.planner_completed_check)
+                                    "today" -> if (selPct > 0) stringResource(R.string.planner_today_pct , selPct) else stringResource(R.string.planner_todays_reading)
+                                    "partial" -> stringResource(R.string.planner_partial_pct , selPct)
+                                    "overdue" -> if (selPct > 0) stringResource(R.string.planner_missed_pct , selPct) else stringResource(R.string.planner_missed_completely)
+                                    else -> stringResource(R.string.planner_upcoming)
                                 },
                                 fontFamily = fontFamilyMono,
                                 fontSize = 11.sp,
@@ -325,7 +327,7 @@ fun PlanProgressTab(
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text(
-                                    text = "Read Day ${sel.dayNumber} →",
+                                    text = stringResource(R.string.planner_read_day , sel.dayNumber),
                                     fontFamily = fontFamilyUi,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 13.sp,
@@ -347,7 +349,7 @@ fun PlanProgressTab(
         ) {
             Column(modifier = Modifier.padding(18.dp)) {
                 Text(
-                    text = "Performance Insights",
+                    text = stringResource(R.string.planner_performance_insights),
                     fontFamily = fontFamilyUi,
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
@@ -361,20 +363,20 @@ fun PlanProgressTab(
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     InsightBox(
-                        label = "On-Time Completion",
+                        label = stringResource(R.string.planner_on_time),
                         value = "${analytics?.onTimeRate ?: 0}%",
                         valueColor = Color(0xFF10B981),
                         modifier = Modifier.weight(1f)
                     )
                     InsightBox(
-                        label = "Catch-ups Used",
+                        label = stringResource(R.string.planner_catch_ups),
                         value = "${analytics?.catchUpDays ?: 0}",
                         valueColor = hGold,
                         modifier = Modifier.weight(1f)
                     )
                     InsightBox(
-                        label = "Current Pace",
-                        value = "${Math.round(analytics?.avgPagesPerDay ?: 0f)} u/day",
+                        label = stringResource(R.string.planner_current_pace),
+                        value = stringResource(R.string.planner_current_pace_units , Math.round(analytics?.avgPagesPerDay ?: 0f)),
                         valueColor = hInk,
                         modifier = Modifier.weight(1f)
                     )
@@ -392,7 +394,7 @@ fun PlanProgressTab(
             ) {
                 Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(
-                        text = "Weekly Progress",
+                        text = stringResource(R.string.planner_weekly_progress),
                         fontFamily = fontFamilyUi,
                         fontSize = 17.sp,
                         fontWeight = FontWeight.Bold,
@@ -417,7 +419,7 @@ fun PlanProgressTab(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = week.label,
+                                    text = stringResource(R.string.planner_week_number, week.label.substringAfterLast(' ')),
                                     fontFamily = fontFamilyUi,
                                     fontSize = 13.5.sp,
                                     fontWeight = FontWeight.Bold,
@@ -467,7 +469,7 @@ fun PlanProgressTab(
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
                     Text(
-                        text = "Action Required",
+                        text = stringResource(R.string.planner_action_required),
                         fontFamily = fontFamilyUi,
                         fontSize = 17.sp,
                         fontWeight = FontWeight.Bold,
@@ -475,7 +477,7 @@ fun PlanProgressTab(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "You have fallen $overdueDays day${if (overdueDays > 1) "s" else ""} behind schedule.",
+                        text = stringResource(R.string.planner_overdue_days , overdueDays),
                         fontFamily = fontFamilyBody,
                         fontSize = 13.sp,
                         color = hInkMid
@@ -488,7 +490,7 @@ fun PlanProgressTab(
                         border = BorderStroke(1.dp, Color(0x4DDC2626)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Shift Deadlines (Extend Plan)", fontFamily = fontFamilyUi, fontWeight = FontWeight.SemiBold, color = Color(0xFFDC2626))
+                        Text(stringResource(R.string.planner_shift_deadlines), fontFamily = fontFamilyUi, fontWeight = FontWeight.SemiBold, color = Color(0xFFDC2626))
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     Button(
@@ -497,7 +499,7 @@ fun PlanProgressTab(
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0x1FDC2626)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Redistribute Missed Pages", fontFamily = fontFamilyUi, fontWeight = FontWeight.Bold, color = Color(0xFFDC2626))
+                        Text(stringResource(R.string.planner_redistribute_missed), fontFamily = fontFamilyUi, fontWeight = FontWeight.Bold, color = Color(0xFFDC2626))
                     }
                 }
             }

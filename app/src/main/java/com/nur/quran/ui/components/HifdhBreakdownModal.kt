@@ -1,5 +1,8 @@
 package com.nur.quran.ui.components
 
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -74,7 +77,7 @@ fun HifdhBreakdownModal(
                         }
 
                         IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
-                            Icon(imageVector = NurIcons.X, contentDescription = "Close", tint = hInkMuted, modifier = Modifier.size(18.dp))
+                            Icon(imageVector = NurIcons.X, contentDescription = stringResource(R.string.ui_close_bbfa77), tint = hInkMuted, modifier = Modifier.size(18.dp))
                         }
                     }
 
@@ -87,7 +90,7 @@ fun HifdhBreakdownModal(
                                 .padding(vertical = 32.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text("No items logged yet.", fontSize = 13.sp, color = hInkMuted)
+                            Text(stringResource(R.string.ui_no_items_logged_yet_401266), fontSize = 13.sp, color = hInkMuted)
                         }
                     } else {
                         LazyColumn(

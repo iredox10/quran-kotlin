@@ -1,5 +1,7 @@
 package com.nur.quran.ui.components.planner
 
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
@@ -24,7 +26,7 @@ fun PlanTabBar(selectedTab: PlannerTab, onTabSelected: (PlannerTab) -> Unit, mod
             val selected = selectedTab == tab
             Column(Modifier.weight(1f).selectable(selected = selected, role = Role.Tab, onClick = { onTabSelected(tab) }), horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(Modifier.heightIn(min = 48.dp).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Text(tab.title, fontFamily = fontFamilyUi, fontSize = 17.sp,
+                    Text(stringResource(when (tab) { PlannerTab.TODAY -> R.string.planner_today; PlannerTab.PROGRESS -> R.string.planner_progress; PlannerTab.JOURNAL -> R.string.planner_journal }), fontFamily = fontFamilyUi, fontSize = 17.sp,
                         fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
                         color = if (selected) plannerAccentInk else hInkMid)
                 }

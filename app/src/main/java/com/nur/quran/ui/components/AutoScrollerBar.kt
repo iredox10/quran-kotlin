@@ -1,5 +1,8 @@
 package com.nur.quran.ui.components
 
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -91,7 +94,7 @@ fun AutoScrollerBar(
                         ) {
                             Icon(
                                 imageVector = NurIcons.ArrowLeft,
-                                contentDescription = "Jump Up",
+                                contentDescription = stringResource(R.string.ui_jump_up_8e7f79),
                                 tint = hInk,
                                 modifier = Modifier
                                     .size(14.dp)
@@ -108,7 +111,7 @@ fun AutoScrollerBar(
                         ) {
                             Icon(
                                 imageVector = NurIcons.ArrowRight,
-                                contentDescription = "Jump Down",
+                                contentDescription = stringResource(R.string.ui_jump_down_bac180),
                                 tint = hInk,
                                 modifier = Modifier
                                     .size(14.dp)
@@ -135,14 +138,14 @@ fun AutoScrollerBar(
                     ) {
                         Icon(
                             imageVector = NurIcons.Minus,
-                            contentDescription = "Decrease Speed",
+                            contentDescription = stringResource(R.string.ui_decrease_speed_628a16),
                             tint = hInk,
                             modifier = Modifier.size(14.dp)
                         )
                     }
 
                     Text(
-                        text = "${autoScrollSpeed}x",
+                        text = stringResource(R.string.ui_1_sx_452426, autoScrollSpeed),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = fontFamilyMono,
@@ -160,7 +163,7 @@ fun AutoScrollerBar(
                     ) {
                         Icon(
                             imageVector = NurIcons.Plus,
-                            contentDescription = "Increase Speed",
+                            contentDescription = stringResource(R.string.ui_increase_speed_55fa91),
                             tint = hInk,
                             modifier = Modifier.size(14.dp)
                         )
@@ -201,7 +204,7 @@ fun AutoScrollerBar(
                     ) {
                         Icon(
                             imageVector = NurIcons.X,
-                            contentDescription = "Close Auto-scroll",
+                            contentDescription = stringResource(R.string.ui_close_auto_scroll_b6f06a),
                             tint = Color(0xFFEF4444),
                             modifier = Modifier.size(16.dp)
                         )

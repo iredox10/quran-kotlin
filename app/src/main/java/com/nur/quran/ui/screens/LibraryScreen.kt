@@ -1,5 +1,8 @@
 package com.nur.quran.ui.screens
 
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -55,7 +58,7 @@ fun LibraryScreen(
             IconButton(onClick = onBackClick) {
                 Icon(
                     imageVector = Icons.Filled.ArrowBack,
-                    contentDescription = "Back",
+                    contentDescription = stringResource(R.string.ui_back_b52b36),
                     tint = hInk,
                     modifier = Modifier.size(22.dp)
                 )
@@ -63,14 +66,14 @@ fun LibraryScreen(
             Spacer(modifier = Modifier.width(6.dp))
             Column {
                 Text(
-                    text = "My Library",
+                    text = stringResource(R.string.ui_my_library_7996cc),
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     color = hInk,
                     fontFamily = fontFamilyUi
                 )
                 Text(
-                    text = "${bookmarks.size} bookmarks • ${collectionsWithItems.size} collections",
+                    text = stringResource(R.string.ui_1_s_bookmarks_2_s_collections_938b04, bookmarks.size, collectionsWithItems.size),
                     fontSize = 12.sp,
                     color = hInkMuted,
                     fontFamily = fontFamilyBody

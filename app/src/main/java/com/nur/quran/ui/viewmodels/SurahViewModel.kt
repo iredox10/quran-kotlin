@@ -143,14 +143,16 @@ class SurahViewModel @Inject constructor(
     private val tafsirReader = TafsirReader(viewModelScope, repository::getTafsirForChapter)
     val tafsirState: StateFlow<TafsirUiState> = tafsirReader.state
 
-    private val _selectedArabicFontName = MutableStateFlow(hifdhPrefs.getString("arabic_font", "KFGQPC Hafs") ?: "KFGQPC Hafs")
+    private val _selectedArabicFontName = MutableStateFlow(
+        com.nur.quran.data.mushaf.Mushaf.compatibleFontName(hifdhPrefs.getString("mushaf_preset", null), hifdhPrefs.getString("arabic_font", null))
+    )
     val selectedArabicFontName: StateFlow<String> = _selectedArabicFontName.asStateFlow()
 
     private val _wordTapBehavior = MutableStateFlow(hifdhPrefs.getString("word_tap_behavior", "tajweed") ?: "tajweed")
     val wordTapBehavior: StateFlow<String> = _wordTapBehavior.asStateFlow()
 
     private val _mushafPreset = MutableStateFlow(
-        com.nur.quran.data.mushaf.Mushaf.fromPresetKey(
+        com.nur.quran.data.mushaf.Mushaf.forReading(
             hifdhPrefs.getString("mushaf_preset", "uthmani")
         ).id
     )
@@ -419,6 +421,13 @@ class SurahViewModel @Inject constructor(
     private val listeningTracker = com.nur.quran.data.audio.ListeningSessionTracker()
 
     init {
+        // Repair old unsupported editions/fonts once; the Quran data and reading
+        // positions stay untouched because all installed editions share 604 pages.
+        if (hifdhPrefs.getString("mushaf_preset", null) != _mushafPreset.value ||
+            hifdhPrefs.getString("arabic_font", null) != _selectedArabicFontName.value) {
+            hifdhPrefs.edit().putString("mushaf_preset", _mushafPreset.value)
+                .putString("arabic_font", _selectedArabicFontName.value).apply()
+        }
         if (hifdhPrefs.getInt("translation_id", 20) == 131) {
             hifdhPrefs.edit().putInt("translation_id", 20).apply()
         }
@@ -1478,10 +1487,16 @@ class SurahViewModel @Inject constructor(
     // ── Chapter loading ─────────────────────────────────────────────────
 
     private var loadChapterJob: Job? = null
+    // The shared reader state may belong to a page (Page/Juz/Hizb/Planner),
+    // rather than the whole chapter. Preserve that owner across edition changes.
+    private var loadedPageNumber: Int? = null
 
     fun loadChapterDetails(chapterId: Int) {
+        val wasPageReader = loadedPageNumber != null
+        loadedPageNumber = null
+        loadPageJob?.cancel()
         val requestedMushaf = _mushafPreset.value
-        if (currentChapterId == chapterId && _uiState.value is SurahUiState.Success
+        if (!wasPageReader && currentChapterId == chapterId && _uiState.value is SurahUiState.Success
             && loadedMushafByChapter[chapterId] == requestedMushaf
         ) {
             return
@@ -1648,6 +1663,8 @@ class SurahViewModel @Inject constructor(
     private var loadPageJob: Job? = null
 
     fun loadPageVerses(pageNumber: Int) {
+        loadedPageNumber = pageNumber
+        loadChapterJob?.cancel()
         val params = PageCacheParams(_mushafPreset.value, _currentTranslationId.value)
         // Offline-first: cached pages paint synchronously, never via Loading.
         pageReaderCache.cached(pageNumber, params)?.let { cached ->
@@ -2081,12 +2098,13 @@ class SurahViewModel @Inject constructor(
 
     fun setMushafPreset(preset: String) {
         // Web: setSelectedMushaf — canonicalize, coerce font, force tajweed rules, reload.
-        val mushaf = com.nur.quran.data.mushaf.Mushaf.fromId(preset)
+        val mushaf = com.nur.quran.data.mushaf.Mushaf.forReading(preset)
+        val switchingEdition = _mushafPreset.value != mushaf.id
         _mushafPreset.value = mushaf.id
         hifdhPrefs.edit().putString("mushaf_preset", mushaf.id).apply()
         // Coerce font to a mushaf-compatible one (web: getCompatibleArabicFontId).
         val currentFontId = com.nur.quran.data.mushaf.fontNameToId(_selectedArabicFontName.value)
-        val coercedId = com.nur.quran.data.mushaf.Mushaf.compatibleFontId(mushaf, currentFontId)
+        val coercedId = if (switchingEdition) mushaf.defaultFontId else com.nur.quran.data.mushaf.Mushaf.compatibleFontId(mushaf, currentFontId)
         val coercedName = com.nur.quran.data.mushaf.fontIdToName(coercedId)
         if (coercedName != _selectedArabicFontName.value) {
             _selectedArabicFontName.value = coercedName
@@ -2105,11 +2123,13 @@ class SurahViewModel @Inject constructor(
         pageReaderCache.clear()
         prefetchJob?.cancel()
         loadedMushafByChapter.clear()
+        val pageToReload = loadedPageNumber
         val chapterToReload = currentChapterId
-        if (chapterToReload > 0) {
-            currentChapterId = 0
-            loadChapterDetails(chapterToReload)
-        }
+        loadChapterJob?.cancel()
+        loadPageJob?.cancel()
+        currentChapterId = 0
+        if (pageToReload != null) loadPageVerses(pageToReload)
+        else if (chapterToReload > 0) loadChapterDetails(chapterToReload)
     }
 
     fun completeSaukaJuz(assignmentId: String, backToSauka: String, onDone: () -> Unit) {

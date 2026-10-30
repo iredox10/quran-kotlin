@@ -1,5 +1,9 @@
 package com.nur.quran.ui.components
 
+
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -79,17 +83,17 @@ fun HifdhGoalModal(
                                 Icon(imageVector = NurIcons.Brain, contentDescription = null, tint = hGold, modifier = Modifier.size(16.dp))
                             }
                             Spacer(modifier = Modifier.width(10.dp))
-                            Text("Set Hifdh Goal", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = hInk, fontFamily = fontFamilyUi)
+                            Text(stringResource(R.string.ui_set_hifdh_goal_1e07c7), fontSize = 17.sp, fontWeight = FontWeight.Bold, color = hInk, fontFamily = fontFamilyUi)
                         }
 
                         IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
-                            Icon(imageVector = NurIcons.X, contentDescription = "Close", tint = hInkMuted, modifier = Modifier.size(18.dp))
+                            Icon(imageVector = NurIcons.X, contentDescription = stringResource(R.string.ui_close_bbfa77), tint = hInkMuted, modifier = Modifier.size(18.dp))
                         }
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    Text("Target Surah", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = hInkMuted, fontFamily = fontFamilyMono)
+                    Text(stringResource(R.string.ui_target_surah_8b88c1), fontSize = 10.sp, fontWeight = FontWeight.Bold, color = hInkMuted, fontFamily = fontFamilyMono)
                     Spacer(modifier = Modifier.height(6.dp))
 
                     Box(
@@ -111,12 +115,12 @@ fun HifdhGoalModal(
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
                                     Text(
-                                        text = "${chapter.id}. ${chapter.nameSimple}",
+                                        text = stringResource(R.string.ui_1_s_2_s_8f71df, chapter.id, chapter.nameSimple),
                                         fontSize = 13.sp,
                                         fontWeight = if (selectedChapterId == chapter.id) FontWeight.Bold else FontWeight.Normal,
                                         color = if (selectedChapterId == chapter.id) hGold else hInk
                                     )
-                                    Text(text = "${chapter.versesCount} Ayahs", fontSize = 11.sp, color = hInkMuted)
+                                    Text(text = stringResource(R.string.ui_1_s_ayahs_be659c, chapter.versesCount), fontSize = 11.sp, color = hInkMuted)
                                 }
                             }
                         }
@@ -124,7 +128,7 @@ fun HifdhGoalModal(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    Text("Target Date", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = hInkMuted, fontFamily = fontFamilyMono)
+                    Text(stringResource(R.string.ui_target_date_befd12), fontSize = 10.sp, fontWeight = FontWeight.Bold, color = hInkMuted, fontFamily = fontFamilyMono)
                     Spacer(modifier = Modifier.height(6.dp))
 
                     Surface(
@@ -166,8 +170,8 @@ fun HifdhGoalModal(
                             .format(Date(targetDateMillis))
                     }
                     Text(
-                        text = if (isPastDate) "Pick a future date"
-                        else "Complete by $targetDateLabel • ~$daysUntil days away",
+                        text = if (isPastDate) stringResource(R.string.ui_pick_a_future_date_6cce17)
+                        else stringResource(R.string.ui_complete_by_1_s_2_s_days_away_4fd1f6, targetDateLabel, daysUntil),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         color = if (!isPastDate) hGreen else hInkMuted,
@@ -186,7 +190,7 @@ fun HifdhGoalModal(
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth().height(46.dp)
                     ) {
-                        Text("Create Goal", color = Color.White, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.ui_create_goal_832770), color = Color.White, fontWeight = FontWeight.Bold)
                     }
                 }
             }

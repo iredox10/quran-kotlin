@@ -1,5 +1,7 @@
 package com.nur.quran.ui.components.planner
 
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -52,7 +54,7 @@ fun PlanJournalTab(
                             .background(hGold)
                     )
                     Text(
-                        text = "Daily Reflections",
+                        text = stringResource(R.string.planner_daily_reflections),
                         fontFamily = fontFamilyUi,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
@@ -94,7 +96,7 @@ fun PlanJournalTab(
                                             )
                                         }
                                         Text(
-                                            text = "Reflection",
+                                            text = stringResource(R.string.planner_reflection),
                                             fontFamily = fontFamilyMono,
                                             fontSize = 9.sp,
                                             fontWeight = FontWeight.Medium,
@@ -110,7 +112,7 @@ fun PlanJournalTab(
                                             ) {
                                                 Icon(
                                                     imageVector = NurIcons.Trash2,
-                                                    contentDescription = "Delete reflection",
+                                                    contentDescription = stringResource(R.string.planner_delete_reflection),
                                                     tint = hInkMuted,
                                                     modifier = Modifier.size(15.dp)
                                                 )
@@ -145,7 +147,7 @@ fun PlanJournalTab(
                             Icon(NurIcons.BookOpen, contentDescription = null, tint = hInkMuted.copy(alpha = 0.4f), modifier = Modifier.size(32.dp))
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "No reflections yet. Complete a day to write one!",
+                                text = stringResource(R.string.planner_no_reflections),
                                 fontFamily = fontFamilyBody,
                                 fontSize = 13.sp,
                                 color = hInkMuted
@@ -177,7 +179,7 @@ fun PlanJournalTab(
                             .background(hTeal)
                     )
                     Text(
-                        text = "Plan Highlights",
+                        text = stringResource(R.string.planner_plan_highlights),
                         fontFamily = fontFamilyUi,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
@@ -210,7 +212,7 @@ fun PlanJournalTab(
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
-                                            text = bm.surahName.ifBlank { "Surah $surahNum" },
+                                            text = bm.surahName.ifBlank { stringResource(R.string.planner_surah_number , surahNum) },
                                             fontFamily = fontFamilyUi,
                                             fontSize = 15.sp,
                                             fontWeight = FontWeight.Bold,
@@ -244,7 +246,7 @@ fun PlanJournalTab(
                                                 )
                                             }
                                             Text(
-                                                text = "Tap to read verse →",
+                                                text = stringResource(R.string.planner_tap_read_verse),
                                                 fontFamily = fontFamilyBody,
                                                 fontSize = 11.5.sp,
                                                 color = hInkMuted
@@ -272,7 +274,7 @@ fun PlanJournalTab(
                             Icon(NurIcons.Gem, contentDescription = null, tint = hInkMuted.copy(alpha = 0.4f), modifier = Modifier.size(28.dp))
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "No highlighted verses. Use the bookmark icon while reading!",
+                                text = stringResource(R.string.planner_no_highlights),
                                 fontFamily = fontFamilyBody,
                                 fontSize = 13.sp,
                                 color = hInkMuted

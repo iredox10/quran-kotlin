@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="mushaf_picker_intro">اختر الخط الأسهل لك في القراءة. جميع الخيارات المتاحة برواية حفص.</string>
+    <string name="mushaf_name_uthmani">العثماني برواية حفص</string>
+    <string name="mushaf_description_qpc">خط مصحف المدينة · نص واضح ومتصل</string>
+    <string name="mushaf_description_tajweed">خط مصحف المدينة · ألوان التجويد مفعّلة دائمًا</string>
+    <string name="mushaf_description_uthmani">الرسم العثماني التقليدي · خط أميري قرآن</string>
+    <string name="mushaf_description_indopak">خط شبه القارة الهندية · يحتاج إلى إعداد</string>
+    <string name="mushaf_preview_reference">الفاتحة · الآيتان ٢–٣</string>
+    <string name="mushaf_preview_preparing">جارٍ تجهيز المعاينة المحلية…</string>
+    <string name="mushaf_selected">محدد</string>
+    <string name="mushaf_indopak_unavailable">يحتاج هذا المصحف إلى النص والخط المتوافقين معه. وهو غير متاح في هذا الإصدار، لذا لا يمكن اختياره.</string>
+    <string name="mushaf_flow_note">يتكيّف النص مع شاشتك وحجم القراءة. لا تمثل هذه المعاينات عدد أسطر ثابتًا لصفحة مطبوعة.</string>
+</resources>

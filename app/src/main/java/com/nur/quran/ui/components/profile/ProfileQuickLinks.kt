@@ -1,5 +1,8 @@
 package com.nur.quran.ui.components.profile
 
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -35,11 +38,11 @@ fun ProfileQuickLinks(
     modifier: Modifier = Modifier
 ) {
     val items = listOf(
-        QuickLinkItem(Screen.Library.route, "Bookmarks", NurIcons.Bookmark),
-        QuickLinkItem(Screen.Analytics.route, "Analytics", NurIcons.TrendingUp),
-        QuickLinkItem(Screen.Planner.route, "Planner", NurIcons.CalendarDays),
-        QuickLinkItem(Screen.Memorize.route, "Memorize", NurIcons.Brain),
-        QuickLinkItem(Screen.Planner.route, "Sauka", NurIcons.Users)
+        QuickLinkItem(Screen.Library.route, stringResource(R.string.ui_bookmarks_ca3cdd), NurIcons.Bookmark),
+        QuickLinkItem(Screen.Analytics.route, stringResource(R.string.ui_analytics_25bc96), NurIcons.TrendingUp),
+        QuickLinkItem(Screen.Planner.route, stringResource(R.string.ui_planner_eca1f9), NurIcons.CalendarDays),
+        QuickLinkItem(Screen.Memorize.route, stringResource(R.string.ui_memorize_8a8a35), NurIcons.Brain),
+        QuickLinkItem(Screen.Planner.route, stringResource(R.string.ui_sauka_b2438d), NurIcons.Users)
     )
 
     LazyRow(

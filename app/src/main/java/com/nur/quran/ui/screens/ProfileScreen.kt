@@ -1,5 +1,8 @@
 package com.nur.quran.ui.screens
 
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -129,12 +132,14 @@ fun ProfileScreen(
         translationNameOf(translationId)
     }
 
-    val greeting = remember {
-        ProfileUtils.getGreeting()
+    val greeting = when (java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)) {
+        in 0..11 -> stringResource(R.string.ui_good_morning_06e336)
+        in 12..16 -> stringResource(R.string.ui_good_afternoon_6ec55f)
+        else -> stringResource(R.string.ui_good_evening_cf4eec)
     }
 
     val syncStatusMessage = if (syncUi.syncing) {
-        if (syncOp == "restore") "Restoring data..." else "Saving data..."
+        if (syncOp == "restore") stringResource(R.string.ui_restoring_data_e03b97) else stringResource(R.string.ui_saving_data_319f74)
     } else null
 
     Scaffold(
@@ -142,7 +147,7 @@ fun ProfileScreen(
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        text = "Profile",
+                        text = stringResource(R.string.ui_profile_ff4fc0),
                         fontFamily = fontFamilyUi,
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp,
@@ -153,7 +158,7 @@ fun ProfileScreen(
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = NurIcons.ArrowLeft,
-                            contentDescription = "Back",
+                            contentDescription = stringResource(R.string.ui_back_b52b36),
                             tint = hInk
                         )
                     }
@@ -238,7 +243,7 @@ fun ProfileScreen(
                             )
                             type = "text/plain"
                         }
-                        context.startActivity(Intent.createChooser(sendIntent, "Share App"))
+                        context.startActivity(Intent.createChooser(sendIntent, context.getString(R.string.ui_share_app_bbe347)))
                     },
                     modifier = Modifier.fillMaxWidth()
                 )

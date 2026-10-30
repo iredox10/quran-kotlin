@@ -1,8 +1,6 @@
 package com.nur.quran.ui.components
 
 import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -20,26 +18,26 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import com.nur.quran.R
+import com.nur.quran.i18n.AppLanguages
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.nur.quran.data.audio.NetworkPolicy
 import com.nur.quran.data.translation.TRANSLATION_EDITIONS
 import com.nur.quran.data.translation.translationNameOf
-import com.nur.quran.ui.components.audio.DEFAULT_TAFSIR_PACKS
 import com.nur.quran.ui.components.audio.TranslationPickerRow
 import com.nur.quran.ui.components.audio.ReciterLibraryPanel
-import com.nur.quran.ui.components.audio.PackDownloadRow
 import com.nur.quran.ui.components.audio.PackUiState
 import com.nur.quran.ui.screens.*
 import com.nur.quran.ui.viewmodels.SurahViewModel
-
-private val MUSHAF_PRESETS = com.nur.quran.data.mushaf.Mushaf.ALL.map {
-    it.id to "${it.name} (${if (it.id == "indopak") "16 lines" else "15 lines"})"
-}
 
 private val TAFSIRS_LIST = listOf(
     169 to "Ibn Kathir (Abridged)",
@@ -102,31 +100,28 @@ fun SettingsDrawer(
     val currentMushaf = remember(mushafPreset) {
         com.nur.quran.data.mushaf.Mushaf.fromId(mushafPreset)
     }
+    val currentMushafName = when (currentMushaf.id) {
+        "madani-standard" -> stringResource(R.string.settings_madani_standard)
+        "madani-tajweed" -> stringResource(R.string.settings_madani_tajweed)
+        "uthmani-hafs" -> stringResource(R.string.mushaf_name_uthmani)
+        "indopak" -> stringResource(R.string.settings_indopak)
+        else -> currentMushaf.name
+    }
     val isTajweedEffective by viewModel.isTajweedEffective.collectAsState()
 
     var activeTab by remember { mutableStateOf("general") }
     var activeSubView by remember { mutableStateOf<String?>(null) }
     var isVisible by remember { mutableStateOf(false) }
 
-    // WiFi-only policy is owned here via NetworkPolicy so every host gets
-    // live state without extra wiring; hosts are still notified via callback.
     val policyContext = LocalContext.current
-    var wifiPolicy by remember { mutableStateOf(NetworkPolicy.isWifiOnly(policyContext)) }
+    val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    val selectedLanguageCode = remember { AppLanguages.selectedCode(policyContext) }
 
     // Pack completion toasts ("ready for offline use" — offline UX standard).
     LaunchedEffect(completedEvents) {
         completedEvents?.collect { message ->
             android.widget.Toast.makeText(policyContext, message, android.widget.Toast.LENGTH_LONG).show()
         }
-    }
-
-    // Link-in-place folder picker (GreenTech/quran_android layout).
-    // Registered unconditionally so composition stays stable; the Link
-    // button itself only renders when [onLinkTree] is provided.
-    val linkTreeLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocumentTree()
-    ) { uri ->
-        if (uri != null) onLinkTree?.invoke(uri)
     }
 
     LaunchedEffect(Unit) {
@@ -159,8 +154,8 @@ fun SettingsDrawer(
             // Right-side sliding drawer panel matching web app (`aside className="fixed inset-y-0 right-0 max-w-[380px]"`)
             AnimatedVisibility(
                 visible = isVisible,
-                enter = slideInHorizontally(animationSpec = tween(300)) { fullWidth -> fullWidth },
-                exit = slideOutHorizontally(animationSpec = tween(250)) { fullWidth -> fullWidth },
+                enter = slideInHorizontally(animationSpec = tween(300)) { width -> if (isRtl) -width else width },
+                exit = slideOutHorizontally(animationSpec = tween(250)) { width -> if (isRtl) -width else width },
                 modifier = Modifier.align(Alignment.CenterEnd)
             ) {
                 Surface(
@@ -189,7 +184,7 @@ fun SettingsDrawer(
                                     ) {
                                         Icon(
                                             imageVector = NurIcons.ArrowLeft,
-                                            contentDescription = "Back",
+                                            contentDescription = stringResource(R.string.settings_back),
                                             tint = hInk
                                         )
                                     }
@@ -198,12 +193,13 @@ fun SettingsDrawer(
                                 Column {
                                     Text(
                                         text = when (activeSubView) {
-                                            "mushaf" -> "Choose Mushaf"
-                                            "translation" -> "Choose Translation"
-                                            "reciters" -> "Reciters"
-                                            "font" -> "Choose Arabic Font"
-                                            "tafsir" -> "Choose Tafsir"
-                                            else -> "Settings"
+                                            "mushaf" -> stringResource(R.string.settings_choose_mushaf)
+                                            "translation" -> stringResource(R.string.settings_choose_translation)
+                                            "reciters" -> stringResource(R.string.settings_reciters)
+                                            "font" -> stringResource(R.string.settings_choose_font)
+                                            "language" -> stringResource(R.string.settings_app_language)
+                                            "tafsir" -> stringResource(R.string.settings_choose_tafsir)
+                                            else -> stringResource(R.string.settings_title)
                                         },
                                         fontSize = 17.sp,
                                         fontWeight = FontWeight.Bold,
@@ -212,7 +208,7 @@ fun SettingsDrawer(
                                     )
                                     if (activeSubView == null) {
                                         Text(
-                                            text = "Customize your reading experience",
+                                            text = stringResource(R.string.settings_subtitle),
                                             fontSize = 11.sp,
                                             color = hInkMuted,
                                             fontFamily = fontFamilyBody
@@ -224,19 +220,14 @@ fun SettingsDrawer(
                                 onClick = onDismiss,
                                 modifier = Modifier.size(32.dp)
                             ) {
-                                Text(
-                                    text = "✕",
-                                    fontSize = 18.sp,
-                                    color = hInkMuted,
-                                    fontWeight = FontWeight.Bold
-                                )
+                                Icon(NurIcons.X, contentDescription = stringResource(R.string.settings_close), tint = hInkMuted)
                             }
                         }
 
                         Divider(color = hBoneDark)
 
                         if (activeSubView == null) {
-                            // 3-Segmented Tab Bar (General / Reading / Data) matching web app
+                            // The reader settings are focused on appearance and reading.
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -245,7 +236,7 @@ fun SettingsDrawer(
                                     .background(hCream)
                                     .border(1.dp, hBoneDark, RoundedCornerShape(12.dp))
                             ) {
-                                listOf("general" to "General", "reading" to "Reading", "data" to "Data").forEach { (tabKey, label) ->
+                                listOf("general" to stringResource(R.string.settings_general), "reading" to stringResource(R.string.settings_reading)).forEach { (tabKey, label) ->
                                     val isSelected = activeTab == tabKey
                                     Box(
                                         modifier = Modifier
@@ -277,7 +268,7 @@ fun SettingsDrawer(
                                     "general" -> {
                                         // Appearance Section
                                         Text(
-                                            text = "APPEARANCE",
+                                            text = stringResource(R.string.settings_appearance),
                                             fontSize = 10.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = hInkMuted,
@@ -310,7 +301,7 @@ fun SettingsDrawer(
                                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                                     Icon(imageVector = NurIcons.Sun, contentDescription = null, tint = if (!isDarkThemeGlobal) Color.White else hInkMid, modifier = Modifier.size(16.dp))
                                                     Spacer(modifier = Modifier.width(6.dp))
-                                                    Text("Light", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (!isDarkThemeGlobal) Color.White else hInkMid)
+                                                    Text(stringResource(R.string.settings_light), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (!isDarkThemeGlobal) Color.White else hInkMid)
                                                 }
                                             }
                                             Box(
@@ -329,7 +320,7 @@ fun SettingsDrawer(
                                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                                     Icon(imageVector = NurIcons.Moon, contentDescription = null, tint = if (isDarkThemeGlobal) Color.White else hInkMid, modifier = Modifier.size(16.dp))
                                                     Spacer(modifier = Modifier.width(6.dp))
-                                                    Text("Dark", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (isDarkThemeGlobal) Color.White else hInkMid)
+                                                    Text(stringResource(R.string.settings_dark), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (isDarkThemeGlobal) Color.White else hInkMid)
                                                 }
                                             }
                                         }
@@ -338,7 +329,7 @@ fun SettingsDrawer(
 
                                         // Essentials Section
                                         Text(
-                                            text = "ESSENTIALS",
+                                            text = stringResource(R.string.settings_essentials),
                                             fontSize = 10.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = hInkMuted,
@@ -352,19 +343,26 @@ fun SettingsDrawer(
                                         ) {
                                             Column {
                                                 SettingsRowItem(
-                                                    label = "Mushaf",
-                                                    value = MUSHAF_PRESETS.find { it.first == mushafPreset }?.second ?: "Uthmani",
+                                                    label = stringResource(R.string.settings_app_language),
+                                                    value = if (selectedLanguageCode.isBlank()) stringResource(R.string.settings_system_language)
+                                                        else AppLanguages.supported.firstOrNull { it.code == selectedLanguageCode }?.nativeName ?: selectedLanguageCode,
+                                                    onClick = { activeSubView = "language" }
+                                                )
+                                                Divider(color = hBoneDark)
+                                                SettingsRowItem(
+                                                    label = stringResource(R.string.settings_mushaf),
+                                                    value = currentMushafName,
                                                     onClick = { activeSubView = "mushaf" }
                                                 )
                                                 Divider(color = hBoneDark)
                                                 SettingsRowItem(
-                                                    label = "Translation",
+                                                    label = stringResource(R.string.settings_translation),
                                                     value = translationNameOf(activeTranslationId),
                                                     onClick = { activeSubView = "translation" }
                                                 )
                                                 Divider(color = hBoneDark)
                                                 SettingsRowItem(
-                                                    label = "Reciter",
+                                                    label = stringResource(R.string.settings_reciter),
                                                     value = com.nur.quran.data.audio.Reciters.nameOf(currentReciterId),
                                                     onClick = { activeSubView = "reciters" }
                                                 )
@@ -375,7 +373,7 @@ fun SettingsDrawer(
                                     "reading" -> {
                                         // Text Preferences
                                         Text(
-                                            text = "TEXT PREFERENCES",
+                                            text = stringResource(R.string.settings_text_preferences),
                                             fontSize = 10.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = hInkMuted,
@@ -389,13 +387,13 @@ fun SettingsDrawer(
                                         ) {
                                             Column {
                                                 SettingsRowItem(
-                                                    label = "Arabic Font",
+                                                    label = stringResource(R.string.settings_arabic_font),
                                                     value = selectedArabicFontName,
                                                     onClick = { activeSubView = "font" }
                                                 )
                                                 Divider(color = hBoneDark)
                                                 SettingsRowItem(
-                                                    label = "Tafsir",
+                                                    label = stringResource(R.string.settings_tafsir),
                                                     value = TAFSIRS_LIST.find { it.first == currentTafsirId }?.second ?: "Ibn Kathir",
                                                     onClick = { activeSubView = "tafsir" }
                                                 )
@@ -403,15 +401,15 @@ fun SettingsDrawer(
                                                 // Translation on/off (web: readingMode inverse).
                                                 // Previously only in the legacy SurahScreen settings sheet.
                                                 SettingsToggleItem(
-                                                    label = "Translation",
-                                                    subtitle = "Show translation under each verse",
+                                                    label = stringResource(R.string.settings_translation),
+                                                    subtitle = stringResource(R.string.settings_translation_description),
                                                     checked = isTranslationEnabled,
                                                     onToggle = { viewModel.toggleTranslation() }
                                                 )
                                                 Divider(color = hBoneDark)
                                                 SettingsToggleItem(
-                                                    label = if (currentMushaf.supportsTajweedToggle) "Tajweed"
-                                                        else "Tajweed (Not available for IndoPak)",
+                                                    label = if (currentMushaf.supportsTajweedToggle) stringResource(R.string.settings_tajweed)
+                                                        else stringResource(R.string.settings_tajweed_unavailable),
                                                     checked = isTajweedEffective,
                                                     enabled = currentMushaf.supportsTajweedToggle,
                                                     onToggle = { viewModel.toggleTajweed() }
@@ -420,7 +418,7 @@ fun SettingsDrawer(
 
                                                 // Word Hover/Tap Action Selector matching web app
                                                 Column(modifier = Modifier.padding(14.dp)) {                                                    Text(
-                                                        text = "Word Hover Action",
+                                                        text = stringResource(R.string.settings_word_action),
                                                         fontSize = 13.sp,
                                                         fontWeight = FontWeight.Medium,
                                                         color = hInk
@@ -433,7 +431,7 @@ fun SettingsDrawer(
                                                             .background(hWhite)
                                                             .border(1.dp, hBoneDark, RoundedCornerShape(8.dp))
                                                     ) {
-                                                        listOf("none" to "None", "translation" to "Translation", "tajweed" to "Tajweed").forEach { (actionKey, label) ->
+                                                        listOf("none" to stringResource(R.string.settings_none), "translation" to stringResource(R.string.settings_translation), "tajweed" to stringResource(R.string.settings_tajweed)).forEach { (actionKey, label) ->
                                                             val isSelected = wordTapBehavior == actionKey
                                                             Box(
                                                                 modifier = Modifier
@@ -470,7 +468,7 @@ fun SettingsDrawer(
 
                                         // Sizes Section matching web app sliders
                                         Text(
-                                            text = "SIZES",
+                                            text = stringResource(R.string.settings_sizes),
                                             fontSize = 10.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = hInkMuted,
@@ -488,7 +486,7 @@ fun SettingsDrawer(
                                                     horizontalArrangement = Arrangement.SpaceBetween,
                                                     verticalAlignment = Alignment.CenterVertically
                                                 ) {
-                                                    Text("Arabic Size", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = hInk)
+                                                    Text(stringResource(R.string.settings_arabic_size), fontSize = 13.sp, fontWeight = FontWeight.Medium, color = hInk)
                                                     Text("${(arabicFontScale * 100).toInt()}%", fontSize = 12.sp, color = hInkMuted, fontFamily = fontFamilyMono)
                                                 }
                                                 Slider(
@@ -503,7 +501,7 @@ fun SettingsDrawer(
                                                     horizontalArrangement = Arrangement.SpaceBetween,
                                                     verticalAlignment = Alignment.CenterVertically
                                                 ) {
-                                                    Text("Translation Size", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = hInk)
+                                                    Text(stringResource(R.string.settings_translation_size), fontSize = 13.sp, fontWeight = FontWeight.Medium, color = hInk)
                                                     Text("${(translationFontScale * 100).toInt()}%", fontSize = 12.sp, color = hInkMuted, fontFamily = fontFamilyMono)
                                                 }
                                                 Slider(
@@ -518,7 +516,7 @@ fun SettingsDrawer(
                                                     horizontalArrangement = Arrangement.SpaceBetween,
                                                     verticalAlignment = Alignment.CenterVertically
                                                 ) {
-                                                    Text("Line Spacing", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = hInk)
+                                                    Text(stringResource(R.string.settings_line_spacing), fontSize = 13.sp, fontWeight = FontWeight.Medium, color = hInk)
                                                     Text("${(lineHeightMultiplier * 100).toInt()}%", fontSize = 12.sp, color = hInkMuted, fontFamily = fontFamilyMono)
                                                 }
                                                 Slider(
@@ -531,171 +529,7 @@ fun SettingsDrawer(
                                         }
                                     }
 
-                                    "data" -> {
-                                        Text(
-                                            text = "OFFLINE DATA",
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = hInkMuted,
-                                            letterSpacing = 1.sp,
-                                            modifier = Modifier.padding(vertical = 6.dp)
-                                        )
-                                        Card(
-                                            shape = RoundedCornerShape(12.dp),
-                                            colors = CardDefaults.cardColors(containerColor = hCream),
-                                            border = androidx.compose.foundation.BorderStroke(1.dp, hBoneDark)
-                                        ) {
-                                            Column(modifier = Modifier.padding(16.dp)) {
-                                                Row(
-                                                    modifier = Modifier.fillMaxWidth(),
-                                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                                    verticalAlignment = Alignment.CenterVertically
-                                                ) {
-                                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                                        Icon(imageVector = NurIcons.Bookmark, contentDescription = null, tint = hGold, modifier = Modifier.size(16.dp))
-                                                        Spacer(modifier = Modifier.width(8.dp))
-                                                        Text("Offline Library", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = hInk)
-                                                    }
-                                                    Surface(
-                                                        shape = RoundedCornerShape(100),
-                                                        color = hGreen.copy(alpha = 0.15f)
-                                                    ) {
-                                                        Text(
-                                                            text = "Offline First",
-                                                            color = hGreen,
-                                                            fontSize = 10.sp,
-                                                            fontWeight = FontWeight.Bold,
-                                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                                                        )
-                                                    }
-                                                }
-                                                Spacer(modifier = Modifier.height(6.dp))
-                                                Text(
-                                                    text = "All Quran texts, translations, and audio files are stored locally for fast offline access.",
-                                                    fontSize = 12.sp,
-                                                    color = hInkMid,
-                                                    lineHeight = 18.sp
-                                                )
-                                            }
-                                        }
 
-                                        Spacer(modifier = Modifier.height(14.dp))
-
-                                        // Download policy: auto-cache/packs wait for WiFi.
-                                        Card(
-                                            shape = RoundedCornerShape(12.dp),
-                                            colors = CardDefaults.cardColors(containerColor = hCream),
-                                            border = androidx.compose.foundation.BorderStroke(1.dp, hBoneDark)
-                                        ) {
-                                            SettingsToggleItem(
-                                                label = "WiFi-only downloads",
-                                                subtitle = "Auto-cache and packs wait for unmetered WiFi; streaming unaffected",
-                                                checked = wifiPolicy,
-                                                onToggle = {
-                                                    val next = !wifiPolicy
-                                                    NetworkPolicy.setWifiOnly(policyContext, next)
-                                                    wifiPolicy = next
-                                                    onWifiOnlyChange(next)
-                                                }
-                                            )
-                                        }
-
-                                        Spacer(modifier = Modifier.height(14.dp))
-
-                                        // Linked Audio Section (link-in-place, no re-download)
-                                        Text(
-                                            text = "LINKED AUDIO",
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = hInkMuted,
-                                            letterSpacing = 1.sp,
-                                            modifier = Modifier.padding(vertical = 6.dp)
-                                        )
-                                        Card(
-                                            shape = RoundedCornerShape(12.dp),
-                                            colors = CardDefaults.cardColors(containerColor = hCream),
-                                            border = androidx.compose.foundation.BorderStroke(1.dp, hBoneDark)
-                                        ) {
-                                            Column(modifier = Modifier.padding(16.dp)) {
-                                                Row(
-                                                    modifier = Modifier.fillMaxWidth(),
-                                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                                    verticalAlignment = Alignment.CenterVertically
-                                                ) {
-                                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                                        Icon(imageVector = NurIcons.Volume2, contentDescription = null, tint = hGold, modifier = Modifier.size(16.dp))
-                                                        Spacer(modifier = Modifier.width(8.dp))
-                                                        Text("Linked Audio", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = hInk)
-                                                    }
-                                                    if (linkedSummary != null) {
-                                                        Surface(
-                                                            shape = RoundedCornerShape(100),
-                                                            color = hGreen.copy(alpha = 0.15f)
-                                                        ) {
-                                                            Text(
-                                                                text = linkedSummary,
-                                                                color = hGreen,
-                                                                fontSize = 10.sp,
-                                                                fontWeight = FontWeight.Bold,
-                                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                                                            )
-                                                        }
-                                                    }
-                                                }
-                                                Spacer(modifier = Modifier.height(6.dp))
-                                                Text(
-                                                    text = "Link GreenTech/quran_android folders (001..114.mp3 + timings.db) — no re-download.",
-                                                    fontSize = 12.sp,
-                                                    color = hInkMid,
-                                                    lineHeight = 18.sp
-                                                )
-                                                if (onLinkTree != null) {
-                                                    Spacer(modifier = Modifier.height(10.dp))
-                                                    Button(
-                                                        onClick = { linkTreeLauncher.launch(null) },
-                                                        colors = ButtonDefaults.buttonColors(containerColor = hGold)
-                                                    ) {
-                                                        Text(
-                                                            text = "Link folder",
-                                                            color = Color.White,
-                                                            fontWeight = FontWeight.Bold,
-                                                            fontSize = 13.sp
-                                                        )
-                                                    }
-                                                }
-                                            }
-                                        }
-
-                                        Spacer(modifier = Modifier.height(14.dp))
-
-                                        // Backup & Sync Section (cloud backup, sign-in gated)
-                                        Text(
-                                            text = "BACKUP & SYNC",
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = hInkMuted,
-                                            letterSpacing = 1.sp,
-                                            modifier = Modifier.padding(vertical = 6.dp)
-                                        )
-                                        if (syncState == null) {
-                                            Card(
-                                                shape = RoundedCornerShape(12.dp),
-                                                colors = CardDefaults.cardColors(containerColor = hCream),
-                                                border = androidx.compose.foundation.BorderStroke(1.dp, hBoneDark)
-                                            ) {
-                                                Text(
-                                                    text = "Sign in from Profile to enable cloud backup.",
-                                                    fontSize = 12.sp,
-                                                    color = hInkMuted,
-                                                    lineHeight = 18.sp,
-                                                    modifier = Modifier.padding(16.dp)
-                                                )
-                                            }
-                                        } else {
-                                            SyncStatusCard(syncState, onBackup, onRestore, onLoginClick)
-                                        }
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                    }
                                 }
                             }
                         } else {
@@ -707,17 +541,22 @@ fun SettingsDrawer(
                                     .padding(horizontal = 16.dp, vertical = 8.dp)
                             ) {
                                 when (activeSubView) {
-                                    "mushaf" -> {
-                                        MUSHAF_PRESETS.forEach { (presetKey, title) ->
+                                    "language" -> {
+                                        Text(stringResource(R.string.settings_language_description), fontFamily = fontFamilyBody,
+                                            fontSize = 13.sp, color = hInkMid, modifier = Modifier.padding(bottom = 12.dp))
+                                        AppLanguages.supported.forEach { language ->
                                             PickerItemRow(
-                                                title = title,
-                                                selected = mushafPreset == presetKey,
-                                                onSelect = {
-                                                    viewModel.setMushafPreset(presetKey)
-                                                    activeSubView = null
-                                                }
+                                                title = if (language.code.isBlank()) stringResource(R.string.settings_system_language) else language.nativeName,
+                                                selected = selectedLanguageCode == language.code,
+                                                onSelect = { AppLanguages.setLanguage(policyContext, language.code) }
                                             )
                                         }
+                                    }
+                                    "mushaf" -> {
+                                        MushafPicker(selectedMushafId = mushafPreset, onSelect = { preset ->
+                                            viewModel.setMushafPreset(preset)
+                                            activeSubView = null
+                                        })
                                     }
                                     "translation" -> {
                                         var translationQuery by remember { mutableStateOf("") }
@@ -727,7 +566,7 @@ fun SettingsDrawer(
                                             modifier = Modifier.fillMaxWidth(),
                                             placeholder = {
                                                 Text(
-                                                    text = "Search translations…",
+                                                    text = stringResource(R.string.settings_search_translations),
                                                     color = hInkMuted,
                                                     fontFamily = fontFamilyBody,
                                                     fontSize = 14.sp
@@ -812,7 +651,7 @@ fun SettingsDrawer(
                                                             color = if (isSelected) hGold else hInk
                                                         )
                                                         Text(
-                                                            text = "Compatible with ${currentMushaf.name}",
+                                                            text = stringResource(R.string.settings_font_compatible, currentMushafName),
                                                             fontSize = 11.sp,
                                                             color = hInkMuted
                                                         )
@@ -875,9 +714,9 @@ private fun SettingsRowItem(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(text = label, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = hInk)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(text = value, fontSize = 12.sp, color = hInkMuted)
+        Text(text = label, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = hInk, modifier = Modifier.weight(.42f))
+        Row(modifier = Modifier.weight(.58f), verticalAlignment = Alignment.CenterVertically) {
+            Text(text = value, fontSize = 12.sp, color = hInkMuted, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.End, modifier = Modifier.weight(1f))
             Spacer(modifier = Modifier.width(4.dp))
             Icon(imageVector = NurIcons.ChevronDown, contentDescription = null, tint = hInkMuted, modifier = Modifier.size(14.dp))
         }
@@ -977,10 +816,10 @@ private fun WordTranslationsRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = "Word Translations", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = hInk)
+            Text(text = stringResource(R.string.settings_word_translations), fontSize = 13.sp, fontWeight = FontWeight.Medium, color = hInk)
             Text(
-                text = if (isComplete) "Downloaded • $cachedCount/$totalCount chapters"
-                else "$cachedCount/$totalCount chapters for offline tap",
+                text = if (isComplete) stringResource(R.string.settings_word_downloaded, cachedCount, totalCount)
+                else stringResource(R.string.settings_word_available, cachedCount, totalCount),
                 fontSize = 11.sp,
                 color = hInkMuted
             )
@@ -990,15 +829,15 @@ private fun WordTranslationsRow(
                 isDownloading -> {
                     CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = hGold)
                     IconButton(onClick = onCancelClick, modifier = Modifier.size(28.dp)) {
-                        Icon(imageVector = NurIcons.X, contentDescription = "Cancel download", tint = hInkMuted, modifier = Modifier.size(16.dp))
+                        Icon(imageVector = NurIcons.X, contentDescription = stringResource(R.string.settings_cancel_download), tint = hInkMuted, modifier = Modifier.size(16.dp))
                     }
                 }
                 isComplete -> {
-                    Icon(imageVector = NurIcons.CheckCircle2, contentDescription = "Downloaded for offline", tint = hGreen, modifier = Modifier.size(18.dp))
+                    Icon(imageVector = NurIcons.CheckCircle2, contentDescription = stringResource(R.string.settings_downloaded_offline), tint = hGreen, modifier = Modifier.size(18.dp))
                 }
                 else -> {
                     IconButton(onClick = onDownloadClick, modifier = Modifier.size(28.dp)) {
-                        Icon(imageVector = NurIcons.Download, contentDescription = "Download for offline", tint = hGold, modifier = Modifier.size(18.dp))
+                        Icon(imageVector = NurIcons.Download, contentDescription = stringResource(R.string.settings_download_offline), tint = hGold, modifier = Modifier.size(18.dp))
                     }
                 }
             }
@@ -1076,18 +915,18 @@ private fun TafsirPickerRow(
                             color = hGold
                         )
                         IconButton(onClick = onCancel, modifier = Modifier.size(28.dp)) {
-                            Icon(imageVector = NurIcons.X, contentDescription = "Cancel download", tint = hInkMuted, modifier = Modifier.size(16.dp))
+                            Icon(imageVector = NurIcons.X, contentDescription = stringResource(R.string.settings_cancel_download), tint = hInkMuted, modifier = Modifier.size(16.dp))
                         }
                     }
                     isDownloaded -> {
-                        Icon(imageVector = NurIcons.CheckCircle2, contentDescription = "Downloaded for offline", tint = hGreen, modifier = Modifier.size(18.dp))
+                        Icon(imageVector = NurIcons.CheckCircle2, contentDescription = stringResource(R.string.settings_downloaded_offline), tint = hGreen, modifier = Modifier.size(18.dp))
                         IconButton(onClick = onDelete, modifier = Modifier.size(28.dp)) {
-                            Icon(imageVector = NurIcons.X, contentDescription = "Delete download", tint = hInkMuted, modifier = Modifier.size(16.dp))
+                            Icon(imageVector = NurIcons.X, contentDescription = stringResource(R.string.settings_delete_download), tint = hInkMuted, modifier = Modifier.size(16.dp))
                         }
                     }
                     else -> {
                         IconButton(onClick = onDownload, modifier = Modifier.size(28.dp)) {
-                            Icon(imageVector = NurIcons.Download, contentDescription = "Download for offline", tint = hGold, modifier = Modifier.size(18.dp))
+                            Icon(imageVector = NurIcons.Download, contentDescription = stringResource(R.string.settings_download_offline), tint = hGold, modifier = Modifier.size(18.dp))
                         }
                     }
                 }
@@ -1118,7 +957,7 @@ private fun TafsirPickerRow(
                 )
                 TextButton(onClick = onDownload) {
                     Text(
-                        text = "Retry",
+                        text = stringResource(R.string.settings_retry),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         color = hGold

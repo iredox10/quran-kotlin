@@ -1,5 +1,7 @@
 package com.nur.quran.ui.components.planner
 
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -46,7 +48,7 @@ fun PlanTodayCard(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "No assignment scheduled for today",
+                    text = stringResource(R.string.planner_no_today),
                     fontFamily = fontFamilyBody,
                     fontSize = 14.sp,
                     color = hInkMuted
@@ -69,7 +71,7 @@ fun PlanTodayCard(
                             color = if (isCompleted) Color(0x2610B981) else hGoldSoft
                         ) {
                             Text(
-                                text = "DAY ${assignment.dayNumber}",
+                                text = stringResource(R.string.planner_assignment_day , assignment.dayNumber),
                                 fontFamily = fontFamilyMono,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
@@ -95,7 +97,7 @@ fun PlanTodayCard(
                                         modifier = Modifier.size(12.dp)
                                     )
                                     Text(
-                                        text = PlannerUtils.formatSessionTime(sessionSeconds),
+                                        text = plannerDuration(sessionSeconds),
                                         fontFamily = fontFamilyMono,
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.SemiBold,
@@ -113,7 +115,7 @@ fun PlanTodayCard(
                     ) {
                         Icon(
                             imageVector = if (isCompleted) NurIcons.CheckCircle2 else NurIcons.Circle,
-                            contentDescription = if (isCompleted) "Completed" else "Mark Complete",
+                            contentDescription = if (isCompleted) stringResource(R.string.planner_completed) else stringResource(R.string.planner_mark_complete),
                             tint = if (isCompleted) Color(0xFF10B981) else hInkMuted,
                             modifier = Modifier.size(24.dp)
                         )
@@ -124,7 +126,7 @@ fun PlanTodayCard(
 
                 // Title and Range
                 Text(
-                    text = assignment.title,
+                    text = plannerAssignmentTitle(assignment),
                     fontFamily = fontFamilyUi,
                     fontSize = 19.sp,
                     fontWeight = FontWeight.Bold,
@@ -134,7 +136,7 @@ fun PlanTodayCard(
                 if (assignment.subtitle.isNotBlank()) {
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = assignment.subtitle,
+                        text = plannerAssignmentSubtitle(assignment),
                         fontFamily = fontFamilyBody,
                         fontSize = 13.sp,
                         color = hInkMuted
@@ -163,7 +165,7 @@ fun PlanTodayCard(
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
-                            text = if (isCompleted) "Read Again" else "Start Reading",
+                            text = if (isCompleted) stringResource(R.string.planner_read_again) else stringResource(R.string.planner_start_reading),
                             fontFamily = fontFamilyUi,
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp,
@@ -198,12 +200,12 @@ fun PrayerScheduleSection(
     unitType: String,
     modifier: Modifier = Modifier
 ) {
-    val prayers = listOf("Fajr", "Dhuhr", "Asr", "Maghrib", "Isha")
+    val prayers = listOf(stringResource(R.string.planner_fajr), stringResource(R.string.planner_dhuhr), stringResource(R.string.planner_asr), stringResource(R.string.planner_maghrib), stringResource(R.string.planner_isha))
     val perPrayer = (totalUnits / 5).coerceAtLeast(1)
 
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
-            text = "PRAYER SCHEDULE DISTRIBUTION",
+            text = stringResource(R.string.planner_prayer_schedule),
             fontFamily = fontFamilyMono,
             fontSize = 9.sp,
             fontWeight = FontWeight.Bold,
@@ -238,7 +240,7 @@ fun PrayerScheduleSection(
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "~$perPrayer $unitType",
+                        text = stringResource(R.string.planner_prayer_estimate, perPrayer, plannerUnitName(unitType, true)),
                         fontFamily = fontFamilyBody,
                         fontSize = 9.sp,
                         fontWeight = FontWeight.SemiBold,

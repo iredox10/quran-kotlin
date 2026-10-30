@@ -1,5 +1,10 @@
 package com.nur.quran.ui.screens
 
+
+
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
@@ -105,7 +110,7 @@ fun HifdhReaderScreen(
     val fadeAlpha by animateFloatAsState(
         targetValue = if (showUI) 1f else 0f,
         animationSpec = tween(durationMillis = 400),
-        label = "uiFade"
+        label = stringResource(R.string.ui_uifade_28de51)
     )
     LaunchedEffect(activityTick) {
         if (activityTick > 0) {
@@ -213,12 +218,12 @@ fun HifdhReaderScreen(
                 // Left Back Button + Brand Logo & Title Breadcrumb
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = onBackClick, modifier = Modifier.size(36.dp)) {
-                        Icon(imageVector = NurIcons.ArrowLeft, contentDescription = "Back", tint = hInk)
+                        Icon(imageVector = NurIcons.ArrowLeft, contentDescription = stringResource(R.string.ui_back_b52b36), tint = hInk)
                     }
                     Spacer(modifier = Modifier.width(4.dp))
                     androidx.compose.foundation.Image(
                         painter = androidx.compose.ui.res.painterResource(id = com.nur.quran.R.drawable.ic_logo),
-                        contentDescription = "Quran Nur Logo",
+                        contentDescription = stringResource(R.string.ui_quran_nur_logo_5e0764),
                         modifier = Modifier.size(28.dp).clip(RoundedCornerShape(8.dp))
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -235,7 +240,7 @@ fun HifdhReaderScreen(
                         color = hInkMuted
                     )
                     Text(
-                        text = "Hifdh Mode: $chapterName",
+                        text = stringResource(R.string.ui_hifdh_mode_1_s_aa9db4, chapterName),
                         fontFamily = fontFamilyMono,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
@@ -256,7 +261,7 @@ fun HifdhReaderScreen(
                     ) {
                         Icon(
                             imageVector = NurIcons.Award,
-                            contentDescription = "Mark Surah Memorized",
+                            contentDescription = stringResource(R.string.ui_mark_surah_memorized_b35a13),
                             tint = if (isSurahFullyMemorized) hGreen else hInkMuted,
                             modifier = Modifier.size(18.dp)
                         )
@@ -271,7 +276,7 @@ fun HifdhReaderScreen(
                     ) {
                         Icon(
                             imageVector = NurIcons.Rows3,
-                            contentDescription = "Auto-scroll",
+                            contentDescription = stringResource(R.string.ui_auto_scroll_a03e7f),
                             tint = if (isAutoScrollActive) hGold else hInkMuted,
                             modifier = Modifier.size(18.dp)
                         )
@@ -287,7 +292,7 @@ fun HifdhReaderScreen(
                     ) {
                         Icon(
                             imageVector = if (isDarkThemeGlobal) NurIcons.Sun else NurIcons.Moon,
-                            contentDescription = "Theme",
+                            contentDescription = stringResource(R.string.ui_theme_a797e3),
                             tint = hInkMid,
                             modifier = Modifier.size(18.dp)
                         )
@@ -299,7 +304,7 @@ fun HifdhReaderScreen(
                     ) {
                         Icon(
                             imageVector = NurIcons.Settings,
-                            contentDescription = "Settings",
+                            contentDescription = stringResource(R.string.ui_settings_c7f73b),
                             tint = hInkMuted,
                             modifier = Modifier.size(18.dp)
                         )
@@ -455,7 +460,7 @@ fun HifdhReaderScreen(
                                         ) {
                                             Icon(
                                                 imageVector = NurIcons.Bookmark,
-                                                contentDescription = "Bookmark",
+                                                contentDescription = stringResource(R.string.ui_bookmark_441da1),
                                                 tint = if (isBookmarked) hTeal else hInkMuted.copy(alpha = 0.5f),
                                                 modifier = Modifier.size(20.dp)
                                             )
@@ -467,7 +472,7 @@ fun HifdhReaderScreen(
                                         ) {
                                             Icon(
                                                 imageVector = if (isMemorized) NurIcons.CheckCircle2 else NurIcons.Check,
-                                                contentDescription = "Mark Memorized",
+                                                contentDescription = stringResource(R.string.ui_mark_memorized_da672b),
                                                 tint = if (isMemorized) hGreen else hInkMuted.copy(alpha = 0.5f),
                                                 modifier = Modifier.size(20.dp)
                                             )
@@ -728,16 +733,16 @@ fun HifdhReaderScreen(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text("Add to Collection", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = hInk)
+                                    Text(stringResource(R.string.ui_add_to_collection_c6f689), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = hInk)
                                     IconButton(onClick = { showCollectionsPopover = false }, modifier = Modifier.size(24.dp)) {
-                                        Icon(imageVector = NurIcons.X, contentDescription = "Close", tint = hInkMuted, modifier = Modifier.size(14.dp))
+                                        Icon(imageVector = NurIcons.X, contentDescription = stringResource(R.string.ui_close_bbfa77), tint = hInkMuted, modifier = Modifier.size(14.dp))
                                     }
                                 }
 
                                 Spacer(modifier = Modifier.height(8.dp))
 
                                 if (collections.isEmpty()) {
-                                    Text("No collections yet.", fontSize = 11.sp, color = hInkMuted)
+                                    Text(stringResource(R.string.ui_no_collections_yet_615f25), fontSize = 11.sp, color = hInkMuted)
                                 } else {
                                     LazyColumn(modifier = Modifier.heightIn(max = 140.dp)) {
                                         items(collections) { col ->
@@ -768,7 +773,7 @@ fun HifdhReaderScreen(
                                     OutlinedTextField(
                                         value = newCollectionName,
                                         onValueChange = { newCollectionName = it },
-                                        placeholder = { Text("New...", fontSize = 11.sp) },
+                                        placeholder = { Text(stringResource(R.string.ui_new_6ad7d3), fontSize = 11.sp) },
                                         modifier = Modifier.weight(1f).height(40.dp),
                                         singleLine = true
                                     )
@@ -814,28 +819,28 @@ fun HifdhReaderScreen(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text("Audio Repeat Options", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = hInk)
+                                    Text(stringResource(R.string.ui_audio_repeat_options_071520), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = hInk)
                                     IconButton(onClick = { showAudioSettingsPopover = false }, modifier = Modifier.size(24.dp)) {
-                                        Icon(imageVector = NurIcons.X, contentDescription = "Close", tint = hInkMuted, modifier = Modifier.size(14.dp))
+                                        Icon(imageVector = NurIcons.X, contentDescription = stringResource(R.string.ui_close_bbfa77), tint = hInkMuted, modifier = Modifier.size(14.dp))
                                     }
                                 }
 
                                 Spacer(modifier = Modifier.height(10.dp))
 
-                                Text("Ayah Repeat Count", fontSize = 11.sp, color = hInkMuted)
+                                Text(stringResource(R.string.ui_ayah_repeat_count_3dd0fa), fontSize = 11.sp, color = hInkMuted)
                                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                     listOf(1, 2, 3, 5, 10, -1).forEach { r ->
                                         FilterChip(
                                             selected = ayahRepeatCount == r,
                                             onClick = { ayahRepeatCount = r },
-                                            label = { Text(if (r == -1) "∞" else "${r}x", fontSize = 10.sp) }
+                                            label = { Text(if (r == -1) "∞" else stringResource(R.string.ui_1_sx_452426, r), fontSize = 10.sp) }
                                         )
                                     }
                                 }
 
                                 Spacer(modifier = Modifier.height(8.dp))
 
-                                Text("Reciter Delay Gap", fontSize = 11.sp, color = hInkMuted)
+                                Text(stringResource(R.string.ui_reciter_delay_gap_daeccf), fontSize = 11.sp, color = hInkMuted)
                                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                     listOf(0, 1, 2, 3, 5).forEach { d ->
                                         FilterChip(
@@ -843,20 +848,20 @@ fun HifdhReaderScreen(
                                             onClick = {
                                                 delayBetweenAyahs = d
                                             },
-                                            label = { Text("${d}s", fontSize = 10.sp) }
+                                            label = { Text(stringResource(R.string.ui_1_ss_3eb314, d), fontSize = 10.sp) }
                                         )
                                     }
                                 }
 
                                 Spacer(modifier = Modifier.height(8.dp))
 
-                                Text("Range Loop Count", fontSize = 11.sp, color = hInkMuted)
+                                Text(stringResource(R.string.ui_range_loop_count_fd0b8f), fontSize = 11.sp, color = hInkMuted)
                                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                     listOf(1, 2, 3, 5, 10, -1).forEach { r ->
                                         FilterChip(
                                             selected = rangeLoopCount == r,
                                             onClick = { rangeLoopCount = r },
-                                            label = { Text(if (r == -1) "∞" else "${r}x", fontSize = 10.sp) }
+                                            label = { Text(if (r == -1) "∞" else stringResource(R.string.ui_1_sx_452426, r), fontSize = 10.sp) }
                                         )
                                     }
                                 }
@@ -909,11 +914,11 @@ fun HifdhReaderScreen(
                             val secs = sessionSeconds % 60
                             val timeStr = "%d:%02d".format(mins, secs)
 
-                            Text(text = "Surah $surahName", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = hTeal, fontFamily = fontFamilyMono)
+                            Text(text = stringResource(R.string.ui_surah_1_s_ffa393, surahName), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = hTeal, fontFamily = fontFamilyMono)
                             Text(text = "·", fontSize = 11.sp, color = hInkMuted.copy(alpha = 0.5f))
-                            Text(text = "Page $pageNum", fontSize = 11.sp, color = hInkMuted, fontFamily = fontFamilyMono)
+                            Text(text = stringResource(R.string.ui_page_1_s_6654d7, pageNum), fontSize = 11.sp, color = hInkMuted, fontFamily = fontFamilyMono)
                             Text(text = "·", fontSize = 11.sp, color = hInkMuted.copy(alpha = 0.5f))
-                            Text(text = "Ayah $ayahLabel", fontSize = 11.sp, color = hInkMuted, fontFamily = fontFamilyMono)
+                            Text(text = stringResource(R.string.ui_ayah_1_s_3136e0, ayahLabel), fontSize = 11.sp, color = hInkMuted, fontFamily = fontFamilyMono)
                             Text(text = "·", fontSize = 11.sp, color = hInkMuted.copy(alpha = 0.5f))
                             Text(text = timeStr, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = hGold, fontFamily = fontFamilyMono)
                         }
@@ -941,7 +946,7 @@ fun HifdhReaderScreen(
                                     enabled = canNext,
                                     modifier = Modifier.size(38.dp)
                                 ) {
-                                    Icon(imageVector = NurIcons.ArrowLeft, contentDescription = "Next", tint = if (canNext) hInkMid else hInkMuted.copy(alpha = 0.3f))
+                                    Icon(imageVector = NurIcons.ArrowLeft, contentDescription = stringResource(R.string.ui_next_bc9819), tint = if (canNext) hInkMid else hInkMuted.copy(alpha = 0.3f))
                                 }
 
                                 // 2. Hide Mode Cycle Button (<EyeOff> / <Eye>)
@@ -963,7 +968,7 @@ fun HifdhReaderScreen(
                                 ) {
                                     Icon(
                                         imageVector = if (hideMode == "visible") NurIcons.Eye else NurIcons.EyeOff,
-                                        contentDescription = "Hide Mode",
+                                        contentDescription = stringResource(R.string.ui_hide_mode_5114ed),
                                         tint = if (hideMode != "visible") hGold else hInkMid
                                     )
                                 }
@@ -977,7 +982,7 @@ fun HifdhReaderScreen(
                                         .clip(RoundedCornerShape(12.dp))
                                         .background(if (showTranslation) hGoldSoft else Color.Transparent)
                                 ) {
-                                    Icon(imageVector = NurIcons.BookOpen, contentDescription = "Translation", tint = if (showTranslation) hGold else hInkMid)
+                                    Icon(imageVector = NurIcons.BookOpen, contentDescription = stringResource(R.string.ui_translation_ac26a7), tint = if (showTranslation) hGold else hInkMid)
                                 }
 
                                 // Vertical Divider Line
@@ -998,7 +1003,7 @@ fun HifdhReaderScreen(
                                 ) {
                                     Icon(
                                         imageVector = if (isPlaying) NurIcons.PauseFilled else NurIcons.PlayFilled,
-                                        contentDescription = "Play/Pause",
+                                        contentDescription = stringResource(R.string.ui_play_pause_ebb1e1),
                                         tint = Color.White,
                                         modifier = Modifier.size(22.dp)
                                     )
@@ -1022,7 +1027,7 @@ fun HifdhReaderScreen(
                                     modifier = Modifier.height(38.dp)
                                 ) {
                                     Text(
-                                        if (ayahsPerChunk == -1) "Page" else "${ayahsPerChunk}A",
+                                        if (ayahsPerChunk == -1) stringResource(R.string.ui_page_fb0627) else stringResource(R.string.ui_1_sa_b6be45, ayahsPerChunk),
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = if (ayahsPerChunk == -1) hTeal else hInkMid,
@@ -1036,7 +1041,7 @@ fun HifdhReaderScreen(
                                     enabled = true,
                                     modifier = Modifier.size(38.dp)
                                 ) {
-                                    Icon(imageVector = NurIcons.Bookmark, contentDescription = "Add to Collection", tint = hInkMid, modifier = Modifier.size(18.dp))
+                                    Icon(imageVector = NurIcons.Bookmark, contentDescription = stringResource(R.string.ui_add_to_collection_c6f689), tint = hInkMid, modifier = Modifier.size(18.dp))
                                 }
 
                                 // 7. Audio Settings Gear (<Settings>) — highlighted when non-default
@@ -1051,7 +1056,7 @@ fun HifdhReaderScreen(
                                 ) {
                                     Icon(
                                         imageVector = NurIcons.Settings,
-                                        contentDescription = "Audio Settings",
+                                        contentDescription = stringResource(R.string.ui_audio_settings_873fb8),
                                         tint = if (hasNonDefaultAudio) hGold else hInkMid,
                                         modifier = Modifier.size(18.dp)
                                     )
@@ -1063,7 +1068,7 @@ fun HifdhReaderScreen(
                                     enabled = currentVerseIndex > 0,
                                     modifier = Modifier.size(38.dp)
                                 ) {
-                                    Icon(imageVector = NurIcons.ArrowRight, contentDescription = "Prev", tint = if (currentVerseIndex > 0) hInkMid else hInkMuted.copy(alpha = 0.3f))
+                                    Icon(imageVector = NurIcons.ArrowRight, contentDescription = stringResource(R.string.ui_prev_e96fea), tint = if (currentVerseIndex > 0) hInkMid else hInkMuted.copy(alpha = 0.3f))
                                 }
                             }
                         }

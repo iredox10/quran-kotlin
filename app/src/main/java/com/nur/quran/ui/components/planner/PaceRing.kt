@@ -1,5 +1,7 @@
 package com.nur.quran.ui.components.planner
 
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -27,7 +29,7 @@ fun PaceRing(
     durationDays: Int,
     dailyPages: Int,
     selected: Boolean = false,
-    unitLabel: String = "PAGES / DAY",
+    unitLabel: String? = null,
     modifier: Modifier = Modifier
 ) {
     val ratio = when {
@@ -90,7 +92,7 @@ fun PaceRing(
             )
             Spacer(modifier = Modifier.height(3.dp))
             Text(
-                text = unitLabel,
+                text = unitLabel ?: stringResource(R.string.planner_pages_day_label),
                 fontFamily = fontFamilyMono,
                 fontSize = 8.sp,
                 fontWeight = FontWeight.Normal,

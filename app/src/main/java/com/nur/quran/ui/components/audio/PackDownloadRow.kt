@@ -1,5 +1,9 @@
 package com.nur.quran.ui.components.audio
 
+
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -140,7 +144,7 @@ fun PackDownloadRow(
                                 color = hGreen.copy(alpha = 0.15f)
                             ) {
                                 Text(
-                                    text = "OFFLINE",
+                                    text = stringResource(R.string.ui_offline_c68993),
                                     color = hGreen,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
@@ -200,7 +204,7 @@ fun PackDownloadRow(
                     if (wordsTotal > 0) (wordsDownloaded.toFloat() / wordsTotal).coerceIn(0f, 1f) else 0f
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "Words $wordsDownloaded/$wordsTotal",
+                    text = stringResource(R.string.ui_words_1_s_2_s_b2e62d, wordsDownloaded, wordsTotal),
                     fontSize = 11.sp,
                     color = hInkMuted,
                     fontFamily = fontFamilyBody
@@ -227,7 +231,7 @@ fun PackDownloadRow(
                     isDownloaded -> {
                         TextButton(onClick = { onDeleteClick(pack.id) }) {
                             Text(
-                                "Delete",
+                                stringResource(R.string.ui_delete_f6fdbe),
                                 color = hRed,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 13.sp,
@@ -244,7 +248,7 @@ fun PackDownloadRow(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "${(progress * 100).toInt()}%",
+                                text = stringResource(R.string.ui_1_s_fc9db1, (progress * 100).toInt()),
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = hInkMid,
@@ -253,7 +257,7 @@ fun PackDownloadRow(
                             Spacer(modifier = Modifier.width(8.dp))
                             OutlinedButton(onClick = { onCancelClick(pack.id) }) {
                                 Text(
-                                    "Cancel",
+                                    stringResource(R.string.ui_cancel_77dfd2),
                                     color = hRed,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 13.sp,
@@ -268,7 +272,7 @@ fun PackDownloadRow(
                             colors = ButtonDefaults.buttonColors(containerColor = hGold)
                         ) {
                             Text(
-                                "Download",
+                                stringResource(R.string.ui_download_a479c9),
                                 color = Color.White,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 13.sp,
@@ -315,7 +319,7 @@ fun WordPackSummaryRow(
                 Column(modifier = Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = "Word translations",
+                            text = stringResource(R.string.ui_word_translations_1f21be),
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             color = hInk,
@@ -329,7 +333,7 @@ fun WordPackSummaryRow(
                                 color = hGreen.copy(alpha = 0.15f)
                             ) {
                                 Text(
-                                    text = "OFFLINE",
+                                    text = stringResource(R.string.ui_offline_c68993),
                                     color = hGreen,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
@@ -342,8 +346,8 @@ fun WordPackSummaryRow(
                     }
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = if (isComplete) "Downloaded • $cached/$total chapters"
-                        else "$cached/$total chapters cached",
+                        text = if (isComplete) stringResource(R.string.ui_downloaded_1_s_2_s_chapters_b9c2c6, cached, total)
+                        else stringResource(R.string.ui_1_s_2_s_chapters_cached_254351, cached, total),
                         fontSize = 12.sp,
                         color = hInkMuted,
                         fontFamily = fontFamilyBody
@@ -379,7 +383,7 @@ fun WordPackSummaryRow(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Downloading…",
+                            text = stringResource(R.string.ui_downloading_c177e4),
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium,
                             color = hInkMid,
@@ -391,7 +395,7 @@ fun WordPackSummaryRow(
                             colors = ButtonDefaults.buttonColors(containerColor = hGold)
                         ) {
                             Text(
-                                "Download missing",
+                                stringResource(R.string.ui_download_missing_a2ac14),
                                 color = Color.White,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 13.sp,

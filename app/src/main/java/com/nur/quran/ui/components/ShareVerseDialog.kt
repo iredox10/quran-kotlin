@@ -1,5 +1,8 @@
 package com.nur.quran.ui.components
 
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.ContentValues
@@ -114,14 +117,15 @@ fun ShareVerseDialog(verse: VerseEntity, chapterName: String, onDismiss: () -> U
                 Column(Modifier.navigationBarsPadding().padding(horizontal = 16.dp)) {
                     Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(reference, color = green, fontSize = 16.sp, modifier = Modifier.weight(1f), maxLines = 2)
-                        IconButton(onClick = onDismiss) { Icon(NurIcons.X, "Close", tint = green) }
+                        IconButton(onClick = onDismiss) { Icon(NurIcons.X, stringResource(R.string.ui_close_bbfa77), tint = green) }
                     }
                     // Controls stay visible while a long ayah scrolls below them.
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         ShareCardTheme.entries.forEach { option ->
+                            val themeDescription = stringResource(R.string.ui_1_s_theme_b3f953, option.label)
                             IconButton(onClick = { theme = option }, enabled = !busy,
                                 modifier = Modifier.semantics {
-                                    contentDescription = "${option.label} theme"
+                                    contentDescription = themeDescription
                                     selected = theme == option
                                 }) {
                                 Surface(Modifier.size(26.dp), shape = androidx.compose.foundation.shape.CircleShape,
@@ -135,11 +139,11 @@ fun ShareVerseDialog(verse: VerseEntity, chapterName: String, onDismiss: () -> U
                             copied = true
                         }) { Icon(if (copied) NurIcons.Check else NurIcons.Copy, if (copied) "Copied" else "Copy ayah text", tint = green) }
                         IconButton(onClick = { export(true) }, enabled = !busy && preview != null) {
-                            Icon(NurIcons.Download, "Save ayah image", tint = green)
+                            Icon(NurIcons.Download, stringResource(R.string.ui_save_ayah_image_d6ab7d), tint = green)
                         }
                         IconButton(onClick = { export(false) }, enabled = !busy && preview != null) {
                             if (busy) CircularProgressIndicator(Modifier.size(20.dp), color = gold, strokeWidth = 2.dp)
-                            else Icon(NurIcons.Share2, "Share ayah image", tint = green)
+                            else Icon(NurIcons.Share2, stringResource(R.string.ui_share_ayah_image_748994), tint = green)
                         }
                     }
                     if (error != null) Text(error!!, color = Color(0xFFA63232), fontSize = 12.sp, modifier = Modifier.padding(vertical = 6.dp))

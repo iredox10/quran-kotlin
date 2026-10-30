@@ -1,5 +1,7 @@
 package com.nur.quran.ui.components.planner
 
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -40,7 +42,7 @@ fun CustomPlanForm(
     var startDateText by remember { mutableStateOf(PlannerEngine.formatPlannerDate()) }
     var excludeDaysList by remember { mutableStateOf(listOf<Int>()) }
 
-    val dayNames = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
+    val dayNames = plannerWeekdays()
 
     val maxUnits = PLANNER_UNITS[unitType]?.max ?: 604
     val sUnit = (startUnitText.toIntOrNull() ?: 1).coerceIn(1, maxUnits)
@@ -48,15 +50,18 @@ fun CustomPlanForm(
     val totalSelectedUnits = (eUnit - sUnit + 1).coerceAtLeast(1)
     val durationDays = (durationDaysText.toIntOrNull() ?: 30).coerceAtLeast(1)
 
-    val stats = remember(durationDays, excludeDaysList, startDateText, totalSelectedUnits) {
+    val displayLocale = androidx.compose.ui.platform.LocalConfiguration.current.locales[0]
+    val stats = remember(displayLocale, durationDays, excludeDaysList, startDateText, totalSelectedUnits) {
         PlannerUtils.getPaceStats(
             durationDays = durationDays,
             excludeDays = excludeDaysList,
             startDateStr = startDateText,
-            totalUnits = totalSelectedUnits
+            totalUnits = totalSelectedUnits,
+            displayLocale = displayLocale
         )
     }
 
+    val defaultPlanTitle = stringResource(R.string.planner_custom_journey, durationDays)
     Card(
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = hCream),
@@ -65,7 +70,7 @@ fun CustomPlanForm(
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             Text(
-                text = "CUSTOM PLAN BUILDER",
+                text = stringResource(R.string.planner_custom_builder),
                 fontFamily = fontFamilyMono,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
@@ -79,8 +84,8 @@ fun CustomPlanForm(
             OutlinedTextField(
                 value = customTitleText,
                 onValueChange = { customTitleText = it },
-                label = { Text("Plan Title (optional)") },
-                placeholder = { Text("e.g. My 30-Day Khatm") },
+                label = { Text(stringResource(R.string.planner_plan_title_optional)) },
+                placeholder = { Text(stringResource(R.string.planner_plan_example)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(14.dp)
@@ -90,7 +95,7 @@ fun CustomPlanForm(
 
             // Unit Selector Pills
             Text(
-                text = "UNIT TYPE",
+                text = stringResource(R.string.planner_unit_type),
                 fontFamily = fontFamilyMono,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
@@ -120,7 +125,7 @@ fun CustomPlanForm(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = PLANNER_UNITS[u]?.label ?: u,
+                                text = plannerUnitName(u),
                                 fontFamily = fontFamilyUi,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
@@ -141,7 +146,7 @@ fun CustomPlanForm(
                 OutlinedTextField(
                     value = startUnitText,
                     onValueChange = { startUnitText = it },
-                    label = { Text("Start $unitType") },
+                    label = { Text(stringResource(R.string.planner_start_unit , plannerUnitName(unitType))) },
                     singleLine = true,
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(14.dp)
@@ -149,7 +154,7 @@ fun CustomPlanForm(
                 OutlinedTextField(
                     value = endUnitText,
                     onValueChange = { endUnitText = it },
-                    label = { Text("End $unitType") },
+                    label = { Text(stringResource(R.string.planner_end_unit , plannerUnitName(unitType))) },
                     singleLine = true,
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(14.dp)
@@ -162,7 +167,7 @@ fun CustomPlanForm(
             OutlinedTextField(
                 value = durationDaysText,
                 onValueChange = { durationDaysText = it },
-                label = { Text("Duration (Days)") },
+                label = { Text(stringResource(R.string.planner_duration_days)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(14.dp)
@@ -172,7 +177,7 @@ fun CustomPlanForm(
 
             // Exclude Days of Week
             Text(
-                text = "REST DAYS (EXCLUDE)",
+                text = stringResource(R.string.planner_rest_days),
                 fontFamily = fontFamilyMono,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
@@ -238,7 +243,7 @@ fun CustomPlanForm(
                             color = hGold
                         )
                         Text(
-                            text = "UNITS / DAY",
+                            text = stringResource(R.string.planner_units_day),
                             fontFamily = fontFamilyMono,
                             fontSize = 8.sp,
                             color = hInkMuted
@@ -261,7 +266,7 @@ fun CustomPlanForm(
                             color = hTeal
                         )
                         Text(
-                            text = "PER PRAYER",
+                            text = stringResource(R.string.planner_per_prayer),
                             fontFamily = fontFamilyMono,
                             fontSize = 8.sp,
                             color = hInkMuted
@@ -284,7 +289,7 @@ fun CustomPlanForm(
                             color = hInk
                         )
                         Text(
-                            text = "COMPLETION",
+                            text = stringResource(R.string.planner_completion),
                             fontFamily = fontFamilyMono,
                             fontSize = 8.sp,
                             color = hInkMuted
@@ -305,7 +310,7 @@ fun CustomPlanForm(
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(14.dp)
                 ) {
-                    Text("Cancel", color = hInkMuted)
+                    Text(stringResource(R.string.planner_cancel), color = hInkMuted)
                 }
 
                 Button(
@@ -316,7 +321,7 @@ fun CustomPlanForm(
                             startDate = startDateText,
                             startUnit = sUnit,
                             endUnit = eUnit,
-                            customTitle = customTitleText.ifBlank { "Custom $durationDays-Day Journey" },
+                            customTitle = customTitleText.ifBlank { defaultPlanTitle },
                             excludeDays = excludeDaysList,
                             chapters = chapters
                         )
@@ -326,7 +331,7 @@ fun CustomPlanForm(
                     colors = ButtonDefaults.buttonColors(containerColor = hGold),
                     shape = RoundedCornerShape(14.dp)
                 ) {
-                    Text("Begin Journey", fontWeight = FontWeight.Bold, color = hWhite)
+                    Text(stringResource(R.string.planner_begin_journey), fontWeight = FontWeight.Bold, color = hWhite)
                 }
             }
         }

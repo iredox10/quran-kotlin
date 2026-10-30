@@ -1,5 +1,10 @@
 package com.nur.quran.ui.screens
 
+
+
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -72,7 +77,7 @@ fun DownloadsScreen(
             IconButton(onClick = onBack) {
                 Icon(
                     imageVector = Icons.Filled.ArrowBack,
-                    contentDescription = "Back",
+                    contentDescription = stringResource(R.string.ui_back_b52b36),
                     tint = hInk,
                     modifier = Modifier.size(22.dp)
                 )
@@ -80,14 +85,14 @@ fun DownloadsScreen(
             Spacer(modifier = Modifier.width(4.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Audio Downloads",
+                    text = stringResource(R.string.ui_audio_downloads_56a9f9),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = hInk,
                     fontFamily = fontFamilyUi
                 )
                 Text(
-                    text = "${formatDlBytes(totalBytes)} • $offlineCount reciters offline",
+                    text = stringResource(R.string.ui_1_s_2_s_reciters_offline_860fc8, formatDlBytes(totalBytes), offlineCount),
                     fontSize = 12.sp,
                     color = hInkMuted,
                     fontFamily = fontFamilyBody
@@ -106,7 +111,7 @@ fun DownloadsScreen(
         ) {
             Column(modifier = Modifier.padding(14.dp)) {
                 Text(
-                    text = "STORAGE",
+                    text = stringResource(R.string.ui_storage_927396),
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     color = hInkMuted,
@@ -140,7 +145,7 @@ fun DownloadsScreen(
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "${failedEntries.size} download${if (failedEntries.size == 1) "" else "s"} failed: " +
-                    (failedEntries.values.firstNotNullOfOrNull { it.error } ?: "download_failed") +
+                    (failedEntries.values.firstNotNullOfOrNull { it.error } ?: stringResource(R.string.ui_download_failed_32f89c)) +
                     " — retry from the reciter row.",
                 fontSize = 12.sp,
                 color = hRed,
@@ -149,7 +154,7 @@ fun DownloadsScreen(
         } else {
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Full-mushaf downloads run in the background, chapter by chapter.",
+                text = stringResource(R.string.ui_full_mushaf_downloads_run_in_the_background_chap_abd31e),
                 fontSize = 12.sp,
                 color = hInkMuted,
                 fontFamily = fontFamilyBody
@@ -180,7 +185,7 @@ fun DownloadsScreen(
                         isDownloading = s.isBusy,
                         error = rowError
                     ),
-                    subtitle = "${s.style} • ${formatDlBytes(s.bytes)}",
+                    subtitle = stringResource(R.string.ui_1_s_2_s_c75f12, s.style, formatDlBytes(s.bytes)),
                     onDownloadClick = { packVm.downloadMushaf(it) },
                     onCancelClick = { packVm.pauseReciter(it) },
                     onDeleteClick = { packVm.deleteReciter(it) }

@@ -1,5 +1,10 @@
 package com.nur.quran.ui.components.audio
 
+
+
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
@@ -89,7 +94,7 @@ fun RepetitionCard(
     var isAdvancedExpanded by rememberSaveable { mutableStateOf(false) }
     val chevronRotation by animateFloatAsState(
         targetValue = if (isAdvancedExpanded) 180f else 0f,
-        label = "advancedChevronRotation"
+        label = stringResource(R.string.ui_advancedchevronrotation_be895d)
     )
 
     Card(
@@ -123,7 +128,7 @@ fun RepetitionCard(
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
-                            text = "AYAH REPETITION",
+                            text = stringResource(R.string.ui_ayah_repetition_138c82),
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             color = hInkMid,
@@ -132,7 +137,7 @@ fun RepetitionCard(
                         )
                     }
                     Text(
-                        text = "Memorization (Hifz)",
+                        text = stringResource(R.string.ui_memorization_hifz_28d65c),
                         fontSize = 11.sp,
                         color = hInkMuted,
                         fontFamily = fontFamilyBody
@@ -140,7 +145,7 @@ fun RepetitionCard(
                 }
 
                 Text(
-                    text = "Number of times each individual verse will play before advancing",
+                    text = stringResource(R.string.ui_number_of_times_each_individual_verse_will_play_56fbbd),
                     fontSize = 12.sp,
                     color = hInkMuted,
                     fontFamily = fontFamilyBody,
@@ -174,7 +179,7 @@ fun RepetitionCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "REPEAT ENTIRE RANGE",
+                        text = stringResource(R.string.ui_repeat_entire_range_89bd80),
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         color = hInkMid,
@@ -182,7 +187,7 @@ fun RepetitionCard(
                         fontFamily = fontFamilyUi
                     )
                     Text(
-                        text = "Active (${if (rangeRepeat == PlaybackSettings.REPEAT_INFINITE) "∞" else "${rangeRepeat}×"})",
+                        text = stringResource(R.string.ui_active_1_s_fbbdeb, if (rangeRepeat == PlaybackSettings.REPEAT_INFINITE) "∞" else "${rangeRepeat}×"),
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         color = hGold,
@@ -191,7 +196,7 @@ fun RepetitionCard(
                 }
 
                 Text(
-                    text = "Number of loops for the selected surah or ayah block",
+                    text = stringResource(R.string.ui_number_of_loops_for_the_selected_surah_or_ayah_b_6df8ce),
                     fontSize = 12.sp,
                     color = hInkMuted,
                     fontFamily = fontFamilyBody,
@@ -239,7 +244,7 @@ fun RepetitionCard(
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
-                            text = "ADVANCED AUDIO SETTINGS",
+                            text = stringResource(R.string.ui_advanced_audio_settings_24f5a2),
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             color = hInkMid,
@@ -274,7 +279,7 @@ fun RepetitionCard(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "PLAYBACK SPEED",
+                                    text = stringResource(R.string.ui_playback_speed_842467),
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = hInkMuted,
@@ -282,7 +287,7 @@ fun RepetitionCard(
                                     fontFamily = fontFamilyUi
                                 )
                                 Text(
-                                    text = "${formatSpeed(speed)}×",
+                                    text = stringResource(R.string.ui_1_s_9e5a28, formatSpeed(speed)),
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = hGold,
@@ -315,7 +320,7 @@ fun RepetitionCard(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "PAUSE DELAY",
+                                    text = stringResource(R.string.ui_pause_delay_d155cd),
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = hInkMuted,
@@ -323,7 +328,7 @@ fun RepetitionCard(
                                     fontFamily = fontFamilyUi
                                 )
                                 Text(
-                                    text = if (delaySec <= 0f) "Off" else "${delaySec.toInt()}s",
+                                    text = if (delaySec <= 0f) stringResource(R.string.ui_off_e3de5a) else stringResource(R.string.ui_1_ss_3eb314, delaySec.toInt()),
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = hGold,
@@ -331,7 +336,7 @@ fun RepetitionCard(
                                 )
                             }
                             Text(
-                                text = "Silence added between ayahs for reflection",
+                                text = stringResource(R.string.ui_silence_added_between_ayahs_for_reflection_82955b),
                                 fontSize = 11.sp,
                                 color = hInkMuted,
                                 fontFamily = fontFamilyBody
@@ -358,8 +363,8 @@ fun RepetitionCard(
                         Divider(color = hBoneDark, thickness = 0.5.dp)
 
                         RepetitionSwitchRow(
-                            title = "Save for offline",
-                            subtitle = "Keep audio for offline listening",
+                            title = stringResource(R.string.ui_save_for_offline_533dd8),
+                            subtitle = stringResource(R.string.ui_keep_audio_for_offline_listening_6d17d2),
                             checked = !streamOnly,
                             onCheckedChange = { onStreamOnlyChange(!it) }
                         )
@@ -367,8 +372,8 @@ fun RepetitionCard(
                         Divider(color = hBoneDark, thickness = 0.5.dp)
 
                         RepetitionSwitchRow(
-                            title = "Auto-scroll while playing",
-                            subtitle = "Highlight and scroll to verse while playing",
+                            title = stringResource(R.string.ui_auto_scroll_while_playing_91744e),
+                            subtitle = stringResource(R.string.ui_highlight_and_scroll_to_verse_while_playing_ec49a8),
                             checked = scrollWhilePlaying,
                             onCheckedChange = onScrollWhilePlayingChange
                         )

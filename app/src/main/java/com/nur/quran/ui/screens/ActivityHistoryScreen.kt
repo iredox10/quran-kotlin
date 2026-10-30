@@ -1,5 +1,9 @@
 package com.nur.quran.ui.screens
 
+
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -83,7 +87,7 @@ fun ActivityHistoryScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Activity History",
+                        text = stringResource(R.string.ui_activity_history_ca84f7),
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp,
                         color = hInk,
@@ -92,7 +96,7 @@ fun ActivityHistoryScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(imageVector = NurIcons.ArrowLeft, contentDescription = "Back", tint = hInk)
+                        Icon(imageVector = NurIcons.ArrowLeft, contentDescription = stringResource(R.string.ui_back_b52b36), tint = hInk)
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = hWhite)
@@ -114,14 +118,14 @@ fun ActivityHistoryScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "SESSION LOG",
+                        text = stringResource(R.string.ui_session_log_56dc17),
                         fontFamily = fontFamilyMono,
                         fontSize = 10.sp,
                         letterSpacing = 1.5.sp,
                         color = hInkMuted
                     )
                     Text(
-                        text = "Every reading, memorizing, listening and focus session you log.",
+                        text = stringResource(R.string.ui_every_reading_memorizing_listening_and_focus_ses_d2767c),
                         fontSize = 13.sp,
                         color = hInkMuted,
                         textAlign = TextAlign.Center,
@@ -168,17 +172,17 @@ fun ActivityHistoryScreen(
                             HistoryStatCell(
                                 modifier = Modifier.weight(1f),
                                 value = AnalyticsStats.formatDuration(stats.seconds),
-                                label = "TOTAL TIME"
+                                label = stringResource(R.string.ui_total_time_157c2c)
                             )
                             HistoryStatCell(
                                 modifier = Modifier.weight(1f),
                                 value = "${stats.count}",
-                                label = "SESSIONS"
+                                label = stringResource(R.string.ui_sessions_721147)
                             )
                             HistoryStatCell(
                                 modifier = Modifier.weight(1f),
                                 value = "${stats.activeDays}",
-                                label = "ACTIVE DAYS"
+                                label = stringResource(R.string.ui_active_days_9ebaaa)
                             )
                         }
                     }
@@ -189,7 +193,7 @@ fun ActivityHistoryScreen(
             if (sessions.isEmpty()) {
                 item {
                     HistoryEmptyState(
-                        title = "No activity yet",
+                        title = stringResource(R.string.ui_no_activity_yet_ac2a03),
                         body = "Reading, memorizing, focus and listening sessions you log will show up here."
                     )
                 }
@@ -203,7 +207,7 @@ fun ActivityHistoryScreen(
             } else if (filtered.isEmpty()) {
                 item {
                     HistoryEmptyState(
-                        title = "No activity in this period",
+                        title = stringResource(R.string.ui_no_activity_in_this_period_5cb397),
                         body = "Pick another range above or check All Time."
                     )
                 }
@@ -247,7 +251,7 @@ fun ActivityHistoryScreen(
                             border = BorderStroke(1.5.dp, hBoneDark)
                         ) {
                             Text(
-                                text = "SHOWING FIRST ${HISTORY_MAX_ROWS} OF ${filtered.size} SESSIONS — REFINE YOUR SEARCH TO NARROW IT DOWN",
+                                text = stringResource(R.string.ui_showing_first_1_s_of_2_s_sessions_refine_your_se_510437, HISTORY_MAX_ROWS, filtered.size),
                                 fontFamily = fontFamilyMono,
                                 fontSize = 9.5.sp,
                                 letterSpacing = 0.8.sp,

@@ -1,5 +1,7 @@
 package com.nur.quran.ui.components.planner
 
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,11 +17,11 @@ import com.nur.quran.ui.screens.*
 fun PlanStatsHeaderCards(overallPct: Int, completionDate: String, streakDays: Int, modifier: Modifier = Modifier) {
     Surface(shape = RoundedCornerShape(10.dp), color = hCream, border = BorderStroke(1.dp, hBoneDark), modifier = modifier.fillMaxWidth()) {
         Row(Modifier.padding(vertical = 18.dp), verticalAlignment = Alignment.CenterVertically) {
-            PlannerStat("Overall", "$overallPct%", Modifier.weight(1f))
+            PlannerStat(stringResource(R.string.planner_overall), "$overallPct%", Modifier.weight(1f))
             Divider(Modifier.height(34.dp).width(1.dp), color = hBoneDark)
-            PlannerStat("Finish by", completionDate, Modifier.weight(1f))
+            PlannerStat(stringResource(R.string.planner_finish_by), completionDate, Modifier.weight(1f))
             Divider(Modifier.height(34.dp).width(1.dp), color = hBoneDark)
-            PlannerStat("Streak", "$streakDays day${if (streakDays == 1) "" else "s"}", Modifier.weight(1f))
+            PlannerStat(stringResource(R.string.planner_streak), stringResource(R.string.planner_days_value, streakDays), Modifier.weight(1f))
         }
     }
 }

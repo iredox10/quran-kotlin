@@ -1,5 +1,7 @@
 package com.nur.quran.ui.components.planner
 
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -45,13 +47,13 @@ fun PlanTodayTab(
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val prayerUnitsLabel = PLANNER_UNITS[todayAssignment?.unitType]?.plural ?: "Pages"
+    val prayerUnitsLabel = plannerUnitName(todayAssignment?.unitType ?: "page", true)
     Column(
         modifier = modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // 1. Hero Ring Progress (240dp)
-        val ringSubtitle = "$todayDone OF $todayTotal ${unitsLabel.uppercase()} TODAY"
+        val ringSubtitle = stringResource(R.string.planner_today_ring , todayDone, todayTotal, unitsLabel)
         RingProgress(
             percent = todayPct,
             subtitle = ringSubtitle,
@@ -79,7 +81,7 @@ fun PlanTodayTab(
                         .background(hGold)
                 )
                 Text(
-                    text = "Daily Ritual",
+                    text = stringResource(R.string.planner_daily_ritual),
                     fontFamily = fontFamilyUi,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
@@ -109,7 +111,7 @@ fun PlanTodayTab(
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = PlannerUtils.formatSessionTime(todaySessionSeconds),
+                                text = plannerDuration(todaySessionSeconds),
                                 fontFamily = fontFamilyMono,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
@@ -131,7 +133,7 @@ fun PlanTodayTab(
                 ) {
                     Icon(
                         imageVector = NurIcons.Share2,
-                        contentDescription = "Share Progress",
+                        contentDescription = stringResource(R.string.planner_share_progress),
                         tint = hInkMid,
                         modifier = Modifier.size(15.dp)
                     )
@@ -149,7 +151,7 @@ fun PlanTodayTab(
                 ) {
                     Icon(
                         imageVector = NurIcons.Settings,
-                        contentDescription = "Settings",
+                        contentDescription = stringResource(R.string.planner_settings),
                         tint = hInkMid,
                         modifier = Modifier.size(15.dp)
                     )
@@ -231,7 +233,7 @@ fun PlanTodayTab(
                                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
                                     Text(
-                                        text = slot.name,
+                                        text = plannerPrayerName(slot.name),
                                         fontFamily = fontFamilyUi,
                                         fontSize = 16.sp,
                                         fontWeight = FontWeight.Bold,
@@ -258,11 +260,11 @@ fun PlanTodayTab(
                                 Spacer(modifier = Modifier.height(2.dp))
 
                                 val statusText = when {
-                                    isCompleted -> "${slot.doneInSlot}/${slot.count} $prayerUnitsLabel ✓"
-                                    isCurrent -> "${slot.doneInSlot} of ${slot.count} $prayerUnitsLabel read"
-                                    isUpcoming -> "${slot.count} $prayerUnitsLabel · pending"
-                                    isLocked -> "${slot.count} $prayerUnitsLabel · locked"
-                                    else -> "No reading required"
+                                    isCompleted -> stringResource(R.string.planner_prayer_completed , slot.doneInSlot, slot.count, prayerUnitsLabel)
+                                    isCurrent -> stringResource(R.string.planner_prayer_current , slot.doneInSlot, slot.count, prayerUnitsLabel)
+                                    isUpcoming -> stringResource(R.string.planner_prayer_upcoming , slot.count, prayerUnitsLabel)
+                                    isLocked -> stringResource(R.string.planner_prayer_locked , slot.count, prayerUnitsLabel)
+                                    else -> stringResource(R.string.planner_no_reading)
                                 }
 
                                 Text(
@@ -288,7 +290,7 @@ fun PlanTodayTab(
                                         .clickable { onUndoPrayer(slot) },
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Icon(NurIcons.Check, contentDescription = "Completed (tap to undo)", tint = Color(0xFF10B981), modifier = Modifier.size(16.dp))
+                                    Icon(NurIcons.Check, contentDescription = stringResource(R.string.planner_completed_undo), tint = Color(0xFF10B981), modifier = Modifier.size(16.dp))
                                 }
                             }
                             isCurrent -> {
@@ -300,7 +302,7 @@ fun PlanTodayTab(
                                     modifier = Modifier.height(36.dp)
                                 ) {
                                     Text(
-                                        text = if (hasStartedReading) "Resume" else "Start",
+                                        text = if (hasStartedReading) stringResource(R.string.planner_resume) else stringResource(R.string.planner_start),
                                         fontFamily = fontFamilyUi,
                                         fontSize = 13.5.sp,
                                         fontWeight = FontWeight.Bold,
@@ -331,7 +333,7 @@ fun PlanTodayTab(
                                     modifier = Modifier.size(32.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Icon(NurIcons.Lock, contentDescription = "Locked", tint = hInkMuted.copy(alpha = 0.5f), modifier = Modifier.size(16.dp))
+                                    Icon(NurIcons.Lock, contentDescription = stringResource(R.string.planner_locked), tint = hInkMuted.copy(alpha = 0.5f), modifier = Modifier.size(16.dp))
                                 }
                             }
                         }

@@ -1,5 +1,7 @@
 package com.nur.quran.ui.components.planner
 
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -24,7 +26,7 @@ import com.nur.quran.ui.components.NurIcons
 import com.nur.quran.ui.screens.*
 
 /**
- * "My Plans" list section matching web Planner.jsx lines 302-355.
+ * stringResource(R.string.planner_my_plans) list section matching web Planner.jsx lines 302-355.
  */
 @Composable
 fun MyPlansSection(
@@ -47,7 +49,7 @@ fun MyPlansSection(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "My Plans",
+                text = stringResource(R.string.planner_my_plans),
                 fontFamily = fontFamilyUi,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -64,7 +66,7 @@ fun MyPlansSection(
                         contentPadding = PaddingValues(0.dp)
                     ) {
                         Text(
-                            text = if (archivedCount > 0) "History ($archivedCount)" else "History",
+                            text = if (archivedCount > 0) stringResource(R.string.planner_history_count , archivedCount) else stringResource(R.string.planner_history),
                             fontFamily = fontFamilyBody,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium,
@@ -84,7 +86,7 @@ fun MyPlansSection(
                 ) {
                     Icon(
                         imageVector = NurIcons.Plus,
-                        contentDescription = "Create custom plan",
+                        contentDescription = stringResource(R.string.planner_create_custom),
                         tint = hTeal,
                         modifier = Modifier.size(18.dp)
                     )
@@ -124,7 +126,7 @@ fun MyPlansSection(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = plan.title.ifBlank { "Unnamed Plan" },
+                                    text = plan.title.ifBlank { stringResource(R.string.planner_unnamed_plan) },
                                     fontFamily = fontFamilyBody,
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.SemiBold,
@@ -136,7 +138,7 @@ fun MyPlansSection(
                                 Spacer(modifier = Modifier.height(3.dp))
 
                                 Text(
-                                    text = "${plan.durationDays} days · ${plan.unitType} · $pctInt% complete",
+                                    text = stringResource(R.string.planner_plan_list_detail , plan.durationDays, plannerUnitName(plan.unitType), pctInt),
                                     fontFamily = fontFamilyMono,
                                     fontSize = 10.5.sp,
                                     color = hInkMuted,
@@ -173,7 +175,7 @@ fun MyPlansSection(
                                         color = Color(0x24B8924A)
                                     ) {
                                         Text(
-                                            text = "Active",
+                                            text = stringResource(R.string.planner_active),
                                             fontFamily = fontFamilyMono,
                                             fontSize = 9.sp,
                                             fontWeight = FontWeight.Bold,
@@ -190,7 +192,7 @@ fun MyPlansSection(
                                 ) {
                                     Icon(
                                         imageVector = NurIcons.Trash2,
-                                        contentDescription = "Delete plan",
+                                        contentDescription = stringResource(R.string.planner_delete_plan),
                                         tint = hInkMuted,
                                         modifier = Modifier.size(15.dp)
                                     )
@@ -202,7 +204,7 @@ fun MyPlansSection(
             }
         } else {
             Text(
-                text = "No plans yet. Select a path above or tap + to create a custom plan.",
+                text = stringResource(R.string.planner_no_plans),
                 fontFamily = fontFamilyBody,
                 fontSize = 13.5.sp,
                 fontStyle = FontStyle.Italic,

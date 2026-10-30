@@ -1,5 +1,7 @@
 package com.nur.quran.ui.components.planner
 
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -46,7 +48,7 @@ fun IntentionHero(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "Continue my active plan",
+                        text = stringResource(R.string.planner_continue_active),
                         fontFamily = fontFamilyBody,
                         fontSize = 15.sp,
                         fontStyle = FontStyle.Italic,
@@ -74,7 +76,7 @@ fun IntentionHero(
         Spacer(modifier = Modifier.height(14.dp))
 
         Text(
-            text = "THE FIRST STEP",
+            text = stringResource(R.string.planner_first_step),
             fontFamily = fontFamilyMono,
             fontSize = 10.5.sp,
             fontWeight = FontWeight.Bold,
@@ -85,7 +87,7 @@ fun IntentionHero(
         Spacer(modifier = Modifier.height(6.dp))
 
         Text(
-            text = "Set Your Intention",
+            text = stringResource(R.string.planner_set_intention),
             fontFamily = fontFamilyUi,
             fontSize = 30.sp,
             fontWeight = FontWeight.SemiBold,
@@ -96,7 +98,7 @@ fun IntentionHero(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Choose a pace that resonates with your soul. Whether intensive or slow, the journey of the Quran is a dialogue of devotion.",
+            text = stringResource(R.string.planner_intention_intro),
             fontFamily = fontFamilyBody,
             fontSize = 13.5.sp,
             lineHeight = 22.sp,

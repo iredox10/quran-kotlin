@@ -93,11 +93,13 @@ class PageViewModel @Inject constructor(
     private val _translationFontScale = MutableStateFlow(hifdhPrefs.getFloat("translation_scale", 1f))
     val translationFontScale: StateFlow<Float> = _translationFontScale.asStateFlow()
 
-    private val _selectedArabicFontName = MutableStateFlow(hifdhPrefs.getString("arabic_font", "KFGQPC Hafs") ?: "KFGQPC Hafs")
+    private val _selectedArabicFontName = MutableStateFlow(
+        com.nur.quran.data.mushaf.Mushaf.compatibleFontName(hifdhPrefs.getString("mushaf_preset", null), hifdhPrefs.getString("arabic_font", null))
+    )
     val selectedArabicFontName: StateFlow<String> = _selectedArabicFontName.asStateFlow()
 
     private val _mushafPreset = MutableStateFlow(
-        Mushaf.fromPresetKey(hifdhPrefs.getString("mushaf_preset", "uthmani")).id
+        Mushaf.forReading(hifdhPrefs.getString("mushaf_preset", "uthmani")).id
     )
     val currentMushaf: StateFlow<Mushaf> = _mushafPreset
         .map { Mushaf.fromId(it) }
@@ -107,6 +109,26 @@ class PageViewModel @Inject constructor(
     val isTajweedEffective: StateFlow<Boolean> = combine(_mushafPreset, _isTajweedEnabled) { preset, toggle ->
         Mushaf.isTajweedEffective(Mushaf.fromId(preset), toggle)
     }.stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
+    // Page screens can stay on the back stack while another reader changes
+    // settings. Observe the shared store so the selected script/font is never stale.
+    private val readerPreferenceListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        when (key) {
+            "mushaf_preset" -> {
+                val id = Mushaf.forReading(hifdhPrefs.getString(key, null)).id
+                if (id != _mushafPreset.value) {
+                    _mushafPreset.value = id
+                    pageCache.clear()
+                    loadPage(_currentPageNumber.value)
+                }
+            }
+            "arabic_font" -> _selectedArabicFontName.value = Mushaf.compatibleFontName(_mushafPreset.value, hifdhPrefs.getString(key, null))
+            "is_tajweed_enabled" -> _isTajweedEnabled.value = hifdhPrefs.getBoolean(key, false)
+            "is_translation_enabled" -> _isTranslationEnabled.value = hifdhPrefs.getBoolean(key, true)
+            "arabic_scale" -> _arabicFontScale.value = hifdhPrefs.getFloat(key, 1f)
+            "translation_scale" -> _translationFontScale.value = hifdhPrefs.getFloat(key, 1f)
+        }
+    }
 
     val bookmarkedVerses: StateFlow<Set<String>> = repository.getBookmarkedVerseKeysFlow()
         .map { it.toSet() }
@@ -300,6 +322,14 @@ class PageViewModel @Inject constructor(
     val streamOnly: StateFlow<Boolean> = _streamOnly.asStateFlow()
 
     init {
+        // Repair old unsupported editions/fonts once; the Quran data and reading
+        // positions stay untouched because all installed editions share 604 pages.
+        if (hifdhPrefs.getString("mushaf_preset", null) != _mushafPreset.value ||
+            hifdhPrefs.getString("arabic_font", null) != _selectedArabicFontName.value) {
+            hifdhPrefs.edit().putString("mushaf_preset", _mushafPreset.value)
+                .putString("arabic_font", _selectedArabicFontName.value).apply()
+        }
+        hifdhPrefs.registerOnSharedPreferenceChangeListener(readerPreferenceListener)
         if (hifdhPrefs.getInt("translation_id", 20) == 131) {
             hifdhPrefs.edit().putInt("translation_id", 20).apply()
         }
@@ -388,4 +418,9 @@ class PageViewModel @Inject constructor(
         val metadata = MediaMetadata.Builder().setTitle(title).setDisplayTitle(title).build()
         return MediaItem.Builder().setUri(uriString).setMediaId(verse.verseKey).setMediaMetadata(metadata).build()
     }
+    override fun onCleared() {
+        hifdhPrefs.unregisterOnSharedPreferenceChangeListener(readerPreferenceListener)
+        super.onCleared()
+    }
+
 }

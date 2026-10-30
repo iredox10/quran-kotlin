@@ -1,5 +1,9 @@
 package com.nur.quran.ui.components.profile
 
+
+
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -64,7 +68,7 @@ fun ProfileCloudSyncCard(
     val syncStatusActive = isSyncing || isSyncSuccess || syncError != null
 
     Column(modifier = modifier.fillMaxWidth()) {
-        ProfileSectionHeader(title = "CLOUD SYNC")
+        ProfileSectionHeader(title = stringResource(R.string.ui_cloud_sync_ec7cf7))
 
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -106,14 +110,14 @@ fun ProfileCloudSyncCard(
                             }
                             Column {
                                 Text(
-                                    text = "Sign in to sync",
+                                    text = stringResource(R.string.ui_sign_in_to_sync_75dce3),
                                     fontFamily = fontFamilyBody,
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = hInk
                                 )
                                 Text(
-                                    text = "Backup bookmarks & settings",
+                                    text = stringResource(R.string.ui_backup_bookmarks_settings_387bc7),
                                     fontFamily = fontFamilyBody,
                                     fontSize = 12.sp,
                                     color = hInkMuted
@@ -123,7 +127,7 @@ fun ProfileCloudSyncCard(
 
                         Icon(
                             imageVector = NurIcons.ChevronDown,
-                            contentDescription = "Expand",
+                            contentDescription = stringResource(R.string.ui_expand_9869e5),
                             tint = hInkMuted,
                             modifier = Modifier
                                 .size(18.dp)
@@ -200,10 +204,10 @@ fun ProfileCloudSyncCard(
                                             modifier = Modifier.requiredSize(40.dp))
                                     }
                                     Spacer(Modifier.width(12.dp))
-                                    Text("Continue with Google", fontWeight = FontWeight.Medium, fontSize = 14.sp,
+                                    Text(stringResource(R.string.ui_continue_with_google_ccc5b0), fontWeight = FontWeight.Medium, fontSize = 14.sp,
                                         fontFamily = androidx.compose.ui.text.font.FontFamily.SansSerif)
                                 }
-                                Text("or continue with email", modifier = Modifier.align(Alignment.CenterHorizontally),
+                                Text(stringResource(R.string.ui_or_continue_with_email_4ca55f), modifier = Modifier.align(Alignment.CenterHorizontally),
                                     color = hInkMuted, fontSize = 12.sp)
                             }
 
@@ -212,7 +216,7 @@ fun ProfileCloudSyncCard(
                                 OutlinedTextField(
                                     value = name,
                                     onValueChange = { name = it },
-                                    placeholder = { Text("Your Name", fontSize = 13.sp, color = hInkMuted) },
+                                    placeholder = { Text(stringResource(R.string.ui_your_name_f48db7), fontSize = 13.sp, color = hInkMuted) },
                                     singleLine = true,
                                     shape = RoundedCornerShape(16.dp),
                                     colors = OutlinedTextFieldDefaults.colors(
@@ -232,7 +236,7 @@ fun ProfileCloudSyncCard(
                                     email = it
                                     onClearMessage()
                                 },
-                                placeholder = { Text("Email", fontSize = 13.sp, color = hInkMuted) },
+                                placeholder = { Text(stringResource(R.string.ui_email_84add5), fontSize = 13.sp, color = hInkMuted) },
                                 singleLine = true,
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                                 shape = RoundedCornerShape(16.dp),
@@ -253,7 +257,7 @@ fun ProfileCloudSyncCard(
                                         password = it
                                         onClearMessage()
                                     },
-                                    placeholder = { Text("Password", fontSize = 13.sp, color = hInkMuted) },
+                                    placeholder = { Text(stringResource(R.string.ui_password_8be3c9), fontSize = 13.sp, color = hInkMuted) },
                                     singleLine = true,
                                     visualTransformation = PasswordVisualTransformation(),
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -296,9 +300,9 @@ fun ProfileCloudSyncCard(
                                 } else {
                                     Text(
                                         text = when (authMode) {
-                                            AuthFormMode.LOGIN -> "Sign In"
-                                            AuthFormMode.REGISTER -> "Create Account"
-                                            AuthFormMode.FORGOT -> "Send Recovery Link"
+                                            AuthFormMode.LOGIN -> stringResource(R.string.ui_sign_in_f8492c)
+                                            AuthFormMode.REGISTER -> stringResource(R.string.ui_create_account_eff4fd)
+                                            AuthFormMode.FORGOT -> stringResource(R.string.ui_send_recovery_link_f3b6cf)
                                         },
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 14.sp
@@ -319,7 +323,7 @@ fun ProfileCloudSyncCard(
                                     }
                                 ) {
                                     Text(
-                                        text = if (authMode == AuthFormMode.LOGIN) "Don't have an account? Sign up" else "Already have an account? Sign in",
+                                        text = if (authMode == AuthFormMode.LOGIN) stringResource(R.string.ui_don_t_have_an_account_sign_up_e7eacd) else stringResource(R.string.ui_already_have_an_account_sign_in_6603c2),
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.SemiBold,
                                         color = hGold
@@ -328,7 +332,7 @@ fun ProfileCloudSyncCard(
 
                                 if (authMode != AuthFormMode.FORGOT) {
                                     Text(
-                                        text = "Forgot Password?",
+                                        text = stringResource(R.string.ui_forgot_password_1cc8d1),
                                         fontSize = 11.sp,
                                         color = hInkMuted,
                                         modifier = Modifier.clickable {
@@ -369,14 +373,14 @@ fun ProfileCloudSyncCard(
                         }
                         Column {
                             Text(
-                                text = "Backup & Restore",
+                                text = stringResource(R.string.ui_backup_restore_3bdd40),
                                 fontFamily = fontFamilyUi,
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = hInk
                             )
                             Text(
-                                text = "Last synced: ${ProfileUtils.timeAgo(lastSyncAt)}",
+                                text = stringResource(R.string.ui_last_synced_1_s_9e8bda, com.nur.quran.i18n.relativeTime(lastSyncAt)),
                                 fontFamily = fontFamilyMono,
                                 fontSize = 11.sp,
                                 color = hInkMuted
@@ -398,14 +402,14 @@ fun ProfileCloudSyncCard(
                                     strokeWidth = 2.dp
                                 )
                                 Text(
-                                    text = syncStatusMessage ?: "Syncing data...",
+                                    text = syncStatusMessage ?: stringResource(R.string.ui_syncing_data_8b9e1e),
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     color = hGold
                                 )
                             } else if (isSyncSuccess) {
                                 Text(
-                                    text = "✓ Sync complete successfully.",
+                                    text = stringResource(R.string.ui_sync_complete_successfully_20bf26),
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF10B981)
@@ -449,7 +453,7 @@ fun ProfileCloudSyncCard(
                                     contentDescription = null,
                                     modifier = Modifier.size(16.dp)
                                 )
-                                Text("Restore", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                Text(stringResource(R.string.ui_restore_3cbe6d), fontSize = 13.sp, fontWeight = FontWeight.Bold)
                             }
                         }
 
@@ -475,7 +479,7 @@ fun ProfileCloudSyncCard(
                                     contentDescription = null,
                                     modifier = Modifier.size(16.dp)
                                 )
-                                Text("Backup", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                Text(stringResource(R.string.ui_backup_dd9699), fontSize = 13.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }

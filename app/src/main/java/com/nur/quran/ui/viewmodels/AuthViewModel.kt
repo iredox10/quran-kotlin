@@ -1,5 +1,7 @@
 package com.nur.quran.ui.viewmodels
 
+import com.nur.quran.R
+
 import android.content.Context
 import com.nur.quran.data.auth.GoogleSignIn
 import androidx.credentials.exceptions.GetCredentialCancellationException
@@ -71,7 +73,7 @@ class AuthViewModel @Inject constructor(
                 _authState.value = _authState.value.copy(busy = false)
             } catch (_: NoCredentialException) {
                 _authState.value = _authState.value.copy(busy = false,
-                    error = "Add a Google account on this device, then try again.")
+                    error = com.nur.quran.i18n.AppLanguages.wrap(context).getString(R.string.ui_add_a_google_account_on_this_device_then_try_aga_761232))
             } catch (cancelled: CancellationException) {
                 _authState.value = _authState.value.copy(busy = false)
                 throw cancelled
@@ -89,7 +91,7 @@ class AuthViewModel @Inject constructor(
         if (!isPasswordValid(password)) {
             _authState.value = _authState.value.copy(
                 busy = false,
-                error = "Password must be at least 8 characters",
+                error = com.nur.quran.i18n.AppLanguages.wrap(context).getString(R.string.ui_password_must_be_at_least_8_characters_3e7d56),
                 message = null
             )
             return
@@ -136,7 +138,7 @@ class AuthViewModel @Inject constructor(
         if (!isPasswordValid(password)) {
             _authState.value = _authState.value.copy(
                 busy = false,
-                error = "Password must be at least 8 characters",
+                error = com.nur.quran.i18n.AppLanguages.wrap(context).getString(R.string.ui_password_must_be_at_least_8_characters_3e7d56),
                 message = null
             )
             return
@@ -174,7 +176,7 @@ class AuthViewModel @Inject constructor(
                 _authState.value = _authState.value.copy(
                     busy = false,
                     error = null,
-                    message = "If an account exists for this email, a password reset link will be sent."
+                    message = com.nur.quran.i18n.AppLanguages.wrap(context).getString(R.string.ui_if_an_account_exists_for_this_email_a_password_r_3813b2)
                 )
             }.onFailure { e ->
                 _authState.value = _authState.value.copy(

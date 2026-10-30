@@ -1,5 +1,8 @@
 package com.nur.quran.ui.components.audio
 
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -132,7 +135,7 @@ fun DownloadRow(
                                 color = hGreen.copy(alpha = 0.15f)
                             ) {
                                 Text(
-                                    text = "OFFLINE",
+                                    text = stringResource(R.string.ui_offline_c68993),
                                     color = hGreen,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
@@ -176,7 +179,7 @@ fun DownloadRow(
                     isDownloaded -> {
                         TextButton(onClick = onDeleteClick) {
                             Text(
-                                "Delete",
+                                stringResource(R.string.ui_delete_f6fdbe),
                                 color = hRed,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 13.sp,
@@ -193,7 +196,7 @@ fun DownloadRow(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "${(progress * 100).toInt()}%",
+                                text = stringResource(R.string.ui_1_s_fc9db1, (progress * 100).toInt()),
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = hInkMid,
@@ -202,7 +205,7 @@ fun DownloadRow(
                             Spacer(modifier = Modifier.width(8.dp))
                             OutlinedButton(onClick = onCancelClick) {
                                 Text(
-                                    "Cancel",
+                                    stringResource(R.string.ui_cancel_77dfd2),
                                     color = hRed,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 13.sp,
@@ -224,7 +227,7 @@ fun DownloadRow(
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                "Download",
+                                stringResource(R.string.ui_download_a479c9),
                                 color = Color.White,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 13.sp,
@@ -254,7 +257,7 @@ fun DownloadIconButton(
         IconButton(onClick = {}, enabled = false, modifier = modifier) {
             Icon(
                 imageVector = NurIcons.Check,
-                contentDescription = "Downloaded",
+                contentDescription = stringResource(R.string.ui_downloaded_c61970),
                 tint = hGreen,
                 modifier = Modifier.size(18.dp)
             )
@@ -271,7 +274,7 @@ fun DownloadIconButton(
         IconButton(onClick = onDownloadClick, modifier = modifier) {
             Icon(
                 imageVector = NurIcons.Download,
-                contentDescription = "Download audio",
+                contentDescription = stringResource(R.string.ui_download_audio_f8c1e2),
                 tint = hInkMid,
                 modifier = Modifier.size(18.dp)
             )

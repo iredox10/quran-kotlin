@@ -1,5 +1,8 @@
 package com.nur.quran.ui.components.audio
 
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import android.media.MediaPlayer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -225,7 +228,7 @@ fun ChosenReciterCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "CHOSEN RECITER",
+                    text = stringResource(R.string.ui_chosen_reciter_0801b1),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp,
@@ -291,7 +294,7 @@ fun ChosenReciterCard(
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = "${selectedReciter.style} • Studio Quality",
+                            text = stringResource(R.string.ui_1_s_studio_quality_e389e3, selectedReciter.style),
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Normal,
                             color = hInkMuted,
@@ -303,7 +306,7 @@ fun ChosenReciterCard(
 
                     Icon(
                         imageVector = NurIcons.ChevronDown,
-                        contentDescription = "Select reciter",
+                        contentDescription = stringResource(R.string.ui_select_reciter_980dd8),
                         tint = hInkMuted,
                         modifier = Modifier.size(16.dp)
                     )
@@ -434,7 +437,7 @@ fun ReciterAvatar(
             ) {
                 Icon(
                     imageVector = NurIcons.Check,
-                    contentDescription = "Verified reciter",
+                    contentDescription = stringResource(R.string.ui_verified_reciter_ddd790),
                     tint = Color.White,
                     modifier = Modifier.size(9.dp)
                 )
@@ -483,7 +486,7 @@ fun ReciterPreviewCircleButton(
             isPlaying -> {
                 Icon(
                     imageVector = NurIcons.PauseFilled,
-                    contentDescription = "Pause preview",
+                    contentDescription = stringResource(R.string.ui_pause_preview_805180),
                     tint = playBtnTint,
                     modifier = Modifier.size(18.dp)
                 )
@@ -491,7 +494,7 @@ fun ReciterPreviewCircleButton(
             else -> {
                 Icon(
                     imageVector = NurIcons.PlayFilled,
-                    contentDescription = "Play preview",
+                    contentDescription = stringResource(R.string.ui_play_preview_47bb44),
                     tint = playBtnTint,
                     modifier = Modifier
                         .size(18.dp)
@@ -612,7 +615,7 @@ fun ReciterPickerDropdown(
                             if (isSelected) {
                                 Icon(
                                     imageVector = NurIcons.Check,
-                                    contentDescription = "Selected",
+                                    contentDescription = stringResource(R.string.ui_selected_9a976f),
                                     tint = hGold,
                                     modifier = Modifier.size(16.dp)
                                 )
@@ -636,7 +639,7 @@ fun ReciterPickerDropdown(
                                         previewPlayingId == option.id -> {
                                             Icon(
                                                 imageVector = NurIcons.PauseFilled,
-                                                contentDescription = "Pause",
+                                                contentDescription = stringResource(R.string.ui_pause_781961),
                                                 tint = hGold,
                                                 modifier = Modifier.size(14.dp)
                                             )
@@ -644,7 +647,7 @@ fun ReciterPickerDropdown(
                                         else -> {
                                             Icon(
                                                 imageVector = NurIcons.PlayFilled,
-                                                contentDescription = "Preview",
+                                                contentDescription = stringResource(R.string.ui_preview_f1fbb2),
                                                 tint = hInkMuted,
                                                 modifier = Modifier.size(14.dp)
                                             )
@@ -720,7 +723,7 @@ fun ReciterPickerModalSheet(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                text = "Select Reciter",
+                text = stringResource(R.string.ui_select_reciter_6a34f9),
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 color = hInk,
@@ -733,7 +736,7 @@ fun ReciterPickerModalSheet(
                 modifier = Modifier.fillMaxWidth(),
                 placeholder = {
                     Text(
-                        text = "Search reciters…",
+                        text = stringResource(R.string.ui_search_reciters_004d31),
                         color = hInkMuted,
                         fontFamily = fontFamilyBody,
                         fontSize = 14.sp
@@ -803,7 +806,7 @@ fun ReciterPickerModalSheet(
                                 fontFamily = fontFamilyUi
                             )
                             Text(
-                                text = "${option.style} • Studio Quality",
+                                text = stringResource(R.string.ui_1_s_studio_quality_e389e3, option.style),
                                 fontSize = 12.sp,
                                 color = hInkMuted,
                                 fontFamily = fontFamilyBody
@@ -813,7 +816,7 @@ fun ReciterPickerModalSheet(
                         if (isSelected) {
                             Icon(
                                 imageVector = NurIcons.Check,
-                                contentDescription = "Selected",
+                                contentDescription = stringResource(R.string.ui_selected_9a976f),
                                 tint = hGold,
                                 modifier = Modifier.size(18.dp)
                             )
@@ -838,7 +841,7 @@ fun ReciterPickerModalSheet(
                                     previewPlayingId == option.id -> {
                                         Icon(
                                             imageVector = NurIcons.PauseFilled,
-                                            contentDescription = "Pause",
+                                            contentDescription = stringResource(R.string.ui_pause_781961),
                                             tint = hGold,
                                             modifier = Modifier.size(16.dp)
                                         )
@@ -846,7 +849,7 @@ fun ReciterPickerModalSheet(
                                     else -> {
                                         Icon(
                                             imageVector = NurIcons.PlayFilled,
-                                            contentDescription = "Preview",
+                                            contentDescription = stringResource(R.string.ui_preview_f1fbb2),
                                             tint = hInkMuted,
                                             modifier = Modifier.size(16.dp)
                                         )

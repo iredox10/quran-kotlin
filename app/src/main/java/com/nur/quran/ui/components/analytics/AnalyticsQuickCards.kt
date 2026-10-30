@@ -1,5 +1,9 @@
 package com.nur.quran.ui.components.analytics
 
+
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -70,21 +74,21 @@ fun AnalyticsQuickCards(
                 QuickCardItem(
                     icon = NurIcons.BookmarkFilled,
                     count = bookmarksCount,
-                    label = "BOOKMARKS",
+                    label = stringResource(R.string.ui_bookmarks_f6a014),
                     onClick = onOpenLibraryClick,
                     modifier = Modifier.weight(1f)
                 )
                 QuickCardItem(
                     icon = NurIcons.BookOpen,
                     count = collectionsCount,
-                    label = "COLLECTIONS",
+                    label = stringResource(R.string.ui_collections_d938fa),
                     onClick = onOpenCollectionsClick,
                     modifier = Modifier.weight(1f)
                 )
                 QuickCardItem(
                     icon = NurIcons.Clock,
                     count = recentSurahsCount,
-                    label = "RECENT SURAHS",
+                    label = stringResource(R.string.ui_recent_surahs_d49523),
                     onClick = onOpenRecentSurahsClick,
                     modifier = Modifier.weight(1f)
                 )
@@ -97,21 +101,21 @@ fun AnalyticsQuickCards(
                 QuickCardItem(
                     icon = NurIcons.BookmarkFilled,
                     count = bookmarksCount,
-                    label = "BOOKMARKS",
+                    label = stringResource(R.string.ui_bookmarks_f6a014),
                     onClick = onOpenLibraryClick,
                     modifier = Modifier.fillMaxWidth()
                 )
                 QuickCardItem(
                     icon = NurIcons.BookOpen,
                     count = collectionsCount,
-                    label = "COLLECTIONS",
+                    label = stringResource(R.string.ui_collections_d938fa),
                     onClick = onOpenCollectionsClick,
                     modifier = Modifier.fillMaxWidth()
                 )
                 QuickCardItem(
                     icon = NurIcons.Clock,
                     count = recentSurahsCount,
-                    label = "RECENT SURAHS",
+                    label = stringResource(R.string.ui_recent_surahs_d49523),
                     onClick = onOpenRecentSurahsClick,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -163,7 +167,7 @@ private fun QuickCardItem(
                 }
                 Column {
                     Text(
-                        text = "$count",
+                        text = stringResource(R.string.ui_1_s_c79f71, count),
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = fontFamilyUi,

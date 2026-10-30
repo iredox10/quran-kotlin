@@ -1,5 +1,7 @@
 package com.nur.quran.ui.components.planner
 
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -101,7 +103,7 @@ fun PresetPaceCard(
 
                 // Title
                 Text(
-                    text = pace.title,
+                    text = plannerPresetTitle(pace),
                     fontFamily = fontFamilyUi,
                     fontSize = 17.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -112,7 +114,7 @@ fun PresetPaceCard(
 
                 // Daily pages label
                 Text(
-                    text = "${stats.dailyPages} pages per day",
+                    text = stringResource(R.string.planner_pages_daily , stats.dailyPages),
                     fontFamily = fontFamilyMono,
                     fontSize = 11.sp,
                     color = hInkMid,
@@ -133,7 +135,7 @@ fun PresetPaceCard(
                         modifier = Modifier.size(16.dp)
                     )
                     Text(
-                        text = "${stats.perPrayer} pages per prayer",
+                        text = stringResource(R.string.planner_pages_prayer , stats.perPrayer),
                         fontFamily = fontFamilyBody,
                         fontSize = 13.sp,
                         fontStyle = FontStyle.Italic,
@@ -162,7 +164,7 @@ fun PresetPaceCard(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "${stats.dailyPages} pages/day",
+                                text = stringResource(R.string.planner_pages_per_day , stats.dailyPages),
                                 fontFamily = fontFamilyMono,
                                 fontSize = 11.sp,
                                 color = hInkMid
@@ -173,7 +175,7 @@ fun PresetPaceCard(
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "Done by ${stats.endLabel}",
+                                text = stringResource(R.string.planner_finish_date , stats.endLabel),
                                 fontFamily = fontFamilyMono,
                                 fontSize = 11.sp,
                                 color = hInkMid
@@ -190,7 +192,7 @@ fun PresetPaceCard(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(
-                                text = "BEGIN MY JOURNEY",
+                                text = stringResource(R.string.planner_begin_my_journey),
                                 fontFamily = fontFamilyMono,
                                 fontSize = 11.5.sp,
                                 fontWeight = FontWeight.SemiBold,
@@ -212,7 +214,7 @@ fun PresetPaceCard(
                 modifier = Modifier.align(Alignment.TopCenter)
             ) {
                 Text(
-                    text = pace.badge,
+                    text = stringResource(R.string.planner_most_balanced),
                     fontFamily = fontFamilyMono,
                     fontSize = 9.5.sp,
                     fontWeight = FontWeight.Normal,
@@ -242,13 +244,14 @@ fun PresetPacesRow(
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         PRESET_PACES.forEach { pace ->
-            val stats = PlannerUtils.getPaceStats(pace.durationDays)
+            val stats = PlannerUtils.getPaceStats(pace.durationDays, displayLocale = androidx.compose.ui.platform.LocalConfiguration.current.locales[0])
+            val title = plannerPresetTitle(pace)
             PresetPaceCard(
                 pace = pace,
                 stats = stats,
                 selected = selectedPaceId == pace.id,
                 onSelect = { onSelectPace(pace.id) },
-                onBegin = { onBeginPlan(pace) }
+                onBegin = { onBeginPlan(pace.copy(title = title)) }
             )
         }
     }

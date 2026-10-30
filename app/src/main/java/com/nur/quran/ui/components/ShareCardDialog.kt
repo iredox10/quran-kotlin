@@ -1,5 +1,9 @@
 package com.nur.quran.ui.components
 
+
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.ContentValues
@@ -86,7 +90,7 @@ fun ShareCardDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = if (type is ShareCardType.Verse) "Share Verse Card" else "Share Progress Card",
+                        text = if (type is ShareCardType.Verse) stringResource(R.string.ui_share_verse_card_9c06fa) else stringResource(R.string.ui_share_progress_card_330f59),
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = hInk,
@@ -95,7 +99,7 @@ fun ShareCardDialog(
                     IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
                         Icon(
                             imageVector = NurIcons.X,
-                            contentDescription = "Close",
+                            contentDescription = stringResource(R.string.ui_close_bbfa77),
                             tint = hInkMuted
                         )
                     }
@@ -136,7 +140,7 @@ fun ShareCardDialog(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = if (copied) "Copied!" else "Copy Text",
+                            text = if (copied) stringResource(R.string.ui_copied_b7c3ca) else stringResource(R.string.ui_copy_text_93f95b),
                             color = if (copied) hGreen else hInkMid,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold
@@ -170,7 +174,7 @@ fun ShareCardDialog(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "Share",
+                            text = stringResource(R.string.ui_share_09ca55),
                             color = Color.White,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold
@@ -232,7 +236,7 @@ fun ShareCardDialog(
                         }
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "Save Image",
+                            text = stringResource(R.string.ui_save_image_26b59e),
                             color = hInkMid,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold
@@ -284,7 +288,7 @@ fun ShareCardDialog(
                         }
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "Share Image",
+                            text = stringResource(R.string.ui_share_image_eed2ce),
                             color = Color.White,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold
@@ -354,14 +358,14 @@ private fun ShareCardContent(type: ShareCardType) {
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = "— ${type.reference}",
+                        text = stringResource(R.string.ui_1_s_627c64, type.reference),
                         fontSize = 11.sp,
                         color = hInkMuted,
                         fontFamily = fontFamilyMono
                     )
                     Spacer(modifier = Modifier.height(14.dp))
                     Text(
-                        text = "Quran Nur 🌙",
+                        text = stringResource(R.string.ui_quran_nur_69b0c2),
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         color = hTeal,
@@ -384,7 +388,7 @@ private fun ShareCardContent(type: ShareCardType) {
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = "My Quran Journey",
+                            text = stringResource(R.string.ui_my_quran_journey_56ad6a),
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White,
@@ -397,14 +401,14 @@ private fun ShareCardContent(type: ShareCardType) {
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
-                                    text = "${type.streak}",
+                                    text = stringResource(R.string.ui_1_s_c79f71, type.streak),
                                     fontSize = 24.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White,
                                     fontFamily = fontFamilyUi
                                 )
                                 Text(
-                                    text = "DAY STREAK",
+                                    text = stringResource(R.string.ui_day_streak_fbe7f1),
                                     fontSize = 9.sp,
                                     color = Color.White.copy(alpha = 0.8f),
                                     fontFamily = fontFamilyMono
@@ -412,14 +416,14 @@ private fun ShareCardContent(type: ShareCardType) {
                             }
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
-                                    text = "${type.todayMinutes}m",
+                                    text = stringResource(R.string.ui_1_sm_830877, type.todayMinutes),
                                     fontSize = 24.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White,
                                     fontFamily = fontFamilyUi
                                 )
                                 Text(
-                                    text = "TODAY",
+                                    text = stringResource(R.string.ui_today_7a4686),
                                     fontSize = 9.sp,
                                     color = Color.White.copy(alpha = 0.8f),
                                     fontFamily = fontFamilyMono
@@ -427,14 +431,14 @@ private fun ShareCardContent(type: ShareCardType) {
                             }
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
-                                    text = "${type.totalHours}h",
+                                    text = stringResource(R.string.ui_1_sh_0be167, type.totalHours),
                                     fontSize = 24.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White,
                                     fontFamily = fontFamilyMono
                                 )
                                 Text(
-                                    text = "TOTAL",
+                                    text = stringResource(R.string.ui_total_5c6505),
                                     fontSize = 9.sp,
                                     color = Color.White.copy(alpha = 0.8f),
                                     fontFamily = fontFamilyMono
@@ -443,7 +447,7 @@ private fun ShareCardContent(type: ShareCardType) {
                         }
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "Quran Nur 🌙 · Read & Learn Everyday",
+                            text = stringResource(R.string.ui_quran_nur_read_learn_everyday_1e3845),
                             fontSize = 10.sp,
                             color = Color.White.copy(alpha = 0.9f),
                             fontFamily = fontFamilyMono

@@ -28,7 +28,8 @@ object PlannerUtils {
         durationDays: Int,
         excludeDays: List<Int> = emptyList(),
         startDateStr: String? = null,
-        totalUnits: Int = TOTAL_QURAN_PAGES
+        totalUnits: Int = TOTAL_QURAN_PAGES,
+        displayLocale: Locale = Locale.getDefault()
     ): PaceStats {
         val safeDuration = if (durationDays <= 0) 1 else durationDays
         val dailyPages = ceil(totalUnits.toDouble() / safeDuration.toDouble()).toInt()
@@ -56,7 +57,7 @@ object PlannerUtils {
             }
         }
 
-        val outFormat = SimpleDateFormat("MMM d, yyyy", Locale.US)
+        val outFormat = SimpleDateFormat("MMM d, yyyy", displayLocale)
         val endLabel = outFormat.format(cal.time)
 
         return PaceStats(
@@ -137,13 +138,13 @@ object PlannerUtils {
                 putExtra(android.content.Intent.EXTRA_STREAM, uri)
                 addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-            context.startActivity(android.content.Intent.createChooser(intent, "Export Plan"))
+            context.startActivity(android.content.Intent.createChooser(intent, context.getString(com.nur.quran.R.string.planner_export_plan)))
         } catch (_: Exception) {
             val fallback = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
                 type = "text/plain"
                 putExtra(android.content.Intent.EXTRA_TEXT, ics)
             }
-            context.startActivity(android.content.Intent.createChooser(fallback, "Export Plan"))
+            context.startActivity(android.content.Intent.createChooser(fallback, context.getString(com.nur.quran.R.string.planner_export_plan)))
         }
     }
 }

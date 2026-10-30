@@ -1,5 +1,9 @@
 package com.nur.quran.ui.components
 
+
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -92,14 +96,14 @@ fun SyncStatusCard(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = "Cloud Sync",
+                            text = stringResource(R.string.ui_cloud_sync_d997d8),
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
                             color = hInk,
                             fontFamily = fontFamilyUi
                         )
                         Text(
-                            text = if (syncState.signedIn) "AUTO-SYNC EVERY 6H" else "BACK UP YOUR PROGRESS",
+                            text = if (syncState.signedIn) stringResource(R.string.ui_auto_sync_every_6h_9ad5ad) else stringResource(R.string.ui_back_up_your_progress_d82c66),
                             fontSize = 10.sp,
                             fontFamily = fontFamilyMono,
                             fontWeight = FontWeight.Bold,
@@ -126,7 +130,7 @@ fun SyncStatusCard(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = if (syncState.signedIn) "ON" else "OFF",
+                            text = if (syncState.signedIn) stringResource(R.string.ui_on_387d7a) else stringResource(R.string.ui_off_ad5048),
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = fontFamilyMono,
@@ -140,7 +144,7 @@ fun SyncStatusCard(
 
             if (!syncState.signedIn) {
                 Text(
-                    text = "Sign in to back up bookmarks, hifdh progress and settings to the cloud.",
+                    text = stringResource(R.string.ui_sign_in_to_back_up_bookmarks_hifdh_progress_and_c5a6e6),
                     fontSize = 13.sp,
                     color = hInkMid,
                     fontFamily = fontFamilyUi
@@ -162,7 +166,7 @@ fun SyncStatusCard(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Login to sync",
+                        text = stringResource(R.string.ui_login_to_sync_c78d56),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = fontFamilyUi
@@ -170,7 +174,7 @@ fun SyncStatusCard(
                 }
             } else {
                 Text(
-                    text = syncState.email ?: "Signed in",
+                    text = syncState.email ?: stringResource(R.string.ui_signed_in_1b6c52),
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     color = hInk,
@@ -178,7 +182,7 @@ fun SyncStatusCard(
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = "Last sync: ${relativeSyncTime(syncState.lastSync)}",
+                    text = stringResource(R.string.ui_last_sync_1_s_fb648b, relativeSyncTime(syncState.lastSync)),
                     fontSize = 12.sp,
                     color = hInkMuted,
                     fontFamily = fontFamilyMono
@@ -206,7 +210,7 @@ fun SyncStatusCard(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = if (syncState.syncing) "Syncing…" else "Backup now",
+                            text = if (syncState.syncing) stringResource(R.string.ui_syncing_221ca6) else stringResource(R.string.ui_backup_now_5d5dba),
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = fontFamilyUi
@@ -227,7 +231,7 @@ fun SyncStatusCard(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "Restore",
+                            text = stringResource(R.string.ui_restore_3cbe6d),
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = fontFamilyUi

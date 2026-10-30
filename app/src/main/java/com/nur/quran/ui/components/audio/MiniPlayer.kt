@@ -1,5 +1,7 @@
 package com.nur.quran.ui.components.audio
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -166,7 +168,7 @@ fun MiniPlayer(
                             ) {
                                 Icon(
                                     imageVector = NurIcons.ChevronLeft,
-                                    contentDescription = "Previous ayah",
+                                    contentDescription = stringResource(R.string.ui_previous_ayah_c0f697),
                                     tint = playerTitleColor,
                                     modifier = Modifier.size(20.dp)
                                 )
@@ -195,7 +197,7 @@ fun MiniPlayer(
                             ) {
                                 Icon(
                                     imageVector = NurIcons.ChevronRight,
-                                    contentDescription = "Next ayah",
+                                    contentDescription = stringResource(R.string.ui_next_ayah_9de3c1),
                                     tint = playerTitleColor,
                                     modifier = Modifier.size(20.dp)
                                 )
@@ -213,7 +215,7 @@ fun MiniPlayer(
                             ) {
                                 Icon(
                                     imageVector = NurIcons.Settings,
-                                    contentDescription = "Audio settings",
+                                    contentDescription = stringResource(R.string.ui_audio_settings_cde748),
                                     tint = playerSubtitleColor,
                                     modifier = Modifier.size(16.dp)
                                 )
@@ -233,7 +235,7 @@ fun MiniPlayer(
                             ) {
                                 Icon(
                                     imageVector = NurIcons.Square,
-                                    contentDescription = "Stop playback",
+                                    contentDescription = stringResource(R.string.ui_stop_playback_3ee763),
                                     tint = playerSubtitleColor,
                                     modifier = Modifier.size(14.dp)
                                 )
@@ -250,7 +252,7 @@ fun MiniPlayer(
                         ) {
                             Icon(
                                 imageVector = NurIcons.X,
-                                contentDescription = "Close player",
+                                contentDescription = stringResource(R.string.ui_close_player_a40f5b),
                                 tint = playerSubtitleColor,
                                 modifier = Modifier.size(16.dp)
                             )

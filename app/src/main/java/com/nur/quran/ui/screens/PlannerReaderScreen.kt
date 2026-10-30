@@ -1,5 +1,7 @@
 package com.nur.quran.ui.screens
 
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
 import android.content.Context
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
@@ -37,6 +39,7 @@ import com.nur.quran.data.db.entities.WordEntity
 import com.nur.quran.data.planner.PlannerEngine
 import com.nur.quran.ui.components.AutoScrollerBar
 import androidx.compose.foundation.gestures.scrollBy
+import com.nur.quran.ui.components.planner.*
 import com.nur.quran.ui.components.NurIcons
 import com.nur.quran.ui.components.SettingsDrawer
 import com.nur.quran.ui.components.MushafPageView
@@ -86,7 +89,7 @@ fun PlannerReaderScreen(
         val isPlanLoading = activePlan == null
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text(
-                if (isPlanLoading) "Loading planner data..." else "Assignment not found",
+                if (isPlanLoading) stringResource(R.string.planner_loading_planner) else stringResource(R.string.planner_assignment_missing),
                 color = hInkMuted
             )
         }
@@ -337,7 +340,7 @@ fun PlannerReaderScreen(
     var hasAutoScrolledToLastRead by remember(dayNumber) { mutableStateOf(false) }
 
     // Fetch verses for page
-    LaunchedEffect(currentPage) {
+    LaunchedEffect(currentPage, currentMushaf.id) {
         surahViewModel.loadPageVerses(currentPage)
     }
 
@@ -463,7 +466,7 @@ fun PlannerReaderScreen(
                         Column(modifier = Modifier.weight(1f, fill = false)) {
                             if (assignment.unitType == "page") {
                                 Text(
-                                    text = "Page $currentPage / $pageEnd",
+                                    text = stringResource(R.string.planner_remaining_page , currentPage, pageEnd),
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = hInk,
@@ -472,7 +475,7 @@ fun PlannerReaderScreen(
                                 )
                             } else {
                                 Text(
-                                    text = assignment.title,
+                                    text = plannerAssignmentTitle(assignment),
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = hInk,
@@ -480,12 +483,9 @@ fun PlannerReaderScreen(
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
-                                val subPrefix = remember(assignment.subtitle) {
-                                    val parts = assignment.subtitle.split(" · ")
-                                    if (parts.isNotEmpty() && parts[0].isNotBlank()) "${parts[0]} • " else ""
-                                }
+                                val subPrefix = plannerAssignmentSubtitle(assignment) + " • "
                                 Text(
-                                    text = "${subPrefix}Page $currentPage / $pageEnd",
+                                    text = stringResource(R.string.planner_remaining_page_prefix , subPrefix, currentPage, pageEnd),
                                     fontSize = 11.sp,
                                     color = hInkMuted,
                                     fontFamily = fontFamilyUi,
@@ -509,7 +509,7 @@ fun PlannerReaderScreen(
                                     border = androidx.compose.foundation.BorderStroke(1.dp, hTeal.copy(alpha = 0.2f))
                                 ) {
                                     Text(
-                                        text = "${currentChapter.id}. Surah ${currentChapter.nameSimple}",
+                                        text = stringResource(R.string.planner_surah_header, currentChapter.id, plannerChapterName(currentChapter.id)),
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = hTeal,
@@ -539,7 +539,7 @@ fun PlannerReaderScreen(
                                 ) {
                                     Icon(
                                         imageVector = if (isTimerRunning) NurIcons.PauseFilled else NurIcons.PlayFilled,
-                                        contentDescription = if (isTimerRunning) "Pause session timer" else "Resume session timer",
+                                        contentDescription = if (isTimerRunning) stringResource(R.string.planner_pause_timer) else stringResource(R.string.planner_resume_timer),
                                         tint = hTeal,
                                         modifier = Modifier.size(10.dp)
                                     )
@@ -637,7 +637,7 @@ fun PlannerReaderScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         IconButton(onClick = onBack, modifier = Modifier.size(36.dp)) {
-                            Icon(imageVector = NurIcons.ArrowLeft, contentDescription = "Back", tint = hInk)
+                            Icon(imageVector = NurIcons.ArrowLeft, contentDescription = stringResource(R.string.planner_back), tint = hInk)
                         }
                         Spacer(modifier = Modifier.width(4.dp))
                         Row(
@@ -648,7 +648,7 @@ fun PlannerReaderScreen(
                                 .padding(horizontal = 4.dp, vertical = 2.dp)
                         ) {
                             Text(
-                                text = "Day $dayNumber",
+                                text = stringResource(R.string.planner_day , dayNumber),
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = hInk,
@@ -657,7 +657,7 @@ fun PlannerReaderScreen(
                             Spacer(modifier = Modifier.width(4.dp))
                             Icon(
                                 imageVector = NurIcons.ChevronDown,
-                                contentDescription = "Select page",
+                                contentDescription = stringResource(R.string.planner_select_page),
                                 tint = hInkMuted,
                                 modifier = Modifier.size(14.dp)
                             )
@@ -678,7 +678,7 @@ fun PlannerReaderScreen(
                         ) {
                             Icon(
                                 imageVector = NurIcons.ChevronsDown,
-                                contentDescription = if (isAutoScrollActive) "Stop Auto-scroll" else "Auto-scroll",
+                                contentDescription = if (isAutoScrollActive) stringResource(R.string.planner_stop_autoscroll) else stringResource(R.string.planner_autoscroll),
                                 tint = if (isAutoScrollActive) hGold else hInkMuted,
                                 modifier = Modifier.size(18.dp)
                             )
@@ -691,7 +691,7 @@ fun PlannerReaderScreen(
                         ) {
                             Icon(
                                 imageVector = NurIcons.BookOpen,
-                                contentDescription = if (isReadingMode) "Translation Mode" else "Reading Mode",
+                                contentDescription = if (isReadingMode) stringResource(R.string.planner_translation_mode) else stringResource(R.string.planner_reading_mode),
                                 tint = if (isReadingMode) hGold else hInkMuted,
                                 modifier = Modifier.size(18.dp)
                             )
@@ -714,7 +714,7 @@ fun PlannerReaderScreen(
                             ) {
                                 Icon(
                                     imageVector = NurIcons.Volume2,
-                                    contentDescription = "Audio Play/Pause",
+                                    contentDescription = stringResource(R.string.planner_audio_play_pause),
                                     tint = if (isPlaying) hTeal else hInkMuted,
                                     modifier = Modifier.size(18.dp)
                                 )
@@ -748,7 +748,7 @@ fun PlannerReaderScreen(
                         ) {
                             Icon(
                                 imageVector = if (isDarkThemeGlobal) NurIcons.Sun else NurIcons.Moon,
-                                contentDescription = "Toggle Theme",
+                                contentDescription = stringResource(R.string.planner_toggle_theme),
                                 tint = if (isDarkThemeGlobal) hGold else hInkMuted,
                                 modifier = Modifier.size(18.dp)
                             )
@@ -761,7 +761,7 @@ fun PlannerReaderScreen(
                         ) {
                             Icon(
                                 imageVector = NurIcons.Settings,
-                                contentDescription = "Settings",
+                                contentDescription = stringResource(R.string.planner_settings),
                                 tint = if (showSettingsDrawer) hGold else hInkMuted,
                                 modifier = Modifier.size(18.dp)
                             )
@@ -780,7 +780,7 @@ fun PlannerReaderScreen(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             CircularProgressIndicator(color = hGold)
                             Spacer(modifier = Modifier.height(12.dp))
-                            Text("Loading page $currentPage...", color = hInkMuted)
+                            Text(stringResource(R.string.planner_loading_page , currentPage), color = hInkMuted)
                         }
                     }
                 }
@@ -896,7 +896,7 @@ fun PlannerReaderScreen(
                                 modifier = Modifier.weight(1f).fillMaxWidth(),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text("No verses found for this page.", color = hInkMuted)
+                                Text(stringResource(R.string.planner_no_verses_page), color = hInkMuted)
                             }
                         }
                     } else if (currentMushaf.renderMode == com.nur.quran.data.mushaf.MushafRenderMode.QCF_PAGE && !isReadingMode) {
@@ -980,7 +980,7 @@ fun PlannerReaderScreen(
                                     ) {
                                         Icon(imageVector = NurIcons.ArrowLeft, contentDescription = null, tint = hInkMuted.copy(alpha = 0.5f), modifier = Modifier.size(12.dp))
                                         Spacer(modifier = Modifier.width(4.dp))
-                                        Text("Swipe to turn pages", fontSize = 10.sp, color = hInkMuted.copy(alpha = 0.5f), fontFamily = fontFamilyMono)
+                                        Text(stringResource(R.string.planner_swipe_pages), fontSize = 10.sp, color = hInkMuted.copy(alpha = 0.5f), fontFamily = fontFamilyMono)
                                         Spacer(modifier = Modifier.width(4.dp))
                                         Icon(imageVector = NurIcons.ArrowRight, contentDescription = null, tint = hInkMuted.copy(alpha = 0.5f), modifier = Modifier.size(12.dp))
                                     }
@@ -993,7 +993,7 @@ fun PlannerReaderScreen(
                                         val chapter = chapters.find { it.id == verse.chapterId }
                                         if (chapter != null) {
                                             PlannerMinimalHeader(
-                                                overline = "Surah ${chapter.id}",
+                                                overline = stringResource(R.string.planner_surah_number, chapter.id),
                                                 title = chapter.nameSimple,
                                                 pillPrimary = chapter.translatedName.ifBlank { null },
                                                 pillSecondary = "${chapter.versesCount} Ayahs"
@@ -1036,7 +1036,7 @@ fun PlannerReaderScreen(
                                         onBookmarkClick = {
                                             plannerViewModel.togglePlannerBookmark(
                                                 verse.verseKey,
-                                                verseChapter?.nameSimple ?: "Surah ${verse.chapterId}"
+                                                verseChapter?.nameSimple ?: context.getString(R.string.planner_surah_number, verse.chapterId)
                                             )
                                         },
                                         onTafsirClick = {
@@ -1127,7 +1127,7 @@ fun PlannerReaderScreen(
                             ) {
                                 Icon(imageVector = NurIcons.CheckCircle2, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Mark ${currentItem.title} Done", fontSize = 14.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                                Text(stringResource(R.string.planner_mark_item_done, plannerItemTitle(currentItem, assignment.unitType)), fontSize = 14.sp, color = Color.White, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -1149,13 +1149,13 @@ fun PlannerReaderScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Column(horizontalAlignment = Alignment.End) {
-                                        Text("Next", fontSize = 9.sp, color = Color.White.copy(alpha = 0.8f), fontFamily = fontFamilyMono, letterSpacing = 0.5.sp)
-                                        Text("Page ${currentPage + 1}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                        Text(stringResource(R.string.planner_next), fontSize = 9.sp, color = Color.White.copy(alpha = 0.8f), fontFamily = fontFamilyMono, letterSpacing = 0.5.sp)
+                                        Text(stringResource(R.string.planner_next_page , currentPage + 1), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
                                     }
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Icon(
                                         imageVector = NurIcons.ChevronRight,
-                                        contentDescription = "Next",
+                                        contentDescription = stringResource(R.string.planner_next),
                                         tint = Color.White,
                                         modifier = Modifier.size(18.dp)
                                     )
@@ -1174,9 +1174,9 @@ fun PlannerReaderScreen(
                                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(imageVector = NurIcons.CheckCircle2, contentDescription = "Finish", tint = Color.White, modifier = Modifier.size(18.dp))
+                                    Icon(imageVector = NurIcons.CheckCircle2, contentDescription = stringResource(R.string.planner_finish), tint = Color.White, modifier = Modifier.size(18.dp))
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Finish Day", fontSize = 13.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                                    Text(stringResource(R.string.planner_finish_day), fontSize = 13.sp, color = Color.White, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
@@ -1209,14 +1209,14 @@ fun PlannerReaderScreen(
                             ) {
                                 Icon(
                                     imageVector = NurIcons.ChevronLeft,
-                                    contentDescription = "Prev",
+                                    contentDescription = stringResource(R.string.planner_prev),
                                     tint = if (currentPage > pageStart) hInk else hInkMuted.copy(alpha = 0.4f),
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Column {
-                                    Text("Prev", fontSize = 9.sp, color = hInkMuted, fontFamily = fontFamilyMono, letterSpacing = 0.5.sp)
-                                    Text("Page ${if (currentPage > pageStart) currentPage - 1 else pageStart}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (currentPage > pageStart) hInk else hInkMuted.copy(alpha = 0.4f))
+                                    Text(stringResource(R.string.planner_prev), fontSize = 9.sp, color = hInkMuted, fontFamily = fontFamilyMono, letterSpacing = 0.5.sp)
+                                    Text(stringResource(R.string.planner_prev_page , if (currentPage > pageStart) currentPage - 1 else pageStart), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (currentPage > pageStart) hInk else hInkMuted.copy(alpha = 0.4f))
                                 }
                             }
                         }
@@ -1308,9 +1308,9 @@ fun PlannerReaderScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
                 ) {
-                    Icon(imageVector = NurIcons.Eye, contentDescription = "Exit focus mode", tint = Color.White, modifier = Modifier.size(14.dp))
+                    Icon(imageVector = NurIcons.Eye, contentDescription = stringResource(R.string.planner_exit_focus), tint = Color.White, modifier = Modifier.size(14.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Exit Focus", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text(stringResource(R.string.planner_exit_focus_short), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
                 }
             }
         }
@@ -1321,7 +1321,7 @@ fun PlannerReaderScreen(
         val shareChapter = chapters.find { it.id == verseToShare!!.chapterId }
         com.nur.quran.ui.components.ShareVerseDialog(
             verse = verseToShare!!,
-            chapterName = shareChapter?.nameSimple ?: "Surah ${verseToShare!!.chapterId}",
+            chapterName = shareChapter?.nameSimple ?: context.getString(R.string.planner_surah_number, verseToShare!!.chapterId),
             onDismiss = { verseToShare = null }
         )
     }
@@ -1482,7 +1482,7 @@ fun PlannerReaderScreen(
         CollectionModal(
             verse = verse,
             chapterId = verse.chapterId,
-            surahName = chapters.find { it.id == verse.chapterId }?.nameSimple ?: "Surah ${verse.chapterId}",
+            surahName = chapters.find { it.id == verse.chapterId }?.nameSimple ?: context.getString(R.string.planner_surah_number, verse.chapterId),
             collections = collections,
             collectionItems = collectionItems,
             onAddToCollection = { collectionId ->
@@ -1490,7 +1490,7 @@ fun PlannerReaderScreen(
                     collectionId,
                     verse.verseKey,
                     verse.chapterId,
-                    chapters.find { it.id == verse.chapterId }?.nameSimple ?: "Surah ${verse.chapterId}"
+                    chapters.find { it.id == verse.chapterId }?.nameSimple ?: context.getString(R.string.planner_surah_number, verse.chapterId)
                 )
                 collectionVerse = null
             },
@@ -1500,7 +1500,7 @@ fun PlannerReaderScreen(
                         newId,
                         verse.verseKey,
                         verse.chapterId,
-                        chapters.find { it.id == verse.chapterId }?.nameSimple ?: "Surah ${verse.chapterId}"
+                        chapters.find { it.id == verse.chapterId }?.nameSimple ?: context.getString(R.string.planner_surah_number, verse.chapterId)
                     )
                 }
                 collectionVerse = null
@@ -1588,7 +1588,7 @@ fun PageJumpDialog(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Jump to Page",
+                    text = stringResource(R.string.planner_jump_page),
                     fontFamily = fontFamilyUi,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
@@ -1596,7 +1596,7 @@ fun PageJumpDialog(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Assignment range: $pageStart – $pageEnd",
+                    text = stringResource(R.string.planner_assignment_range , pageStart, pageEnd),
                     fontFamily = fontFamilyMono,
                     fontSize = 12.sp,
                     color = hInkMuted
@@ -1613,7 +1613,7 @@ fun PageJumpDialog(
                         onClick = { if (targetPage > pageStart) targetPage-- },
                         enabled = targetPage > pageStart
                     ) {
-                        Icon(NurIcons.ChevronLeft, contentDescription = "Decrease", tint = if (targetPage > pageStart) hInk else hInkMuted.copy(alpha = 0.4f))
+                        Icon(NurIcons.ChevronLeft, contentDescription = stringResource(R.string.planner_decrease), tint = if (targetPage > pageStart) hInk else hInkMuted.copy(alpha = 0.4f))
                     }
 
                     Surface(
@@ -1636,7 +1636,7 @@ fun PageJumpDialog(
                         onClick = { if (targetPage < pageEnd) targetPage++ },
                         enabled = targetPage < pageEnd
                     ) {
-                        Icon(NurIcons.ChevronRight, contentDescription = "Increase", tint = if (targetPage < pageEnd) hInk else hInkMuted.copy(alpha = 0.4f))
+                        Icon(NurIcons.ChevronRight, contentDescription = stringResource(R.string.planner_increase), tint = if (targetPage < pageEnd) hInk else hInkMuted.copy(alpha = 0.4f))
                     }
                 }
 
@@ -1669,7 +1669,7 @@ fun PageJumpDialog(
                         border = BorderStroke(1.dp, hBoneDark),
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("Cancel", fontFamily = fontFamilyUi, color = hInkMuted)
+                        Text(stringResource(R.string.planner_cancel), fontFamily = fontFamilyUi, color = hInkMuted)
                     }
                     Button(
                         onClick = {
@@ -1680,7 +1680,7 @@ fun PageJumpDialog(
                         colors = ButtonDefaults.buttonColors(containerColor = hTeal),
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("Jump", fontFamily = fontFamilyUi, fontWeight = FontWeight.Bold, color = Color.White)
+                        Text(stringResource(R.string.planner_jump), fontFamily = fontFamilyUi, fontWeight = FontWeight.Bold, color = Color.White)
                     }
                 }
             }
@@ -1886,7 +1886,7 @@ fun DayCelebrationCard(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Alhamdulillah! 🎉",
+                    text = stringResource(R.string.planner_alhamdulillah),
                     fontSize = 24.sp,
                     fontFamily = fontFamilyUi,
                     fontWeight = FontWeight.Bold,
@@ -1896,7 +1896,7 @@ fun DayCelebrationCard(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = "You have completed Day $dayNumber.",
+                    text = stringResource(R.string.planner_completed_day , dayNumber),
                     fontSize = 15.sp,
                     fontFamily = fontFamilyUi,
                     color = Color.White.copy(alpha = 0.9f)
@@ -1905,7 +1905,7 @@ fun DayCelebrationCard(
                 if (displayedSeconds > 0) {
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "Session Time: ${formatTimerMmSs(displayedSeconds)}",
+                        text = stringResource(R.string.planner_session_time , formatTimerMmSs(displayedSeconds)),
                         fontSize = 12.sp,
                         fontFamily = fontFamilyMono,
                         color = Color.White.copy(alpha = 0.75f)
@@ -1926,7 +1926,7 @@ fun DayCelebrationCard(
                                 .padding(16.dp)
                         ) {
                             Text(
-                                text = "Takeaway of the Day",
+                                text = stringResource(R.string.planner_takeaway),
                                 fontSize = 10.sp,
                                 fontFamily = fontFamilyUi,
                                 fontWeight = FontWeight.SemiBold,
@@ -1969,7 +1969,7 @@ fun DayCelebrationCard(
                             }
 
                             Text(
-                                text = "— Surah ${takeawayVerse.verseKey.replace(":", ", Ayah ")}",
+                                text = stringResource(R.string.planner_verse_reference, takeawayVerse.verseKey.substringBefore(":"), takeawayVerse.verseKey.substringAfter(":")),
                                 fontSize = 11.sp,
                                 fontFamily = fontFamilyUi,
                                 fontWeight = FontWeight.Medium,
@@ -1983,7 +1983,7 @@ fun DayCelebrationCard(
 
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Text(
-                        text = "Daily Reflection (Optional)",
+                        text = stringResource(R.string.planner_reflection_optional),
                         fontSize = 13.sp,
                         fontFamily = fontFamilyUi,
                         fontWeight = FontWeight.SemiBold,
@@ -2008,7 +2008,7 @@ fun DayCelebrationCard(
                         ),
                         placeholder = {
                             Text(
-                                text = "Write a brief reflection for today's reading...",
+                                text = stringResource(R.string.planner_reflection_hint),
                                 fontSize = 13.sp,
                                 color = Color.White.copy(alpha = 0.45f)
                             )
@@ -2030,7 +2030,7 @@ fun DayCelebrationCard(
                     modifier = Modifier.height(44.dp)
                 ) {
                     Text(
-                        text = if (reflectionNote.isNotBlank()) "Save & Return" else "Return to Planner",
+                        text = if (reflectionNote.isNotBlank()) stringResource(R.string.planner_save_return) else stringResource(R.string.planner_return_planner),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = fontFamilyUi

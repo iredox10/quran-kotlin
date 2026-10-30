@@ -1,5 +1,7 @@
 package com.nur.quran.ui.components.planner
 
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -30,6 +32,7 @@ fun PlanTemplatesSection(
     onSelectTemplate: (ReadingPlan) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     var previewTemplate by remember { mutableStateOf<PlanTemplate?>(null) }
     var templateBuildError by remember { mutableStateOf<String?>(null) }
 
@@ -43,14 +46,14 @@ fun PlanTemplatesSection(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Plan Templates",
+                text = stringResource(R.string.planner_plan_templates),
                 fontFamily = fontFamilyUi,
                 fontSize = 19.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = hInk
             )
             Text(
-                text = "Curated paths",
+                text = stringResource(R.string.planner_curated_paths),
                 fontFamily = fontFamilyMono,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Normal,
@@ -64,7 +67,7 @@ fun PlanTemplatesSection(
             PLAN_TEMPLATES.forEach { tmpl ->
                 val unitCount = (tmpl.endUnit - tmpl.startUnit + 1).coerceAtLeast(1)
                 val unitsPerDay = Math.ceil(unitCount.toDouble() / tmpl.durationDays).toInt().coerceAtLeast(1)
-                val unitPlural = PLANNER_UNITS[tmpl.unitType]?.plural ?: "units"
+                val unitPlural = plannerUnitName(tmpl.unitType, true)
                 // Web parity (Planner.jsx handleTemplateSelect): surah templates need
                 // loaded chapters — tapping early alerts instead of building.
                 val surahNotReady = tmpl.unitType == "surah" && chapters.isEmpty()
@@ -82,7 +85,7 @@ fun PlanTemplatesSection(
                 ) {
                     Column(modifier = Modifier.padding(18.dp)) {
                         Text(
-                            text = tmpl.title,
+                            text = plannerTemplateTitle(tmpl),
                             fontFamily = fontFamilyUi,
                             fontSize = 16.5.sp,
                             fontWeight = FontWeight.SemiBold,
@@ -92,7 +95,7 @@ fun PlanTemplatesSection(
                         Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
-                            text = tmpl.description,
+                            text = plannerTemplateDescription(tmpl),
                             fontFamily = fontFamilyBody,
                             fontSize = 13.sp,
                             lineHeight = 19.sp,
@@ -112,7 +115,7 @@ fun PlanTemplatesSection(
                                     color = Color(0x1A2E4F4A)
                                 ) {
                                     Text(
-                                        text = tmpl.tags.first(),
+                                        text = plannerTemplateTag(tmpl),
                                         fontFamily = fontFamilyMono,
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.Medium,
@@ -126,7 +129,7 @@ fun PlanTemplatesSection(
                             }
 
                             Text(
-                                text = if (surahNotReady) "Loading surahs…" else "$unitsPerDay $unitPlural/day",
+                                text = if (surahNotReady) stringResource(R.string.planner_loading_surahs) else stringResource(R.string.planner_template_daily , unitsPerDay, unitPlural),
                                 fontFamily = fontFamilyMono,
                                 fontSize = 10.5.sp,
                                 color = hInkMuted
@@ -141,9 +144,10 @@ fun PlanTemplatesSection(
     // Preview Template Confirmation Modal (matching web lines 560-600)
     if (previewTemplate != null) {
         val tmpl = previewTemplate!!
+        val localizedTemplateTitle = plannerTemplateTitle(tmpl)
         val unitCount = (tmpl.endUnit - tmpl.startUnit + 1).coerceAtLeast(1)
         val perDay = Math.ceil(unitCount.toDouble() / tmpl.durationDays).toInt().coerceAtLeast(1)
-        val stats = PlannerUtils.getPaceStats(tmpl.durationDays, totalUnits = unitCount)
+        val stats = PlannerUtils.getPaceStats(tmpl.durationDays, totalUnits = unitCount, displayLocale = androidx.compose.ui.platform.LocalConfiguration.current.locales[0])
 
         Dialog(onDismissRequest = { previewTemplate = null }) {
             Surface(
@@ -160,7 +164,7 @@ fun PlanTemplatesSection(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Start \"${tmpl.title}\"?",
+                            text = stringResource(R.string.planner_template_start , plannerTemplateTitle(tmpl)),
                             fontFamily = fontFamilyUi,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.SemiBold,
@@ -170,14 +174,14 @@ fun PlanTemplatesSection(
                             onClick = { previewTemplate = null },
                             modifier = Modifier.size(28.dp)
                         ) {
-                            Icon(NurIcons.X, contentDescription = "Close", tint = hInkMid, modifier = Modifier.size(18.dp))
+                            Icon(NurIcons.X, contentDescription = stringResource(R.string.planner_close), tint = hInkMid, modifier = Modifier.size(18.dp))
                         }
                     }
 
                     Spacer(modifier = Modifier.height(14.dp))
 
                     Text(
-                        text = tmpl.description,
+                        text = plannerTemplateDescription(tmpl),
                         fontFamily = fontFamilyBody,
                         fontSize = 13.sp,
                         color = hInkMid
@@ -188,12 +192,12 @@ fun PlanTemplatesSection(
                     // 4 Stat Grid Cards
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            StatBox(label = "Duration", value = "${tmpl.durationDays} days", modifier = Modifier.weight(1f))
-                            StatBox(label = "Pace", value = "$perDay ${PLANNER_UNITS[tmpl.unitType]?.plural ?: "units"}/day", modifier = Modifier.weight(1f))
+                            StatBox(label = stringResource(R.string.planner_duration), value = stringResource(R.string.planner_template_duration , tmpl.durationDays), modifier = Modifier.weight(1f))
+                            StatBox(label = stringResource(R.string.planner_pace), value = stringResource(R.string.planner_template_pace, perDay, plannerUnitName(tmpl.unitType, true)), modifier = Modifier.weight(1f))
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            StatBox(label = "Starts", value = PlannerEngine.formatPlannerDateLabel(PlannerEngine.formatPlannerDate()), modifier = Modifier.weight(1f))
-                            StatBox(label = "Done by", value = stats.endLabel, modifier = Modifier.weight(1f))
+                            StatBox(label = stringResource(R.string.planner_starts), value = plannerDateLabel(PlannerEngine.formatPlannerDate()), modifier = Modifier.weight(1f))
+                            StatBox(label = stringResource(R.string.planner_done_by), value = stats.endLabel, modifier = Modifier.weight(1f))
                         }
                     }
 
@@ -220,7 +224,7 @@ fun PlanTemplatesSection(
                             border = BorderStroke(1.5.dp, hBoneDark),
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text("Cancel", fontFamily = fontFamilyUi, color = hInkMid)
+                            Text(stringResource(R.string.planner_cancel), fontFamily = fontFamilyUi, color = hInkMid)
                         }
 
                         Button(
@@ -232,21 +236,21 @@ fun PlanTemplatesSection(
                                         startDate = PlannerEngine.formatPlannerDate(),
                                         startUnit = tmpl.startUnit,
                                         endUnit = tmpl.endUnit,
-                                        customTitle = tmpl.title,
+                                        customTitle = localizedTemplateTitle,
                                         excludeDays = emptyList(),
                                         chapters = chapters
                                     )
                                     previewTemplate = null
                                     onSelectTemplate(built)
                                 } catch (e: IllegalArgumentException) {
-                                    templateBuildError = "Could not build template plan: ${e.message}"
+                                    templateBuildError = context.getString(R.string.planner_build_template_failed)
                                 }
                             },
                             shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = hTeal),
                             modifier = Modifier.weight(1.5f)
                         ) {
-                            Text("Create Plan", fontFamily = fontFamilyUi, fontWeight = FontWeight.Bold, color = Color.White)
+                            Text(stringResource(R.string.planner_create_plan), fontFamily = fontFamilyUi, fontWeight = FontWeight.Bold, color = Color.White)
                         }
                     }
                 }

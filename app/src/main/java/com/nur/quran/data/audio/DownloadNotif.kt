@@ -1,5 +1,7 @@
 package com.nur.quran.data.audio
 
+import com.nur.quran.R
+
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -9,8 +11,6 @@ import android.os.Build
 object DownloadNotif {
     const val CHANNEL_ID = "audio_downloads"
 
-    private const val CHANNEL_NAME = "Audio downloads"
-    private const val CHANNEL_DESCRIPTION = "Shows audio download progress"
 
     fun ensureChannel(context: Context) {
         runCatching {
@@ -18,13 +18,13 @@ object DownloadNotif {
                 val manager =
                     context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
                         ?: return@runCatching
-                if (manager.getNotificationChannel(CHANNEL_ID) == null) {
+                run {
                     val channel = NotificationChannel(
                         CHANNEL_ID,
-                        CHANNEL_NAME,
+                        com.nur.quran.i18n.AppLanguages.wrap(context).getString(R.string.ui_audio_downloads_716e48),
                         NotificationManager.IMPORTANCE_LOW
                     ).apply {
-                        description = CHANNEL_DESCRIPTION
+                        description = com.nur.quran.i18n.AppLanguages.wrap(context).getString(R.string.ui_shows_audio_download_progress_3b6c55)
                     }
                     manager.createNotificationChannel(channel)
                 }
@@ -43,7 +43,7 @@ object DownloadNotif {
         return runCatching {
             newBuilder(context)
                 .setContentTitle(title)
-                .setContentText("$done/$total ayahs")
+                .setContentText(com.nur.quran.i18n.AppLanguages.wrap(context).getString(R.string.ui_1_s_2_s_ayahs_16b09d, done, total))
                 .setSmallIcon(android.R.drawable.stat_sys_download)
                 .setProgress(total, done, false)
                 .setOngoing(true)
@@ -65,7 +65,7 @@ object DownloadNotif {
             ensureChannel(context)
             val notification = newBuilder(context)
                 .setContentTitle(title)
-                .setContentText("Download complete")
+                .setContentText(com.nur.quran.i18n.AppLanguages.wrap(context).getString(R.string.ui_download_complete_95efb3))
                 .setSmallIcon(android.R.drawable.stat_sys_download_done)
                 .setAutoCancel(true)
                 .setOnlyAlertOnce(true)
@@ -79,7 +79,7 @@ object DownloadNotif {
             ensureChannel(context)
             val notification = newBuilder(context)
                 .setContentTitle(title)
-                .setContentText("Download failed")
+                .setContentText(com.nur.quran.i18n.AppLanguages.wrap(context).getString(R.string.ui_download_failed_01125e))
                 .setSmallIcon(android.R.drawable.stat_notify_error)
                 .setAutoCancel(true)
                 .setOnlyAlertOnce(true)

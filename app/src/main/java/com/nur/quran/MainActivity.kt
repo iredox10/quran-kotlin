@@ -1,5 +1,6 @@
 package com.nur.quran
 
+import androidx.compose.ui.res.stringResource
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -58,6 +59,10 @@ import com.nur.quran.ui.screens.*
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(com.nur.quran.i18n.AppLanguages.wrap(newBase))
+    }
 
     private val homeViewModel: HomeViewModel by viewModels()
     private val surahViewModel: SurahViewModel by viewModels()
@@ -127,7 +132,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        handleDeepLink(intent)
+        // Locale/configuration recreation restores the current NavController state.
+        // Replaying the original intent here would jump back to its old ayah.
+        if (savedInstanceState == null) handleDeepLink(intent)
         ProcessLifecycleOwner.get().lifecycle.addObserver(appLifecycleObserver)
         
         // Initialize global dark theme preference before composing.
@@ -400,11 +407,11 @@ class MainActivity : ComponentActivity() {
                                 .widthIn(max = 500.dp)
                                 .padding(horizontal = 16.dp, vertical = 12.dp),
                             items = listOf(
-                                NavItem(Screen.Quran, NurIcons.BookOpen, "Quran"),
-                                NavItem(Screen.Memorize, NurIcons.Brain, "Memorize"),
-                                NavItem(Screen.Planner, NurIcons.CalendarDays, "Planner"),
-                                NavItem(Screen.Analytics, NurIcons.TrendingUp, "Analytics"),
-                                NavItem(Screen.Profile, NurIcons.User, "Profile")
+                                NavItem(Screen.Quran, NurIcons.BookOpen, stringResource(R.string.ui_quran_f5df39)),
+                                NavItem(Screen.Memorize, NurIcons.Brain, stringResource(R.string.ui_memorize_8a8a35)),
+                                NavItem(Screen.Planner, NurIcons.CalendarDays, stringResource(R.string.ui_planner_eca1f9)),
+                                NavItem(Screen.Analytics, NurIcons.TrendingUp, stringResource(R.string.ui_analytics_25bc96)),
+                                NavItem(Screen.Profile, NurIcons.User, stringResource(R.string.ui_profile_ff4fc0))
                             ),
                             currentRoute = currentDestination?.route,
                             onItemClick = { screen ->

@@ -1220,7 +1220,7 @@ object PlannerEngine {
     fun formatPlannerDateLabel(dateStr: String): String {
         return try {
             val date = parsePlannerDate(dateStr)
-            SimpleDateFormat("EEE, MMM d", Locale.US).format(date)
+            SimpleDateFormat("EEE, MMM d", Locale.getDefault()).format(date)
         } catch (e: Exception) {
             dateStr
         }

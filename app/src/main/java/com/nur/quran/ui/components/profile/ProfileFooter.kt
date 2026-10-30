@@ -1,5 +1,8 @@
 package com.nur.quran.ui.components.profile
 
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -29,7 +32,7 @@ fun ProfileFooter(
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Text(
-            text = "QURAN NUR · V1.0.0",
+            text = stringResource(R.string.ui_quran_nur_v1_0_0_14c15f),
             fontFamily = fontFamilyMono,
             fontSize = 10.sp,
             fontWeight = FontWeight.Bold,
@@ -37,7 +40,7 @@ fun ProfileFooter(
             color = hInkMuted
         )
         Text(
-            text = "Made with ♥ for the Ummah",
+            text = stringResource(R.string.ui_made_with_for_the_ummah_9b2253),
             fontFamily = fontFamilyUi,
             fontSize = 13.sp,
             fontStyle = FontStyle.Italic,

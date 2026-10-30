@@ -1,5 +1,9 @@
 package com.nur.quran.ui.screens
 
+
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -65,7 +69,7 @@ fun RecentSurahsScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Recently Read",
+                        text = stringResource(R.string.ui_recently_read_6f71b4),
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp,
                         color = hInk,
@@ -74,7 +78,7 @@ fun RecentSurahsScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(imageVector = NurIcons.ArrowLeft, contentDescription = "Back", tint = hInk)
+                        Icon(imageVector = NurIcons.ArrowLeft, contentDescription = stringResource(R.string.ui_back_b52b36), tint = hInk)
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = hWhite)
@@ -96,14 +100,14 @@ fun RecentSurahsScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "READING HISTORY",
+                        text = stringResource(R.string.ui_reading_history_ac0968),
                         fontFamily = fontFamilyMono,
                         fontSize = 10.sp,
                         letterSpacing = 1.5.sp,
                         color = hInkMuted
                     )
                     Text(
-                        text = "Jump back into any surah — resume at the exact verse you left.",
+                        text = stringResource(R.string.ui_jump_back_into_any_surah_resume_at_the_exact_ver_b3f914),
                         fontSize = 13.sp,
                         color = hInkMuted,
                         textAlign = TextAlign.Center,
@@ -130,7 +134,7 @@ fun RecentSurahsScreen(
                             HistoryStatCell(
                                 modifier = Modifier.weight(1f),
                                 value = if (lastOpenedAt > 0L) ProfileUtils.timeAgo(lastOpenedAt) else "—",
-                                label = "LAST OPENED"
+                                label = stringResource(R.string.ui_last_opened_ad2dec)
                             )
                         }
                         if (items.isNotEmpty()) {
@@ -153,7 +157,7 @@ fun RecentSurahsScreen(
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
-                                        text = "CLEAR ALL",
+                                        text = stringResource(R.string.ui_clear_all_00c6d5),
                                         fontFamily = fontFamilyMono,
                                         fontSize = 10.sp,
                                         letterSpacing = 1.sp,
@@ -185,7 +189,7 @@ fun RecentSurahsScreen(
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                 Icon(imageVector = NurIcons.Clock, contentDescription = null, tint = hInkMuted, modifier = Modifier.size(13.dp))
                                 Text(
-                                    text = "HISTORY",
+                                    text = stringResource(R.string.ui_history_f6dc58),
                                     fontFamily = fontFamilyMono,
                                     fontSize = 10.sp,
                                     letterSpacing = 1.5.sp,
@@ -193,7 +197,7 @@ fun RecentSurahsScreen(
                                 )
                             }
                             Text(
-                                text = "${filtered.size} ${if (filtered.size == 1) "entry" else "entries"}",
+                                text = stringResource(R.string.ui_1_s_2_s_78c505, filtered.size, if (filtered.size == 1) "entry" else "entries"),
                                 fontFamily = fontFamilyMono,
                                 fontSize = 10.sp,
                                 color = hInkMuted
@@ -204,7 +208,7 @@ fun RecentSurahsScreen(
 
                         when {
                             items.isEmpty() -> HistoryEmptyState(
-                                title = "Nothing read yet",
+                                title = stringResource(R.string.ui_nothing_read_yet_6c71ab),
                                 body = "Surahs you open will appear here so you can pick up right where you left off."
                             )
                             filtered.isEmpty() && trimmed.isNotEmpty() -> HistoryEmptyState(
@@ -232,18 +236,18 @@ fun RecentSurahsScreen(
     if (showClearDialog) {
         AlertDialog(
             onDismissRequest = { showClearDialog = false },
-            title = { Text("Clear reading history?") },
-            text = { Text("Your reading history on this device will be cleared.") },
+            title = { Text(stringResource(R.string.ui_clear_reading_history_a5873f)) },
+            text = { Text(stringResource(R.string.ui_your_reading_history_on_this_device_will_be_clea_d774e6)) },
             confirmButton = {
                 TextButton(
                     onClick = {
                         showClearDialog = false
                         homeViewModel.clearRecentlyRead()
                     }
-                ) { Text("Clear") }
+                ) { Text(stringResource(R.string.ui_clear_719ea3)) }
             },
             dismissButton = {
-                TextButton(onClick = { showClearDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showClearDialog = false }) { Text(stringResource(R.string.ui_cancel_77dfd2)) }
             }
         )
     }
@@ -287,7 +291,7 @@ internal fun FilterField(query: String, onQueryChange: (String) -> Unit) {
         singleLine = true,
         shape = RoundedCornerShape(24.dp),
         placeholder = {
-            Text("Filter by surah name...", fontSize = 13.sp, color = hInkMuted)
+            Text(stringResource(R.string.ui_filter_by_surah_name_a3458d), fontSize = 13.sp, color = hInkMuted)
         },
         leadingIcon = {
             Icon(imageVector = NurIcons.Search, contentDescription = null, tint = hInkMuted, modifier = Modifier.size(16.dp))
@@ -296,7 +300,7 @@ internal fun FilterField(query: String, onQueryChange: (String) -> Unit) {
             if (query.isNotEmpty()) {
                 Icon(
                     imageVector = NurIcons.X,
-                    contentDescription = "Clear filter",
+                    contentDescription = stringResource(R.string.ui_clear_filter_b667d6),
                     tint = hInkMuted,
                     modifier = Modifier
                         .size(16.dp)
@@ -380,7 +384,7 @@ private fun RecentSurahRow(
                 maxLines = 1
             )
             Text(
-                text = "$resumeLabel · ${ProfileUtils.timeAgo(item.timestamp)}",
+                text = stringResource(R.string.ui_1_s_2_s_c1aacd, resumeLabel, ProfileUtils.timeAgo(item.timestamp)),
                 fontSize = 10.sp,
                 color = hInkMuted,
                 modifier = Modifier.padding(top = 2.dp)
@@ -388,7 +392,7 @@ private fun RecentSurahRow(
         }
         Icon(
             imageVector = NurIcons.X,
-            contentDescription = "Remove ${item.chapterName} from reading history",
+            contentDescription = stringResource(R.string.ui_remove_1_s_from_reading_history_4f75b4, item.chapterName),
             tint = hInkMuted,
             modifier = Modifier
                 .size(16.dp)

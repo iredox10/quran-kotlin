@@ -1,5 +1,8 @@
 package com.nur.quran.ui.screens
 
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import kotlinx.coroutines.flow.collectLatest
 
 import android.content.Intent
@@ -456,7 +459,6 @@ fun SurahScreen(
     var collectionVerse by remember { mutableStateOf<VerseEntity?>(null) }
     var shareVerseDialogTarget by remember { mutableStateOf<VerseEntity?>(null) }
     var showSettingsDrawer by remember { mutableStateOf(false) }
-    var showFontSettingsDialog by remember { mutableStateOf(false) }
     var showAudioSetupDialog by remember { mutableStateOf(false) }
     // MiniPlayer hide-vs-stop: X hides the pill but playback continues in the
     // background; ■ stops playback entirely (viewModel.stopPlaying()).
@@ -483,8 +485,6 @@ fun SurahScreen(
         }
     }
     var isAutoScrollActive by remember { mutableStateOf(false) }
-    var settingsSubView by remember { mutableStateOf(SettingsSubView.ROOT) }
-    var settingsActiveTab by remember { mutableStateOf("general") }
     var selectedTajweedRule by remember { mutableStateOf<TajweedRule?>(null) }
 
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -769,7 +769,7 @@ fun SurahScreen(
                         Spacer(modifier = Modifier.width(4.dp))
                         Icon(
                             imageVector = NurIcons.ChevronDown,
-                            contentDescription = "Select Surah",
+                            contentDescription = stringResource(R.string.ui_select_surah_97d36a),
                             tint = hInkMuted,
                             modifier = Modifier.size(14.dp)
                         )
@@ -779,7 +779,7 @@ fun SurahScreen(
                     IconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = NurIcons.ArrowLeft,
-                            contentDescription = "Back",
+                            contentDescription = stringResource(R.string.ui_back_b52b36),
                             tint = hInk,
                             modifier = Modifier.size(20.dp)
                         )
@@ -789,12 +789,12 @@ fun SurahScreen(
                     TopBarIconBtn(
                         icon = NurIcons.ChevronsDown,
                         active = isAutoScrollActive,
-                        label = "Auto-scroll"
+                        label = stringResource(R.string.ui_auto_scroll_a03e7f)
                     ) { isAutoScrollActive = !isAutoScrollActive }
                     TopBarIconBtn(
                         icon = NurIcons.BookOpen,
                         active = isReadingMode,
-                        label = "Reading mode"
+                        label = stringResource(R.string.ui_reading_mode_d75871)
                     ) {
                         val state = uiState
                         val verses = if (state is SurahUiState.Success) state.verses else emptyList()
@@ -833,18 +833,18 @@ fun SurahScreen(
                     TopBarIconBtn(
                         icon = NurIcons.Volume2,
                         active = isPlaying,
-                        label = "Audio options"
+                        label = stringResource(R.string.ui_audio_options_605c8b)
                     ) { showAudioSetupDialog = true }
                     TopBarIconBtn(
                         icon = if (isDarkThemeGlobal) NurIcons.Sun else NurIcons.Moon,
                         active = isDarkThemeGlobal,
-                        label = "Toggle theme"
+                        label = stringResource(R.string.ui_toggle_theme_9b0eaf)
                     ) { isDarkThemeGlobal = !isDarkThemeGlobal; themePrefs.edit().putBoolean("is_dark_theme", isDarkThemeGlobal).apply() }
 
                     TopBarIconBtn(
                         icon = NurIcons.Settings,
                         active = showSettingsDrawer,
-                        label = "Settings"
+                        label = stringResource(R.string.ui_settings_c7f73b)
                     ) { showSettingsDrawer = true }
                     Spacer(modifier = Modifier.width(8.dp))
                 },
@@ -895,7 +895,7 @@ fun SurahScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "Loading Ayahs...",
+                            text = stringResource(R.string.ui_loading_ayahs_64c627),
                             fontFamily = fontFamilyUi,
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp,
@@ -924,7 +924,7 @@ fun SurahScreen(
                         // retry pattern: red message + Retry TextButton).
                         TextButton(onClick = { viewModel.loadChapterDetails(chapterId) }) {
                             Text(
-                                text = "Retry",
+                                text = stringResource(R.string.ui_retry_9f5cd8),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = hRed,
@@ -1056,14 +1056,14 @@ fun SurahScreen(
                                                 horizontalArrangement = Arrangement.SpaceBetween
                                             ) {
                                                 Text(
-                                                    text = "Memorization progress",
+                                                    text = stringResource(R.string.ui_memorization_progress_6efb8c),
                                                     fontFamily = fontFamilyUi,
                                                     fontWeight = FontWeight.Bold,
                                                     fontSize = 13.sp,
                                                     color = hInk
                                                 )
                                                 Text(
-                                                    text = "$memorizedInSurah/$totalInSurah ayahs",
+                                                    text = stringResource(R.string.ui_1_s_2_s_ayahs_16b09d, memorizedInSurah, totalInSurah),
                                                     fontFamily = fontFamilyUi,
                                                     fontWeight = FontWeight.Bold,
                                                     fontSize = 13.sp,
@@ -1116,7 +1116,7 @@ fun SurahScreen(
                                         )
                                         Column(modifier = Modifier.weight(1f)) {
                                             Text(
-                                                text = "Swipe to Navigate",
+                                                text = stringResource(R.string.ui_swipe_to_navigate_9b8ed2),
                                                 fontFamily = fontFamilyUi,
                                                 fontWeight = FontWeight.Bold,
                                                 fontSize = 13.sp,
@@ -1124,7 +1124,7 @@ fun SurahScreen(
                                             )
                                             Spacer(modifier = Modifier.height(2.dp))
                                             Text(
-                                                text = "Swipe left or right anywhere on the screen to move between Surahs.",
+                                                text = stringResource(R.string.ui_swipe_left_or_right_anywhere_on_the_screen_to_mo_44d91b),
                                                 fontFamily = fontFamilyBody,
                                                 fontSize = 12.sp,
                                                 color = hInkMid
@@ -1136,7 +1136,7 @@ fun SurahScreen(
                                         }) {
                                             Icon(
                                                 imageVector = Icons.Default.Close,
-                                                contentDescription = "Dismiss",
+                                                contentDescription = stringResource(R.string.ui_dismiss_70afe9),
                                                 tint = hInkMuted,
                                                 modifier = Modifier.size(16.dp)
                                             )
@@ -1165,14 +1165,14 @@ fun SurahScreen(
                                     ) {
                                         Column(modifier = Modifier.weight(1f)) {
                                             Text(
-                                                text = "Sauka Group Reading Completed?",
+                                                text = stringResource(R.string.ui_sauka_group_reading_completed_d06208),
                                                 fontFamily = fontFamilyUi,
                                                 fontWeight = FontWeight.Bold,
                                                 fontSize = 14.sp,
                                                 color = hInk
                                             )
                                             Text(
-                                                text = "Tap below to submit your progress to the group.",
+                                                text = stringResource(R.string.ui_tap_below_to_submit_your_progress_to_the_group_8602fa),
                                                 fontFamily = fontFamilyBody,
                                                 fontSize = 12.sp,
                                                 color = hInkMid
@@ -1191,7 +1191,7 @@ fun SurahScreen(
                                             if (isSaukaCompleting) {
                                                 CircularProgressIndicator(color = Color.White, modifier = Modifier.size(16.dp))
                                             } else {
-                                                Text(if (isCompleted) "Completed" else "Mark Done", color = Color.White)
+                                                Text(if (isCompleted) stringResource(R.string.ui_completed_1798b3) else stringResource(R.string.ui_mark_done_2ae8bf), color = Color.White)
                                             }
                                         }
                                     }
@@ -1224,8 +1224,8 @@ fun SurahScreen(
                                                 modifier = Modifier.fillMaxWidth(),
                                                 horizontalArrangement = Arrangement.SpaceBetween
                                             ) {
-                                                Text("Memorization progress", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = hInk)
-                                                Text("$memorizedInSurah/$totalInSurah ayahs", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = hInk)
+                                                Text(stringResource(R.string.ui_memorization_progress_6efb8c), fontWeight = FontWeight.Bold, fontSize = 12.sp, color = hInk)
+                                                Text(stringResource(R.string.ui_1_s_2_s_ayahs_16b09d, memorizedInSurah, totalInSurah), fontWeight = FontWeight.Bold, fontSize = 12.sp, color = hInk)
                                             }
                                             Spacer(modifier = Modifier.height(8.dp))
                                             LinearProgressIndicator(
@@ -1282,9 +1282,9 @@ fun SurahScreen(
                                 val juzStart = juzStartForVerseKey(verse.verseKey)
                                 val hizbStart = hizbStartForVerseKey(verse.verseKey)
                                 if (juzStart != null) {
-                                    DivisionDivider(label = "Juz ${juzStart.id}")
+                                    DivisionDivider(label = stringResource(R.string.ui_juz_1_s_146e8b, juzStart.id))
                                 } else if (hizbStart != null) {
-                                    DivisionDivider(label = "Hizb ${hizbStart.id}")
+                                    DivisionDivider(label = stringResource(R.string.ui_hizb_1_s_ab29bf, hizbStart.id))
                                 }
                                 VerseDivider()
 
@@ -1593,355 +1593,6 @@ fun SurahScreen(
                 )
             }
 
-            // Settings Side Drawer Overlay (matching web SettingsDrawer)
-            if (showFontSettingsDialog) {
-                // Background dark scrim overlay
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.4f))
-                        .clickable { showFontSettingsDialog = false }
-                )
-
-                // Slide-in drawer panel aligned to the right edge
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .width(320.dp)
-                        .align(Alignment.CenterEnd)
-                        .background(hWhite)
-                        .clickable(enabled = false) {} // prevent click propagation
-                ) {
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        // Header
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(hSurface)
-                                .padding(horizontal = 16.dp, vertical = 16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                if (settingsSubView != SettingsSubView.ROOT) {
-                                    IconButton(
-                                        onClick = { settingsSubView = SettingsSubView.ROOT },
-                                        modifier = Modifier.size(32.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.KeyboardArrowLeft,
-                                            contentDescription = "Back",
-                                            tint = hInk
-                                        )
-                                    }
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                }
-                                Text(
-                                    text = when (settingsSubView) {
-                                        SettingsSubView.TRANSLATION -> "Choose Translation"
-                                        SettingsSubView.ARABIC_FONT -> "Choose Arabic Font"
-                                        else -> "Settings"
-                                    },
-                                    fontFamily = fontFamilyUi,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 18.sp,
-                                    color = hInk
-                                )
-                            }
-                            IconButton(
-                                onClick = { showFontSettingsDialog = false },
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                Icon(imageVector = NurIcons.X, contentDescription = "Close settings", tint = hInkMid)
-                            }
-                        }
-
-                        Divider(color = hBorderColor, thickness = 1.dp)
-
-                        // Content
-                        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                            if (settingsSubView == SettingsSubView.TRANSLATION) {
-                                val translationsList = listOf(
-                                    85 to "English - M.A.S. Abdel Haleem",
-                                    20 to "English - Saheeh International",
-                                    22 to "English - A. Yusuf Ali",
-                                    84 to "English - Mufti Taqi Usmani",
-                                    32 to "Hausa - Abubakar Mahmoud Gumi",
-                                    234 to "Urdu - Fatah Muhammad Jalandhari"
-                                )
-                                LazyColumn(modifier = Modifier.fillMaxSize()) {
-                                    items(translationsList) { (id, name) ->
-                                        val isSelected = id == activeTranslationId
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .clickable {
-                                                    viewModel.setTranslationId(id)
-                                                    settingsSubView = SettingsSubView.ROOT
-                                                }
-                                                .then(
-                                                    if (isSelected) Modifier.background(hGoldSoft)
-                                                    else Modifier
-                                                )
-                                                .padding(vertical = 14.dp, horizontal = 16.dp),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Text(
-                                                name,
-                                                fontFamily = fontFamilyUi,
-                                                fontSize = 14.sp,
-                                                color = if (isSelected) hGold else hInk,
-                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                                            )
-                                            if (isSelected) {
-                                                Icon(
-                                                    imageVector = Icons.Default.Check,
-                                                    contentDescription = "Selected",
-                                                    tint = hGold,
-                                                    modifier = Modifier.size(18.dp)
-                                                )
-                                            }
-                                        }
-                                        Divider(color = hBorderColor, thickness = 0.5.dp)
-                                    }
-                                }
-                            } else if (settingsSubView == SettingsSubView.ARABIC_FONT) {
-                                val fontsList = listOf(
-                                    "KFGQPC Hafs",
-                                    "Uthman Taha Naskh",
-                                    "Amiri Quran",
-                                    "Noto Naskh Arabic",
-                                    "Scheherazade New",
-                                    "System Default"
-                                )
-                                LazyColumn(modifier = Modifier.fillMaxSize()) {
-                                    items(fontsList) { fontName ->
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .clickable {
-                                                    viewModel.setSelectedArabicFontName(fontName)
-                                                    settingsSubView = SettingsSubView.ROOT
-                                                }
-                                                .padding(vertical = 14.dp, horizontal = 16.dp),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Text(fontName, fontFamily = fontFamilyUi, fontSize = 14.sp, color = hInk)
-                                        }
-                                        Divider(color = hBorderColor, thickness = 0.5.dp)
-                                    }
-                                }
-                            } else {
-                                // Root settings
-                                Column(modifier = Modifier.fillMaxSize()) {
-                                    // Tab selector (General / Reading / Data)
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(16.dp)
-                                            .background(hSurface, RoundedCornerShape(12.dp))
-                                            .padding(4.dp)
-                                    ) {
-                                        val tabs = listOf("general" to "General", "reading" to "Reading", "data" to "Data")
-                                        tabs.forEach { (tabId, label) ->
-                                            Box(
-                                                modifier = Modifier
-                                                    .weight(1f)
-                                                    .clip(RoundedCornerShape(8.dp))
-                                                    .background(if (settingsActiveTab == tabId) hGold else Color.Transparent)
-                                                    .clickable { settingsActiveTab = tabId }
-                                                    .padding(vertical = 8.dp),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                Text(
-                                                    text = label,
-                                                    color = if (settingsActiveTab == tabId) Color.White else hInkMid,
-                                                    fontWeight = FontWeight.Bold,
-                                                    fontSize = 12.sp,
-                                                    fontFamily = fontFamilyUi
-                                                )
-                                            }
-                                        }
-                                    }
-
-                                    Column(
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 16.dp)
-                                    ) {
-                                        if (settingsActiveTab == "general") {
-                                            Text("Appearance", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = hInkMuted, modifier = Modifier.padding(vertical = 8.dp))
-                                            Row(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .background(hSurface, RoundedCornerShape(12.dp))
-                                                    .padding(4.dp)
-                                            ) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .weight(1f)
-                                                        .clip(RoundedCornerShape(8.dp))
-                                                        .background(if (!isDarkThemeGlobal) hGoldSoft else Color.Transparent)
-                                                        .clickable { isDarkThemeGlobal = false; themePrefs.edit().putBoolean("is_dark_theme", false).apply() }
-                                                        .padding(vertical = 8.dp),
-                                                    contentAlignment = Alignment.Center
-                                                ) {
-                                                    Text("Light", color = if (!isDarkThemeGlobal) hGold else hInkMid, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                                }
-                                                Box(
-                                                    modifier = Modifier
-                                                        .weight(1f)
-                                                        .clip(RoundedCornerShape(8.dp))
-                                                        .background(if (isDarkThemeGlobal) hGoldSoft else Color.Transparent)
-                                                        .clickable { isDarkThemeGlobal = true; themePrefs.edit().putBoolean("is_dark_theme", true).apply() }
-                                                        .padding(vertical = 8.dp),
-                                                    contentAlignment = Alignment.Center
-                                                ) {
-                                                    Text("Dark", color = if (isDarkThemeGlobal) hGold else hInkMid, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                                }
-                                            }
-
-                                            Spacer(modifier = Modifier.height(16.dp))
-                                            Text("Essentials", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = hInkMuted, modifier = Modifier.padding(vertical = 8.dp))
-                                            Column(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .background(hSurface, RoundedCornerShape(12.dp))
-                                            ) {
-                                                SettingsSelectionRow(
-                                                    label = "Translation",
-                                                    value = "English / Other translations"
-                                                ) {
-                                                    settingsSubView = SettingsSubView.TRANSLATION
-                                                }
-                                            }
-                                        }
-
-                                        if (settingsActiveTab == "reading") {
-                                            Text("Text Preferences", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = hInkMuted, modifier = Modifier.padding(vertical = 8.dp))
-                                            Column(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .background(hSurface, RoundedCornerShape(12.dp))
-                                                    .padding(8.dp),
-                                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                                            ) {
-                                                SettingsSelectionRow(
-                                                    label = "Arabic Font",
-                                                    value = selectedArabicFontName,
-                                                    onClick = { settingsSubView = SettingsSubView.ARABIC_FONT }
-                                                )
-                                                Divider(color = hBorderColor, thickness = 0.5.dp)
-                                                Row(
-                                                    modifier = Modifier.fillMaxWidth(),
-                                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                                    verticalAlignment = Alignment.CenterVertically
-                                                ) {
-                                                    Text("Translation Mode", fontSize = 13.sp, color = hInk)
-                                                    Switch(
-                                                        checked = isTranslationEnabled,
-                                                        onCheckedChange = { viewModel.toggleTranslation() },
-                                                        colors = SwitchDefaults.colors(checkedThumbColor = hGold, checkedTrackColor = hGoldSoft)
-                                                    )
-                                                }
-                                                Row(
-                                                    modifier = Modifier.fillMaxWidth(),
-                                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                                    verticalAlignment = Alignment.CenterVertically
-                                                ) {
-                                                    Text(
-                                                        "Tajweed Color Rules" + if (!currentMushaf.supportsTajweedToggle) " (N/A for IndoPak)" else "",
-                                                        fontSize = 13.sp,
-                                                        color = if (!currentMushaf.supportsTajweedToggle) hInkMuted else hInk
-                                                    )
-                                                    Switch(
-                                                        checked = isTajweedEffective,
-                                                        enabled = currentMushaf.supportsTajweedToggle,
-                                                        onCheckedChange = { viewModel.toggleTajweed() },
-                                                        colors = SwitchDefaults.colors(checkedThumbColor = hGold, checkedTrackColor = hGoldSoft)
-                                                    )
-                                                }
-                                                Row(
-                                                    modifier = Modifier.fillMaxWidth(),
-                                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                                    verticalAlignment = Alignment.CenterVertically
-                                                ) {
-                                                    Text("Memorize Mode", fontSize = 13.sp, color = hInk)
-                                                    Switch(
-                                                        checked = isMemorizeModeEnabled,
-                                                        onCheckedChange = { viewModel.toggleMemorizeMode() },
-                                                        colors = SwitchDefaults.colors(checkedThumbColor = hGold, checkedTrackColor = hGoldSoft)
-                                                    )
-                                                }
-                                            }
-
-                                            Spacer(modifier = Modifier.height(16.dp))
-                                            Text("Text Sizes", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = hInkMuted, modifier = Modifier.padding(vertical = 8.dp))
-                                            Column(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .background(hSurface, RoundedCornerShape(12.dp))
-                                                    .padding(12.dp),
-                                                verticalArrangement = Arrangement.spacedBy(12.dp)
-                                            ) {
-                                                Column {
-                                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                                        Text("Arabic Size", fontSize = 13.sp, color = hInk)
-                                                        Text("${(arabicFontScale * 100).toInt()}%", fontSize = 12.sp, color = hInkMuted)
-                                                    }
-                                                    Slider(
-                                                        value = arabicFontScale,
-                                                        onValueChange = { viewModel.updateArabicFontScale(it - arabicFontScale) },
-                                                        valueRange = 0.5f..3.0f,
-                                                        colors = SliderDefaults.colors(thumbColor = hGold, activeTrackColor = hGold)
-                                                    )
-                                                }
-                                                Column {
-                                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                                        Text("Translation Size", fontSize = 13.sp, color = hInk)
-                                                        Text("${(translationFontScale * 100).toInt()}%", fontSize = 12.sp, color = hInkMuted)
-                                                    }
-                                                    Slider(
-                                                        value = translationFontScale,
-                                                        onValueChange = { viewModel.updateTranslationFontScale(it - translationFontScale) },
-                                                        valueRange = 0.5f..3.0f,
-                                                        colors = SliderDefaults.colors(thumbColor = hGold, activeTrackColor = hGold)
-                                                    )
-                                                }
-                                            }
-                                        }
-
-                                        if (settingsActiveTab == "data") {
-                                            Text("Offline Audio Downloads", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = hInkMuted, modifier = Modifier.padding(vertical = 8.dp))
-                                            Column(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .background(hSurface, RoundedCornerShape(12.dp))
-                                                    .padding(16.dp),
-                                                horizontalAlignment = Alignment.CenterHorizontally
-                                            ) {
-                                                Text("Local Offline Audio connected.", fontSize = 13.sp, color = hInk, textAlign = TextAlign.Center)
-                                                Spacer(modifier = Modifier.height(12.dp))
-                                                Button(
-                                                    onClick = {},
-                                                    colors = ButtonDefaults.buttonColors(containerColor = hGold),
-                                                    shape = RoundedCornerShape(8.dp)
-                                                ) {
-                                                    Text("Folder Connected", color = Color.White)
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
             if (showNavigationDialog) {
                 SurahNavigationModal(
                     isOpen = showNavigationDialog,
@@ -2223,7 +1874,7 @@ fun SurahHeader(
             ) {
                 Icon(
                     imageVector = if (isPlaying) NurIcons.PauseFilled else NurIcons.PlayFilled,
-                    contentDescription = if (isPlaying) "Pause Audio" else "Play Audio",
+                    contentDescription = if (isPlaying) stringResource(R.string.ui_pause_audio_585e4b) else stringResource(R.string.ui_play_audio_1edc94),
                     tint = Color.White,
                     modifier = Modifier.size(16.dp)
                 )
@@ -2249,7 +1900,7 @@ fun SurahHeader(
                     } else {
                         Icon(
                             imageVector = NurIcons.Download,
-                            contentDescription = "Download Audio",
+                            contentDescription = stringResource(R.string.ui_download_audio_9b36f9),
                             tint = hInkMid,
                             modifier = Modifier.size(18.dp)
                         )
@@ -2278,7 +1929,7 @@ fun SurahHeader(
                 Spacer(modifier = Modifier.width(8.dp))
                 TextButton(onClick = onRetryClick) {
                     Text(
-                        text = "Retry",
+                        text = stringResource(R.string.ui_retry_9f5cd8),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         color = hRed,
@@ -2305,7 +1956,7 @@ fun SurahEmptyState(
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "No ayahs available",
+            text = stringResource(R.string.ui_no_ayahs_available_947543),
             fontFamily = fontFamilyUi,
             fontWeight = FontWeight.Bold,
             fontSize = 16.sp,
@@ -2314,7 +1965,7 @@ fun SurahEmptyState(
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "Check your connection and try again.",
+            text = stringResource(R.string.ui_check_your_connection_and_try_again_563862),
             fontFamily = fontFamilyBody,
             fontSize = 13.sp,
             color = hInkMid,
@@ -2323,7 +1974,7 @@ fun SurahEmptyState(
         Spacer(modifier = Modifier.height(12.dp))
         TextButton(onClick = onRetry) {
             Text(
-                text = "Retry",
+                text = stringResource(R.string.ui_retry_9f5cd8),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 color = hGold,
@@ -2394,7 +2045,7 @@ fun PageDivider(pageNumber: Int) {
                 .padding(horizontal = 12.dp, vertical = 4.dp)
         ) {
             Text(
-                text = "Page $pageNumber",
+                text = stringResource(R.string.ui_page_1_s_6654d7, pageNumber),
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = hGold,
@@ -2455,7 +2106,7 @@ fun VerseItem(
         isFootnoteLoading = false
     }
 
-    val playScale by animateFloatAsState(if (isCurrentlyPlaying) 1.01f else 1f, label = "playScale")
+    val playScale by animateFloatAsState(if (isCurrentlyPlaying) 1.01f else 1f, label = stringResource(R.string.ui_playscale_0d7870))
 
     Column(
         modifier = Modifier
@@ -2504,21 +2155,21 @@ fun VerseItem(
                     VerseActionIcon(
                         icon = NurIcons.CheckCircle2,
                         tint = if (isMemorized) hGold else hInkMuted,
-                        label = "Toggle Memorized",
+                        label = stringResource(R.string.ui_toggle_memorized_4d8e1c),
                         onClick = onToggleMemorized
                     )
                     VerseActionIcon(
                         icon = if (isRevealed) NurIcons.EyeOff else NurIcons.Eye,
                         tint = if (isRevealed) hGold else hInkMuted,
-                        label = "Toggle Reveal",
+                        label = stringResource(R.string.ui_toggle_reveal_22f7ea),
                         onClick = { isRevealed = !isRevealed }
                     )
                 }
-                VerseActionIcon(icon = NurIcons.Plus, tint = hInkMuted, label = "Add to Collection", onClick = onAddToCollection)
+                VerseActionIcon(icon = NurIcons.Plus, tint = hInkMuted, label = stringResource(R.string.ui_add_to_collection_c6f689), onClick = onAddToCollection)
                 VerseActionIcon(
                     icon = if (isBookmarked) NurIcons.BookmarkFilled else NurIcons.Bookmark,
                     tint = if (isBookmarked) hGold else hInkMuted,
-                    label = "Bookmark Verse",
+                    label = stringResource(R.string.ui_bookmark_verse_3ff4ef),
                     onClick = onBookmarkClick
                 )
                 Box(
@@ -2531,7 +2182,7 @@ fun VerseItem(
                 ) {
                     Icon(
                         imageVector = if (isCurrentlyPlaying) NurIcons.PauseFilled else NurIcons.PlayFilled,
-                        contentDescription = if (isCurrentlyPlaying) "Playing" else "Play this Ayah",
+                        contentDescription = if (isCurrentlyPlaying) stringResource(R.string.ui_playing_298c39) else stringResource(R.string.ui_play_this_ayah_b64054),
                         tint = if (isCurrentlyPlaying) hGold else hInkMuted,
                         modifier = Modifier.size(18.dp)
                     )
@@ -2539,11 +2190,11 @@ fun VerseItem(
                 VerseActionIcon(
                     icon = NurIcons.Info,
                     tint = if (isTafsirOpen) hGold else hInkMuted,
-                    label = "Read Tafsir",
+                    label = stringResource(R.string.ui_read_tafsir_641fb5),
                     onClick = onTafsirClick
                 )
                 if (showShareAction) {
-                    VerseActionIcon(icon = NurIcons.Share2, tint = hInkMuted, label = "Share verse", onClick = onShareClick)
+                    VerseActionIcon(icon = NurIcons.Share2, tint = hInkMuted, label = stringResource(R.string.ui_share_verse_e2c46c), onClick = onShareClick)
                 }
             }
         }
@@ -2655,7 +2306,7 @@ fun VerseItem(
             }
             if (isHidden) {
                 Text(
-                    text = "Tap to reveal text",
+                    text = stringResource(R.string.ui_tap_to_reveal_text_4b1e11),
                     fontSize = 12.sp,
                     color = hInkMuted,
                     modifier = Modifier
@@ -2679,7 +2330,7 @@ fun VerseItem(
                         .clickable { isRevealed = true }
                         .padding(horizontal = 16.dp, vertical = 12.dp)
                 ) {
-                    Text("Tap to reveal translation & meaning", fontSize = 13.sp, color = hInkMuted)
+                    Text(stringResource(R.string.ui_tap_to_reveal_translation_meaning_e542b7), fontSize = 13.sp, color = hInkMuted)
                 }
             } else {
                 TranslationText(
@@ -2763,7 +2414,7 @@ private fun FootnoteCard(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Footnote",
+                    text = stringResource(R.string.ui_footnote_40e31a),
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 15.sp,
                     color = hInk
@@ -2772,7 +2423,7 @@ private fun FootnoteCard(
             Spacer(modifier = Modifier.height(8.dp))
             if (isLoading) {
                 Text(
-                    text = "Loading...",
+                    text = stringResource(R.string.ui_loading_b04ba4),
                     fontSize = 14.sp,
                     color = hInkMuted
                 )
@@ -2790,7 +2441,7 @@ private fun FootnoteCard(
         }
         Icon(
             imageVector = NurIcons.X,
-            contentDescription = "Close footnote",
+            contentDescription = stringResource(R.string.ui_close_footnote_cca688),
             tint = hInkMuted,
             modifier = Modifier
                 .size(16.dp)
@@ -2930,7 +2581,7 @@ fun CollectionModal(
                         }
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
-                            text = "Save to Collection",
+                            text = stringResource(R.string.ui_save_to_collection_2998ab),
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             color = hInk,
@@ -2947,7 +2598,7 @@ fun CollectionModal(
                     ) {
                         Icon(
                             imageVector = NurIcons.X,
-                            contentDescription = "Close",
+                            contentDescription = stringResource(R.string.ui_close_bbfa77),
                             tint = hInkMid,
                             modifier = Modifier.size(18.dp)
                         )
@@ -3018,8 +2669,8 @@ fun CollectionModal(
                                 modifier = Modifier.size(32.dp)
                             )
                             Spacer(modifier = Modifier.height(12.dp))
-                            Text(text = "No collections yet", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = hInk)
-                            Text(text = "Create your first one below", fontSize = 13.sp, color = hInkMuted)
+                            Text(text = stringResource(R.string.ui_no_collections_yet_a5c62e), fontSize = 14.sp, fontWeight = FontWeight.Medium, color = hInk)
+                            Text(text = stringResource(R.string.ui_create_your_first_one_below_14bd9c), fontSize = 13.sp, color = hInkMuted)
                         }
                     }
                 }
@@ -3035,7 +2686,7 @@ fun CollectionModal(
 
                 // New collection
                 Text(
-                    text = "NEW COLLECTION",
+                    text = stringResource(R.string.ui_new_collection_60c798),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = hInkMuted,
@@ -3047,7 +2698,7 @@ fun CollectionModal(
                     OutlinedTextField(
                         value = newCollectionName,
                         onValueChange = { newCollectionName = it },
-                        placeholder = { Text("Enter name...", color = hInkMuted, fontSize = 14.sp) },
+                        placeholder = { Text(stringResource(R.string.ui_enter_name_d510b5), color = hInkMuted, fontSize = 14.sp) },
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
@@ -3074,7 +2725,7 @@ fun CollectionModal(
                     ) {
                         Icon(
                             imageVector = NurIcons.Plus,
-                            contentDescription = "Create collection",
+                            contentDescription = stringResource(R.string.ui_create_collection_be9ad1),
                             tint = if (newCollectionName.isNotBlank()) Color.White else hInkMuted,
                             modifier = Modifier.size(20.dp)
                         )
@@ -3126,7 +2777,7 @@ fun SurahNavButtons(
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
-                        text = "Surah $nextName",
+                        text = stringResource(R.string.ui_surah_1_s_ffa393, nextName),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                         color = hInk,
@@ -3157,7 +2808,7 @@ fun SurahNavButtons(
                     horizontalArrangement = Arrangement.End
                 ) {
                     Text(
-                        text = "Surah $prevName",
+                        text = stringResource(R.string.ui_surah_1_s_ffa393, prevName),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                         color = hInk,
@@ -3394,7 +3045,7 @@ fun WordTranslationTooltipDrawer(
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = "Translation not downloaded",
+                    text = stringResource(R.string.ui_translation_not_downloaded_98f935),
                     fontSize = 15.sp,
                     color = hInkMuted,
                     textAlign = TextAlign.Center,
@@ -3404,7 +3055,7 @@ fun WordTranslationTooltipDrawer(
                     if (isOffline) {
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Connect once to download, then works offline",
+                            text = stringResource(R.string.ui_connect_once_to_download_then_works_offline_a61e28),
                             fontSize = 13.sp,
                             color = hInkMuted,
                             textAlign = TextAlign.Center,
@@ -3417,7 +3068,7 @@ fun WordTranslationTooltipDrawer(
                         colors = ButtonDefaults.buttonColors(containerColor = hGold),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text("Download word translations", color = Color.White, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.ui_download_word_translations_e948f0), color = Color.White, fontWeight = FontWeight.Bold)
                     }
                 }
             } else {
@@ -3439,7 +3090,7 @@ fun WordTranslationTooltipDrawer(
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = word.translation ?: "Translation not available",
+                    text = word.translation ?: stringResource(R.string.ui_translation_not_available_3b92d0),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = hTeal,
@@ -3478,7 +3129,7 @@ fun TafsirLoadingOverlay() {
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "Loading Tafsir...",
+                    text = stringResource(R.string.ui_loading_tafsir_6a2bd8),
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Medium,
                     color = hInkMuted,
@@ -3531,7 +3182,7 @@ fun TafsirErrorOverlay(
                     colors = ButtonDefaults.buttonColors(containerColor = hGold),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("Dismiss", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.ui_dismiss_70afe9), color = Color.White, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -3576,7 +3227,7 @@ fun TafsirBottomSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Tafsir (Ayah $verseNumber)",
+                    text = stringResource(R.string.ui_tafsir_ayah_1_s_0006aa, verseNumber),
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     color = hInk,
@@ -3592,7 +3243,7 @@ fun TafsirBottomSheet(
                 ) {
                     Icon(
                         imageVector = NurIcons.X,
-                        contentDescription = "Close Tafsir",
+                        contentDescription = stringResource(R.string.ui_close_tafsir_460d0b),
                         tint = hInkMid,
                         modifier = Modifier.size(18.dp)
                     )
@@ -3633,12 +3284,6 @@ fun TafsirBottomSheet(
             Spacer(modifier = Modifier.height(32.dp))
         }
     }
-}
-
-enum class SettingsSubView {
-    ROOT,
-    TRANSLATION,
-    ARABIC_FONT
 }
 
 @Composable
@@ -3956,7 +3601,7 @@ fun SurahTourDialog(
         dismissButton = {
             if (currentStep > 0) {
                 TextButton(onClick = { currentStep-- }) {
-                    Text("Back", fontFamily = fontFamilyUi, color = hInkMid)
+                    Text(stringResource(R.string.ui_back_b52b36), fontFamily = fontFamilyUi, color = hInkMid)
                 }
             }
         },
@@ -4025,7 +3670,7 @@ private fun SaukaCompletionBanner(
                 )
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
-                    text = "Alhamdulillah!",
+                    text = stringResource(R.string.ui_alhamdulillah_48963f),
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
@@ -4033,7 +3678,7 @@ private fun SaukaCompletionBanner(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "You've reached the end of your assigned reading.",
+                    text = stringResource(R.string.ui_you_ve_reached_the_end_of_your_assigned_reading_e24a80),
                     fontSize = 13.sp,
                     color = Color.White.copy(alpha = 0.9f),
                     textAlign = TextAlign.Center
@@ -4055,7 +3700,7 @@ private fun SaukaCompletionBanner(
                         } else {
                             Icon(imageVector = NurIcons.Check, contentDescription = null, tint = hTeal, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text(text = "Mark Complete", color = hTeal, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Text(text = stringResource(R.string.ui_mark_complete_a3098b), color = hTeal, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         }
                     }
                     OutlinedButton(
@@ -4074,7 +3719,7 @@ private fun SaukaCompletionBanner(
                     ) {
                         Icon(imageVector = NurIcons.Share2, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text(text = "Share", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        Text(text = stringResource(R.string.ui_share_09ca55), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     }
                 }
             }
@@ -4144,7 +3789,7 @@ fun SurahNavigationModal(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Navigation",
+                        text = stringResource(R.string.ui_navigation_cf03cf),
                         fontFamily = fontFamilyUi,
                         fontWeight = FontWeight.Bold,
                         fontSize = 20.sp,
@@ -4156,7 +3801,7 @@ fun SurahNavigationModal(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
-                            contentDescription = "Close",
+                            contentDescription = stringResource(R.string.ui_close_bbfa77),
                             tint = hInkMuted
                         )
                     }
@@ -4182,7 +3827,7 @@ fun SurahNavigationModal(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(NurIcons.BookOpen, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Surah", fontFamily = fontFamilyUi, fontWeight = FontWeight.SemiBold)
+                                Text(stringResource(R.string.ui_surah_a9f7c5), fontFamily = fontFamilyUi, fontWeight = FontWeight.SemiBold)
                             }
                         },
                         selectedContentColor = hGold,
@@ -4195,7 +3840,7 @@ fun SurahNavigationModal(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(NurIcons.Hash, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Ayah", fontFamily = fontFamilyUi, fontWeight = FontWeight.SemiBold)
+                                Text(stringResource(R.string.ui_ayah_4c8374), fontFamily = fontFamilyUi, fontWeight = FontWeight.SemiBold)
                             }
                         },
                         selectedContentColor = hGold,
@@ -4208,7 +3853,7 @@ fun SurahNavigationModal(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(NurIcons.Layers3, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Page", fontFamily = fontFamilyUi, fontWeight = FontWeight.SemiBold)
+                                Text(stringResource(R.string.ui_page_fb0627), fontFamily = fontFamilyUi, fontWeight = FontWeight.SemiBold)
                             }
                         },
                         selectedContentColor = hGold,
@@ -4226,7 +3871,7 @@ fun SurahNavigationModal(
                                 onValueChange = { searchQuery = it },
                                 placeholder = {
                                     Text(
-                                        text = "Search Surah by name or number...",
+                                        text = stringResource(R.string.ui_search_surah_by_name_or_number_09b8a0),
                                         fontFamily = fontFamilyUi,
                                         fontSize = 13.sp,
                                         maxLines = 1,
@@ -4238,7 +3883,7 @@ fun SurahNavigationModal(
                                 trailingIcon = {
                                     if (searchQuery.isNotEmpty()) {
                                         IconButton(onClick = { searchQuery = "" }) {
-                                            Icon(Icons.Default.Close, contentDescription = "Clear", tint = hInkMuted)
+                                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.ui_clear_719ea3), tint = hInkMuted)
                                         }
                                     }
                                 },
@@ -4301,7 +3946,7 @@ fun SurahNavigationModal(
                                                     color = if (isCurrent) hGold else hInk
                                                 )
                                                 Text(
-                                                    text = "${chapter.versesCount} verses",
+                                                    text = stringResource(R.string.ui_1_s_verses_5ccd18, chapter.versesCount),
                                                     fontFamily = fontFamilyUi,
                                                     fontSize = 12.sp,
                                                     color = hInkMuted
@@ -4326,7 +3971,7 @@ fun SurahNavigationModal(
                                                 .padding(32.dp)
                                         ) {
                                             Text(
-                                                text = "No Surah found.",
+                                                text = stringResource(R.string.ui_no_surah_found_8f507d),
                                                 fontFamily = fontFamilyUi,
                                                 color = hInkMuted,
                                                 fontSize = 14.sp
@@ -4343,7 +3988,7 @@ fun SurahNavigationModal(
                                 .fillMaxWidth()
                                 .padding(horizontal = 20.dp, vertical = 8.dp)
                         ) {
-                            Text("Select Surah", fontFamily = fontFamilyUi, fontSize = 13.sp, color = hInkMuted)
+                            Text(stringResource(R.string.ui_select_surah_97d36a), fontFamily = fontFamilyUi, fontSize = 13.sp, color = hInkMuted)
                             Spacer(modifier = Modifier.height(4.dp))
                             
                             var expandedDropdown by remember { mutableStateOf(false) }
@@ -4377,7 +4022,7 @@ fun SurahNavigationModal(
                                                     horizontalArrangement = Arrangement.SpaceBetween,
                                                     modifier = Modifier.fillMaxWidth()
                                                 ) {
-                                                    Text("${chap.id}. ${chap.nameSimple}", fontFamily = fontFamilyUi)
+                                                    Text(stringResource(R.string.ui_1_s_2_s_8f71df, chap.id, chap.nameSimple), fontFamily = fontFamilyUi)
                                                     Text(chap.nameArabic, fontFamily = fontFamilyArabic, color = hGold)
                                                 }
                                             },
@@ -4392,13 +4037,13 @@ fun SurahNavigationModal(
 
                             Spacer(modifier = Modifier.height(16.dp))
 
-                            Text("Ayah Number", fontFamily = fontFamilyUi, fontSize = 13.sp, color = hInkMuted)
+                            Text(stringResource(R.string.ui_ayah_number_957df1), fontFamily = fontFamilyUi, fontSize = 13.sp, color = hInkMuted)
                             Spacer(modifier = Modifier.height(4.dp))
 
                             OutlinedTextField(
                                 value = ayahInput,
                                 onValueChange = { ayahInput = it.filter { c -> c.isDigit() } },
-                                placeholder = { Text("e.g. 255", fontFamily = fontFamilyUi) },
+                                placeholder = { Text(stringResource(R.string.ui_e_g_255_93e9b1), fontFamily = fontFamilyUi) },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 singleLine = true,
                                 shape = RoundedCornerShape(12.dp),
@@ -4410,7 +4055,7 @@ fun SurahNavigationModal(
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "Verses 1 - $maxAyahs",
+                                text = stringResource(R.string.ui_verses_1_1_s_d415ed, maxAyahs),
                                 fontFamily = fontFamilyUi,
                                 fontSize = 12.sp,
                                 color = hInkMuted
@@ -4430,7 +4075,7 @@ fun SurahNavigationModal(
                                     .fillMaxWidth()
                                     .height(48.dp)
                             ) {
-                                Text("Go to Ayah", fontFamily = fontFamilyUi, fontWeight = FontWeight.Bold, color = Color.White)
+                                Text(stringResource(R.string.ui_go_to_ayah_ee520e), fontFamily = fontFamilyUi, fontWeight = FontWeight.Bold, color = Color.White)
                             }
                         }
                     }
@@ -4440,13 +4085,13 @@ fun SurahNavigationModal(
                                 .fillMaxWidth()
                                 .padding(horizontal = 20.dp, vertical = 8.dp)
                         ) {
-                            Text("Page Number", fontFamily = fontFamilyUi, fontSize = 13.sp, color = hInkMuted)
+                            Text(stringResource(R.string.ui_page_number_579d4e), fontFamily = fontFamilyUi, fontSize = 13.sp, color = hInkMuted)
                             Spacer(modifier = Modifier.height(4.dp))
 
                             OutlinedTextField(
                                 value = pageInput,
                                 onValueChange = { pageInput = it.filter { c -> c.isDigit() } },
-                                placeholder = { Text("e.g. 293", fontFamily = fontFamilyUi) },
+                                placeholder = { Text(stringResource(R.string.ui_e_g_293_9e806f), fontFamily = fontFamilyUi) },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 singleLine = true,
                                 shape = RoundedCornerShape(12.dp),
@@ -4458,7 +4103,7 @@ fun SurahNavigationModal(
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "Pages 1 - 604",
+                                text = stringResource(R.string.ui_pages_1_604_86192b),
                                 fontFamily = fontFamilyUi,
                                 fontSize = 12.sp,
                                 color = hInkMuted
@@ -4478,7 +4123,7 @@ fun SurahNavigationModal(
                                     .fillMaxWidth()
                                     .height(48.dp)
                             ) {
-                                Text("Go to Page", fontFamily = fontFamilyUi, fontWeight = FontWeight.Bold, color = Color.White)
+                                Text(stringResource(R.string.ui_go_to_page_af1382), fontFamily = fontFamilyUi, fontWeight = FontWeight.Bold, color = Color.White)
                             }
                         }
                     }

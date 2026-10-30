@@ -1,5 +1,7 @@
 package com.nur.quran.ui.components.planner
 
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -37,28 +39,28 @@ fun PlannerHistoryDialog(
             Column {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     if (selected != null) IconButton(onClick = { selectedId = null }) {
-                        Icon(NurIcons.ArrowLeft, "Back to planner history", tint = hInk)
+                        Icon(NurIcons.ArrowLeft, stringResource(R.string.planner_back_history), tint = hInk)
                     }
-                    Text(if (selected == null) "Planner history" else "Plan details", modifier = Modifier.weight(1f).padding(start = 8.dp),
+                    Text(if (selected == null) stringResource(R.string.planner_planner_history) else stringResource(R.string.planner_plan_details), modifier = Modifier.weight(1f).padding(start = 8.dp),
                         fontFamily = fontFamilyUi, fontWeight = FontWeight.SemiBold, fontSize = 20.sp, color = hInk)
-                    IconButton(onClick = onDismiss) { Icon(NurIcons.X, "Close history", tint = hInkMid) }
+                    IconButton(onClick = onDismiss) { Icon(NurIcons.X, stringResource(R.string.planner_close_history), tint = hInkMid) }
                 }
                 Divider(color = hBoneDark)
                 LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     if (selected == null) {
                         item {
-                            Text("Your reading journey", fontFamily = fontFamilyUi, fontSize = 23.sp, color = hInk)
-                            Text("${summaries.values.count { it.completed }} completed plans · ${PlannerHistory.duration(summaries.values.sumOf { it.totalSeconds })} recorded",
+                            Text(stringResource(R.string.planner_reading_journey), fontFamily = fontFamilyUi, fontSize = 23.sp, color = hInk)
+                            Text(stringResource(R.string.planner_history_totals , summaries.values.count { it.completed }, plannerDuration(summaries.values.sumOf { it.totalSeconds })),
                                 fontFamily = fontFamilyBody, fontSize = 13.sp, color = hInkMid, modifier = Modifier.padding(top = 6.dp))
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                HistoryFilter("All past plans", !completedOnly) { completedOnly = false }
-                                HistoryFilter("Completed", completedOnly) { completedOnly = true }
+                                HistoryFilter(stringResource(R.string.planner_all_past_plans), !completedOnly) { completedOnly = false }
+                                HistoryFilter(stringResource(R.string.planner_completed), completedOnly) { completedOnly = true }
                             }
                         }
                         val visible = plans.filter { !completedOnly || summaries[it.id]?.completed == true }
                         if (visible.isEmpty()) item {
-                            Text("No completed plans yet", fontFamily = fontFamilyUi, fontSize = 18.sp, color = hInk)
-                            Text("Finish a plan to see its reading time, progress and reflections here. Archived plans are kept here too.",
+                            Text(stringResource(R.string.planner_no_completed), fontFamily = fontFamilyUi, fontSize = 18.sp, color = hInk)
+                            Text(stringResource(R.string.planner_history_empty),
                                 fontFamily = fontFamilyBody, fontSize = 14.sp, color = hInkMid)
                         }
                         items(visible, key = { it.id }) { plan ->
@@ -66,15 +68,15 @@ fun PlannerHistoryDialog(
                             Surface(shape = RoundedCornerShape(8.dp), color = hWhite, border = BorderStroke(1.dp, hBoneDark),
                                 modifier = Modifier.fillMaxWidth().clickable { selectedId = plan.id }) {
                                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Text(if (summary.completed) "COMPLETED" else "ENDED EARLY", fontFamily = fontFamilyMono, fontSize = 10.sp, color = plannerAccentInk)
+                                    Text(if (summary.completed) stringResource(R.string.planner_completed_upper) else stringResource(R.string.planner_ended_early), fontFamily = fontFamilyMono, fontSize = 10.sp, color = plannerAccentInk)
                                     Text(plan.title, fontFamily = fontFamilyUi, fontSize = 18.sp, color = hInk)
-                                    Text("${summary.completedDays}/${summary.totalDays} days · ${summary.pagesRead}/${summary.totalPages} pages",
+                                    Text(stringResource(R.string.planner_history_progress , summary.completedDays, summary.totalDays, summary.pagesRead, summary.totalPages),
                                         fontFamily = fontFamilyBody, fontSize = 13.sp, color = hInkMid)
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Icon(NurIcons.Clock, null, modifier = Modifier.size(16.dp), tint = hGold)
-                                        Text(if (summary.totalSeconds > 0) PlannerHistory.duration(summary.totalSeconds) + " recorded" else "No reading time recorded",
+                                        Text(if (summary.totalSeconds > 0) plannerDuration(summary.totalSeconds) + stringResource(R.string.planner_time_recorded) else stringResource(R.string.planner_no_time),
                                             modifier = Modifier.weight(1f).padding(start = 8.dp), fontFamily = fontFamilyBody, fontSize = 13.sp, color = hInk)
-                                        Icon(NurIcons.ChevronRight, "View plan history", tint = hInkMid, modifier = Modifier.size(18.dp))
+                                        Icon(NurIcons.ChevronRight, stringResource(R.string.planner_view_history), tint = hInkMid, modifier = Modifier.size(18.dp))
                                     }
                                 }
                             }
@@ -83,44 +85,44 @@ fun PlannerHistoryDialog(
                         val plan = selected
                         val summary = summaries.getValue(plan.id)
                         item {
-                            Text(if (summary.completed) "COMPLETED PLAN" else "ENDED PLAN", fontFamily = fontFamilyMono, fontSize = 10.sp, color = plannerAccentInk)
+                            Text(if (summary.completed) stringResource(R.string.planner_completed_plan) else stringResource(R.string.planner_ended_plan), fontFamily = fontFamilyMono, fontSize = 10.sp, color = plannerAccentInk)
                             Text(plan.title, fontFamily = fontFamilyUi, fontSize = 25.sp, color = hInk, modifier = Modifier.padding(top = 8.dp))
-                            Text("Started ${PlannerHistory.dateLabel(plan.startDate)}", fontFamily = fontFamilyBody, fontSize = 13.sp, color = hInkMid)
-                            summary.completedOn?.let { Text("Completed ${PlannerHistory.dateLabel(it)}", color = hInkMid, fontSize = 13.sp) }
-                            plan.archivedAt?.take(10)?.let { Text("Archived ${PlannerHistory.dateLabel(it)}", color = hInkMid, fontSize = 13.sp) }
-                            Text(PlannerHistory.duration(summary.totalSeconds), fontFamily = fontFamilyUi, fontSize = 36.sp, color = hInk, modifier = Modifier.padding(top = 18.dp))
-                            Text("Total recorded reading time", fontFamily = fontFamilyBody, fontSize = 13.sp, color = hInkMid)
-                            Text("${summary.completedDays}/${summary.totalDays} days finished · ${summary.pagesRead}/${summary.totalPages} pages read",
+                            Text(stringResource(R.string.planner_started_date , plannerDateLabel(plan.startDate)), fontFamily = fontFamilyBody, fontSize = 13.sp, color = hInkMid)
+                            summary.completedOn?.let { Text(stringResource(R.string.planner_completed_date , plannerDateLabel(it)), color = hInkMid, fontSize = 13.sp) }
+                            plan.archivedAt?.take(10)?.let { Text(stringResource(R.string.planner_archived_date , plannerDateLabel(it)), color = hInkMid, fontSize = 13.sp) }
+                            Text(plannerDuration(summary.totalSeconds), fontFamily = fontFamilyUi, fontSize = 36.sp, color = hInk, modifier = Modifier.padding(top = 18.dp))
+                            Text(stringResource(R.string.planner_total_time), fontFamily = fontFamilyBody, fontSize = 13.sp, color = hInkMid)
+                            Text(stringResource(R.string.planner_history_progress_full , summary.completedDays, summary.totalDays, summary.pagesRead, summary.totalPages),
                                 modifier = Modifier.padding(top = 12.dp), fontSize = 14.sp, color = hInk)
-                            if (summary.timedDays > 0) Text("${summary.timedDays} dated reading days · ${PlannerHistory.duration(summary.averageSeconds)} daily average", fontSize = 13.sp, color = hInkMid)
+                            if (summary.timedDays > 0) Text(stringResource(R.string.planner_history_average , summary.timedDays, plannerDuration(summary.averageSeconds)), fontSize = 13.sp, color = hInkMid)
                             val highlights = bookmarksByPlan[plan.id].orEmpty().size
-                            if (highlights > 0) Text("$highlights saved verse highlights", fontSize = 13.sp, color = hInkMid)
+                            if (highlights > 0) Text(stringResource(R.string.planner_saved_highlights , highlights), fontSize = 13.sp, color = hInkMid)
                         }
-                        item { HistoryHeading("Reading time") }
+                        item { HistoryHeading(stringResource(R.string.planner_reading_time)) }
                         if (summary.readingDays.isEmpty()) item {
-                            Text("No reading time was recorded for this plan. Completed reading is still shown below.", fontSize = 14.sp, color = hInkMid)
+                            Text(stringResource(R.string.planner_no_plan_time), fontSize = 14.sp, color = hInkMid)
                         }
                         items(summary.readingDays, key = { it.date ?: "legacy-${it.dayNumber}" }) { day ->
                             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                    Text(day.date?.let { PlannerHistory.dateLabel(it) } ?: "Earlier reading · day ${day.dayNumber}",
+                                    Text(day.date?.let { plannerDateLabel(it) } ?: stringResource(R.string.planner_earlier_reading, day.dayNumber ?: 0),
                                         modifier = Modifier.weight(1f), fontFamily = fontFamilyBody, fontSize = 13.sp, color = hInk)
-                                    Text(PlannerHistory.duration(day.seconds), fontFamily = fontFamilyMono, fontSize = 13.sp, color = plannerAccentInk)
+                                    Text(plannerDuration(day.seconds), fontFamily = fontFamilyMono, fontSize = 13.sp, color = plannerAccentInk)
                                 }
-                                Text("${PlannerHistory.duration(day.cumulativeSeconds)} accumulated" + if (day.date == null) " · date not recorded" else "",
+                                Text(stringResource(R.string.planner_accumulated , plannerDuration(day.cumulativeSeconds)) + if (day.date == null) stringResource(R.string.planner_date_not_recorded) else "",
                                     fontSize = 12.sp, color = hInkMid)
                                 Divider(color = hBoneDark, modifier = Modifier.padding(top = 8.dp))
                             }
                         }
-                        item { HistoryHeading("Daily reading & reflections") }
+                        item { HistoryHeading(stringResource(R.string.planner_daily_reading_reflections)) }
                         items(plan.assignments, key = { it.dayNumber }) { assignment ->
                             val progress = PlannerEngine.getAssignmentProgress(plan, assignment)
                             val reflection = reflectionsByPlan[plan.id]?.get(assignment.dayNumber) ?: plan.assignmentReflections[assignment.dayNumber]
                             Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                                Text("Day ${assignment.dayNumber} · ${assignment.title}", fontFamily = fontFamilyUi, fontSize = 16.sp, color = hInk)
-                                Text("${progress.readPagesCount}/${progress.totalPagesCount} pages · ${if (progress.isComplete) "Completed" else "${if (progress.readPagesCount > 0) "Partially read" else "Not read"}"}", fontSize = 13.sp, color = plannerAccentInk)
-                                Text("Scheduled ${PlannerHistory.dateLabel(assignment.date)}", fontSize = 12.sp, color = hInkMid)
-                                progress.completedAt?.let { Text("Finished ${PlannerHistory.dateLabel(it)}", fontSize = 12.sp, color = hInkMid) }
+                                Text(stringResource(R.string.planner_history_day_title , assignment.dayNumber, plannerAssignmentTitle(assignment)), fontFamily = fontFamilyUi, fontSize = 16.sp, color = hInk)
+                                Text(stringResource(R.string.planner_day_read_status, progress.readPagesCount, progress.totalPagesCount, if (progress.isComplete) stringResource(R.string.planner_completed) else if (progress.readPagesCount > 0) stringResource(R.string.planner_partially_read) else stringResource(R.string.planner_not_read)), fontSize = 13.sp, color = plannerAccentInk)
+                                Text(stringResource(R.string.planner_scheduled_date , plannerDateLabel(assignment.date)), fontSize = 12.sp, color = hInkMid)
+                                progress.completedAt?.let { Text(stringResource(R.string.planner_finished_date , plannerDateLabel(it)), fontSize = 12.sp, color = hInkMid) }
                                 if (!reflection.isNullOrBlank()) Text(reflection, fontFamily = fontFamilyBody, fontSize = 14.sp, color = hInk, modifier = Modifier.padding(top = 4.dp))
                                 Divider(color = hBoneDark, modifier = Modifier.padding(top = 8.dp))
                             }

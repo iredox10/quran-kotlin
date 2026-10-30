@@ -1,5 +1,8 @@
 package com.nur.quran.ui.components.analytics
 
+
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -101,7 +104,7 @@ fun AnalyticsDashboardHeader(
                 ) {
                     Icon(
                         imageVector = NurIcons.ArrowLeft,
-                        contentDescription = "Back",
+                        contentDescription = stringResource(R.string.ui_back_b52b36),
                         tint = hInk,
                         modifier = Modifier.size(20.dp)
                     )
@@ -110,13 +113,13 @@ fun AnalyticsDashboardHeader(
         }
         Image(
             painter = painterResource(id = R.drawable.ic_logo),
-            contentDescription = "Quran Nur Logo",
+            contentDescription = stringResource(R.string.ui_quran_nur_logo_5e0764),
             modifier = Modifier
                 .size(56.dp)
                 .padding(bottom = 6.dp)
         )
         Text(
-            text = "ANALYTICS DASHBOARD",
+            text = stringResource(R.string.ui_analytics_dashboard_c3e53d),
             fontSize = 11.sp,
             fontWeight = FontWeight.SemiBold,
             fontFamily = fontFamilyMono,
@@ -125,7 +128,7 @@ fun AnalyticsDashboardHeader(
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "Your Progress",
+            text = stringResource(R.string.ui_your_progress_983999),
             fontSize = 26.sp,
             fontWeight = FontWeight.Bold,
             fontFamily = fontFamilyUi,
@@ -133,7 +136,7 @@ fun AnalyticsDashboardHeader(
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "$greeting. Here's the story of your consistency.",
+            text = stringResource(R.string.ui_1_s_here_s_the_story_of_your_consistency_5d34e1, greeting),
             fontSize = 13.sp,
             fontFamily = fontFamilyBody,
             color = hInkMuted,
@@ -168,7 +171,7 @@ fun SmartInsightBanner(
         ) {
             Icon(
                 imageVector = NurIcons.Lightbulb,
-                contentDescription = "Smart Insight",
+                contentDescription = stringResource(R.string.ui_smart_insight_174225),
                 tint = hGold,
                 modifier = Modifier.size(18.dp)
             )
@@ -196,7 +199,7 @@ fun ConsistencyCard(
     streak: Int,
     modifier: Modifier = Modifier
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "flamePulse")
+    val infiniteTransition = rememberInfiniteTransition(label = stringResource(R.string.ui_flamepulse_c32f04))
     val flameAlpha by if (streak > 0) {
         infiniteTransition.animateFloat(
             initialValue = 0.65f,
@@ -205,7 +208,7 @@ fun ConsistencyCard(
                 animation = tween(durationMillis = 850, easing = FastOutSlowInEasing),
                 repeatMode = RepeatMode.Reverse
             ),
-            label = "flameAlpha"
+            label = stringResource(R.string.ui_flamealpha_155619)
         )
     } else {
         remember { mutableStateOf(1f) }
@@ -218,7 +221,7 @@ fun ConsistencyCard(
                 animation = tween(durationMillis = 850, easing = FastOutSlowInEasing),
                 repeatMode = RepeatMode.Reverse
             ),
-            label = "flameScale"
+            label = stringResource(R.string.ui_flamescale_693f14)
         )
     } else {
         remember { mutableStateOf(1f) }
@@ -264,7 +267,7 @@ fun ConsistencyCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "CONSISTENCY",
+                        text = stringResource(R.string.ui_consistency_e9912b),
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = fontFamilyMono,
@@ -302,7 +305,7 @@ fun ConsistencyCard(
                         ) {
                             Icon(
                                 imageVector = NurIcons.Flame,
-                                contentDescription = "Streak flame",
+                                contentDescription = stringResource(R.string.ui_streak_flame_592132),
                                 tint = if (streak > 0) Color(0xFFE75344) else hInkMuted,
                                 modifier = Modifier
                                     .size(20.dp)
@@ -321,7 +324,7 @@ fun ConsistencyCard(
                 // Value and Unit
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text(
-                        text = "$streak",
+                        text = stringResource(R.string.ui_1_s_c79f71, streak),
                         fontSize = 48.sp,
                         fontWeight = FontWeight.Black,
                         fontFamily = fontFamilyUi,
@@ -330,7 +333,7 @@ fun ConsistencyCard(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Days",
+                        text = stringResource(R.string.ui_days_f6bb0f),
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = fontFamilyUi,
@@ -342,7 +345,7 @@ fun ConsistencyCard(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = "Current active streak",
+                    text = stringResource(R.string.ui_current_active_streak_cfcd77),
                     fontSize = 13.sp,
                     fontFamily = fontFamilyBody,
                     color = hInkMuted
@@ -401,7 +404,7 @@ fun TodayFocusCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "TODAY'S FOCUS",
+                    text = stringResource(R.string.ui_today_s_focus_267e64),
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = fontFamilyMono,
@@ -417,7 +420,7 @@ fun TodayFocusCard(
                 ) {
                     Icon(
                         imageVector = NurIcons.Clock,
-                        contentDescription = "Today Focus Clock",
+                        contentDescription = stringResource(R.string.ui_today_focus_clock_5aecf4),
                         tint = hInk,
                         modifier = Modifier.size(18.dp)
                     )
@@ -429,7 +432,7 @@ fun TodayFocusCard(
             // Value and Unit in hGold
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(
-                    text = "$todayMins",
+                    text = stringResource(R.string.ui_1_s_c79f71, todayMins),
                     fontSize = 48.sp,
                     fontWeight = FontWeight.Black,
                     fontFamily = fontFamilyUi,
@@ -438,7 +441,7 @@ fun TodayFocusCard(
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = "Mins",
+                    text = stringResource(R.string.ui_mins_7f8217),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = fontFamilyUi,
@@ -472,7 +475,7 @@ fun TodayFocusCard(
                     )
                 }
                 Text(
-                    text = "Goal: 30m",
+                    text = stringResource(R.string.ui_goal_30m_35ba09),
                     fontSize = 10.sp,
                     fontFamily = fontFamilyMono,
                     color = hInkMuted
@@ -513,7 +516,7 @@ fun WeeklyGoalCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "WEEKLY GOAL",
+                    text = stringResource(R.string.ui_weekly_goal_241de6),
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = fontFamilyMono,
@@ -529,7 +532,7 @@ fun WeeklyGoalCard(
                 ) {
                     Icon(
                         imageVector = NurIcons.Target,
-                        contentDescription = "Weekly Target",
+                        contentDescription = stringResource(R.string.ui_weekly_target_393497),
                         tint = hInk,
                         modifier = Modifier.size(18.dp)
                     )
@@ -557,7 +560,7 @@ fun WeeklyGoalCard(
                         strokeCap = StrokeCap.Round
                     )
                     Text(
-                        text = "$percent%",
+                        text = stringResource(R.string.ui_1_s_fc9db1, percent),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = fontFamilyUi,
@@ -568,7 +571,7 @@ fun WeeklyGoalCard(
                 Column {
                     Row(verticalAlignment = Alignment.Bottom) {
                         Text(
-                            text = "$weeklyMins",
+                            text = stringResource(R.string.ui_1_s_c79f71, weeklyMins),
                             fontSize = 22.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = fontFamilyUi,
@@ -577,7 +580,7 @@ fun WeeklyGoalCard(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "/ ${weeklyGoalMins}m",
+                            text = stringResource(R.string.ui_1_sm_e6f6fc, weeklyGoalMins),
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Normal,
                             fontFamily = fontFamilyUi,
@@ -587,7 +590,7 @@ fun WeeklyGoalCard(
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Total this week",
+                        text = stringResource(R.string.ui_total_this_week_9a2772),
                         fontSize = 12.sp,
                         fontFamily = fontFamilyBody,
                         color = hInkMuted
@@ -687,7 +690,7 @@ fun AnalyticsEmptyState(
             ) {
                 Icon(
                     imageVector = NurIcons.BookOpen,
-                    contentDescription = "Start Journey Book",
+                    contentDescription = stringResource(R.string.ui_start_journey_book_44b0c1),
                     tint = hGold.copy(alpha = 0.6f),
                     modifier = Modifier.size(48.dp)
                 )
@@ -695,7 +698,7 @@ fun AnalyticsEmptyState(
                 Spacer(modifier = Modifier.height(18.dp))
 
                 Text(
-                    text = "Start Your Journey",
+                    text = stringResource(R.string.ui_start_your_journey_ed4844),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = fontFamilyUi,
@@ -706,7 +709,7 @@ fun AnalyticsEmptyState(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "Your reading and memorization activity will beautifully visualize here as you use the app.",
+                    text = stringResource(R.string.ui_your_reading_and_memorization_activity_will_beau_d9cb10),
                     fontSize = 14.sp,
                     fontFamily = fontFamilyBody,
                     color = hInkMuted,
@@ -727,7 +730,7 @@ fun AnalyticsEmptyState(
                     contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
                 ) {
                     Text(
-                        text = "Open Quran",
+                        text = stringResource(R.string.ui_open_quran_add23a),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = fontFamilyUi,

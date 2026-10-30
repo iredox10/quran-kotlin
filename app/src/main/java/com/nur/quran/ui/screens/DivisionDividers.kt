@@ -1,5 +1,8 @@
 package com.nur.quran.ui.screens
 
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -77,7 +80,7 @@ fun SajdahBadge(sajdahNumber: Int? = null) {
             .padding(horizontal = 8.dp, vertical = 2.dp)
     ) {
         Text(
-            text = if (sajdahNumber != null) "۩ Sajdah $sajdahNumber" else "۩ Sajdah",
+            text = if (sajdahNumber != null) stringResource(R.string.ui_sajdah_1_s_41b01d, sajdahNumber) else stringResource(R.string.ui_sajdah_5a6957),
             fontSize = 12.sp,
             fontWeight = FontWeight.SemiBold,
             color = hGold,

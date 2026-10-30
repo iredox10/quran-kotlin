@@ -1,5 +1,9 @@
 package com.nur.quran.ui.components.analytics
 
+
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -436,7 +440,7 @@ fun CustomTooltipCard(
             horizontalAlignment = Alignment.Start
         ) {
             Text(
-                text = if (dateText.isNotEmpty()) "$dayLabel · $dateText".uppercase(Locale.getDefault()) else dayLabel.uppercase(Locale.getDefault()),
+                text = if (dateText.isNotEmpty()) stringResource(R.string.ui_1_s_2_s_c1aacd, dayLabel, dateText).uppercase(Locale.getDefault()) else dayLabel.uppercase(Locale.getDefault()),
                 fontFamily = fontFamilyMono,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Medium,
@@ -445,7 +449,7 @@ fun CustomTooltipCard(
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = "$minutes min",
+                text = stringResource(R.string.ui_1_s_min_5c8f84, minutes),
                 fontFamily = fontFamilyUi,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,

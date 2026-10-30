@@ -1,5 +1,8 @@
 package com.nur.quran.ui.components.analytics
 
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -186,7 +189,7 @@ fun AnalyticsActivityMix(
                         tint = hGold
                     )
                     Text(
-                        text = "Activity Mix",
+                        text = stringResource(R.string.ui_activity_mix_c8d3e7),
                         fontFamily = fontFamilyUi,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
@@ -244,7 +247,7 @@ fun AnalyticsActivityMix(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "No activity in this period yet.",
+                        text = stringResource(R.string.ui_no_activity_in_this_period_yet_b61746),
                         fontFamily = fontFamilyUi,
                         fontSize = 14.sp,
                         color = hInkMuted
@@ -328,7 +331,7 @@ fun AnalyticsActivityMix(
                             color = hInk
                         )
                         Text(
-                            text = "$sessionCount Session${if (sessionCount == 1) "" else "s"}",
+                            text = stringResource(R.string.ui_1_s_session_2_s_701bef, sessionCount, if (sessionCount == 1) "" else "s"),
                             fontFamily = fontFamilyMono,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Medium,
@@ -366,14 +369,14 @@ fun AnalyticsActivityMix(
                                 modifier = Modifier.weight(1f)
                             )
                             Text(
-                                text = "${mins}m",
+                                text = stringResource(R.string.ui_1_sm_830877, mins),
                                 fontFamily = fontFamilyUi,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = hInk
                             )
                             Text(
-                                text = "$share%",
+                                text = stringResource(R.string.ui_1_s_fc9db1, share),
                                 fontFamily = fontFamilyMono,
                                 fontSize = 10.sp,
                                 color = hInkMuted,

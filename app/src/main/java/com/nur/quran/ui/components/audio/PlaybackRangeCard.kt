@@ -1,5 +1,9 @@
 package com.nur.quran.ui.components.audio
 
+
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -141,7 +145,7 @@ fun PlaybackRangeCard(
                         modifier = Modifier.size(16.dp)
                     )
                     Text(
-                        text = "AYAH PLAYBACK RANGE",
+                        text = stringResource(R.string.ui_ayah_playback_range_abedf8),
                         fontFamily = fontFamilyUi,
                         fontWeight = FontWeight.Bold,
                         fontSize = 11.sp,
@@ -305,7 +309,7 @@ private fun SegmentedRangeSelector(
             val isActive = activeMode == mode
             val textColor by animateColorAsState(
                 targetValue = if (isActive) hInk else hInkMuted,
-                label = "SegmentTextColor"
+                label = stringResource(R.string.ui_segmenttextcolor_69d53e)
             )
 
             val pillModifier = if (isActive) {

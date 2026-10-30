@@ -1,5 +1,8 @@
 package com.nur.quran.ui.components.profile
 
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -120,7 +123,7 @@ fun ReadingExperienceGroup(
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
-        ProfileSectionHeader(title = "READING EXPERIENCE")
+        ProfileSectionHeader(title = stringResource(R.string.ui_reading_experience_5b9af6))
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(24.dp),
@@ -130,20 +133,20 @@ fun ReadingExperienceGroup(
             Column {
                 ProfileSettingRow(
                     icon = NurIcons.Settings,
-                    label = "Reading Settings",
+                    label = stringResource(R.string.ui_reading_settings_46113e),
                     onClick = onOpenSettings
                 )
                 Divider(color = hBoneDark.copy(alpha = 0.6f), thickness = 1.dp)
                 ProfileSettingRow(
                     icon = NurIcons.Mic,
-                    label = "Reciter",
+                    label = stringResource(R.string.ui_reciter_366e8f),
                     detail = reciterName,
                     onClick = onOpenSettings
                 )
                 Divider(color = hBoneDark.copy(alpha = 0.6f), thickness = 1.dp)
                 ProfileSettingRow(
                     icon = NurIcons.Languages,
-                    label = "Translation",
+                    label = stringResource(R.string.ui_translation_ac26a7),
                     detail = translationName,
                     onClick = onOpenSettings
                 )
@@ -159,7 +162,7 @@ fun OnboardingGroup(
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
-        ProfileSectionHeader(title = "ONBOARDING & TOURS")
+        ProfileSectionHeader(title = stringResource(R.string.ui_onboarding_tours_fe3a86))
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(24.dp),
@@ -168,7 +171,7 @@ fun OnboardingGroup(
         ) {
             ProfileSettingRow(
                 icon = NurIcons.RotateCcw,
-                label = "Replay All Tours",
+                label = stringResource(R.string.ui_replay_all_tours_8f8ad7),
                 detail = "${completedToursCount.coerceAtMost(5)} / 5 Completed",
                 onClick = onReplayTours
             )
@@ -182,7 +185,7 @@ fun CommunityGroup(
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
-        ProfileSectionHeader(title = "COMMUNITY")
+        ProfileSectionHeader(title = stringResource(R.string.ui_community_ec32f6))
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(24.dp),
@@ -191,8 +194,8 @@ fun CommunityGroup(
         ) {
             ProfileSettingRow(
                 icon = NurIcons.Share2,
-                label = "Invite Friends",
-                detail = "Share App",
+                label = stringResource(R.string.ui_invite_friends_7ae093),
+                detail = stringResource(R.string.ui_share_app_bbe347),
                 onClick = onShareApp
             )
         }
@@ -207,7 +210,7 @@ fun AppStorageGroup(
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
-        ProfileSectionHeader(title = "APP & STORAGE")
+        ProfileSectionHeader(title = stringResource(R.string.ui_app_storage_b8bb75))
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(24.dp),
@@ -217,14 +220,14 @@ fun AppStorageGroup(
             Column {
                 ProfileSettingRow(
                     icon = if (isDarkTheme) NurIcons.Moon else NurIcons.Sun,
-                    label = "Appearance",
-                    detail = if (isDarkTheme) "Dark" else "Light",
+                    label = stringResource(R.string.ui_appearance_41def7),
+                    detail = if (isDarkTheme) stringResource(R.string.ui_dark_ae1ef0) else stringResource(R.string.ui_light_a36ef8),
                     onClick = onToggleTheme
                 )
                 Divider(color = hBoneDark.copy(alpha = 0.6f), thickness = 1.dp)
                 ProfileSettingRow(
                     icon = NurIcons.HardDrive,
-                    label = "Offline Library",
+                    label = stringResource(R.string.ui_offline_library_09ac0c),
                     onClick = onNavigateToDownloads
                 )
             }

@@ -1,5 +1,7 @@
 package com.nur.quran.ui.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeIn
@@ -81,7 +83,7 @@ fun SplashScreen(
                     )
                     Image(
                         painter = painterResource(id = R.drawable.ic_logo),
-                        contentDescription = "Quran Nur Logo",
+                        contentDescription = stringResource(R.string.ui_quran_nur_logo_5e0764),
                         modifier = Modifier.size(100.dp)
                     )
                 }
@@ -100,7 +102,7 @@ fun SplashScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "ILLUMINATE YOUR HEART",
+                    text = stringResource(R.string.ui_illuminate_your_heart_eddc17),
                     fontSize = 11.sp,
                     fontFamily = fontFamilyMono,
                     fontWeight = FontWeight.SemiBold,

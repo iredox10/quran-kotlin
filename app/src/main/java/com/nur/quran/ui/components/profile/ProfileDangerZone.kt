@@ -1,5 +1,8 @@
 package com.nur.quran.ui.components.profile
 
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -32,7 +35,7 @@ fun ProfileDangerZone(
 
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
-            text = "DANGER ZONE",
+            text = stringResource(R.string.ui_danger_zone_3cf116),
             fontFamily = fontFamilyMono,
             fontSize = 10.sp,
             fontWeight = FontWeight.Bold,
@@ -74,7 +77,7 @@ fun ProfileDangerZone(
                         )
                     }
                     Text(
-                        text = "Sign Out",
+                        text = stringResource(R.string.ui_sign_out_61fd08),
                         fontFamily = fontFamilyBody,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,

@@ -1,5 +1,8 @@
 package com.nur.quran.ui.components.audio
 
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -100,7 +103,7 @@ fun TranslationPickerRow(
                     pack?.isDownloading == true -> {
                         if (total > 0) {
                             Text(
-                                text = "$downloaded/$total",
+                                text = stringResource(R.string.ui_1_s_2_s_a105b8, downloaded, total),
                                 fontSize = 11.sp,
                                 color = hInkMuted,
                                 fontFamily = fontFamilyMono
@@ -113,18 +116,18 @@ fun TranslationPickerRow(
                             color = hGold
                         )
                         IconButton(onClick = onCancel, modifier = Modifier.size(28.dp)) {
-                            Icon(imageVector = NurIcons.X, contentDescription = "Cancel download", tint = hInkMuted, modifier = Modifier.size(16.dp))
+                            Icon(imageVector = NurIcons.X, contentDescription = stringResource(R.string.ui_cancel_download_67bb11), tint = hInkMuted, modifier = Modifier.size(16.dp))
                         }
                     }
                     isDownloaded -> {
-                        Icon(imageVector = NurIcons.CheckCircle2, contentDescription = "Downloaded for offline", tint = hGreen, modifier = Modifier.size(18.dp))
+                        Icon(imageVector = NurIcons.CheckCircle2, contentDescription = stringResource(R.string.ui_downloaded_for_offline_07b4b8), tint = hGreen, modifier = Modifier.size(18.dp))
                         IconButton(onClick = onDelete, modifier = Modifier.size(28.dp)) {
-                            Icon(imageVector = NurIcons.X, contentDescription = "Delete download", tint = hInkMuted, modifier = Modifier.size(16.dp))
+                            Icon(imageVector = NurIcons.X, contentDescription = stringResource(R.string.ui_delete_download_d41b50), tint = hInkMuted, modifier = Modifier.size(16.dp))
                         }
                     }
                     else -> {
                         IconButton(onClick = onDownload, modifier = Modifier.size(28.dp)) {
-                            Icon(imageVector = NurIcons.Download, contentDescription = "Download for offline", tint = hGold, modifier = Modifier.size(18.dp))
+                            Icon(imageVector = NurIcons.Download, contentDescription = stringResource(R.string.ui_download_for_offline_b2f6d2), tint = hGold, modifier = Modifier.size(18.dp))
                         }
                     }
                 }
@@ -155,7 +158,7 @@ fun TranslationPickerRow(
                 )
                 TextButton(onClick = onDownload) {
                     Text(
-                        text = "Retry",
+                        text = stringResource(R.string.ui_retry_9f5cd8),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         color = hGold

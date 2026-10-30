@@ -1,5 +1,8 @@
 package com.nur.quran.ui.components.audio
 
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -155,7 +158,7 @@ fun AudioSetupSheet(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "Audio & Recitation",
+                        text = stringResource(R.string.ui_audio_recitation_48897e),
                         fontFamily = fontFamilyUi,
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp,
@@ -163,7 +166,7 @@ fun AudioSetupSheet(
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "SURAH ${chapterDisplayName.uppercase()}",
+                        text = stringResource(R.string.ui_surah_1_s_97dfb7, chapterDisplayName.uppercase()),
                         fontFamily = fontFamilyUi,
                         fontWeight = FontWeight.Bold,
                         fontSize = 11.sp,
@@ -184,7 +187,7 @@ fun AudioSetupSheet(
                 ) {
                     Icon(
                         imageVector = NurIcons.X,
-                        contentDescription = "Close",
+                        contentDescription = stringResource(R.string.ui_close_bbfa77),
                         tint = hInkMid,
                         modifier = Modifier.size(16.dp)
                     )

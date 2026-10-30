@@ -1,5 +1,7 @@
 package com.nur.quran.ui.screens
 
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
 import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.background
@@ -95,7 +97,7 @@ fun PlannerScreen(
         // Top Global Navbar
         TopNavbar(
             title = "Quran Nur",
-            subTitle = "Planner",
+            subTitle = stringResource(R.string.planner_planner),
             onThemeToggle = {
                 isDarkThemeGlobal = !isDarkThemeGlobal
                 context.getSharedPreferences("Settings", Context.MODE_PRIVATE)
@@ -183,7 +185,7 @@ fun PlannerScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "\"The best of deeds are those that are consistent, even if they are few.\"",
+                            text = stringResource(R.string.planner_best_deeds),
                             fontFamily = fontFamilyBody,
                             fontSize = 13.5.sp,
                             fontStyle = FontStyle.Italic,
@@ -192,7 +194,7 @@ fun PlannerScreen(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Prophetic Wisdom",
+                            text = stringResource(R.string.planner_prophetic_wisdom),
                             fontFamily = fontFamilyMono,
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Bold,
@@ -233,10 +235,11 @@ fun PlannerScreen(
             }
 
             val nextPrayer = prayerSlots.find { it.status == "current" || it.status == "upcoming" }
-            val unitsLabel = "Pages"
+            val unitsLabel = stringResource(R.string.planner_pages)
             val overallPct = Math.round((overview?.completionRatio ?: 0f) * 100)
-            val completionDate = remember(plan) {
-                java.text.SimpleDateFormat("MMM d", java.util.Locale.US).format(
+            val displayLocale = androidx.compose.ui.platform.LocalConfiguration.current.locales[0]
+            val completionDate = remember(plan, displayLocale) {
+                java.text.SimpleDateFormat("MMM d", displayLocale).format(
                     PlannerEngine.parsePlannerDate(PlannerEngine.getPlanEndDate(plan))
                 )
             }
@@ -254,24 +257,24 @@ fun PlannerScreen(
             val planDone = overview != null && overview.remainingCount == 0
 
             val daySubtitle = when {
-                planDone -> "Your reading journey is complete."
-                todayAssignment == null -> "Starting soon…"
-                todayComplete && nextAssignment != null -> "Day $currentDay complete · Day ${nextAssignment.dayNumber} ready"
-                todayComplete -> "Day $currentDay complete"
-                todayDone > 0 && nextPrayer != null -> "$todayDone of $todayTotal $unitsLabel read · ${nextPrayer.name} next"
-                nextPrayer != null -> "$todayTotal $unitsLabel today · start with ${nextPrayer.name}"
-                else -> "All done for today! ✓"
+                planDone -> stringResource(R.string.planner_journey_complete)
+                todayAssignment == null -> stringResource(R.string.planner_starting_soon)
+                todayComplete && nextAssignment != null -> stringResource(R.string.planner_current_done_next , currentDay, nextAssignment.dayNumber)
+                todayComplete -> stringResource(R.string.planner_current_done , currentDay)
+                todayDone > 0 && nextPrayer != null -> stringResource(R.string.planner_today_progress_next , todayDone, todayTotal, unitsLabel, plannerPrayerName(nextPrayer.name))
+                nextPrayer != null -> stringResource(R.string.planner_today_start , todayTotal, unitsLabel, plannerPrayerName(nextPrayer.name))
+                else -> stringResource(R.string.planner_all_done_today)
             }
 
             // Web parity (Planner.jsx): started = any progress OR a saved reader position.
             val hasStartedReading = todayDone > 0 || plan.lastReadPage != null
 
             val ctaLabel = when {
-                planDone -> "Plan Complete ✓"
-                todayComplete && nextAssignment != null -> "Continue to Day ${nextAssignment.dayNumber}"
-                todayComplete -> "All Caught Up"
-                hasStartedReading -> "Resume Reading"
-                else -> "Open Al-Quran"
+                planDone -> stringResource(R.string.planner_plan_complete_check)
+                todayComplete && nextAssignment != null -> stringResource(R.string.planner_continue_day , nextAssignment.dayNumber)
+                todayComplete -> stringResource(R.string.planner_all_caught_up)
+                hasStartedReading -> stringResource(R.string.planner_resume_reading)
+                else -> stringResource(R.string.planner_open_quran)
             }
 
             val todaySessionSeconds = sessionTotals[todayAssignment?.dayNumber ?: 1] ?: 0L
@@ -355,16 +358,15 @@ fun PlannerScreen(
                                     }
                                 },
                                 onShareProgress = {
-                                    val shareText = "📖 Quran Reading Progress\n" +
-                                        "${plan.title}: $overallPct% complete\n" +
-                                        "Completed ${overview?.completedCount ?: 0} days of my ${plan.durationDays}-day plan • Day $currentDay • ${metrics?.consistencyStreak ?: 0}d streak\n" +
+                                    val shareText = context.getString(R.string.planner_share_title) + "\n" +
+                                        context.getString(R.string.planner_share_summary, plan.title, overallPct, overview?.completedCount ?: 0, plan.durationDays, currentDay, metrics?.consistencyStreak ?: 0) + "\n" +
                                         "https://quran-nur.appwrite.network\n" +
                                         "#QuranNur"
                                     val intent = Intent(Intent.ACTION_SEND).apply {
                                         type = "text/plain"
                                         putExtra(Intent.EXTRA_TEXT, shareText)
                                     }
-                                    context.startActivity(Intent.createChooser(intent, "Share Progress"))
+                                    context.startActivity(Intent.createChooser(intent, context.getString(R.string.planner_share_progress)))
                                 },
                                 onOpenSettings = { showPlannerSettingsDialog = true }
                             )
@@ -425,7 +427,7 @@ fun PlannerScreen(
                                     modifier = Modifier.size(15.dp)
                                 )
                                 Text(
-                                    text = "Delete plan",
+                                    text = stringResource(R.string.planner_delete_plan),
                                     fontFamily = fontFamilyBody,
                                     fontSize = 13.5.sp,
                                     color = hInkMid

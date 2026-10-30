@@ -1,5 +1,7 @@
 package com.nur.quran.data.audio
 
+import com.nur.quran.R
+
 import android.app.Notification
 import android.content.Context
 import android.content.pm.ServiceInfo
@@ -43,7 +45,7 @@ class AudioDownloadWorker(
         val verseKeys = inputData.getStringArray(KEY_VERSE_KEYS)?.toList().orEmpty()
         if (verseKeys.isEmpty()) return Result.success()
 
-        val title = "Surah $chapterId • ${Reciters.nameOf(reciterId)}"
+        val title = com.nur.quran.i18n.AppLanguages.wrap(applicationContext).getString(R.string.ui_surah_1_s_2_s_171307, chapterId, Reciters.nameOf(reciterId))
         val notifId = notifId(reciterId, chapterId)
         val manager = AudioDownloadManager(applicationContext)
 
@@ -104,7 +106,7 @@ class AudioDownloadWorker(
         val reciterId = inputData.getInt(KEY_RECITER_ID, Reciters.DEFAULT_ID)
         val chapterId = inputData.getInt(KEY_CHAPTER_ID, -1)
         val total = inputData.getStringArray(KEY_VERSE_KEYS)?.size ?: 0
-        val title = "Surah $chapterId • ${Reciters.nameOf(reciterId)}"
+        val title = com.nur.quran.i18n.AppLanguages.wrap(applicationContext).getString(R.string.ui_surah_1_s_2_s_171307, chapterId, Reciters.nameOf(reciterId))
         val notifId = notifId(reciterId, chapterId)
         val notification: Notification =
             DownloadNotif.showProgress(applicationContext, notifId, title, 0, total)

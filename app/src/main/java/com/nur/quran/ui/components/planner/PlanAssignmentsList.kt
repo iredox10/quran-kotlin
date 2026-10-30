@@ -1,5 +1,7 @@
 package com.nur.quran.ui.components.planner
 
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -68,7 +70,7 @@ fun PlanAssignmentsList(
                             }
                         ) {
                             Text(
-                                text = "DAY ${item.dayNumber}",
+                                text = stringResource(R.string.planner_day_upper , item.dayNumber),
                                 fontFamily = fontFamilyMono,
                                 fontSize = 9.sp,
                                 fontWeight = FontWeight.Bold,
@@ -83,7 +85,7 @@ fun PlanAssignmentsList(
 
                         Column {
                             Text(
-                                text = item.title,
+                                text = plannerAssignmentTitle(item),
                                 fontFamily = fontFamilyUi,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
@@ -91,7 +93,7 @@ fun PlanAssignmentsList(
                             )
                             if (item.subtitle.isNotBlank()) {
                                 Text(
-                                    text = item.subtitle,
+                                    text = plannerAssignmentSubtitle(item),
                                     fontFamily = fontFamilyBody,
                                     fontSize = 11.sp,
                                     color = hInkMuted
@@ -106,7 +108,7 @@ fun PlanAssignmentsList(
                     ) {
                         Icon(
                             imageVector = if (isDone) NurIcons.CheckCircle2 else NurIcons.Circle,
-                            contentDescription = if (isDone) "Done" else "Mark Done",
+                            contentDescription = if (isDone) stringResource(R.string.planner_done) else stringResource(R.string.planner_mark_done),
                             tint = if (isDone) Color(0xFF10B981) else hInkMuted,
                             modifier = Modifier.size(20.dp)
                         )

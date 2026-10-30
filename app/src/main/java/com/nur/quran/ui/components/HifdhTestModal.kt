@@ -1,5 +1,10 @@
 package com.nur.quran.ui.components
 
+
+
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -146,14 +151,14 @@ fun HifdhTestModal(
                             Spacer(modifier = Modifier.width(10.dp))
                             Column {
                                 Text(
-                                    text = "Hifdh Test",
+                                    text = stringResource(R.string.ui_hifdh_test_2b5c25),
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = hInk,
                                     fontFamily = fontFamilyUi
                                 )
                                 Text(
-                                    text = if (testQueue.isEmpty()) "Queue empty" else "Reviewed $reviewedCount of ${testQueue.size} ayahs",
+                                    text = if (testQueue.isEmpty()) stringResource(R.string.ui_queue_empty_3bb83f) else stringResource(R.string.ui_reviewed_1_s_of_2_s_ayahs_7128ca, reviewedCount, testQueue.size),
                                     fontSize = 11.sp,
                                     color = hInkMuted,
                                     fontFamily = fontFamilyMono
@@ -162,7 +167,7 @@ fun HifdhTestModal(
                         }
 
                         IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
-                            Icon(imageVector = NurIcons.X, contentDescription = "Close", tint = hInkMuted, modifier = Modifier.size(18.dp))
+                            Icon(imageVector = NurIcons.X, contentDescription = stringResource(R.string.ui_close_bbfa77), tint = hInkMuted, modifier = Modifier.size(18.dp))
                         }
                     }
 
@@ -177,18 +182,18 @@ fun HifdhTestModal(
                         ) {
                             Icon(imageVector = NurIcons.CheckCircle2, contentDescription = null, tint = hGreen, modifier = Modifier.size(40.dp))
                             Spacer(modifier = Modifier.height(12.dp))
-                            Text("Queue Completed!", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = hInk, fontFamily = fontFamilyUi)
+                            Text(stringResource(R.string.ui_queue_completed_0c8ca6), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = hInk, fontFamily = fontFamilyUi)
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = if (testQueue.isEmpty()) "You have no more ayahs to review in this queue right now."
-                                else "You've reviewed all ${testQueue.size} ayahs in this queue.",
+                                text = if (testQueue.isEmpty()) stringResource(R.string.ui_you_have_no_more_ayahs_to_review_in_this_queue_r_56f9cb)
+                                else stringResource(R.string.ui_you_ve_reviewed_all_1_s_ayahs_in_this_queue_16a227, testQueue.size),
                                 fontSize = 12.sp,
                                 color = hInkMuted,
                                 textAlign = TextAlign.Center
                             )
                             Spacer(modifier = Modifier.height(20.dp))
                             Button(onClick = onDismiss, colors = ButtonDefaults.buttonColors(containerColor = hGold), shape = RoundedCornerShape(12.dp)) {
-                                Text("Done", color = Color.White, fontWeight = FontWeight.Bold)
+                                Text(stringResource(R.string.ui_done_e9b450), color = Color.White, fontWeight = FontWeight.Bold)
                             }
                         }
                     } else if (currentVerseKey != null) {
@@ -208,7 +213,7 @@ fun HifdhTestModal(
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
                                     Text(
-                                        text = "Weak Transition Detected",
+                                        text = stringResource(R.string.ui_weak_transition_detected_c43370),
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = Color(0xFFEA580C),
@@ -217,7 +222,7 @@ fun HifdhTestModal(
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
-                                        text = "Start reciting from the end of the previous Ayah:",
+                                        text = stringResource(R.string.ui_start_reciting_from_the_end_of_the_previous_ayah_54d250),
                                         fontSize = 11.sp,
                                         color = hInkMuted,
                                         textAlign = TextAlign.Center
@@ -252,7 +257,7 @@ fun HifdhTestModal(
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 Text(
-                                    text = chapter?.nameSimple ?: "Surah ${chapter?.id ?: "?"}",
+                                    text = chapter?.nameSimple ?: stringResource(R.string.ui_surah_1_s_ffa393, chapter?.id ?: "?"),
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = hGold,
@@ -261,7 +266,7 @@ fun HifdhTestModal(
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = "Ayah $ayahNum",
+                                    text = stringResource(R.string.ui_ayah_1_s_3136e0, ayahNum),
                                     fontSize = 22.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = hInk,
@@ -300,7 +305,7 @@ fun HifdhTestModal(
                                     ) {
                                         Icon(imageVector = NurIcons.Eye, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
                                         Spacer(modifier = Modifier.width(8.dp))
-                                        Text("Tap to Reveal", color = Color.White, fontWeight = FontWeight.Bold)
+                                        Text(stringResource(R.string.ui_tap_to_reveal_505d60), color = Color.White, fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }
@@ -310,7 +315,7 @@ fun HifdhTestModal(
                             // Not yet rated — show recall + rating buttons
                             Spacer(modifier = Modifier.height(12.dp))
                             Text(
-                                text = "Recite this ayah from memory, then tap to verify.",
+                                text = stringResource(R.string.ui_recite_this_ayah_from_memory_then_tap_to_verify_b961ca),
                                 fontSize = 11.sp,
                                 color = hInkMuted,
                                 textAlign = TextAlign.Center,
@@ -319,7 +324,7 @@ fun HifdhTestModal(
                             if (isRevealed) {
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Text(
-                                    text = "How well did you remember this?",
+                                    text = stringResource(R.string.ui_how_well_did_you_remember_this_f8e814),
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = hInkMuted,
@@ -337,15 +342,15 @@ fun HifdhTestModal(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        RatingButton(label = "Complete Blank", sublabel = "Again", color = Color(0xFFEF4444), modifier = Modifier.weight(1f)) { handleRating(1) }
-                                        RatingButton(label = "Needed Prompt", sublabel = "Hard", color = Color(0xFFF59E0B), modifier = Modifier.weight(1f)) { handleRating(2) }
+                                        RatingButton(label = stringResource(R.string.ui_complete_blank_85cd86), sublabel = "Again", color = Color(0xFFEF4444), modifier = Modifier.weight(1f)) { handleRating(1) }
+                                        RatingButton(label = stringResource(R.string.ui_needed_prompt_353bdc), sublabel = "Hard", color = Color(0xFFF59E0B), modifier = Modifier.weight(1f)) { handleRating(2) }
                                     }
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        RatingButton(label = "Hesitated", sublabel = "Good", color = Color(0xFF3B82F6), modifier = Modifier.weight(1f)) { handleRating(3) }
-                                        RatingButton(label = "Perfect", sublabel = "Easy", color = Color(0xFF10B981), modifier = Modifier.weight(1f)) { handleRating(4) }
+                                        RatingButton(label = stringResource(R.string.ui_hesitated_3dbf06), sublabel = "Good", color = Color(0xFF3B82F6), modifier = Modifier.weight(1f)) { handleRating(3) }
+                                        RatingButton(label = stringResource(R.string.ui_perfect_241f20), sublabel = "Easy", color = Color(0xFF10B981), modifier = Modifier.weight(1f)) { handleRating(4) }
                                     }
                                 }
                             }
@@ -366,7 +371,7 @@ fun HifdhTestModal(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = if (lastRating!! >= 3) "Mashallah! Keep it up." else "Keep practicing!",
+                                    text = if (lastRating!! >= 3) stringResource(R.string.ui_mashallah_keep_it_up_46242e) else stringResource(R.string.ui_keep_practicing_bf8bfa),
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = if (lastRating!! >= 3) hGreen else Color(0xFFEF4444)
@@ -387,7 +392,7 @@ fun HifdhTestModal(
                                 ) {
                                     Icon(imageVector = NurIcons.RefreshCw, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Test Another Ayah", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    Text(stringResource(R.string.ui_test_another_ayah_862c6c), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                 }
                                 Button(
                                     onClick = onDismiss,
@@ -395,7 +400,7 @@ fun HifdhTestModal(
                                     shape = RoundedCornerShape(12.dp),
                                     modifier = Modifier.weight(0.8f).height(44.dp)
                                 ) {
-                                    Text("Done", color = hInk, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    Text(stringResource(R.string.ui_done_e9b450), color = hInk, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                 }
                             }
                         }

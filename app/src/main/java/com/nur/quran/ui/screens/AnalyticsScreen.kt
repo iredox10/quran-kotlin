@@ -1,5 +1,9 @@
 package com.nur.quran.ui.screens
 
+
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -67,9 +71,9 @@ fun AnalyticsScreen(
 
     val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
     val greeting = when {
-        hour < 12 -> "Good Morning"
-        hour < 17 -> "Good Afternoon"
-        else -> "Good Evening"
+        hour < 12 -> stringResource(R.string.ui_good_morning_06e336)
+        hour < 17 -> stringResource(R.string.ui_good_afternoon_6ec55f)
+        else -> stringResource(R.string.ui_good_evening_cf4eec)
     }
 
     // Single-source stats input for AnalyticsStats delegation (web parity).
@@ -157,7 +161,7 @@ fun AnalyticsScreen(
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        text = "Analytics",
+                        text = stringResource(R.string.ui_analytics_25bc96),
                         fontFamily = fontFamilyUi,
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp,
@@ -455,7 +459,7 @@ private fun ActivityFlowHeader(
                 modifier = Modifier.size(18.dp)
             )
             Text(
-                text = "Activity Flow",
+                text = stringResource(R.string.ui_activity_flow_2c0f25),
                 fontSize = 17.sp,
                 fontWeight = FontWeight.Bold,
                 color = hInk,
@@ -486,7 +490,7 @@ private fun ActivityFlowHeader(
                         modifier = Modifier.size(12.dp)
                     )
                     Text(
-                        text = if (logOpen) "CLOSE" else "+ LOG",
+                        text = if (logOpen) stringResource(R.string.ui_close_dbc874) else stringResource(R.string.ui_log_79a7bb),
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = fontFamilyMono,
@@ -509,7 +513,7 @@ private fun ActivityFlowHeader(
                         .padding(horizontal = 10.dp, vertical = 5.dp)
                 ) {
                 Text(
-                    text = "CHART",
+                    text = stringResource(R.string.ui_chart_aed007),
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = fontFamilyMono,
@@ -525,7 +529,7 @@ private fun ActivityFlowHeader(
                     .padding(horizontal = 10.dp, vertical = 5.dp)
             ) {
                 Text(
-                    text = "HEATMAP",
+                    text = stringResource(R.string.ui_heatmap_80845f),
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = fontFamilyMono,
@@ -563,7 +567,7 @@ private fun FlowEmptyState(range: AnalyticsStats.FlowRange) {
         )
         Spacer(modifier = Modifier.height(12.dp))
         Text(
-            text = "Nothing logged $period yet",
+            text = stringResource(R.string.ui_nothing_logged_1_s_yet_641380, period),
             fontFamily = fontFamilyUi,
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
@@ -571,7 +575,7 @@ private fun FlowEmptyState(range: AnalyticsStats.FlowRange) {
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "Every session you record adds to your flow. Log one above, or open a Surah and let the time track itself.",
+            text = stringResource(R.string.ui_every_session_you_record_adds_to_your_flow_log_o_cb561b),
             fontFamily = fontFamilyUi,
             fontSize = 13.sp,
             color = hInkMuted,
@@ -582,7 +586,7 @@ private fun FlowEmptyState(range: AnalyticsStats.FlowRange) {
 
 /** % delta pill vs previous window + Total/Sessions/Active/Avg cells — web parity. */
 @Composable
-private fun FlowDeltaBadge(delta: Int?, hasData: Boolean) {    val text = if (!hasData) "No data" else if (delta == null) "No baseline" else if (delta == 0) "0%" else if (delta > 0) "+$delta%" else "$delta%"
+private fun FlowDeltaBadge(delta: Int?, hasData: Boolean) {    val text = if (!hasData) stringResource(R.string.ui_no_data_d802d2) else if (delta == null) stringResource(R.string.ui_no_baseline_a1baf5) else if (delta == 0) "0%" else if (delta > 0) "+$delta%" else "$delta%"
     val color = if (text.startsWith("+")) Color(0xFF10B981) else if (text.startsWith("-")) Color(0xFFE75344) else hInkMuted
     Surface(color = if (color == hInkMuted) hSurface else color.copy(alpha = 0.12f), shape = RoundedCornerShape(20.dp)) {
         Text(text.uppercase(Locale.getDefault()), color = color, fontFamily = fontFamilyMono, fontSize = 10.sp, letterSpacing = 1.sp, modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp))
@@ -590,8 +594,8 @@ private fun FlowDeltaBadge(delta: Int?, hasData: Boolean) {    val text = if (!h
 }
 @Composable
 private fun FlowStatCells(summary: AnalyticsStats.FlowSummary, daysInRange: Int) {
-    val cells = listOf("Total time" to AnalyticsStats.formatDuration(summary.seconds), "Sessions" to "${summary.count}",
-        "Active days" to "${summary.activeDays}/$daysInRange", "Avg / day" to "${summary.avgPerDayMin}m")
+    val cells = listOf(stringResource(R.string.ui_total_time_d7da73) to AnalyticsStats.formatDuration(summary.seconds), stringResource(R.string.ui_sessions_e11e37) to "${summary.count}",
+        stringResource(R.string.ui_active_days_340f3c) to "${summary.activeDays}/$daysInRange", stringResource(R.string.ui_avg_day_c7bebd) to "${summary.avgPerDayMin}m")
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         cells.chunked(2).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -647,7 +651,7 @@ private fun WeeklyHeatmapCard(stats: HomeStats) {
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = "This Week",
+                    text = stringResource(R.string.ui_this_week_4e68dc),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = hInk,
@@ -679,7 +683,7 @@ private fun WeeklyHeatmapCard(stats: HomeStats) {
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = day.label,
+                            text = com.nur.quran.i18n.localizedWeekday(day.label),
                             fontSize = 9.sp,
                             fontFamily = fontFamilyMono,
                             letterSpacing = 0.5.sp,
@@ -715,7 +719,7 @@ private fun WeeklyHeatmapCard(stats: HomeStats) {
                         }
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "${day.mins}m",
+                            text = stringResource(R.string.ui_1_sm_830877, day.mins),
                             fontSize = 9.sp,
                             fontFamily = fontFamilyMono,
                             fontWeight = if (day.isToday) FontWeight.Bold else FontWeight.Normal,

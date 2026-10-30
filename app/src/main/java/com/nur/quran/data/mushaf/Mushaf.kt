@@ -1,11 +1,9 @@
 package com.nur.quran.data.mushaf
 
 /**
- * Port of quran-app/src/config/mushaf.js.
- *
- * Decision for v1 (no QCF binary fonts): use the web's "qcf-page" approach —
- * Unicode text grouped by API `line_number` for the requested `apiMushafId`,
- * rendered with the bundled Madani fonts. No new font binaries required.
+ * Offline-readable Hafs presentations. QCF glyph editions and alternate physical
+ * page counts require their own fonts and page packs; a Unicode font is not a
+ * substitute for those assets. See docs/mushaf-support.md for the source audit.
  */
 enum class MushafRenderMode { UNICODE, QCF_PAGE }
 
@@ -23,21 +21,22 @@ data class Mushaf(
     val supportedFontIds: List<String>,
     val supportsTajweedToggle: Boolean,
     val forcesTajweed: Boolean,
-    val hasTajweedSource: Boolean
+    val hasTajweedSource: Boolean,
+    val isSelectable: Boolean = true,
+    val unavailableReason: String? = null
 ) {
     companion object {
         val MADANI_STANDARD = Mushaf(
             id = "madani-standard",
             name = "Madani Standard",
-            description = "QPC Hafs script, continuous reading.",
+            description = "Madani QPC Hafs script with flowing, adjustable text. 604-page navigation.",
             apiMushafId = 5,
             verseField = "text_qpc_hafs",
             scriptField = "text_qpc_hafs",
             renderMode = MushafRenderMode.UNICODE,
             defaultFontId = "kfgqpc-hafs",
             supportedFontIds = listOf(
-                "kfgqpc-hafs", "uthman-taha-naskh", "amiri-quran",
-                "noto-naskh-arabic", "scheherazade-new"
+                "kfgqpc-hafs", "amiri-quran", "noto-naskh-arabic", "scheherazade-new"
             ),
             supportsTajweedToggle = true,
             forcesTajweed = false,
@@ -46,21 +45,35 @@ data class Mushaf(
         val MADANI_TAJWEED = Mushaf(
             id = "madani-tajweed",
             name = "Madani Tajweed",
-            description = "Page-accurate 15-line Madani layout with Tajweed.",
-            apiMushafId = 19,
+            description = "Madani Hafs text with Tajweed colors. Adjustable text, not a fixed printed-page facsimile.",
+            apiMushafId = 5,
             verseField = "text_qpc_hafs",
             scriptField = "text_qpc_hafs",
-            renderMode = MushafRenderMode.QCF_PAGE,
+            renderMode = MushafRenderMode.UNICODE,
             defaultFontId = "kfgqpc-hafs",
-            supportedFontIds = listOf("kfgqpc-hafs", "uthman-taha-naskh", "amiri-quran"),
+            supportedFontIds = listOf("kfgqpc-hafs", "amiri-quran", "noto-naskh-arabic", "scheherazade-new"),
             supportsTajweedToggle = true,
             forcesTajweed = true,
+            hasTajweedSource = true
+        )
+        val UTHMANI_HAFS = Mushaf(
+            id = "uthmani-hafs",
+            name = "Uthmani Hafs",
+            description = "Traditional Uthmani orthography in Amiri Quran. 604-page navigation.",
+            apiMushafId = 4,
+            verseField = "text_uthmani",
+            scriptField = "text_uthmani",
+            renderMode = MushafRenderMode.UNICODE,
+            defaultFontId = "amiri-quran",
+            supportedFontIds = listOf("amiri-quran", "kfgqpc-hafs", "noto-naskh-arabic", "scheherazade-new"),
+            supportsTajweedToggle = true,
+            forcesTajweed = false,
             hasTajweedSource = true
         )
         val INDOPAK = Mushaf(
             id = "indopak",
             name = "IndoPak",
-            description = "South Asian Naskh script, 16-line layout.",
+            description = "South Asian IndoPak script. A complete compatible offline edition is not installed.",
             apiMushafId = 3,
             verseField = "text_indopak",
             scriptField = "text_indopak",
@@ -69,21 +82,28 @@ data class Mushaf(
             supportedFontIds = listOf("scheherazade-new", "amiri-quran"),
             supportsTajweedToggle = false,
             forcesTajweed = false,
-            hasTajweedSource = false
+            hasTajweedSource = false,
+            isSelectable = false,
+            unavailableReason = "A matching IndoPak font and offline text edition are required before this mushaf can be selected."
         )
 
-        val ALL = listOf(MADANI_STANDARD, MADANI_TAJWEED, INDOPAK)
+        val ALL = listOf(MADANI_STANDARD, MADANI_TAJWEED, UTHMANI_HAFS, INDOPAK)
+        val SELECTABLE = ALL.filter { it.isSelectable }
         val DEFAULT = MADANI_STANDARD
 
         /** Legacy preset keys stored in prefs ("uthmani"/"tajweed"/"indopak"). */
         fun fromPresetKey(key: String?): Mushaf = when (key?.trim()?.lowercase()) {
             "tajweed", "madani-tajweed" -> MADANI_TAJWEED
             "indopak", "indopak-naskh" -> INDOPAK
+            "uthmani-hafs" -> UTHMANI_HAFS
             else -> MADANI_STANDARD
         }
 
         fun fromId(id: String?): Mushaf =
             ALL.firstOrNull { it.id == id } ?: fromPresetKey(id)
+
+        /** Previously stored unsupported editions migrate to a complete, bundled Hafs edition. */
+        fun forReading(id: String?): Mushaf = fromId(id).takeIf { it.isSelectable } ?: DEFAULT
 
         /** Web: getCompatibleArabicFontId — keep requested if compatible, else default. */
         fun compatibleFontId(mushaf: Mushaf, requestedFontId: String?): String {
@@ -97,6 +117,11 @@ data class Mushaf(
                 return normalized
             }
             return mushaf.defaultFontId
+        }
+
+        fun compatibleFontName(mushafId: String?, requestedName: String?): String {
+            val requested = requestedName?.takeIf { it.isNotBlank() && fromId(mushafId).isSelectable }?.let(::fontNameToId)
+            return fontIdToName(compatibleFontId(forReading(mushafId), requested))
         }
 
         /** Web: isTajweedEnabledForMushaf — Indopak never, Tajweed preset always. */
@@ -131,7 +156,10 @@ data class Mushaf(
  * fall back through the other scripts. Keeps Indopak actually reachable.
  */
 fun wordTextForMushaf(mushaf: Mushaf, uthmani: String?, indopak: String?, qpcHafs: String?): String {
-    val preferred = when (mushaf.scriptField) {
+    // A restored legacy preference must never publish unsupported private-use
+    // glyphs as squares, or relabel different text as a supported IndoPak edition.
+    val readable = Mushaf.forReading(mushaf.id)
+    val preferred = when (readable.scriptField) {
         "text_indopak" -> indopak
         "text_qpc_hafs" -> qpcHafs
         else -> uthmani

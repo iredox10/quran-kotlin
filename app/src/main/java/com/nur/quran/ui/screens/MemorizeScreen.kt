@@ -1,5 +1,10 @@
 package com.nur.quran.ui.screens
 
+
+
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import android.content.Context
 import androidx.compose.animation.*
 import androidx.compose.foundation.Canvas
@@ -112,7 +117,7 @@ fun MemorizeScreen(
         // Web Top Navbar
         TopNavbar(
             title = "Quran Nur",
-            subTitle = "Hifdh",
+            subTitle = stringResource(R.string.ui_hifdh_73ef63),
             onThemeToggle = {
                 isDarkThemeGlobal = !isDarkThemeGlobal
                 context.getSharedPreferences("Settings", Context.MODE_PRIVATE)
@@ -133,7 +138,7 @@ fun MemorizeScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "MEMORIZATION HUB",
+                        text = stringResource(R.string.ui_memorization_hub_5a5c7c),
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         color = hInkMuted,
@@ -142,7 +147,7 @@ fun MemorizeScreen(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Hifdh Tracker",
+                        text = stringResource(R.string.ui_hifdh_tracker_377987),
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Bold,
                         color = hInk,
@@ -202,9 +207,9 @@ fun MemorizeScreen(
                                     }
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Column {
-                                        Text("Continue: $continueName", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.White, fontFamily = fontFamilyUi)
+                                        Text(stringResource(R.string.ui_continue_1_s_a3e532, continueName), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.White, fontFamily = fontFamilyUi)
                                         Text(
-                                            text = "Last practiced $continueTimeSince",
+                                            text = stringResource(R.string.ui_last_practiced_1_s_84f408, continueTimeSince),
                                             fontSize = 11.sp,
                                             color = Color.White.copy(alpha = 0.8f),
                                             fontFamily = fontFamilyMono
@@ -220,7 +225,7 @@ fun MemorizeScreen(
                                         .clickable { onGoalResume(continueChapterId, continueResumeKey) },
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Icon(imageVector = NurIcons.PlayFilled, contentDescription = "Play", tint = Color.White, modifier = Modifier.size(16.dp))
+                                    Icon(imageVector = NurIcons.PlayFilled, contentDescription = stringResource(R.string.ui_play_5d12bd), tint = Color.White, modifier = Modifier.size(16.dp))
                             }
                         }
                     }
@@ -238,7 +243,7 @@ fun MemorizeScreen(
                     MetricStatCard(
                         countText = "${memorizedSurahIds.size}",
                         totalText = "/114",
-                        label = "Surahs",
+                        label = stringResource(R.string.ui_surahs_70cfd2),
                         modifier = Modifier.weight(1f),
                         onClick = {
                             activeBreakdownModal = "Memorized Surahs (${memorizedSurahIds.size})" to
@@ -248,14 +253,14 @@ fun MemorizeScreen(
                     MetricStatCard(
                         countText = "${memorizedAyahs.size}",
                         totalText = "/6236",
-                        label = "Ayahs",
+                        label = stringResource(R.string.ui_ayahs_978b6a),
                         modifier = Modifier.weight(1f),
                         onClick = { activeBreakdownModal = "Memorized Ayahs (${memorizedAyahs.size})" to ayahRangeSections }
                     )
                     MetricStatCard(
                         countText = "${if (memorizedAyahs.isNotEmpty()) Math.round((memorizedAyahs.size.toFloat() / 6236f) * 100) else 0}",
                         totalText = "%",
-                        label = "Progress",
+                        label = stringResource(R.string.ui_progress_1b9027),
                         modifier = Modifier.weight(1f),
                         onClick = {}
                     )
@@ -303,8 +308,8 @@ fun MemorizeScreen(
                                 Icon(imageVector = NurIcons.RefreshCw, contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
                             }
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text("Test My Hifdh", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White, fontFamily = fontFamilyUi)
-                            Text("Review mistakes", fontSize = 10.sp, color = Color.White.copy(alpha = 0.75f), fontFamily = fontFamilyMono)
+                            Text(stringResource(R.string.ui_test_my_hifdh_7302f5), fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White, fontFamily = fontFamilyUi)
+                            Text(stringResource(R.string.ui_review_mistakes_961ede), fontSize = 10.sp, color = Color.White.copy(alpha = 0.75f), fontFamily = fontFamilyMono)
                         }
                     }
 
@@ -336,8 +341,8 @@ fun MemorizeScreen(
                                 Icon(imageVector = NurIcons.Target, contentDescription = null, tint = hInkMid, modifier = Modifier.size(24.dp))
                             }
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text("Set Goal", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = hInk, fontFamily = fontFamilyUi)
-                            Text("Plan memorization", fontSize = 10.sp, color = hInkMuted, fontFamily = fontFamilyMono)
+                            Text(stringResource(R.string.ui_set_goal_3bd23e), fontSize = 15.sp, fontWeight = FontWeight.Bold, color = hInk, fontFamily = fontFamilyUi)
+                            Text(stringResource(R.string.ui_plan_memorization_2a56f3), fontSize = 10.sp, color = hInkMuted, fontFamily = fontFamilyMono)
                         }
                     }
                 }
@@ -352,9 +357,9 @@ fun MemorizeScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("REVISION QUEUES", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = hInkMuted, fontFamily = fontFamilyMono, letterSpacing = 1.5.sp)
+                    Text(stringResource(R.string.ui_revision_queues_c2832d), fontSize = 10.sp, fontWeight = FontWeight.Bold, color = hInkMuted, fontFamily = fontFamilyMono, letterSpacing = 1.5.sp)
                     Text(
-                        text = "$totalDueToday ayahs due today",
+                        text = stringResource(R.string.ui_1_s_ayahs_due_today_99ffa4, totalDueToday),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         color = if (totalDueToday > 0) hGreen else hInkMuted,
@@ -371,7 +376,7 @@ fun MemorizeScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     RevisionQueueCard(
-                        title = "Sabaq (New)",
+                        title = stringResource(R.string.ui_sabaq_new_e037d7),
                         totalCount = queueData.sabaqAll.size,
                         dueCount = queueData.sabaqDue.size,
                         bgColor = Color(0xFFF0FDF4),
@@ -383,7 +388,7 @@ fun MemorizeScreen(
                         }
                     )
                     RevisionQueueCard(
-                        title = "Sabqi (Recent)",
+                        title = stringResource(R.string.ui_sabqi_recent_5663bb),
                         totalCount = queueData.sabqiAll.size,
                         dueCount = queueData.sabqiDue.size,
                         bgColor = Color(0xFFFEFCE8),
@@ -395,7 +400,7 @@ fun MemorizeScreen(
                         }
                     )
                     RevisionQueueCard(
-                        title = "Manzil (Old)",
+                        title = stringResource(R.string.ui_manzil_old_cbdb98),
                         totalCount = queueData.manzilAll.size,
                         dueCount = queueData.manzilDue.size,
                         bgColor = Color(0xFFF0F9FF),
@@ -415,7 +420,7 @@ fun MemorizeScreen(
             if (hifdhGoals.isNotEmpty()) {
                 item {
                     Text(
-                        text = "Active Goals",
+                        text = stringResource(R.string.ui_active_goals_983553),
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = hInk,
@@ -447,17 +452,17 @@ fun MemorizeScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
-                                        Text(text = "Memorize ${ch?.nameSimple ?: "Surah"}", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = hInk, fontFamily = fontFamilyUi)
+                                        Text(text = stringResource(R.string.ui_memorize_1_s_15a72d, ch?.nameSimple ?: stringResource(R.string.ui_surah_a9f7c5)), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = hInk, fontFamily = fontFamilyUi)
                                         Text(
-                                            text = if (daysLeft > 0) "$daysLeft days left • $memCount / $totalVerses Ayahs"
-                                            else if (pct >= 100) "Completed ✓ • $memCount / $totalVerses Ayahs"
-                                            else "Due now! • $memCount / $totalVerses Ayahs",
+                                            text = if (daysLeft > 0) stringResource(R.string.ui_1_s_days_left_2_s_3_s_ayahs_5ca451, daysLeft, memCount, totalVerses)
+                                            else if (pct >= 100) stringResource(R.string.ui_completed_1_s_2_s_ayahs_7d737e, memCount, totalVerses)
+                                            else stringResource(R.string.ui_due_now_1_s_2_s_ayahs_b2e502, memCount, totalVerses),
                                             fontSize = 12.sp,
                                             color = if (daysLeft == 0L && pct < 100) Color(0xFFEF4444) else hInkMuted
                                         )
                                         if (resumeAyah != null) {
                                             Text(
-                                                text = "Continue from Ayah $resumeAyah",
+                                                text = stringResource(R.string.ui_continue_from_ayah_1_s_6220b3, resumeAyah),
                                                 fontSize = 11.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 color = hGold
@@ -488,14 +493,14 @@ fun MemorizeScreen(
                                                 style = Stroke(width = 3.dp.toPx())
                                             )
                                         }
-                                        Text(text = "$pct%", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = hInk, fontFamily = fontFamilyMono)
+                                        Text(text = stringResource(R.string.ui_1_s_fc9db1, pct), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = hInk, fontFamily = fontFamilyMono)
                                     }
 
                                     IconButton(
                                         onClick = { surahViewModel.deleteHifdhGoal(goal.id) },
                                         modifier = Modifier.size(34.dp)
                                     ) {
-                                        Icon(imageVector = NurIcons.X, contentDescription = "Delete goal", tint = hInkMuted, modifier = Modifier.size(15.dp))
+                                        Icon(imageVector = NurIcons.X, contentDescription = stringResource(R.string.ui_delete_goal_8325db), tint = hInkMuted, modifier = Modifier.size(15.dp))
                                     }
                                 }
                             }
@@ -526,7 +531,7 @@ fun MemorizeScreen(
                                 .clickable { viewMode = "surah" }
                                 .padding(horizontal = 16.dp, vertical = 8.dp)
                         ) {
-                            Text("Surahs", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (viewMode == "surah") hInk else hInkMuted)
+                            Text(stringResource(R.string.ui_surahs_70cfd2), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (viewMode == "surah") hInk else hInkMuted)
                         }
                         Box(
                             modifier = Modifier
@@ -535,7 +540,7 @@ fun MemorizeScreen(
                                 .clickable { viewMode = "juz" }
                                 .padding(horizontal = 16.dp, vertical = 8.dp)
                         ) {
-                            Text("Ajzaa (Juz)", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (viewMode == "juz") hInk else hInkMuted)
+                            Text(stringResource(R.string.ui_ajzaa_juz_f68c53), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (viewMode == "juz") hInk else hInkMuted)
                         }
                     }
                 }
@@ -550,7 +555,7 @@ fun MemorizeScreen(
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
-                        placeholder = { Text("Search...", fontSize = 14.sp, color = hInkMuted) },
+                        placeholder = { Text(stringResource(R.string.ui_search_6d7a30), fontSize = 14.sp, color = hInkMuted) },
                         leadingIcon = { Icon(imageVector = NurIcons.Search, contentDescription = null, tint = hInkMuted, modifier = Modifier.size(18.dp)) },
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(16.dp),
@@ -577,7 +582,7 @@ fun MemorizeScreen(
                             Icon(imageVector = NurIcons.Award, contentDescription = null, tint = if (showMemorizedOnly) hGreen else hInkMid, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = if (showMemorizedOnly) "Memorized Only" else "Filter Memorized",
+                                text = if (showMemorizedOnly) stringResource(R.string.ui_memorized_only_c5d89b) else stringResource(R.string.ui_filter_memorized_458615),
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = if (showMemorizedOnly) hGreen else hInkMid
@@ -650,10 +655,10 @@ fun MemorizeScreen(
                                             verticalAlignment = Alignment.CenterVertically,
                                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                                         ) {
-                                            Text(text = "${chapter.versesCount} Ayahs", fontSize = 12.sp, color = hInkMuted)
+                                            Text(text = stringResource(R.string.ui_1_s_ayahs_be659c, chapter.versesCount), fontSize = 12.sp, color = hInkMuted)
                                             if (!isMemorized && memCount > 0) {
                                                 Text(
-                                                    text = "$memCount done",
+                                                    text = stringResource(R.string.ui_1_s_done_6174e1, memCount),
                                                     fontSize = 10.sp,
                                                     fontWeight = FontWeight.Bold,
                                                     color = hGold,
@@ -674,7 +679,7 @@ fun MemorizeScreen(
                                         .clip(CircleShape)
                                         .background(hBone)
                                 ) {
-                                    Icon(imageVector = NurIcons.Play, contentDescription = "Play", tint = hInkMuted, modifier = Modifier.size(16.dp))
+                                    Icon(imageVector = NurIcons.Play, contentDescription = stringResource(R.string.ui_play_5d12bd), tint = hInkMuted, modifier = Modifier.size(16.dp))
                                 }
                             }
 
@@ -733,13 +738,13 @@ fun MemorizeScreen(
                                     Spacer(modifier = Modifier.width(14.dp))
                                     Column {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Text(text = "Juz ${jp.juzNum}", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = hInk, fontFamily = fontFamilyUi)
+                                            Text(text = stringResource(R.string.ui_juz_1_s_146e8b, jp.juzNum), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = hInk, fontFamily = fontFamilyUi)
                                             if (isMemorized) {
                                                 Spacer(modifier = Modifier.width(6.dp))
                                                 Icon(imageVector = NurIcons.CheckCircle2, contentDescription = null, tint = hGreen, modifier = Modifier.size(16.dp))
                                             }
                                         }
-                                        Text(text = "Starts at Surah ${jp.startChapterId}:${jp.startAyah} • Page ${jp.pageNumber}", fontSize = 12.sp, color = hInkMuted)
+                                        Text(text = stringResource(R.string.ui_starts_at_surah_1_s_2_s_page_3_s_971fa1, jp.startChapterId, jp.startAyah, jp.pageNumber), fontSize = 12.sp, color = hInkMuted)
                                     }
                                 }
 
@@ -756,7 +761,7 @@ fun MemorizeScreen(
                                 )
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(
-                                    text = "${jp.memAyahs} / ${jp.totalAyahs} Ayahs ($memPct%)",
+                                    text = stringResource(R.string.ui_1_s_2_s_ayahs_3_s_6526a3, jp.memAyahs, jp.totalAyahs, memPct),
                                     fontSize = 11.sp,
                                     color = hInkMuted,
                                     fontFamily = fontFamilyMono
@@ -958,10 +963,10 @@ private fun RevisionQueueCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(text = title, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = textColor, fontFamily = fontFamilyUi)
-                Text(text = "$dueCount", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = textColor, fontFamily = fontFamilyMono)
+                Text(text = stringResource(R.string.ui_1_s_c79f71, dueCount), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = textColor, fontFamily = fontFamilyMono)
             }
             Spacer(modifier = Modifier.height(4.dp))
-            Text(text = "$totalCount total", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = textColor.copy(alpha = 0.7f), fontFamily = fontFamilyMono)
+            Text(text = stringResource(R.string.ui_1_s_total_270c97, totalCount), fontSize = 10.sp, fontWeight = FontWeight.Bold, color = textColor.copy(alpha = 0.7f), fontFamily = fontFamilyMono)
             Spacer(modifier = Modifier.height(12.dp))
             Surface(
                 shape = RoundedCornerShape(10.dp),
@@ -969,7 +974,7 @@ private fun RevisionQueueCard(
                 modifier = Modifier.fillMaxWidth().height(32.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Text(text = "Review Due", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = textColor)
+                    Text(text = stringResource(R.string.ui_review_due_b4ee46), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = textColor)
                 }
             }
         }

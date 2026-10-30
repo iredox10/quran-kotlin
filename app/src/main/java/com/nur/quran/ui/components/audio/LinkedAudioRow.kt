@@ -1,5 +1,9 @@
 package com.nur.quran.ui.components.audio
 
+
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -98,7 +102,7 @@ fun LinkedAudioRow(
                     else hGold.copy(alpha = 0.15f)
                 ) {
                     Text(
-                        text = if (hasTiming) "Ayah-precise" else "Full-surah only",
+                        text = if (hasTiming) stringResource(R.string.ui_ayah_precise_164741) else stringResource(R.string.ui_full_surah_only_921b90),
                         color = if (hasTiming) hGreen else hGold,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
@@ -122,7 +126,7 @@ fun LinkedAudioRow(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Linking…",
+                        text = stringResource(R.string.ui_linking_6f6408),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
                         color = hInkMid,
@@ -131,7 +135,7 @@ fun LinkedAudioRow(
                 } else if (isLinked) {
                     TextButton(onClick = onUnlinkClick) {
                         Text(
-                            "Unlink",
+                            stringResource(R.string.ui_unlink_0dc291),
                             color = hRed,
                             fontWeight = FontWeight.Bold,
                             fontSize = 13.sp,
@@ -144,7 +148,7 @@ fun LinkedAudioRow(
                         colors = ButtonDefaults.buttonColors(containerColor = hGold)
                     ) {
                         Text(
-                            "Link folder",
+                            stringResource(R.string.ui_link_folder_46c5f9),
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
                             fontSize = 13.sp,

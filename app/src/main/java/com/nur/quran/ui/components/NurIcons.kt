@@ -481,7 +481,8 @@ private fun lucideIcon(name: String, vararg pathData: String): ImageVector {
         defaultWidth = 24.dp,
         defaultHeight = 24.dp,
         viewportWidth = 24f,
-        viewportHeight = 24f
+        viewportHeight = 24f,
+        autoMirror = name in setOf("ArrowLeft", "ArrowRight", "ChevronLeft", "ChevronRight")
     )
     pathData.forEach { d ->
         builder.addPath(

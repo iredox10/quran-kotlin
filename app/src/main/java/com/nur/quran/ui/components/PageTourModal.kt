@@ -1,5 +1,10 @@
 package com.nur.quran.ui.components
 
+
+
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -89,12 +94,14 @@ fun PageTourModal(
     onNavigateToRoute: (String) -> Unit
 ) {
     // Web prepends a "Night Mode Active" step to the home tour in dark mode.
-    val allSteps = remember(steps, tourId, isDark) {
+    val nightTitle = stringResource(R.string.ui_night_mode_active_9e7c1d)
+    val nightDescription = stringResource(R.string.ui_perfect_for_reading_after_isha_your_eyes_will_th_ef3c7c)
+    val allSteps = remember(steps, tourId, isDark, nightTitle, nightDescription) {
         if (tourId == "home-tour" && isDark) {
             listOf(
                 TourStep(
-                    title = "Night Mode Active 🌙",
-                    description = "Perfect for reading after Isha. Your eyes will thank you.",
+                    title = nightTitle,
+                    description = nightDescription,
                     icon = NurIcons.Moon
                 )
             ) + steps
@@ -224,7 +231,7 @@ fun PageTourModal(
                         ) {
                             Icon(
                                 imageVector = NurIcons.X,
-                                contentDescription = "Close tour",
+                                contentDescription = stringResource(R.string.ui_close_tour_1aca7d),
                                 tint = if (isDark) SLATE_400 else SLATE_400,
                                 modifier = Modifier.size(18.dp)
                             )
@@ -270,7 +277,7 @@ fun PageTourModal(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text(
-                                            text = "Go there",
+                                            text = stringResource(R.string.ui_go_there_cf4d8a),
                                             fontSize = 12.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = if (isDark) EMERALD_400 else EMERALD
@@ -328,14 +335,14 @@ fun PageTourModal(
                                 ) {
                                     Icon(
                                         imageVector = NurIcons.ChevronLeft,
-                                        contentDescription = "Previous step",
+                                        contentDescription = stringResource(R.string.ui_previous_step_da5705),
                                         tint = SLATE_500,
                                         modifier = Modifier.size(18.dp)
                                     )
                                 }
                             } else {
                                 Text(
-                                    text = "Skip Tour",
+                                    text = stringResource(R.string.ui_skip_tour_da6d41),
                                     fontSize = 12.sp,
                                     color = SLATE_500,
                                     modifier = Modifier
@@ -354,7 +361,7 @@ fun PageTourModal(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
-                                        text = if (currentStep < allSteps.size - 1) "Next" else "Finish",
+                                        text = if (currentStep < allSteps.size - 1) stringResource(R.string.ui_next_bc9819) else stringResource(R.string.ui_finish_b74bde),
                                         fontSize = 14.sp,
                                         fontWeight = FontWeight.Medium,
                                         color = if (isDark) DARK_FOOTER else Color.White

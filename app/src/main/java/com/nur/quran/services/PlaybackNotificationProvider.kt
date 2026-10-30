@@ -50,13 +50,13 @@ class PlaybackNotificationProvider(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val notificationManager =
                 context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
-            if (notificationManager != null && notificationManager.getNotificationChannel(CHANNEL_ID) == null) {
+            if (notificationManager != null) {
                 val channel = NotificationChannel(
                     CHANNEL_ID,
-                    context.getString(R.string.quran_playback_channel_name),
+                    com.nur.quran.i18n.AppLanguages.wrap(context).getString(R.string.quran_playback_channel_name),
                     NotificationManager.IMPORTANCE_LOW,
                 ).apply {
-                    description = CHANNEL_DESCRIPTION
+                    description = com.nur.quran.i18n.AppLanguages.wrap(context).getString(R.string.ui_quran_audio_playback_controls_d437df)
                     setShowBadge(false)
                 }
                 notificationManager.createNotificationChannel(channel)

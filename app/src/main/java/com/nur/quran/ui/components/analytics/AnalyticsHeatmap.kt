@@ -1,5 +1,9 @@
 package com.nur.quran.ui.components.analytics
 
+
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -181,7 +185,7 @@ fun AnalyticsHeatmap(
                         val animatedScale by animateFloatAsState(
                             targetValue = if (isSelected) 1.2f else 1.0f,
                             animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
-                            label = "heatmap_tile_scale"
+                            label = stringResource(R.string.ui_heatmap_tile_scale_5db3a0)
                         )
 
                         val level = getHeatmapLevel(mins)
@@ -226,6 +230,12 @@ fun AnalyticsHeatmap(
 
         Spacer(modifier = Modifier.height(14.dp))
 
+        val legendDescription0 = stringResource(R.string.ui_less_526cb7)
+        val legendDescription1 = stringResource(R.string.ui_level_0_no_activity_99a7a5)
+        val legendDescription2 = stringResource(R.string.ui_level_1_1m_9m_471a66)
+        val legendDescription3 = stringResource(R.string.ui_level_2_10m_29m_d6dd21)
+        val legendDescription4 = stringResource(R.string.ui_level_3_30m_or_more_3c7ae2)
+        val legendDescription5 = stringResource(R.string.ui_more_4bab2d)
         // Legend at bottom:
         // "Less" • [Level 0 square] [Level 1 square] [Level 2 square] [Level 3 square] • "More"
         Row(
@@ -233,13 +243,13 @@ fun AnalyticsHeatmap(
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Text(
-                text = "LESS",
+                text = stringResource(R.string.ui_less_a90cfa),
                 fontSize = 10.sp,
                 fontFamily = fontFamilyMono,
                 fontWeight = FontWeight.Medium,
                 letterSpacing = 2.sp,
                 color = hInkMuted,
-                modifier = Modifier.semantics { contentDescription = "Less" }
+                modifier = Modifier.semantics { contentDescription = legendDescription0 }
             )
 
             Spacer(modifier = Modifier.width(2.dp))
@@ -250,7 +260,7 @@ fun AnalyticsHeatmap(
                     .size(12.dp)
                     .clip(RoundedCornerShape(3.dp))
                     .background(hBorderColor.copy(alpha = 0.5f))
-                    .semantics { contentDescription = "Level 0: No activity" }
+                    .semantics { contentDescription = legendDescription1 }
             )
 
             // Level 1 square (1m - 9m)
@@ -260,7 +270,7 @@ fun AnalyticsHeatmap(
                     .clip(RoundedCornerShape(3.dp))
                     .background(hGoldSoft)
                     .border(1.dp, hGold.copy(alpha = 0.25f), RoundedCornerShape(3.dp))
-                    .semantics { contentDescription = "Level 1: 1m - 9m" }
+                    .semantics { contentDescription = legendDescription2 }
             )
 
             // Level 2 square (10m - 29m)
@@ -269,7 +279,7 @@ fun AnalyticsHeatmap(
                     .size(12.dp)
                     .clip(RoundedCornerShape(3.dp))
                     .background(hGold.copy(alpha = 0.8f))
-                    .semantics { contentDescription = "Level 2: 10m - 29m" }
+                    .semantics { contentDescription = legendDescription3 }
             )
 
             // Level 3 square (>= 30m)
@@ -278,19 +288,19 @@ fun AnalyticsHeatmap(
                     .size(12.dp)
                     .clip(RoundedCornerShape(3.dp))
                     .background(HeatmapEmerald)
-                    .semantics { contentDescription = "Level 3: 30m or more" }
+                    .semantics { contentDescription = legendDescription4 }
             )
 
             Spacer(modifier = Modifier.width(2.dp))
 
             Text(
-                text = "MORE",
+                text = stringResource(R.string.ui_more_2c624e),
                 fontSize = 10.sp,
                 fontFamily = fontFamilyMono,
                 fontWeight = FontWeight.Medium,
                 letterSpacing = 2.sp,
                 color = hInkMuted,
-                modifier = Modifier.semantics { contentDescription = "More" }
+                modifier = Modifier.semantics { contentDescription = legendDescription5 }
             )
         }
     }

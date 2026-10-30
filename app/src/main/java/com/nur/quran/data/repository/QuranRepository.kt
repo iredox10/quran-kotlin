@@ -280,7 +280,7 @@ class QuranRepository @Inject constructor(
 
     /** Room + bundled Quran content always precede the network, including on a cold page. */
     suspend fun getPageVerses(pageNumber: Int, mushafId: String? = null, translationId: Int = 20): PageVerses = withContext(Dispatchers.IO) {
-        val mushaf = com.nur.quran.data.mushaf.Mushaf.fromId(mushafId)
+        val mushaf = com.nur.quran.data.mushaf.Mushaf.forReading(mushafId)
         val bundle = quranDao.getPageBundle(pageNumber, translationId)
         val content = loadPageOfflineFirst(
             cached = LocalPageContent(bundle.verses, bundle.words),
@@ -657,7 +657,7 @@ class QuranRepository @Inject constructor(
     }
 
     suspend fun refreshVersesByChapter(chapterId: Int, translationId: Int, mushafId: String? = null) = withContext(Dispatchers.IO) {
-        val mushaf = com.nur.quran.data.mushaf.Mushaf.fromId(mushafId)
+        val mushaf = com.nur.quran.data.mushaf.Mushaf.forReading(mushafId)
         var existing = quranDao.getVersesByChapter(chapterId).firstOrNull()
         if (existing.isNullOrEmpty()) {
             val (offlineVerses, offlineWords) = loadOfflineVersesFromAssets(chapterId)

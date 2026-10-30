@@ -1,5 +1,8 @@
 package com.nur.quran.ui.components.library
 
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -66,7 +69,7 @@ fun CollectionsSection(
                     modifier = Modifier.size(24.dp)
                 )
                 Text(
-                    text = "Collections",
+                    text = stringResource(R.string.ui_collections_4bbb63),
                     fontFamily = fontFamilyUi,
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Bold,
@@ -80,7 +83,7 @@ fun CollectionsSection(
                             .padding(horizontal = 8.dp, vertical = 2.dp)
                     ) {
                         Text(
-                            text = "${collections.size}",
+                            text = stringResource(R.string.ui_1_s_c79f71, collections.size),
                             fontFamily = fontFamilyMono,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
@@ -193,7 +196,7 @@ fun CreateCollectionBar(
         ) {
             if (collectionName.isEmpty()) {
                 Text(
-                    text = "New Collection Name...",
+                    text = stringResource(R.string.ui_new_collection_name_da8381),
                     fontFamily = fontFamilyBody,
                     fontSize = 14.sp,
                     color = hInkMuted
@@ -232,7 +235,7 @@ fun CreateCollectionBar(
                     modifier = Modifier.size(16.dp)
                 )
                 Text(
-                    text = "Create",
+                    text = stringResource(R.string.ui_create_6e157c),
                     fontFamily = fontFamilyBody,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -298,7 +301,7 @@ fun CollectionCard(
                         modifier = Modifier.size(13.dp)
                     )
                     Text(
-                        text = "${items.size} verses",
+                        text = stringResource(R.string.ui_1_s_verses_5ccd18, items.size),
                         fontFamily = fontFamilyMono,
                         fontSize = 12.sp,
                         color = hInkMuted
@@ -317,7 +320,7 @@ fun CollectionCard(
             ) {
                 Icon(
                     imageVector = NurIcons.Trash2,
-                    contentDescription = "Delete collection",
+                    contentDescription = stringResource(R.string.ui_delete_collection_029928),
                     tint = Color(0xFFDC2626),
                     modifier = Modifier.size(18.dp)
                 )
@@ -331,7 +334,7 @@ fun CollectionCard(
         ) {
             if (items.isEmpty()) {
                 Text(
-                    text = "No verses in this collection.",
+                    text = stringResource(R.string.ui_no_verses_in_this_collection_25e162),
                     fontFamily = fontFamilyBody,
                     fontSize = 13.sp,
                     color = hInkMuted,
@@ -355,7 +358,7 @@ fun CollectionCard(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "${item.surahName} $ayahNum",
+                            text = stringResource(R.string.ui_1_s_2_s_78c505, item.surahName, ayahNum),
                             fontFamily = fontFamilyBody,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Medium,
@@ -375,7 +378,7 @@ fun CollectionCard(
                             ) {
                                 Icon(
                                     imageVector = NurIcons.ArrowRight,
-                                    contentDescription = "Read verse",
+                                    contentDescription = stringResource(R.string.ui_read_verse_f50954),
                                     tint = hGold,
                                     modifier = Modifier.size(16.dp)
                                 )
@@ -390,7 +393,7 @@ fun CollectionCard(
                             ) {
                                 Icon(
                                     imageVector = NurIcons.X,
-                                    contentDescription = "Remove verse",
+                                    contentDescription = stringResource(R.string.ui_remove_verse_0b3445),
                                     tint = Color(0xFFDC2626),
                                     modifier = Modifier.size(14.dp)
                                 )
@@ -401,7 +404,7 @@ fun CollectionCard(
 
                 if (items.size > 4) {
                     Text(
-                        text = "+ ${items.size - 4} more verses",
+                        text = stringResource(R.string.ui_1_s_more_verses_9d0926, items.size - 4),
                         fontFamily = fontFamilyMono,
                         fontSize = 11.sp,
                         color = hInkMuted,
@@ -436,7 +439,7 @@ fun CollectionCard(
                         modifier = Modifier.size(18.dp)
                     )
                     Text(
-                        text = "Launch Hifdh",
+                        text = stringResource(R.string.ui_launch_hifdh_255814),
                         fontFamily = fontFamilyBody,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
@@ -491,7 +494,7 @@ fun CollectionsEmptyState(
                 )
             }
             Text(
-                text = "No collections yet. Group verses together for better hifdh focus.",
+                text = stringResource(R.string.ui_no_collections_yet_group_verses_together_for_bet_f89178),
                 fontFamily = fontFamilyBody,
                 fontSize = 14.sp,
                 color = hInkMuted,

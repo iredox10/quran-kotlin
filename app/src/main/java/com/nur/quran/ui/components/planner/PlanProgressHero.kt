@@ -1,5 +1,7 @@
 package com.nur.quran.ui.components.planner
 
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -99,7 +101,7 @@ fun PlanProgressHero(
                     color = hInk
                 )
                 Text(
-                    text = "$completedDaysCount of $totalDays days",
+                    text = stringResource(R.string.planner_day_done , completedDaysCount, totalDays),
                     fontFamily = fontFamilyMono,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
@@ -107,7 +109,7 @@ fun PlanProgressHero(
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = PlannerUtils.formatDaysRemaining(totalDays, completedDaysCount),
+                    text = if (totalDays <= completedDaysCount) stringResource(R.string.planner_completed) else stringResource(R.string.planner_days_left, (totalDays - completedDaysCount).coerceAtLeast(0)),
                     fontFamily = fontFamilyBody,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,

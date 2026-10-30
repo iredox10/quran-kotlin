@@ -1,5 +1,8 @@
 package com.nur.quran.ui.components.library
 
+import androidx.compose.ui.res.stringResource
+import com.nur.quran.R
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -57,7 +60,7 @@ fun BookmarksSection(
                 modifier = Modifier.size(24.dp)
             )
             Text(
-                text = "Bookmarks",
+                text = stringResource(R.string.ui_bookmarks_ca3cdd),
                 fontFamily = fontFamilyUi,
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
@@ -71,7 +74,7 @@ fun BookmarksSection(
                         .padding(horizontal = 8.dp, vertical = 2.dp)
                 ) {
                     Text(
-                        text = "${bookmarks.size}",
+                        text = stringResource(R.string.ui_1_s_c79f71, bookmarks.size),
                         fontFamily = fontFamilyMono,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
@@ -171,7 +174,7 @@ fun BookmarkCard(
                 color = hInk
             )
             Text(
-                text = "AYAH $ayahNumber",
+                text = stringResource(R.string.ui_ayah_1_s_5e08d0, ayahNumber),
                 fontFamily = fontFamilyMono,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium,
@@ -195,7 +198,7 @@ fun BookmarkCard(
             ) {
                 Icon(
                     imageVector = NurIcons.ArrowRight,
-                    contentDescription = "Read verse",
+                    contentDescription = stringResource(R.string.ui_read_verse_f50954),
                     tint = hGold,
                     modifier = Modifier.size(18.dp)
                 )
@@ -212,7 +215,7 @@ fun BookmarkCard(
             ) {
                 Icon(
                     imageVector = NurIcons.Trash2,
-                    contentDescription = "Delete bookmark",
+                    contentDescription = stringResource(R.string.ui_delete_bookmark_608b7d),
                     tint = Color(0xFFDC2626),
                     modifier = Modifier.size(18.dp)
                 )
@@ -264,7 +267,7 @@ fun BookmarksEmptyState(
                 )
             }
             Text(
-                text = "No bookmarks yet. Save your favorite ayahs to see them here.",
+                text = stringResource(R.string.ui_no_bookmarks_yet_save_your_favorite_ayahs_to_see_e54a66),
                 fontFamily = fontFamilyBody,
                 fontSize = 14.sp,
                 color = hInkMuted,

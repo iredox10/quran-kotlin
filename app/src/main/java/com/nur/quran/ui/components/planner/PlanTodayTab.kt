@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nur.quran.data.planner.PLANNER_UNITS
 import com.nur.quran.data.planner.PlannerAssignment
 import com.nur.quran.data.planner.PrayerSlot
 import com.nur.quran.data.planner.ReadingPlan
@@ -44,6 +45,7 @@ fun PlanTodayTab(
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val prayerUnitsLabel = PLANNER_UNITS[todayAssignment?.unitType]?.plural ?: "Pages"
     Column(
         modifier = modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -256,10 +258,10 @@ fun PlanTodayTab(
                                 Spacer(modifier = Modifier.height(2.dp))
 
                                 val statusText = when {
-                                    isCompleted -> "${slot.doneInSlot}/${slot.count} $unitsLabel ✓"
-                                    isCurrent -> "${slot.doneInSlot} of ${slot.count} $unitsLabel read"
-                                    isUpcoming -> "${slot.count} $unitsLabel · pending"
-                                    isLocked -> "${slot.count} $unitsLabel · locked"
+                                    isCompleted -> "${slot.doneInSlot}/${slot.count} $prayerUnitsLabel ✓"
+                                    isCurrent -> "${slot.doneInSlot} of ${slot.count} $prayerUnitsLabel read"
+                                    isUpcoming -> "${slot.count} $prayerUnitsLabel · pending"
+                                    isLocked -> "${slot.count} $prayerUnitsLabel · locked"
                                     else -> "No reading required"
                                 }
 

@@ -25,7 +25,6 @@ import com.nur.quran.ui.components.planner.*
 import com.nur.quran.ui.viewmodels.HomeViewModel
 import com.nur.quran.ui.viewmodels.PlannerViewModel
 import com.nur.quran.ui.viewmodels.SurahViewModel
-import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -209,8 +208,7 @@ fun PlannerScreen(
 
             val todayAssignment = remember(plan, todayStr) {
                 // Web parity (Planner.jsx): date match, else current-day fallback, else null.
-                plan.assignments.find { it.date == todayStr }
-                    ?: plan.assignments.getOrNull(currentDay - 1)
+                PlannerEngine.getCurrentAssignment(plan, todayStr)
             }
 
             val todayProgress = remember(plan, todayAssignment) {
@@ -232,17 +230,12 @@ fun PlannerScreen(
             }
 
             val nextPrayer = prayerSlots.find { it.status == "current" || it.status == "upcoming" }
-            val unitsLabel = PLANNER_UNITS[plan.unitType]?.plural ?: "Pages"
+            val unitsLabel = "Pages"
             val overallPct = Math.round((overview?.completionRatio ?: 0f) * 100)
             val completionDate = remember(plan) {
-                val cal = Calendar.getInstance()
-                val parts = plan.startDate.split("-")
-                if (parts.size == 3) {
-                    cal.set(parts[0].toInt(), parts[1].toInt() - 1, parts[2].toInt())
-                    cal.add(Calendar.DAY_OF_YEAR, plan.durationDays - 1)
-                    val mNames = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
-                    "${mNames[cal.get(Calendar.MONTH)]} ${cal.get(Calendar.DAY_OF_MONTH)}"
-                } else "—"
+                java.text.SimpleDateFormat("MMM d", java.util.Locale.US).format(
+                    PlannerEngine.parsePlannerDate(PlannerEngine.getPlanEndDate(plan))
+                )
             }
 
             val nextAssignment = remember(plan, todayComplete, todayAssignment) {
@@ -255,7 +248,7 @@ fun PlannerScreen(
                 }
             }
 
-            val planDone = overview?.isFinishedWindow == true && nextAssignment == null
+            val planDone = overview != null && overview.remainingCount == 0
 
             val daySubtitle = when {
                 planDone -> "Plan complete! 🎉"
@@ -460,7 +453,7 @@ fun PlannerScreen(
     // Adjust Pace Modal
     if (showAdjustPaceDialog && activePlan != null) {
         AdjustPaceDialog(
-            currentDurationDays = activePlan!!.durationDays,
+            plan = activePlan!!,
             onConfirmNewDuration = { newDays ->
                 plannerViewModel.adjustActivePlannerPace(newDays)
                 showAdjustPaceDialog = false

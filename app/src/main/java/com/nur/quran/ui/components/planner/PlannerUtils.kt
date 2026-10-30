@@ -101,9 +101,9 @@ object PlannerUtils {
      * content with one all-day VEVENT per assignment.
      */
     fun buildPlannerIcs(plan: com.nur.quran.data.planner.ReadingPlan): String {
-        val unitPlural = com.nur.quran.data.planner.PLANNER_UNITS[plan.unitType]?.plural ?: "Pages"
         val sb = StringBuilder("BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//QuranApp//Planner//EN\n")
         for (a in plan.assignments) {
+            val unitPlural = com.nur.quran.data.planner.PLANNER_UNITS[a.unitType]?.plural ?: "Pages"
             val dateStr = a.date.replace("-", "")
             sb.append("BEGIN:VEVENT\nDTSTART;VALUE=DATE:$dateStr\nDTEND;VALUE=DATE:$dateStr\n")
             sb.append("SUMMARY:Quran Plan - Day ${a.dayNumber}\n")

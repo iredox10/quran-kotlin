@@ -21,7 +21,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.nur.quran.data.planner.PlannerAssignment
 import com.nur.quran.data.planner.PlannerEngine
 import com.nur.quran.data.planner.ReadingPlan
 import com.nur.quran.ui.components.NurIcons
@@ -44,7 +43,8 @@ fun PlanProgressTab(
 ) {
     val today = remember { PlannerEngine.formatPlannerDate() }
     val exportContext = LocalContext.current
-    var selectedAssignment by remember { mutableStateOf<PlannerAssignment?>(null) }
+    var selectedDayNumber by remember(planner.id) { mutableStateOf<Int?>(null) }
+    val selectedAssignment = planner.assignments.firstOrNull { it.dayNumber == selectedDayNumber }
     val analytics = remember(planner) { PlannerEngine.getPlannerAnalytics(planner) }
     val weeklySummary = remember(planner) { PlannerEngine.getWeeklySummary(planner) }
     // Web parity: difficulty indicators — red dot for heavy days (>1.3× avg), green for light (<0.7× avg)
@@ -202,7 +202,7 @@ fun PlanProgressTab(
                                             shape = CircleShape
                                         )
                                         .clickable {
-                                            selectedAssignment = if (isSelected) null else a
+                                            selectedDayNumber = if (isSelected) null else a.dayNumber
                                         },
                                     contentAlignment = Alignment.Center
                                 ) {

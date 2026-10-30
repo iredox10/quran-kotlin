@@ -176,7 +176,7 @@ fun PlannerReaderScreen(
             if (currentItem != null) {
                 val completedRanges = activePlan?.assignmentCompletedItems?.get(dayNumber) ?: emptyList()
                 if (!completedRanges.contains(currentItem.rangeValue)) {
-                    if (activePlan?.unitType == "page" || currentPage >= currentItem.pageEnd) {
+                    if (assignment.unitType == "page" || currentPage >= currentItem.pageEnd) {
                         plannerViewModel.markPlannerItemComplete(dayNumber, currentItem.rangeValue)
                     }
                 }
@@ -390,11 +390,11 @@ fun PlannerReaderScreen(
     // Web derives pct from getAssignmentProgress: surah is pages-based
     // (read incl. item-implied pages over summed item ranges), everything
     // else items-based (incl. page-derived completions), with Math.round.
-    val totalPages = (pageEnd - pageStart + 1)
+    val totalPages = dayProgress?.totalPagesCount ?: (pageEnd - pageStart + 1)
     val progressPct = remember(dayProgress, activePlan) {
         val prog = dayProgress
         if (prog == null) 0
-        else if (activePlan?.unitType == "surah" && prog.totalPagesCount > 0) {
+        else if (assignment.unitType == "surah" && prog.totalPagesCount > 0) {
             round(prog.readPagesCount * 100f / prog.totalPagesCount).toInt()
         } else if (prog.totalCount > 0) {
             round(prog.completedCount * 100f / prog.totalCount).toInt()
@@ -416,7 +416,7 @@ fun PlannerReaderScreen(
             when {
                 matching.isEmpty() -> null
                 matching.size == 1 -> matching.first()
-                activePlan?.unitType == "surah" -> {
+                assignment.unitType == "surah" -> {
                     val assignedIds = assignment.items.mapNotNull { it.rangeValue.toIntOrNull() }
                     matching.find { it.id in assignedIds } ?: matching.find { it.pagesStart == currentPage } ?: matching.last()
                 }
@@ -460,7 +460,7 @@ fun PlannerReaderScreen(
                     ) {
                         // Left: Page number or Assignment Title + Subtitle
                         Column(modifier = Modifier.weight(1f, fill = false)) {
-                            if (activePlan?.unitType == "page") {
+                            if (assignment.unitType == "page") {
                                 Text(
                                     text = "Page $currentPage / $pageEnd",
                                     fontSize = 15.sp,
@@ -797,10 +797,10 @@ fun PlannerReaderScreen(
                     val plan = activePlan
                     val assignedVerses = remember(verses, plan, assignment) {
                         if (verses.isEmpty() || plan == null) verses
-                        else if (plan.unitType == "surah") {
+                        else if (assignment.unitType == "surah") {
                             val assignedSurahIds = assignment.items.mapNotNull { it.rangeValue.toIntOrNull() }
                             verses.filter { it.chapterId in assignedSurahIds }
-                        } else if (plan.unitType == "juz") {
+                        } else if (assignment.unitType == "juz") {
                             val assignedJuzIds = assignment.items.mapNotNull { it.rangeValue.toIntOrNull() }
                             verses.filter { it.juzNumber in assignedJuzIds }
                         } else {
@@ -1107,7 +1107,7 @@ fun PlannerReaderScreen(
                     val isCurrentItemComplete = currentItem == null ||
                         (dayProgress?.completedRangeValues?.contains(currentItem.rangeValue) == true)
                     if (currentItem != null && !isCurrentItemComplete && !dayProgressComplete &&
-                        (activePlan?.unitType != "surah" || currentPage >= assignment.pageEnd)
+                        (assignment.unitType != "surah" || currentPage >= assignment.pageEnd)
                     ) {
                         Surface(
                             shape = RoundedCornerShape(100),

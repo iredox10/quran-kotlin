@@ -15,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.nur.quran.data.planner.PlannerEngine
 import com.nur.quran.data.planner.ReadingPlan
 import com.nur.quran.ui.components.NurIcons
 import com.nur.quran.ui.screens.*
@@ -24,11 +25,20 @@ import com.nur.quran.ui.screens.*
  */
 @Composable
 fun AdjustPaceDialog(
-    currentDurationDays: Int,
+    plan: ReadingPlan,
     onConfirmNewDuration: (Int) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var newDaysText by remember { mutableStateOf(currentDurationDays.toString()) }
+    var newDaysText by remember(plan.id) { mutableStateOf(plan.durationDays.toString()) }
+    val minimumDays = remember(plan) { PlannerEngine.getMinimumDurationDays(plan) }
+    val enteredDays = newDaysText.toIntOrNull()
+    val validDays = enteredDays != null && enteredDays in minimumDays..1000
+    val preview = remember(plan, enteredDays, validDays) {
+        if (validDays) PlannerEngine.rebalancePlanner(plan, "custom_pace", enteredDays) else null
+    }
+    val unreadDays = preview?.assignments?.filter { !PlannerEngine.getAssignmentProgress(preview, it).isComplete }
+    val pageCounts = unreadDays?.map { PlannerEngine.getAssignmentProgress(preview, it).totalPagesCount }.orEmpty()
+
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -44,7 +54,7 @@ fun AdjustPaceDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    text = "Change how many days you want to complete your remaining plan in. This will re-calculate your daily assignments.",
+                    text = "Choose the total reading days, including days already read. Your completed reading is kept.",
                     fontSize = 13.5.sp,
                     fontFamily = fontFamilyBody,
                     color = hInkMid,
@@ -61,6 +71,12 @@ fun AdjustPaceDialog(
                 OutlinedTextField(
                     value = newDaysText,
                     onValueChange = { newDaysText = it },
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                    isError = !validDays,
+                    supportingText = {
+                        Text(if (validDays) "At least $minimumDays total days needed to keep your reading progress."
+                            else "Enter $minimumDays–1000 days.")
+                    },
                     singleLine = true,
                     shape = RoundedCornerShape(12.dp),
                     trailingIcon = {
@@ -68,14 +84,27 @@ fun AdjustPaceDialog(
                     },
                     modifier = Modifier.fillMaxWidth()
                 )
+                if (preview != null) {
+                    val range = if (pageCounts.isEmpty()) "Complete" else {
+                        val low = pageCounts.minOrNull() ?: 0
+                        val high = pageCounts.maxOrNull() ?: 0
+                        if (low == high) "$low pages/day" else "$low–$high pages/day"
+                    }
+                    val endDate = PlannerEngine.formatPlannerDateLabel(PlannerEngine.getPlanEndDate(preview))
+                    Text("${preview.assignments.size} total days · $range\nFinish $endDate",
+                        fontFamily = fontFamilyBody, fontSize = 12.sp, color = hTeal)
+                    if (preview.assignments.size < (enteredDays ?: 0)) {
+                        Text("Limited to one unread page per day.", fontSize = 12.sp, color = hInkMid)
+                    }
+                }
             }
         },
         confirmButton = {
             Button(
                 onClick = {
-                    val days = newDaysText.toIntOrNull() ?: currentDurationDays
-                    onConfirmNewDuration(days.coerceAtLeast(1))
+                    enteredDays?.takeIf { validDays }?.let(onConfirmNewDuration)
                 },
+                enabled = validDays,
                 colors = ButtonDefaults.buttonColors(containerColor = hGold),
                 shape = RoundedCornerShape(10.dp)
             ) {

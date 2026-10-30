@@ -40,6 +40,8 @@ fun PlanDashboardHeader(
     var showPlanSwitcher by remember { mutableStateOf(false) }
 
     Column(modifier = modifier.fillMaxWidth()) {
+        Text("YOUR READING PLAN", fontFamily = fontFamilyMono, fontSize = 10.sp,
+            letterSpacing = 1.6.sp, color = plannerAccentInk, modifier = Modifier.padding(bottom = 18.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.Top,
@@ -48,17 +50,17 @@ fun PlanDashboardHeader(
             // Circular Back Button (matching web: h-[42px] w-[42px] rounded-full border border-[var(--plr-bone-dark)])
             Box(
                 modifier = Modifier
-                    .size(42.dp)
+                    .size(44.dp)
                     .clip(CircleShape)
                     .background(hCream)
-                    .border(1.5.dp, hBoneDark, CircleShape)
+                    .border(1.dp, hBoneDark, CircleShape)
                     .clickable { onBackToIntention() },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = NurIcons.ArrowLeft,
                     contentDescription = "Back to intention",
-                    tint = hTeal,
+                    tint = hGold,
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -73,10 +75,11 @@ fun PlanDashboardHeader(
                         Text(
                             text = planner.title.ifBlank { "${planner.durationDays} Day Plan" },
                             fontFamily = fontFamilyUi,
-                            fontSize = 22.sp,
+                            fontSize = 29.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = hInk,
-                            maxLines = 1,
+                            maxLines = 2,
+                            modifier = Modifier.weight(1f, fill = false),
                             overflow = TextOverflow.Ellipsis
                         )
                         Icon(
@@ -115,7 +118,7 @@ fun PlanDashboardHeader(
                     Text(
                         text = planner.title.ifBlank { "Quran Plan" },
                         fontFamily = fontFamilyUi,
-                        fontSize = 22.sp,
+                        fontSize = 29.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = hInk,
                         maxLines = 1,
@@ -128,9 +131,9 @@ fun PlanDashboardHeader(
                 Text(
                     text = "Day $currentDay of ${planner.durationDays}",
                     fontFamily = fontFamilyUi,
-                    fontSize = 15.sp,
+                    fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
-                    color = hGold
+                    color = plannerAccentInk
                 )
 
                 Spacer(modifier = Modifier.height(2.dp))
@@ -144,27 +147,27 @@ fun PlanDashboardHeader(
             }
         }
 
-        Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
         // Top Primary CTA Button (matching web: rounded-full bg-[var(--accent-primary)] font-ui 1rem font-semibold)
         Button(
             onClick = onPrimaryCtaClick,
             enabled = ctaEnabled,
-            shape = RoundedCornerShape(100),
+            shape = RoundedCornerShape(10.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = hGold,
                 disabledContainerColor = hSurface
             ),
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp)
+                .heightIn(min = 52.dp)
         ) {
             Text(
                 text = ctaLabel,
                 fontFamily = fontFamilyUi,
-                fontSize = 15.sp,
+                fontSize = 17.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = if (ctaEnabled) Color.White else hInkMuted
+                color = if (ctaEnabled) Color(0xFF201D16) else hInkMuted
             )
         }
     }

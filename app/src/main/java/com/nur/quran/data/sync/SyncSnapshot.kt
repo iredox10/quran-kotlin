@@ -455,3 +455,7 @@ internal fun plannerSessionTimers(secondsByDay: Map<String, Any?>): Map<String, 
         val total = (seconds as? Number)?.toLong() ?: return@mapNotNull null
         day to mapOf("totalSeconds" to total)
     }.toMap()
+
+/** Archived plans still own synced timers, reflections and verse highlights. */
+internal fun plannerExtraPlanIds(live: List<*>, archived: List<*>): List<String> =
+    (live + archived).mapNotNull { (it as? Map<*, *>)?.get("id")?.toString()?.takeIf(String::isNotBlank) }.distinct()

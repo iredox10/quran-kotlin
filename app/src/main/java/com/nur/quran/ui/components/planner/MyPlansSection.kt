@@ -58,17 +58,17 @@ fun MyPlansSection(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                if (archivedCount > 0) {
+                run {
                     TextButton(
                         onClick = onOpenArchivesModal,
                         contentPadding = PaddingValues(0.dp)
                     ) {
                         Text(
-                            text = "Archives ($archivedCount)",
+                            text = if (archivedCount > 0) "History ($archivedCount)" else "History",
                             fontFamily = fontFamilyBody,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium,
-                            color = hTeal
+                            color = plannerAccentInk
                         )
                     }
                 }
@@ -177,7 +177,7 @@ fun MyPlansSection(
                                             fontFamily = fontFamilyMono,
                                             fontSize = 9.sp,
                                             fontWeight = FontWeight.Bold,
-                                            color = hGold,
+                                            color = plannerAccentInk,
                                             letterSpacing = 1.sp,
                                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                                         )

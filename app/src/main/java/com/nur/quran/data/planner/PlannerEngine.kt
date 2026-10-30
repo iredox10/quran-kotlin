@@ -111,7 +111,8 @@ data class PlannerReflection(
 /** Web: plannerSessionTimers[planId][dayNumber] entry — { startedAt, totalSeconds }. */
 data class PlannerSessionTimer(
     val totalSeconds: Long = 0L,
-    val startedAt: Long? = null
+    val startedAt: Long? = null,
+    val secondsByDate: Map<String, Long> = emptyMap()
 )
 
 /**
@@ -228,6 +229,7 @@ object PlannerWire {
     private fun timerEntry(timer: PlannerSessionTimer): JsonObject = JsonObject().apply {
         addProperty("totalSeconds", timer.totalSeconds)
         if (timer.startedAt != null) addProperty("startedAt", timer.startedAt)
+        if (timer.secondsByDate.isNotEmpty()) add("secondsByDate", Gson().toJsonTree(timer.secondsByDate))
     }
 
     /** Web entry { totalSeconds, startedAt } normalized into a timer. */
@@ -238,10 +240,16 @@ object PlannerWire {
     fun sessionTimerFromWireValue(el: JsonElement): PlannerSessionTimer? = when {
         el.isJsonObject -> {
             val obj = el.asJsonObject
-            sessionTimerFromWire(
+            val timer = sessionTimerFromWire(
                 obj.stringOrNull("totalSeconds") ?: obj.stringOrNull("seconds"),
                 obj.stringOrNull("startedAt")
             )
+            val dates = obj.get("secondsByDate")?.takeIf { it.isJsonObject }?.asJsonObject?.entrySet()
+                ?.mapNotNull { (date, value) ->
+                    val seconds = runCatching { value.asLong }.getOrNull()
+                    if (date.matches(Regex("\\d{4}-\\d{2}-\\d{2}")) && seconds != null && seconds >= 0) date to seconds else null
+                }?.toMap().orEmpty()
+            timer.copy(secondsByDate = dates)
         }
         el.isJsonPrimitive -> sessionTimerFromWire(runCatching { el.asString }.getOrNull(), null)
         else -> null

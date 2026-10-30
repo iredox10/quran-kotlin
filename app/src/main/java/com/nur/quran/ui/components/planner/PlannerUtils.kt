@@ -1,8 +1,14 @@
 package com.nur.quran.ui.components.planner
 
+import androidx.compose.ui.graphics.Color
+import com.nur.quran.ui.screens.hGold
+import com.nur.quran.ui.screens.isDarkThemeGlobal
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.math.ceil
+
+// Keep small gold labels readable against the light planner canvas.
+internal val plannerAccentInk get() = if (isDarkThemeGlobal) hGold else Color(0xFF80612F)
 
 data class PaceStats(
     val dailyPages: Int,

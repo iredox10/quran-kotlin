@@ -250,7 +250,8 @@ class PlannerViewModel @Inject constructor(
         _archivedPlans.value = repository.getArchivedPlans()
         // Persisted plannerReflections win over the plan-embedded map: the
         // repository is the web-parity source, the embedded map is legacy.
-        val persistedReflections = all.mapNotNull { plan ->
+        val historyPlans = (all + _archivedPlans.value).distinctBy { it.id }
+        val persistedReflections = historyPlans.mapNotNull { plan ->
             try {
                 repository.getPlannerReflections(plan.id).takeIf { it.isNotEmpty() }
                     ?.let { plan.id to it }
@@ -260,12 +261,12 @@ class PlannerViewModel @Inject constructor(
         }.toMap()
         // Migration: seed any plan still missing entries from its embedded
         // assignmentReflections (source before the planId-keyed store).
-        val seededReflections = all
+        val seededReflections = historyPlans
             .filter { it.assignmentReflections.isNotEmpty() }
             .associate { it.id to PlannerWire.reflectionsFromEmbedded(it.assignmentReflections) }
             .filterKeys { persistedReflections[it].isNullOrEmpty() }
         _reflectionEntriesByPlan.value = persistedReflections + seededReflections
-        for (id in (all.map { it.id } + listOfNotNull(actId)).distinct()) {
+        for (id in (historyPlans.map { it.id } + listOfNotNull(actId)).distinct()) {
             _plannerBookmarksByPlan.value = _plannerBookmarksByPlan.value + (id to repository.getPlannerBookmarks(id))
             _sessionTimersByPlan.value = _sessionTimersByPlan.value + (id to repository.getPlannerSessionTimers(id))
         }
@@ -814,10 +815,7 @@ class PlannerViewModel @Inject constructor(
         }
         val updated = (_sessionTimersByPlan.value[planId] ?: emptyMap()).toMutableMap()
         val existing = updated[dayNumber] ?: PlannerSessionTimer()
-        updated[dayNumber] = existing.copy(
-            totalSeconds = existing.totalSeconds + additionalSeconds.coerceAtLeast(0L),
-            startedAt = null
-        )
+        updated[dayNumber] = PlannerHistory.addReadingTime(existing, additionalSeconds)
         _sessionTimersByPlan.value = _sessionTimersByPlan.value + (planId to updated)
         if (planId == _activePlannerId.value) _sessionTotals.value = updated.mapValues { it.value.totalSeconds }
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
@@ -831,8 +829,8 @@ class PlannerViewModel @Inject constructor(
      * "reading" session tracking via incremental deltas, preserving the day's
      * total duration display on both reader and dashboard.
      */
-    fun logPlannerDayToSessions(dayNumber: Int, chapterId: Int? = null) {
-        val planId = _activePlannerId.value ?: return
+    fun logPlannerDayToSessions(dayNumber: Int, chapterId: Int? = null, plannerId: String? = null) {
+        val planId = plannerId ?: _activePlannerId.value ?: return
         val total = (_sessionTimersByPlan.value[planId] ?: emptyMap())[dayNumber]?.totalSeconds ?: 0L
         if (total <= 0) return
         val planDeltas = _loggedSessionDeltas.getOrPut(planId) { mutableMapOf() }

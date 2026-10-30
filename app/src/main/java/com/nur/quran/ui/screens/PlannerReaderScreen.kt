@@ -280,30 +280,31 @@ fun PlannerReaderScreen(
     // logPlannerDayToSessions (checkpoint: totals reset to 0 after logging).
     // Flush-then-bridge ordering matters: stopPlannerTimer updates
     // sessionTotals synchronously, so the bridge reads the just-flushed total.
-    var isTimerRunning by remember(dayNumber) { mutableStateOf(true) }
-    var timerTick by remember(dayNumber) { mutableIntStateOf(0) }
-    var savedTick by remember(dayNumber) { mutableIntStateOf(0) }
-    var lastBridgedTick by remember(dayNumber) { mutableIntStateOf(0) }
-    LaunchedEffect(dayNumber, isTimerRunning) {
+    val timerPlanId = activePlan!!.id
+    var isTimerRunning by remember(timerPlanId, dayNumber) { mutableStateOf(true) }
+    var timerTick by remember(timerPlanId, dayNumber) { mutableIntStateOf(0) }
+    var savedTick by remember(timerPlanId, dayNumber) { mutableIntStateOf(0) }
+    var lastBridgedTick by remember(timerPlanId, dayNumber) { mutableIntStateOf(0) }
+    LaunchedEffect(timerPlanId, dayNumber, isTimerRunning) {
         while (isTimerRunning) {
             delay(1000)
             timerTick++
             if (timerTick - savedTick >= 30) {
-                plannerViewModel.stopPlannerTimer(dayNumber, (timerTick - savedTick).toLong())
+                plannerViewModel.stopPlannerTimerForPlan(timerPlanId, dayNumber, (timerTick - savedTick).toLong())
                 savedTick = timerTick
                 if (timerTick != lastBridgedTick) {
-                    plannerViewModel.logPlannerDayToSessions(dayNumber, bridgeChapterId)
+                    plannerViewModel.logPlannerDayToSessions(dayNumber, bridgeChapterId, timerPlanId)
                     lastBridgedTick = timerTick
                 }
             }
         }
     }
-    DisposableEffect(dayNumber) {
+    DisposableEffect(timerPlanId, dayNumber) {
         onDispose {
             val delta = timerTick - savedTick
-            if (delta > 0) plannerViewModel.stopPlannerTimer(dayNumber, delta.toLong())
+            if (delta > 0) plannerViewModel.stopPlannerTimerForPlan(timerPlanId, dayNumber, delta.toLong())
             if (timerTick != lastBridgedTick) {
-                plannerViewModel.logPlannerDayToSessions(dayNumber, bridgeChapterId)
+                plannerViewModel.logPlannerDayToSessions(dayNumber, bridgeChapterId, timerPlanId)
             }
         }
     }
@@ -311,12 +312,12 @@ fun PlannerReaderScreen(
     // timer when the app backgrounds so a killed process loses ~0s. Compose has
     // no pagehide; ON_PAUSE/ON_STOP is the equivalent lifecycle hook.
     val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner, dayNumber) {
+    DisposableEffect(lifecycleOwner, timerPlanId, dayNumber) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_PAUSE || event == Lifecycle.Event.ON_STOP) {
                 val delta = timerTick - savedTick
                 if (delta > 0) {
-                    plannerViewModel.stopPlannerTimer(dayNumber, delta.toLong())
+                    plannerViewModel.stopPlannerTimerForPlan(timerPlanId, dayNumber, delta.toLong())
                     savedTick = timerTick
                 }
             }

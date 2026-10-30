@@ -456,8 +456,9 @@ class SyncService @Inject constructor(
         runSuspendCatching {
             dao?.getCacheEntry("planner_archived_plans")?.dataJson?.takeIf { it.isNotBlank() }?.let { parseJsonAny(it) }
         }.getOrNull()?.let { out["archivedPlanners"] = it }
-        if (planList.isNotEmpty()) {
-            val planIds = planList.mapNotNull { it["id"]?.toString() }
+        val historyPlans = (out["archivedPlanners"] as? List<*>)?.filterIsInstance<Map<String, Any?>>() ?: emptyList()
+        if (planList.isNotEmpty() || historyPlans.isNotEmpty()) {
+            val planIds = plannerExtraPlanIds(planList, historyPlans)
             val bookmarksByPlan = mutableMapOf<String, Any?>()
             val timersByPlan = mutableMapOf<String, Any?>()
             val reflectionsByPlan = mutableMapOf<String, Any?>()
@@ -471,7 +472,7 @@ class SyncService @Inject constructor(
                     }
                 }.getOrNull()?.let { days ->
                     timersByPlan[planId] = days.mapValues { (_, timer) ->
-                        mapOf("startedAt" to (timer.startedAt ?: 0L), "totalSeconds" to timer.totalSeconds)
+                        mapOf("startedAt" to (timer.startedAt ?: 0L), "totalSeconds" to timer.totalSeconds, "secondsByDate" to timer.secondsByDate)
                     }.mapKeys { (day, _) -> day.toString() }
                 }
                 runSuspendCatching {

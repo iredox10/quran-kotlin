@@ -47,6 +47,9 @@ fun PlannerScreen(
     val reflectionsByPlan by plannerViewModel.plannerReflectionsByPlan.collectAsState()
     val useIntentionPrompt by plannerViewModel.useIntentionPrompt.collectAsState()
     val sessionTotals by plannerViewModel.sessionTotals.collectAsState()
+    val historyTimers by plannerViewModel.sessionTimersByPlan.collectAsState()
+    val historyBookmarks by plannerViewModel.plannerBookmarksByPlan.collectAsState()
+    val historyPlans = remember(allPlans, archivedPlans) { PlannerHistory.plans(allPlans, archivedPlans) }
     val activePrayers by plannerViewModel.activePrayers.collectAsState()
     val readPreference by plannerViewModel.readPreference.collectAsState()
     val context = LocalContext.current
@@ -146,7 +149,7 @@ fun PlannerScreen(
                     MyPlansSection(
                         planners = allPlans,
                         activePlannerId = activePlannerId,
-                        archivedCount = archivedPlans.size,
+                        archivedCount = historyPlans.size,
                         onSwitchPlan = { planId ->
                             plannerViewModel.switchActivePlan(planId)
                             viewMode = "dashboard"
@@ -251,10 +254,10 @@ fun PlannerScreen(
             val planDone = overview != null && overview.remainingCount == 0
 
             val daySubtitle = when {
-                planDone -> "Plan complete! 🎉"
+                planDone -> "Your reading journey is complete."
                 todayAssignment == null -> "Starting soon…"
-                todayComplete && nextAssignment != null -> "Day $currentDay complete! 🎉 · Day ${nextAssignment.dayNumber} ready"
-                todayComplete -> "Day $currentDay complete! 🎉"
+                todayComplete && nextAssignment != null -> "Day $currentDay complete · Day ${nextAssignment.dayNumber} ready"
+                todayComplete -> "Day $currentDay complete"
                 todayDone > 0 && nextPrayer != null -> "$todayDone of $todayTotal $unitsLabel read · ${nextPrayer.name} next"
                 nextPrayer != null -> "$todayTotal $unitsLabel today · start with ${nextPrayer.name}"
                 else -> "All done for today! ✓"
@@ -495,8 +498,11 @@ fun PlannerScreen(
 
     // Archives Modal
     if (showArchivesDialog) {
-        ArchivesDialog(
-            archivedPlans = archivedPlans,
+        PlannerHistoryDialog(
+            plans = historyPlans,
+            timersByPlan = historyTimers,
+            reflectionsByPlan = reflectionsByPlan,
+            bookmarksByPlan = historyBookmarks,
             onDismiss = { showArchivesDialog = false }
         )
     }

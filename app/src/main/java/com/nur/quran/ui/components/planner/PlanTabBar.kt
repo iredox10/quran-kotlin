@@ -1,76 +1,34 @@
 package com.nur.quran.ui.components.planner
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.runtime.Composable
+import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nur.quran.ui.screens.*
 
-enum class PlannerTab(val title: String) {
-    TODAY("Today"),
-    PROGRESS("Progress"),
-    JOURNAL("Journal")
-}
+enum class PlannerTab(val title: String) { TODAY("Today"), PROGRESS("Progress"), JOURNAL("Journal") }
 
-/**
- * Tab Navigation Segmented Bar matching web Planner.jsx lines 918-934.
- */
 @Composable
-fun PlanTabBar(
-    selectedTab: PlannerTab,
-    onTabSelected: (PlannerTab) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        shape = RoundedCornerShape(20.dp),
-        color = hCream,
-        border = BorderStroke(1.5.dp, hBoneDark),
-        modifier = modifier
-            .fillMaxWidth()
-            .height(52.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            PlannerTab.values().forEach { tab ->
-                val isActive = selectedTab == tab
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(if (isActive) hWhite else Color.Transparent)
-                        .then(
-                            if (isActive) Modifier.border(1.dp, hBoneDark, RoundedCornerShape(14.dp))
-                            else Modifier
-                        )
-                        .clickable { onTabSelected(tab) },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = tab.title,
-                        fontFamily = fontFamilyUi,
-                        fontSize = 15.sp,
-                        fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Medium,
-                        color = if (isActive) hGold else hInkMuted,
-                        textAlign = TextAlign.Center
-                    )
+fun PlanTabBar(selectedTab: PlannerTab, onTabSelected: (PlannerTab) -> Unit, modifier: Modifier = Modifier) {
+    Row(modifier.fillMaxWidth().selectableGroup()) {
+        PlannerTab.values().forEach { tab ->
+            val selected = selectedTab == tab
+            Column(Modifier.weight(1f).selectable(selected = selected, role = Role.Tab, onClick = { onTabSelected(tab) }), horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(Modifier.heightIn(min = 48.dp).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Text(tab.title, fontFamily = fontFamilyUi, fontSize = 17.sp,
+                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                        color = if (selected) plannerAccentInk else hInkMid)
                 }
+                Box(Modifier.fillMaxWidth().height(if (selected) 2.dp else 1.dp).background(if (selected) hGold else hBoneDark))
             }
         }
     }

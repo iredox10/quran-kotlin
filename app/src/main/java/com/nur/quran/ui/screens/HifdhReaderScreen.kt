@@ -215,36 +215,20 @@ fun HifdhReaderScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Left Back Button + Brand Logo & Title Breadcrumb
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                // Back navigation and the current memorization title.
+                Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = onBackClick, modifier = Modifier.size(36.dp)) {
                         Icon(imageVector = NurIcons.ArrowLeft, contentDescription = stringResource(R.string.ui_back_b52b36), tint = hInk)
                     }
-                    Spacer(modifier = Modifier.width(4.dp))
-                    androidx.compose.foundation.Image(
-                        painter = androidx.compose.ui.res.painterResource(id = com.nur.quran.R.drawable.ic_logo),
-                        contentDescription = stringResource(R.string.ui_quran_nur_logo_5e0764),
-                        modifier = Modifier.size(28.dp).clip(RoundedCornerShape(8.dp))
-                    )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Quran Nur",
-                        fontFamily = fontFamilyUi,
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = hInk
-                    )
-                    Text(
-                        text = " / ",
-                        fontSize = 12.sp,
-                        color = hInkMuted
-                    )
                     Text(
                         text = stringResource(R.string.ui_hifdh_mode_1_s_aa9db4, chapterName),
                         fontFamily = fontFamilyMono,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        color = hTeal
+                        color = hTeal,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
                 }
 
@@ -384,10 +368,11 @@ fun HifdhReaderScreen(
                         .pointerInput(Unit) {
                             detectHorizontalDragGestures(
                                 onDragEnd = {
-                                    if (totalDragX < -50.dp.toPx()) latestGoNext()
-                                    else if (totalDragX > 50.dp.toPx()) latestGoPrev()
+                                    if (totalDragX > 50.dp.toPx()) latestGoNext()
+                                    else if (totalDragX < -50.dp.toPx()) latestGoPrev()
                                     totalDragX = 0f
                                 },
+                                onDragCancel = { totalDragX = 0f },
                                 onHorizontalDrag = { change, dragAmount ->
                                     change.consume()
                                     totalDragX += dragAmount
@@ -689,25 +674,18 @@ fun HifdhReaderScreen(
                                     }
                                 }
 
-                                // Translation Card underneath verse (if enabled)
+                                // Translation underneath the verse.
                                 if (showTranslation && !verse.translation.isNullOrEmpty()) {
                                     Spacer(modifier = Modifier.height(16.dp))
-                                    Card(
-                                        shape = RoundedCornerShape(14.dp),
-                                        colors = CardDefaults.cardColors(containerColor = hCream),
-                                        border = androidx.compose.foundation.BorderStroke(1.dp, hBoneDark),
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Text(
-                                            text = verse.translation,
-                                            fontSize = 14.sp,
-                                            color = hInkMid,
-                                            fontFamily = fontFamilyBody,
-                                            textAlign = TextAlign.Center,
-                                            lineHeight = 22.sp,
-                                            modifier = Modifier.padding(16.dp)
-                                        )
-                                    }
+                                    Text(
+                                        text = verse.translation,
+                                        fontSize = 14.sp,
+                                        color = hInkMid,
+                                        fontFamily = fontFamilyBody,
+                                        textAlign = TextAlign.Center,
+                                        lineHeight = 22.sp,
+                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+                                    )
                                 }
                             }
                         }

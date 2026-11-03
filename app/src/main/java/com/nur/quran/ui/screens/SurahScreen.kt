@@ -1,5 +1,7 @@
 package com.nur.quran.ui.screens
 
+import com.nur.quran.config.QURAN_NUR_WEB_URL
+
 import androidx.compose.ui.res.stringResource
 import com.nur.quran.R
 
@@ -3705,7 +3707,7 @@ private fun SaukaCompletionBanner(
                     }
                     OutlinedButton(
                         onClick = {
-                            val shareMessage = "Alhamdulillah! I just completed my assigned Khatmah reading on Quran Nur: https://quran-nur.appwrite.network"
+                            val shareMessage = "Alhamdulillah! I just completed my assigned Khatmah reading on Quran Nur: $QURAN_NUR_WEB_URL"
                             val sendIntent = Intent().apply {
                                 action = Intent.ACTION_SEND
                                 putExtra(Intent.EXTRA_TEXT, shareMessage)

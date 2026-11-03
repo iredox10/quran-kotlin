@@ -8,7 +8,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -24,6 +25,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
@@ -40,6 +44,7 @@ import com.nur.quran.data.planner.PlannerEngine
 import com.nur.quran.ui.components.AutoScrollerBar
 import androidx.compose.foundation.gestures.scrollBy
 import com.nur.quran.ui.components.planner.*
+import com.nur.quran.ui.components.ReaderPageNavigation
 import com.nur.quran.ui.components.NurIcons
 import com.nur.quran.ui.components.SettingsDrawer
 import com.nur.quran.ui.components.MushafPageView
@@ -108,7 +113,7 @@ fun PlannerReaderScreen(
         if (plan != null && lastPage != null && lastPage in pageStart..pageEnd) lastPage
         else plan?.let { PlannerEngine.getAssignmentResumePageNumber(it, assignment) } ?: pageStart
     }
-    var currentPage by remember { mutableStateOf(resumePage) }
+    var currentPage by remember(activePlan?.id, dayNumber) { mutableStateOf(resumePage) }
 
     val existingReflection = activePlan?.assignmentReflections?.get(dayNumber) ?: ""
     // Key on plan+day identity: rekeying on the text value would wipe in-progress
@@ -188,15 +193,9 @@ fun PlannerReaderScreen(
         }
     }
 
-    // ── Prev navigation (backward restores the saved scroll position for
-    // the target page; Next/forward behavior is untouched) ──────────────
-    var prevRestoreTarget by remember { mutableStateOf<Int?>(null) }
-    var prevRestoredForPage by remember { mutableStateOf<Int?>(null) }
+    // Navigation restores each page's saved reading position in either direction.
     val goToPrevPage: () -> Unit = {
-        if (currentPage > pageStart) {
-            prevRestoreTarget = currentPage - 1
-            currentPage--
-        }
+        if (currentPage > pageStart) currentPage--
     }
 
     // Seamless Audio Autoplay across pages in assignment (web parity: PlannerReader.jsx:450-480)
@@ -215,21 +214,15 @@ fun PlannerReaderScreen(
 
     // ── Reader HUD & Auto-Scroll ──────────────────────────────
     val lazyListState = rememberLazyListState()
+    // Pixel offsets belong to this device and this reader layout, not cloud sync.
+    val readerPositions = remember(context) {
+        context.getSharedPreferences("PlannerReaderScrollPositions", Context.MODE_PRIVATE)
+    }
+    val readerPositionKey = listOf(activePlan?.id, dayNumber, currentPage,
+        currentMushaf.id, isReadingMode, selectedArabicFontName, arabicFontScale,
+        translationFontScale).joinToString("|")
+    var pagePositionReady by remember(readerPositionKey) { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
-    val isScrolled by remember {
-        derivedStateOf {
-            lazyListState.firstVisibleItemIndex > 0 || lazyListState.firstVisibleItemScrollOffset > 40
-        }
-    }
-    // Bottom dock reveals only at end of list content; scrolling up hides it.
-    val isDockRevealed by remember {
-        derivedStateOf {
-            isReaderDockAtBottom(
-                lazyListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index,
-                lazyListState.layoutInfo.totalItemsCount
-            )
-        }
-    }
     var isAutoScrollActive by remember { mutableStateOf(false) }
     var isAutoScrollPaused by remember { mutableStateOf(false) }
     var autoScrollSpeed by remember { mutableIntStateOf(3) }
@@ -315,6 +308,25 @@ fun PlannerReaderScreen(
     // timer when the app backgrounds so a killed process loses ~0s. Compose has
     // no pagehide; ON_PAUSE/ON_STOP is the equivalent lifecycle hook.
     val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, readerPositionKey) {
+        fun savePosition() {
+            // Old page data can remain visible while the next page loads.
+            // Never save that old offset against the new page's key.
+            if (!pagePositionReady) return
+            readerPositions.edit()
+                .putInt("$readerPositionKey:index", lazyListState.firstVisibleItemIndex)
+                .putInt("$readerPositionKey:offset", lazyListState.firstVisibleItemScrollOffset)
+                .apply()
+        }
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_PAUSE || event == Lifecycle.Event.ON_STOP) savePosition()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            savePosition()
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
     DisposableEffect(lifecycleOwner, timerPlanId, dayNumber) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_PAUSE || event == Lifecycle.Event.ON_STOP) {
@@ -337,7 +349,7 @@ fun PlannerReaderScreen(
     val lastReadVerseKey = activePlan?.lastReadVerseKey
     // Once per day: after the initial resume-page jump, forward moves
     // (Next/swipe/autoplay) must land at the top — never re-seek here.
-    var hasAutoScrolledToLastRead by remember(dayNumber) { mutableStateOf(false) }
+    var hasAutoScrolledToLastRead by remember(activePlan?.id, dayNumber) { mutableStateOf(false) }
 
     // Fetch verses for page
     LaunchedEffect(currentPage, currentMushaf.id) {
@@ -357,18 +369,8 @@ fun PlannerReaderScreen(
         if (neighbors.isNotEmpty()) surahViewModel.prefetchAdjacentPages(neighbors)
     }
 
-    // Save scroll position & mark page read
-    // Snapshot-on-exit only (no per-frame writes): leaving a page records
-    // where the user was so Prev can restore it.
-    DisposableEffect(currentPage) {
+    LaunchedEffect(currentPage, dayNumber) {
         plannerViewModel.markPageRead(dayNumber, currentPage)
-        onDispose {
-            ReaderPrevScrollStore.save(
-                currentPage,
-                lazyListState.firstVisibleItemIndex,
-                lazyListState.firstVisibleItemScrollOffset
-            )
-        }
     }
 
     // ── Derived day progress (web parity: PlannerReader.jsx:92-95) ───────
@@ -411,7 +413,7 @@ fun PlannerReaderScreen(
     var takeawayVerse by remember { mutableStateOf<VerseEntity?>(null) }
 
     // ── Swipe gesture handler ────────────────────────────────────────
-    var accumulatedDrag by remember { mutableFloatStateOf(0f) }
+    val swipeThreshold = with(LocalDensity.current) { 60.dp.toPx() }
 
     val currentChapter = remember(chapters, currentPage, activePlan, assignment) {
         if (chapters.isEmpty()) null
@@ -449,13 +451,13 @@ fun PlannerReaderScreen(
                 shadowElevation = 2.dp,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = if (isScrolled) 2.dp else 4.dp)
+                    .padding(horizontal = 16.dp, vertical = 4.dp)
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(if (isScrolled) 10.dp else 14.dp),
-                    verticalArrangement = Arrangement.spacedBy(if (isScrolled) 6.dp else 10.dp)
+                        .padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -591,27 +593,88 @@ fun PlannerReaderScreen(
         }
     }
 
+    @Composable
+    fun PageFooter() {
+        if (!isFocusMode) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                    val currentItem = assignment.items.find { currentPage in it.pageStart..it.pageEnd }
+                        ?: assignment.items.firstOrNull()
+                    val dayProgressComplete = dayProgress?.isComplete == true
+                    val isCurrentItemComplete = currentItem == null ||
+                        (dayProgress?.completedRangeValues?.contains(currentItem.rangeValue) == true)
+                    if (currentItem != null && !isCurrentItemComplete && !dayProgressComplete &&
+                        (assignment.unitType != "surah" || currentPage >= assignment.pageEnd)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(100),
+                            color = hTeal,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 10.dp)
+                                .clickable {
+                                    plannerViewModel.markPlannerItemComplete(dayNumber, currentItem.rangeValue)
+                                }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(vertical = 12.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(imageVector = NurIcons.CheckCircle2, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(stringResource(R.string.planner_mark_item_done, plannerItemTitle(currentItem, assignment.unitType)), fontSize = 14.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+
+                ReaderPageNavigation(
+                    page = currentPage,
+                    firstPage = pageStart,
+                    lastPage = pageEnd,
+                    onNext = advanceToNextPage,
+                    onPrevious = goToPrevPage,
+                    onPageClick = { showPageJumpDialog = true },
+                    onFinish = {
+                        plannerViewModel.markAssignmentCompleted(dayNumber)
+                        showCelebrationDialog = true
+                    },
+                    isCompleted = isDayCompleted
+                )
+            }
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(hCream)
             .pointerInput(currentPage, pageStart, pageEnd) {
-                detectHorizontalDragGestures(
-                    onDragEnd = {
-                        // Web parity (PlannerReader.jsx:549-557): swiped
-                        // right advances, swiped left goes back.
-                        if (accumulatedDrag > 100f && currentPage < pageEnd) {
-                            advanceToNextPage()
-                        } else if (accumulatedDrag < -100f && currentPage > pageStart) {
-                            goToPrevPage()
+                awaitEachGesture {
+                    awaitFirstDown(pass = PointerEventPass.Initial)
+                    val slop = viewConfiguration.touchSlop
+                    var totalX = 0f
+                    var totalY = 0f
+                    var horizontalWins: Boolean? = null
+                    while (true) {
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                        val change = event.changes.firstOrNull() ?: continue
+                        val delta = change.positionChange()
+                        totalX += delta.x
+                        totalY += delta.y
+                        if (horizontalWins == null && (abs(totalX) > slop || abs(totalY) > slop)) {
+                            horizontalWins = abs(totalX) > abs(totalY)
                         }
-                        accumulatedDrag = 0f
-                    },
-                    onDragCancel = { accumulatedDrag = 0f },
-                    onHorizontalDrag = { _, dragAmount ->
-                        accumulatedDrag += dragAmount
+                        // Vertical gestures stay entirely with the verse list.
+                        if (horizontalWins == true) change.consume()
+                        if (!change.pressed) break
                     }
-                )
+                    if (horizontalWins == true) {
+                        when {
+                            totalX > swipeThreshold && currentPage < pageEnd -> advanceToNextPage()
+                            totalX < -swipeThreshold && currentPage > pageStart -> goToPrevPage()
+                        }
+                    }
+                }
             }
     ) {
         // ── Header Bar (sticky nav only; fully hidden in focus mode) ──
@@ -828,54 +891,34 @@ fun PlannerReaderScreen(
                     val verseHeaderOffset =
                         1 + (if (currentPage == pageStart) 1 else 0)
 
-                    // Web parity: scroll to top of page on page change.
-                    // Prev arrival instead restores that page's saved position
-                    // (top when never visited). One-shot per arrival: the target
-                    // is consumed, so this never loops against the verse
-                    // auto-scroll-once or audio flows; while audio is playing it
-                    // keeps the legacy top scroll. Re-runs on verses arrival so
-                    // the restore clamps against the fresh page's item count.
-                    LaunchedEffect(currentPage, assignedVerses) {
-                        if (prevRestoreTarget == currentPage && prevRestoredForPage != currentPage) {
-                            prevRestoredForPage = currentPage
-                            prevRestoreTarget = null
-                            if (!isPlaying) {
-                                val saved = ReaderPrevScrollStore.take(currentPage)
-                                val listSize = if (isReadingMode || currentMushaf.renderMode == com.nur.quran.data.mushaf.MushafRenderMode.QCF_PAGE) 2
-                                else assignedVerses.size + verseHeaderOffset
-                                val maxIndex = (listSize - 1).coerceAtLeast(0)
-                                try {
-                                    if (saved != null) lazyListState.scrollToItem(saved.first.coerceIn(0, maxIndex), saved.second)
-                                    else lazyListState.scrollToItem(0)
-                                } catch (_: Exception) {
-                                    try { lazyListState.scrollToItem(0) } catch (_: Exception) { }
-                                }
-                            } else {
-                                try { lazyListState.scrollToItem(0) } catch (_: Exception) { }
-                            }
-                        } else if (prevRestoreTarget != currentPage && prevRestoredForPage != currentPage) {
-                            lazyListState.scrollToItem(0)
-                        }
+                    var positionedThisPage by remember(readerPositionKey) {
+                        mutableStateOf(false)
                     }
-
-                    // Auto-scroll to the last-read verse on initial load.
-                    LaunchedEffect(assignedVerses, currentPage, lastReadVerseKey) {
-                        if (hasAutoScrolledToLastRead || assignedVerses.isEmpty()) return@LaunchedEffect
-                        val targetKey = lastReadVerseKey ?: run {
-                            hasAutoScrolledToLastRead = true
-                            return@LaunchedEffect
-                        }
-                        val verseIndex = assignedVerses.indexOfFirst { it.verseKey == targetKey }
-                        if (verseIndex >= 0) {
-                            lazyListState.scrollToItem(verseIndex + verseHeaderOffset)
-                        }
-                        // Mark done even when not found (web parity) to prevent looping.
+                    LaunchedEffect(readerPositionKey, assignedVerses) {
+                        if (positionedThisPage || assignedVerses.isEmpty() ||
+                            assignedVerses.any { it.pageNumber != currentPage }) return@LaunchedEffect
+                        positionedThisPage = true
+                        val resumeIndex = if (!hasAutoScrolledToLastRead && !isReadingMode &&
+                            currentMushaf.renderMode != com.nur.quran.data.mushaf.MushafRenderMode.QCF_PAGE)
+                            assignedVerses.indexOfFirst { it.verseKey == lastReadVerseKey } else -1
                         hasAutoScrolledToLastRead = true
+                        val savedIndex = readerPositions.getInt("$readerPositionKey:index", -1)
+                        val savedOffset = readerPositions.getInt("$readerPositionKey:offset", 0)
+                        val itemCount = if (isReadingMode ||
+                            currentMushaf.renderMode == com.nur.quran.data.mushaf.MushafRenderMode.QCF_PAGE) 3
+                            else assignedVerses.size + verseHeaderOffset + 1
+                        if (savedIndex >= 0) {
+                            lazyListState.scrollToItem(savedIndex.coerceAtMost(itemCount - 1), savedOffset.coerceAtLeast(0))
+                        } else {
+                            lazyListState.scrollToItem(if (resumeIndex >= 0) resumeIndex + verseHeaderOffset else 0)
+                        }
+                        pagePositionReady = true
                     }
 
                     // Track the top-visible verse (debounced) as the last-read position.
                     LaunchedEffect(lazyListState.firstVisibleItemIndex, assignedVerses.size, currentPage) {
-                        if (assignedVerses.isEmpty() || !hasAutoScrolledToLastRead) return@LaunchedEffect
+                        if (assignedVerses.isEmpty() || !positionedThisPage || !hasAutoScrolledToLastRead ||
+                            assignedVerses.any { it.pageNumber != currentPage }) return@LaunchedEffect
                         delay(1000)
                         val verseIndex = lazyListState.firstVisibleItemIndex - verseHeaderOffset
                         val visibleVerse = assignedVerses.getOrNull(verseIndex) ?: return@LaunchedEffect
@@ -898,12 +941,13 @@ fun PlannerReaderScreen(
                             ) {
                                 Text(stringResource(R.string.planner_no_verses_page), color = hInkMuted)
                             }
+                            PageFooter()
                         }
                     } else if (currentMushaf.renderMode == com.nur.quran.data.mushaf.MushafRenderMode.QCF_PAGE && !isReadingMode) {
                         LazyColumn(
                             state = lazyListState,
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp)
+                            contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 100.dp)
                         ) {
                             // Status pill scrolls with content; back at the very top.
                             item {
@@ -926,12 +970,13 @@ fun PlannerReaderScreen(
                                     selectedArabicFontName = selectedArabicFontName
                                 )
                             }
+                            item(key = "page-navigation") { PageFooter() }
                         }
                     } else if (isReadingMode) {
                         LazyColumn(
                             state = lazyListState,
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp)
+                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 100.dp)
                         ) {
                             // Status pill scrolls with content; back at the very top.
                             item {
@@ -952,6 +997,7 @@ fun PlannerReaderScreen(
                                     selectedArabicFontName = selectedArabicFontName
                                 )
                             }
+                            item(key = "page-navigation") { PageFooter() }
                         }
                     } else {
                         LazyColumn(
@@ -1059,6 +1105,7 @@ fun PlannerReaderScreen(
                                     )
                                 }
                             }
+                            item(key = "page-navigation") { PageFooter() }
                         }
                     }
                 }
@@ -1082,214 +1129,69 @@ fun PlannerReaderScreen(
             }
         }
 
-        // Bottom Dock Bar: Navigation between pages (web parity: PlannerReader.jsx lines 832-869).
-        // Transparent: no background fill, border or elevation — buttons float over content.
-        // Hidden until scrolled to the bottom of the verses; focus mode hides it regardless.
+        // Mini-player has a stable slot; scrolling never changes its inset.
         AnimatedVisibility(
-            visible = !isFocusMode && isDockRevealed,
-            enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
-            exit = fadeOut() + slideOutVertically(targetOffsetY = { it })
+            visible = isPlaying && !playerHiddenByUser && playingVerseKey != null,
+            enter = slideInVertically(initialOffsetY = { it }),
+            exit = slideOutVertically(targetOffsetY = { it }),
         ) {
-            Surface(
-                color = Color.Transparent,
-                shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp)
-                ) {
-                    // Per-item Done (web: Mark {currentItem.title} Done)
-                    // Web (PlannerReader.jsx:588-592): both flags come from the
-                    // derived progress, and the gate reads planner.unitType.
-                    val currentItem = assignment.items.find { currentPage in it.pageStart..it.pageEnd }
-                        ?: assignment.items.firstOrNull()
-                    val dayProgressComplete = dayProgress?.isComplete == true
-                    val isCurrentItemComplete = currentItem == null ||
-                        (dayProgress?.completedRangeValues?.contains(currentItem.rangeValue) == true)
-                    if (currentItem != null && !isCurrentItemComplete && !dayProgressComplete &&
-                        (assignment.unitType != "surah" || currentPage >= assignment.pageEnd)
-                    ) {
-                        Surface(
-                            shape = RoundedCornerShape(100),
-                            color = hTeal,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 10.dp)
-                                .clickable {
-                                    plannerViewModel.markPlannerItemComplete(dayNumber, currentItem.rangeValue)
-                                }
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(vertical = 12.dp),
-                                horizontalArrangement = Arrangement.Center,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(imageVector = NurIcons.CheckCircle2, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(stringResource(R.string.planner_mark_item_done, plannerItemTitle(currentItem, assignment.unitType)), fontSize = 14.sp, color = Color.White, fontWeight = FontWeight.Bold)
-                            }
-                        }
+            val playerVerses = (uiState as? SurahUiState.Success)?.verses ?: emptyList()
+            MiniPlayer(
+                verseKey = playingVerseKey ?: "",
+                isPlaying = isPlaying,
+                onPlayPause = {
+                    if (playerVerses.isNotEmpty()) {
+                        surahViewModel.playPauseChapter(playerVerses, playerVerses.first().chapterId)
                     }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                },
+                onPrevious = {
+                    val idx = playerVerses.indexOfFirst { it.verseKey == playingVerseKey }
+                    if (idx < 0) return@MiniPlayer
+                    // Range clamp (surah-screen parity handlePrev): stay
+                    // inside the playback range; no-op at the boundary.
+                    val rangeStartIdx = playbackSettings.rangeStart
+                        ?.let { startKey -> playerVerses.indexOfFirst { it.verseKey == startKey } }
+                        ?.takeIf { it >= 0 } ?: 0
+                    if (idx - 1 >= rangeStartIdx) {
+                        val prev = playerVerses[idx - 1]
+                        surahViewModel.playVerse(playerVerses, prev.chapterId, prev)
+                    }
+                },
+                onNext = {
+                    val idx = playerVerses.indexOfFirst { it.verseKey == playingVerseKey }
+                    if (idx < 0) return@MiniPlayer
+                    // Range clamp (surah-screen parity handleNext): no-op at boundary.
+                    val rangeEndIdx = playbackSettings.rangeEnd
+                        ?.let { endKey -> playerVerses.indexOfFirst { it.verseKey == endKey } }
+                        ?.takeIf { it >= 0 } ?: (playerVerses.size - 1)
+                    if (idx + 1 <= rangeEndIdx) {
+                        val next = playerVerses[idx + 1]
+                        surahViewModel.playVerse(playerVerses, next.chapterId, next)
+                    }
+                },
+                onClose = { playerHiddenByUser = true },
+                onSettings = { showReaderAudioSetup = true },
+                onStop = { surahViewModel.stopPlaying() },
+                progress = playbackProgress?.let { (pos, dur) ->
+                    if (dur > 0) (pos.toFloat() / dur).coerceIn(0f, 1f) else null
+                },
+                onVerseClick = {
+                    // Jump to the reciting ayah (verse-list mode only — the
+                    // mushaf views don't use per-verse LazyColumn items).
+                    val key = playingVerseKey
+                    if (!key.isNullOrBlank() && !isReadingMode &&
+                        currentMushaf.renderMode != com.nur.quran.data.mushaf.MushafRenderMode.QCF_PAGE
                     ) {
-                        // Next / Complete Assignment Button (left)
-                        if (currentPage < pageEnd) {
-                            Surface(
-                                shape = RoundedCornerShape(16.dp),
-                                color = hTeal,
-                                modifier = Modifier.clickable { advanceToNextPage() }
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Column(horizontalAlignment = Alignment.End) {
-                                        Text(stringResource(R.string.planner_next), fontSize = 9.sp, color = Color.White.copy(alpha = 0.8f), fontFamily = fontFamilyMono, letterSpacing = 0.5.sp)
-                                        Text(stringResource(R.string.planner_next_page , currentPage + 1), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                                    }
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Icon(
-                                        imageVector = NurIcons.ChevronRight,
-                                        contentDescription = stringResource(R.string.planner_next),
-                                        tint = Color.White,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                            }
-                        } else {
-                            Surface(
-                                shape = RoundedCornerShape(16.dp),
-                                color = hGreen,
-                                modifier = Modifier.clickable {
-                                    plannerViewModel.markAssignmentCompleted(dayNumber)
-                                    showCelebrationDialog = true
-                                }
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(imageVector = NurIcons.CheckCircle2, contentDescription = stringResource(R.string.planner_finish), tint = Color.White, modifier = Modifier.size(18.dp))
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(stringResource(R.string.planner_finish_day), fontSize = 13.sp, color = Color.White, fontWeight = FontWeight.Bold)
-                                }
-                            }
-                        }
-
-                        // Center: page progress indicator
-                        Text(
-                            text = "$currentPage / $pageEnd",
-                            fontSize = 13.sp,
-                            fontFamily = fontFamilyMono,
-                            fontWeight = FontWeight.Bold,
-                            color = hInkMuted,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .clickable { showPageJumpDialog = true }
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
-
-                        // Prev Page Button (right)
-                        Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = if (currentPage > pageStart) hBone.copy(alpha = 0.6f) else hBone.copy(alpha = 0.2f),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, hBoneDark.copy(alpha = 0.5f)),
-                            modifier = Modifier.clickable(enabled = currentPage > pageStart) {
-                                goToPrevPage()
-                            }
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = NurIcons.ChevronLeft,
-                                    contentDescription = stringResource(R.string.planner_prev),
-                                    tint = if (currentPage > pageStart) hInk else hInkMuted.copy(alpha = 0.4f),
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Column {
-                                    Text(stringResource(R.string.planner_prev), fontSize = 9.sp, color = hInkMuted, fontFamily = fontFamilyMono, letterSpacing = 0.5.sp)
-                                    Text(stringResource(R.string.planner_prev_page , if (currentPage > pageStart) currentPage - 1 else pageStart), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (currentPage > pageStart) hInk else hInkMuted.copy(alpha = 0.4f))
-                                }
+                        val idx = playerVerses.indexOfFirst { it.verseKey == key }
+                        if (idx >= 0) {
+                            val jumpOffset = 1 + (if (currentPage == pageStart) 1 else 0)
+                            coroutineScope.launch {
+                                runCatching { lazyListState.animateScrollToItem(idx + jumpOffset) }
                             }
                         }
                     }
                 }
-            }
-
-            // ─── MiniPlayer ─── (surah/page screens parity). Lifted above the
-            // dock bar while it is revealed so the two never collide.
-            AnimatedVisibility(
-                visible = isPlaying && !playerHiddenByUser && playingVerseKey != null,
-                enter = slideInVertically(initialOffsetY = { it }),
-                exit = slideOutVertically(targetOffsetY = { it }),
-                modifier = Modifier.padding(bottom = if (isDockRevealed) 104.dp else 0.dp)
-            ) {
-                val playerVerses = (uiState as? SurahUiState.Success)?.verses ?: emptyList()
-                MiniPlayer(
-                    verseKey = playingVerseKey ?: "",
-                    isPlaying = isPlaying,
-                    onPlayPause = {
-                        if (playerVerses.isNotEmpty()) {
-                            surahViewModel.playPauseChapter(playerVerses, playerVerses.first().chapterId)
-                        }
-                    },
-                    onPrevious = {
-                        val idx = playerVerses.indexOfFirst { it.verseKey == playingVerseKey }
-                        if (idx < 0) return@MiniPlayer
-                        // Range clamp (surah-screen parity handlePrev): stay
-                        // inside the playback range; no-op at the boundary.
-                        val rangeStartIdx = playbackSettings.rangeStart
-                            ?.let { startKey -> playerVerses.indexOfFirst { it.verseKey == startKey } }
-                            ?.takeIf { it >= 0 } ?: 0
-                        if (idx - 1 >= rangeStartIdx) {
-                            val prev = playerVerses[idx - 1]
-                            surahViewModel.playVerse(playerVerses, prev.chapterId, prev)
-                        }
-                    },
-                    onNext = {
-                        val idx = playerVerses.indexOfFirst { it.verseKey == playingVerseKey }
-                        if (idx < 0) return@MiniPlayer
-                        // Range clamp (surah-screen parity handleNext): no-op at boundary.
-                        val rangeEndIdx = playbackSettings.rangeEnd
-                            ?.let { endKey -> playerVerses.indexOfFirst { it.verseKey == endKey } }
-                            ?.takeIf { it >= 0 } ?: (playerVerses.size - 1)
-                        if (idx + 1 <= rangeEndIdx) {
-                            val next = playerVerses[idx + 1]
-                            surahViewModel.playVerse(playerVerses, next.chapterId, next)
-                        }
-                    },
-                    onClose = { playerHiddenByUser = true },
-                    onSettings = { showReaderAudioSetup = true },
-                    onStop = { surahViewModel.stopPlaying() },
-                    progress = playbackProgress?.let { (pos, dur) ->
-                        if (dur > 0) (pos.toFloat() / dur).coerceIn(0f, 1f) else null
-                    },
-                    onVerseClick = {
-                        // Jump to the reciting ayah (verse-list mode only — the
-                        // mushaf views don't use per-verse LazyColumn items).
-                        val key = playingVerseKey
-                        if (!key.isNullOrBlank() && !isReadingMode &&
-                            currentMushaf.renderMode != com.nur.quran.data.mushaf.MushafRenderMode.QCF_PAGE
-                        ) {
-                            val idx = playerVerses.indexOfFirst { it.verseKey == key }
-                            if (idx >= 0) {
-                                val jumpOffset = 1 + (if (currentPage == pageStart) 1 else 0)
-                                coroutineScope.launch {
-                                    runCatching { lazyListState.animateScrollToItem(idx + jumpOffset) }
-                                }
-                            }
-                        }
-                    }
-                )
-            }
+            )
         }
     }
 
@@ -1539,18 +1441,6 @@ fun PlannerReaderScreen(
             wordProgressByTafsir = wordProgress
         )
     }
-}
-
-// ── Dock reveal: bottom dock stays hidden until the list reaches its ──
-// final layout item. The dock itself is NOT a LazyColumn item (it floats
-// below the verses Box), so totalItemsCount already covers all content:
-// status pill (slot 0) + optional intention/swipe-hint headers + verses
-// (verse mode), or pill + single page item (QCF/reading modes). Empty or
-// non-lazy states (loading/error/filtered-empty Column) report total <= 0
-// and keep the dock visible so navigation is never stranded.
-internal fun isReaderDockAtBottom(lastVisibleIndex: Int?, totalItems: Int): Boolean {
-    if (totalItems <= 0) return true
-    return lastVisibleIndex == totalItems - 1
 }
 
 // ── Web parity (PlannerReader.jsx:347-351 formatTimer): the header timer

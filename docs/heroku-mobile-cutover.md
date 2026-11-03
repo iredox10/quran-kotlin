@@ -17,8 +17,7 @@ retained; changing accounts does not erase the device's local library.
 Auth, recovery, sync, Quran metadata/content, translations, tafsir, word packs,
 reciter metadata, and footnotes use Heroku. Local Room/assets remain available
 offline. Recitation bytes still use the audio CDNs and prayer times use Aladhan.
-The `quran-nur.appwrite.network` share links identify the web frontend's static
-host, not a data API.
+Share links point to `https://quran-nur-web-iredox-7034db77458a.herokuapp.com`.
 
 Sync uses the common `/v1/sync` `userId` + JSON `stateData` contract and server
 watermarks. Sign-in/foregrounding restores cloud state. WebSocket announcements

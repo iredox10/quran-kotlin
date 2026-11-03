@@ -99,7 +99,7 @@ class PageViewModel @Inject constructor(
     val selectedArabicFontName: StateFlow<String> = _selectedArabicFontName.asStateFlow()
 
     private val _mushafPreset = MutableStateFlow(
-        Mushaf.forReading(hifdhPrefs.getString("mushaf_preset", "uthmani")).id
+        Mushaf.forReading(hifdhPrefs.getString("mushaf_preset", Mushaf.DEFAULT.id)).id
     )
     val currentMushaf: StateFlow<Mushaf> = _mushafPreset
         .map { Mushaf.fromId(it) }

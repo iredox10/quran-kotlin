@@ -1,5 +1,7 @@
 package com.nur.quran.ui.screens
 
+import com.nur.quran.config.QURAN_NUR_WEB_URL
+
 import androidx.compose.ui.res.stringResource
 import com.nur.quran.R
 import android.content.Context
@@ -360,8 +362,7 @@ fun PlannerScreen(
                                 onShareProgress = {
                                     val shareText = context.getString(R.string.planner_share_title) + "\n" +
                                         context.getString(R.string.planner_share_summary, plan.title, overallPct, overview?.completedCount ?: 0, plan.durationDays, currentDay, metrics?.consistencyStreak ?: 0) + "\n" +
-                                        "https://quran-nur.appwrite.network\n" +
-                                        "#QuranNur"
+                                        "$QURAN_NUR_WEB_URL\n#QuranNur"
                                     val intent = Intent(Intent.ACTION_SEND).apply {
                                         type = "text/plain"
                                         putExtra(Intent.EXTRA_TEXT, shareText)

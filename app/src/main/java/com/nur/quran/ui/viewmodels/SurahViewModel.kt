@@ -153,7 +153,7 @@ class SurahViewModel @Inject constructor(
 
     private val _mushafPreset = MutableStateFlow(
         com.nur.quran.data.mushaf.Mushaf.forReading(
-            hifdhPrefs.getString("mushaf_preset", "uthmani")
+            hifdhPrefs.getString("mushaf_preset", com.nur.quran.data.mushaf.Mushaf.DEFAULT.id)
         ).id
     )
     val mushafPreset: StateFlow<String> = _mushafPreset.asStateFlow()

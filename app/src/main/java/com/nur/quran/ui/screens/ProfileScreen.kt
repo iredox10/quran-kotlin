@@ -1,5 +1,7 @@
 package com.nur.quran.ui.screens
 
+import com.nur.quran.config.QURAN_NUR_WEB_URL
+
 import androidx.compose.ui.res.stringResource
 import com.nur.quran.R
 
@@ -239,7 +241,7 @@ fun ProfileScreen(
                             action = Intent.ACTION_SEND
                             putExtra(
                                 Intent.EXTRA_TEXT,
-                                "Read & study Quran with Quran Nur 🌙: https://quran-nur.appwrite.network"
+                                "Read & study Quran with Quran Nur 🌙: $QURAN_NUR_WEB_URL"
                             )
                             type = "text/plain"
                         }

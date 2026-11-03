@@ -43,6 +43,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.nur.quran.data.getHizbByPage
 import com.nur.quran.data.getJuzByPage
 import com.nur.quran.data.db.entities.WordEntity
+import com.nur.quran.ui.components.ReaderPageNavigation
 import com.nur.quran.ui.components.ShareVerseDialog
 import com.nur.quran.data.db.entities.VerseEntity
 import com.nur.quran.ui.components.NurIcons
@@ -356,63 +357,12 @@ fun PageScreen(
                                 )
                             }
 
-                            // ─── Bottom Page Navigator ───
-                            item {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 24.dp, horizontal = 16.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    // Web page navigator (Page.jsx): NEXT is on the LEFT,
-                                    // PREVIOUS on the right — RTL mushaf page order.
-                                    // Next (left)
-                                    Text(
-                                        text = stringResource(R.string.ui_next_0fed81),
-                                        fontFamily = fontFamilyUi,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (state.pageNumber < 604) hTeal else hInkMuted,
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .clickable(enabled = state.pageNumber < 604) {
-                                                onNavigateToPage(state.pageNumber + 1)
-                                            }
-                                            .padding(8.dp)
-                                    )
-
-                                    // Center
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text(
-                                            text = stringResource(R.string.ui_page_618c75),
-                                            fontFamily = fontFamilyMono,
-                                            fontSize = 10.sp,
-                                            color = hInkMuted,
-                                            letterSpacing = 1.sp
-                                        )
-                                        Text(
-                                            text = stringResource(R.string.ui_1_s_604_504ca1, state.pageNumber),
-                                            fontFamily = fontFamilyUi,
-                                            fontWeight = FontWeight.ExtraBold,
-                                            fontSize = 16.sp,
-                                            color = hInk
-                                        )
-                                    }
-
-                                    // Previous (right)
-                                    Text(
-                                        text = stringResource(R.string.ui_previous_f67a76),
-                                        fontFamily = fontFamilyUi,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (state.pageNumber > 1) hTeal else hInkMuted,
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .clickable(enabled = state.pageNumber > 1) {
-                                                onNavigateToPage(state.pageNumber - 1)
-                                            }
-                                            .padding(8.dp)
-                                    )
-                                }
+                            item(key = "page-navigation") {
+                                ReaderPageNavigation(
+                                    page = state.pageNumber,
+                                    onNext = { onNavigateToPage(state.pageNumber + 1) },
+                                    onPrevious = { onNavigateToPage(state.pageNumber - 1) }
+                                )
                             }
                         }
                     }

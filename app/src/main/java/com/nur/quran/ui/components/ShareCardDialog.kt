@@ -1,5 +1,7 @@
 package com.nur.quran.ui.components
 
+import com.nur.quran.config.QURAN_NUR_WEB_URL
+
 
 import androidx.compose.ui.res.stringResource
 import com.nur.quran.R
@@ -151,8 +153,8 @@ fun ShareCardDialog(
                     Button(
                         onClick = {
                             val shareMessage = when (type) {
-                                is ShareCardType.Verse -> "${type.arabic}\n\n${type.translation}\n— ${type.reference}\n\nDownloaded via Quran Nur: https://quran-nur.appwrite.network"
-                                is ShareCardType.Progress -> "My Quran Reading Progress:\n🔥 Streak: ${type.streak} days\n⏱️ Today: ${type.todayMinutes} mins\n📊 Total: ${type.totalHours} hrs\n\nBuild your daily habit with Quran Nur: https://quran-nur.appwrite.network"
+                                is ShareCardType.Verse -> "${type.arabic}\n\n${type.translation}\n— ${type.reference}\n\nDownloaded via Quran Nur: $QURAN_NUR_WEB_URL"
+                                is ShareCardType.Progress -> "My Quran Reading Progress:\n🔥 Streak: ${type.streak} days\n⏱️ Today: ${type.todayMinutes} mins\n📊 Total: ${type.totalHours} hrs\n\nBuild your daily habit with Quran Nur: $QURAN_NUR_WEB_URL"
                             }
                             val sendIntent = Intent().apply {
                                 action = Intent.ACTION_SEND

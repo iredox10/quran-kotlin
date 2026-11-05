@@ -181,6 +181,7 @@ class PageViewModel @Inject constructor(
     private var loadJob: Job? = null
     private var prefetchJob: Job? = null
     private val pageCache = PageReaderCache<PageUiState.Success>()
+    private val pageLoader = PageLoadCoordinator(viewModelScope, pageCache, ::buildPageState)
 
     fun loadPage(pageNumber: Int) {
         if (pageNumber !in 1..604) return
@@ -194,14 +195,14 @@ class PageViewModel @Inject constructor(
         _uiState.value = cached ?: PageUiState.Loading
         loadJob = viewModelScope.launch(Dispatchers.IO) {
             try {
-                val state = cached ?: buildPageState(pageNumber, params)
+                val state = cached ?: pageLoader.get(pageNumber, params)
                 kotlinx.coroutines.currentCoroutineContext().ensureActive()
                 if (!pageCache.isCurrent(generation)) return@launch
                 pageCache.store(pageNumber, params, state)
                 _uiState.value = state
                 val first = state.verses.first()
+                prefetchPages(pageNumber, params)
                 repository.addRecentlyRead(first.chapterId, state.chapterMap[first.chapterId]?.nameSimple ?: "Surah ${first.chapterId}", pageNumber = pageNumber)
-                prefetchPages(pageNumber + 1, pageNumber + 3, params)
                 // Bundled page words already have translations. Only backfill genuinely missing data.
                 val missing = state.verses.filter { verse -> state.wordsMap[verse.id].orEmpty().any {
                     it.charTypeName == "word" && it.translation.isNullOrBlank() && it.transliteration.isNullOrBlank()
@@ -232,14 +233,14 @@ class PageViewModel @Inject constructor(
         )
     }
 
-    private fun prefetchPages(startPage: Int, endPage: Int, params: PageCacheParams) {
+    private fun prefetchPages(currentPage: Int, params: PageCacheParams) {
         prefetchJob?.cancel()
         prefetchJob = viewModelScope.launch(Dispatchers.IO) {
-            for (page in startPage..minOf(604, endPage)) {
+            for (page in pagePrefetchOrder(currentPage)) {
                 kotlinx.coroutines.currentCoroutineContext().ensureActive()
                 if (pageCache.cached(page, params) != null) continue
                 try {
-                    pageCache.store(page, params, buildPageState(page, params))
+                    pageLoader.get(page, params)
                 } catch (e: kotlinx.coroutines.CancellationException) {
                     throw e
                 } catch (_: Exception) { /* Foreground reads surface their own error. */ }

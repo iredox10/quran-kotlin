@@ -1633,11 +1633,7 @@ class SurahViewModel @Inject constructor(
 
     private var prefetchJob: Job? = null
 
-    /**
-     * Warm [pages] (verses + words + tajweed ensure-paths) into the shared
-     * page cache. Single job — a new call cancels the previous one.
-     * Never emits UI state; loadPageVerses serves hits with no flash.
-     */
+    /** Prepare neighboring pages without emitting UI state. */
     fun prefetchAdjacentPages(pages: List<Int>) {
         val params = PageCacheParams(_mushafPreset.value, _currentTranslationId.value)
         prefetchJob?.cancel()
@@ -1646,12 +1642,7 @@ class SurahViewModel @Inject constructor(
                 ensureActive()
                 if (pageReaderCache.cached(page, params) != null) continue
                 try {
-                    val bundle = repository.getPageVerses(page, params.mushafId, params.translationId)
-                    if (bundle.verses.isEmpty()) continue
-                    val chapterId = bundle.verses.firstOrNull()?.chapterId ?: 1
-                    val chapter = repository.getChapterById(chapterId) ?: continue
-                    val tajweed = repository.getTajweedMapForVerses(bundle.verses)
-                    pageReaderCache.store(page, params, SurahUiState.Success(chapter, bundle.verses, bundle.wordsMap, tajweed))
+                    plannerPageLoader.get(page, params)
                 } catch (e: Exception) {
                     if (e is kotlinx.coroutines.CancellationException) throw e
                 }
@@ -1660,7 +1651,17 @@ class SurahViewModel @Inject constructor(
     }
 
     private val pageReaderCache = PageReaderCache<SurahUiState.Success>()
+    private val plannerPageLoader = PageLoadCoordinator(viewModelScope, pageReaderCache, ::buildPlannerPageState)
     private var loadPageJob: Job? = null
+
+    private suspend fun buildPlannerPageState(page: Int, params: PageCacheParams): SurahUiState.Success {
+        val bundle = repository.getPageVerses(page, params.mushafId, params.translationId)
+        check(bundle.verses.isNotEmpty()) { "No verses found for page $page" }
+        val chapterId = bundle.verses.first().chapterId
+        val chapter = repository.getChapterById(chapterId)
+            ?: ChapterEntity(chapterId, "Surah $chapterId", "سورة", "Surah $chapterId", "Chapter", "makkah", 1, 10, page, page)
+        return SurahUiState.Success(chapter, bundle.verses, bundle.wordsMap, repository.getTajweedMapForVerses(bundle.verses))
+    }
 
     fun loadPageVerses(pageNumber: Int) {
         loadedPageNumber = pageNumber
@@ -1682,21 +1683,10 @@ class SurahViewModel @Inject constructor(
         loadPageJob = viewModelScope.launch(Dispatchers.IO) {
             if (fromEmpty) _uiState.value = SurahUiState.Loading
             try {
-                // Single batched bundle (one txn): no N+1 translation/words queries.
-                val bundle = repository.getPageVerses(pageNumber, params.mushafId, params.translationId)
+                val success = plannerPageLoader.get(pageNumber, params)
                 if (!pageReaderCache.isCurrent(gen)) return@launch
-                if (bundle.verses.isEmpty()) {
-                    if (_uiState.value !is SurahUiState.Success) _uiState.value = SurahUiState.Error("No verses found for page $pageNumber")
-                    return@launch
-                }
-                val chapterId = bundle.verses.firstOrNull()?.chapterId ?: 1
-                val chapter = repository.getChapterById(chapterId)
-                    ?: ChapterEntity(chapterId, "Surah $chapterId", "سورة", "Surah $chapterId", "Chapter", "makkah", 1, 10, pageNumber, pageNumber)
-                val success = SurahUiState.Success(chapter, bundle.verses, bundle.wordsMap, repository.getTajweedMapForVerses(bundle.verses))
-                pageReaderCache.store(pageNumber, params, success)
-                if (!pageReaderCache.isCurrent(gen)) return@launch
-                currentChapterId = chapter.id
-                currentChapterName = chapter.nameSimple
+                currentChapterId = success.chapter.id
+                currentChapterName = success.chapter.nameSimple
                 _uiState.value = success
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
@@ -1972,6 +1962,10 @@ class SurahViewModel @Inject constructor(
         val targetId = com.nur.quran.data.TranslationFallback.resolveTranslationId(translationId)
         _currentTranslationId.value = targetId
         hifdhPrefs.edit().putInt("translation_id", targetId).apply()
+        loadedPageNumber?.let {
+            loadPageVerses(it)
+            return
+        }
         val chapterId = currentChapterId
         if (chapterId <= 0) return
         viewModelScope.launch(Dispatchers.IO) {

@@ -151,6 +151,7 @@ fun PlannerReaderScreen(
     // Mushaf-aware rendering (web parity: script/tajweed follow the mushaf)
     val isTajweedEffective by surahViewModel.isTajweedEffective.collectAsState()
     val currentMushaf by surahViewModel.currentMushaf.collectAsState()
+    val currentTranslationId by surahViewModel.currentTranslationId.collectAsState()
     val isTranslationEnabled by surahViewModel.isTranslationEnabled.collectAsState()
     val arabicFontScale by surahViewModel.arabicFontScale.collectAsState()
     val translationFontScale by surahViewModel.translationFontScale.collectAsState()
@@ -352,20 +353,14 @@ fun PlannerReaderScreen(
     var hasAutoScrolledToLastRead by remember(activePlan?.id, dayNumber) { mutableStateOf(false) }
 
     // Fetch verses for page
-    LaunchedEffect(currentPage, currentMushaf.id) {
+    LaunchedEffect(currentPage, currentMushaf.id, currentTranslationId) {
         surahViewModel.loadPageVerses(currentPage)
     }
 
-    // ── Adjacent-page prefetch (offline-first: swipes render instantly) ──
-    // Fires once the page settles (300ms debounce); the effect key cancels
-    // the wait on further page change, and the ViewModel keeps a single
-    // prefetch job (each call cancels the last). Bounds-clamped, silent.
-    LaunchedEffect(currentPage, pageStart, pageEnd) {
-        delay(300)
-        val neighbors = buildList {
-            if (currentPage - 1 >= pageStart) add(currentPage - 1)
-            if (currentPage + 1 <= pageEnd) add(currentPage + 1)
-        }
+    // Give the visible page a head start, then warm pages within this assignment.
+    LaunchedEffect(currentPage, pageStart, pageEnd, currentMushaf.id, currentTranslationId) {
+        delay(100)
+        val neighbors = com.nur.quran.ui.viewmodels.pagePrefetchOrder(currentPage, pageStart, pageEnd)
         if (neighbors.isNotEmpty()) surahViewModel.prefetchAdjacentPages(neighbors)
     }
 

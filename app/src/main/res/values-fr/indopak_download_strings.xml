@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="indopak_download">Télécharger IndoPak · 34 Mo</string>
+    <string name="indopak_open">Lire IndoPak hors ligne</string>
+    <string name="indopak_downloading">Téléchargement… %1$d%%</string>
+    <string name="indopak_download_description">Téléchargez une fois cette édition imprimée de 13 lignes pour lire hors ligne. Ses pages et sa position de lecture sont indépendantes de Madani.</string>
+    <string name="indopak_download_error">Téléchargement interrompu. Vérifiez la connexion et réessayez.</string>
+    <string name="indopak_open_error">Impossible d’ouvrir l’édition locale.</string>
+</resources>

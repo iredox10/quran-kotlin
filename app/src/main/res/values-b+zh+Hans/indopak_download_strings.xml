@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="indopak_download">下载 IndoPak · 34 MB</string>
+    <string name="indopak_open">离线阅读 IndoPak</string>
+    <string name="indopak_downloading">正在下载… %1$d%%</string>
+    <string name="indopak_download_description">下载一次完整的十三行印刷版，即可离线阅读。页码和阅读位置与麦地那版分别保存。</string>
+    <string name="indopak_download_error">下载中断。请检查网络并重试。</string>
+    <string name="indopak_open_error">无法打开本地版本。</string>
+</resources>

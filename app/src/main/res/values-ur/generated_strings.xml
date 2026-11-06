@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Assisted UI translations; scripture text is never translated by this script. -->
 <resources>
-    <string name="mushaf_picker_intro">وہ اسکرپٹ منتخب کریں جو آپ کو پڑھنے میں سب سے آسان لگے۔ دستیاب ایڈیشنز Hafs پڑھنے کی پیروی کرتے ہیں۔</string>
+    <string name="mushaf_picker_intro">وہ رسم الخط یا روایت منتخب کریں جسے پڑھنا آپ کے لیے آسان ہو۔</string>
     <string name="mushaf_name_uthmani">عثمانی Hafs</string>
     <string name="mushaf_description_qpc">مدنی QPC رسم الخط · واضح، بہتا ہوا متن</string>
     <string name="mushaf_description_tajweed">مدنی رسم الخط · تجوید کے رنگ ہمیشہ جاری رہتے ہیں۔</string>

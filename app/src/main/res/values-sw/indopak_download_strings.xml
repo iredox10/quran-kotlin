@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="indopak_download">Pakua IndoPak · 34 MB</string>
+    <string name="indopak_open">Soma IndoPak bila mtandao</string>
+    <string name="indopak_downloading">Inapakua… %1$d%%</string>
+    <string name="indopak_download_description">Pakua toleo la mistari 13 mara moja ili kusoma bila mtandao. Kurasa na nafasi ya kusoma huhifadhiwa tofauti na Madani.</string>
+    <string name="indopak_download_error">Upakuaji umekatika. Angalia muunganisho na ujaribu tena.</string>
+    <string name="indopak_open_error">Imeshindwa kufungua toleo lililohifadhiwa.</string>
+</resources>

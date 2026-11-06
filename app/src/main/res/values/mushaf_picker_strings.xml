@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="mushaf_picker_intro">Choose the script you find easiest to read. Available editions follow the Hafs reading.</string>
+    <string name="mushaf_picker_intro">Choose the script or reading you find easiest to read.</string>
     <string name="mushaf_name_uthmani">Uthmani Hafs</string>
     <string name="mushaf_description_qpc">Madani QPC script · clear, flowing text</string>
     <string name="mushaf_description_tajweed">Madani script · Tajweed colors always on</string>
@@ -11,4 +11,10 @@
     <string name="mushaf_selected">Selected</string>
     <string name="mushaf_indopak_unavailable">This edition needs its matching Quran text and font. It is not available in this build, so it cannot be selected.</string>
     <string name="mushaf_flow_note">Text adjusts to your screen and reading size. These previews do not promise a fixed printed-page line count.</string>
+    <string name="indopak_download">Download IndoPak · 34 MB</string>
+    <string name="indopak_open">Read IndoPak offline</string>
+    <string name="indopak_downloading">Downloading… %1$d%%</string>
+    <string name="indopak_download_description">Download the complete 13-line printed edition once, then read offline. Its own pages and saved position are separate from Madani.</string>
+    <string name="indopak_download_error">Download interrupted. Check your connection and try again.</string>
+    <string name="indopak_open_error">Could not open the local edition.</string>
 </resources>

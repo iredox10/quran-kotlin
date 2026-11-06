@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Assisted UI translations; scripture text is never translated by this script. -->
 <resources>
-    <string name="mushaf_picker_intro">読みやすいスクリプトを選択してください。利用可能なエディションは、Hafs の読み取りに従います。</string>
+    <string name="mushaf_picker_intro">読みやすい書体や伝承を選んでください。</string>
     <string name="mushaf_name_uthmani">ウスマニ Hafs</string>
     <string name="mushaf_description_qpc">Madani QPC スクリプト · 明確で流れるようなテキスト</string>
     <string name="mushaf_description_tajweed">マダニ文字・タジウィードカラーが常にオン</string>

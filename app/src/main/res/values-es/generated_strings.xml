@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Assisted UI translations; scripture text is never translated by this script. -->
 <resources>
-    <string name="mushaf_picker_intro">Elija el guión que le resulte más fácil de leer. Las ediciones disponibles siguen la lectura Hafs.</string>
+    <string name="mushaf_picker_intro">Elige la escritura o lectura que te resulte más fácil de leer.</string>
     <string name="mushaf_name_uthmani">Uthmani Hafs</string>
     <string name="mushaf_description_qpc">Escritura Madani QPC · texto claro y fluido</string>
     <string name="mushaf_description_tajweed">Escritura Madani · Colores Tajweed siempre encendidos</string>

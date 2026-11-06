@@ -107,6 +107,8 @@ fun TajweedAndroidText(
 
 private fun arabicTypeface(context: Context, fontName: String): Typeface {
     val resId = when (fontName.trim().lowercase()) {
+        "warsh-quran" -> R.font.warsh_quran
+        "qaloon-quran" -> R.font.qaloon_quran
         "kfgqpc-hafs", "kfgqpc hafs" -> R.font.kfgqpc_hafs
         "uthman-taha-naskh", "uthman taha naskh" -> R.font.uthman_taha_naskh
         "amiri-quran", "amiri quran" -> R.font.amiri_regular

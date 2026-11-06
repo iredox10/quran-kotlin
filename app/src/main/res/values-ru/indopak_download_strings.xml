@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="indopak_download">Скачать IndoPak · 34 МБ</string>
+    <string name="indopak_open">Читать IndoPak офлайн</string>
+    <string name="indopak_downloading">Загрузка… %1$d%%</string>
+    <string name="indopak_download_description">Скачайте печатное издание с 13 строками для чтения офлайн. Его страницы и сохранённая позиция независимы от Мадани.</string>
+    <string name="indopak_download_error">Загрузка прервана. Проверьте соединение и повторите.</string>
+    <string name="indopak_open_error">Не удалось открыть локальное издание.</string>
+</resources>

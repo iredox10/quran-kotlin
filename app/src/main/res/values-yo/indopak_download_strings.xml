@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="indopak_download">Ṣe ìgbàsílẹ̀ IndoPak · 34 MB</string>
+    <string name="indopak_open">Ka IndoPak láìsí intanẹẹti</string>
+    <string name="indopak_downloading">Ń ṣe ìgbàsílẹ̀… %1$d%%</string>
+    <string name="indopak_download_description">Ṣe ìgbàsílẹ̀ ẹ̀dà ìtẹ̀wé ìlà 13 lẹ́ẹ̀kan láti kà láìsí intanẹẹti. Ojú ìwé àti ibi tí o dé yàtọ̀ sí Madani.</string>
+    <string name="indopak_download_error">Ìgbàsílẹ̀ dáwọ́ dúró. Ṣàyẹ̀wò ìsopọ̀ kí o sì tún gbìyànjú.</string>
+    <string name="indopak_open_error">Kò ṣeé ṣí ẹ̀dà tí a fi pamọ́.</string>
+</resources>

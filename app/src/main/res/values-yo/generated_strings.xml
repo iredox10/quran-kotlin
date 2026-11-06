@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Assisted UI translations; scripture text is never translated by this script. -->
 <resources>
-    <string name="mushaf_picker_intro">Yan iwe afọwọkọ ti o rii rọrun julọ lati ka. Awọn ẹda ti o wa tẹle kika Hafs.</string>
+    <string name="mushaf_picker_intro">Yan irú ìkọ̀wé tàbí ìwájú kíkà tí ó rọrùn jù fún ọ láti kà.</string>
     <string name="mushaf_name_uthmani">Uthmani Hafs</string>
     <string name="mushaf_description_qpc">Madani QPC akosile · ko o, ti nṣàn ọrọ</string>
     <string name="mushaf_description_tajweed">Madani akosile · Tajweed awọn awọ nigbagbogbo lori</string>

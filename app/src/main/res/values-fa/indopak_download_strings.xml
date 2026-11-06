@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="indopak_download">دانلود ایندوپاک · 34 MB</string>
+    <string name="indopak_open">خواندن آفلاین ایندوپاک</string>
+    <string name="indopak_downloading">در حال دانلود… %1$d%%</string>
+    <string name="indopak_download_description">نسخه چاپی ۱۳ سطری را یک بار دانلود کنید و آفلاین بخوانید. صفحات و جای خواندن آن مستقل از مدنی ذخیره می‌شوند.</string>
+    <string name="indopak_download_error">دانلود قطع شد. اتصال را بررسی و دوباره تلاش کنید.</string>
+    <string name="indopak_open_error">نسخه محلی باز نشد.</string>
+</resources>

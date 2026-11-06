@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="indopak_download">انڈوپاک ڈاؤن لوڈ کریں · 34 MB</string>
+    <string name="indopak_open">انڈوپاک آف لائن پڑھیں</string>
+    <string name="indopak_downloading">ڈاؤن لوڈ ہو رہا ہے… %1$d%%</string>
+    <string name="indopak_download_description">13 سطروں والا مکمل مطبوعہ نسخہ ایک بار ڈاؤن لوڈ کر کے آف لائن پڑھیں۔ اس کے صفحات اور محفوظ مقام مدنی سے الگ ہیں۔</string>
+    <string name="indopak_download_error">ڈاؤن لوڈ رک گیا۔ کنکشن چیک کر کے دوبارہ کوشش کریں۔</string>
+    <string name="indopak_open_error">مقامی نسخہ نہیں کھل سکا۔</string>
+</resources>

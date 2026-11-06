@@ -1,0 +1,24 @@
+# Warsh and Qaloon offline editions
+
+Publisher: King Fahd Glorious Quran Printing Complex (KFGQPC).
+Publisher announcement: https://qurancomplex.gov.sa/الانتهاء-من-معالجة-بعض-الملحوظات-في-خط/
+Unmodified font binaries and source records retrieved from the KFGQPC package mirror https://github.com/ibnhazm/KFGQPC on 2026-11-06.
+The embedded font EULA explicitly grants use, copy and distribution free of cost; fonts must not be sold or modified. The full embedded licenses are included beside these data files.
+
+Each narration contains 6,214 native Madani-numbered ayahs. This numbering is not Hafs numbering. No Hafs translation, audio, bookmark or tafsir key is assigned to these ayahs.
+Rows with page ranges are displayed on both native pages, with their original text preserved. This is flowing Unicode text, not an exact printed-page facsimile.
+Qaloon source JSON had trailing commas. Only JSON syntax was repaired for parsing; all field values, including Arabic and numbering, are unchanged.
+All 114 surahs, consecutive native ayah numbers and pages 1–604 were checked. Every text character was checked against its paired font cmap.
+
+warsh.json: SHA-256 a0b0eb5cad1a4f44b0cf5d76b4dc9fb8cb8f2896171f02dd405b7d9ace4e6571
+warsh_quran.ttf: SHA-256 e6347a1b4cf0ca32e9cb187a7db8c9ecee0d5e384269ca6a943373a34ff747fb
+qaloon.json: SHA-256 67b6e65199f743128b007e1bb91456590d585d8350c4bba856c501f25864946b
+qaloon_quran.ttf: SHA-256 95e7f9268fd4ab9f8b79d2ed3827e0c8a78f80195c02c6cbadb97c90d837b1e3
+
+IndoPak preview: Al-Fatihah, a direct raster rendering of the original PDF page 4 (printed page 2), Quran text area y=300–715pt, preserving all original letters and marks. Source and exact file verification below. No Quran text was generated or substituted.
+The legacy private-use text is not enabled. The picker separately offers an explicit download of the complete Quraan Al Majeed 13-line printed edition, linked in the primary DigitalKhatt project README: https://github.com/DigitalKhatt/indopakfont
+Original user-download URL: https://archive.org/download/QuranAl-majeed-13Line/1-QuraanAlMajeed13Line-Complete.pdf
+Archive metadata: https://archive.org/metadata/QuranAl-majeed-13Line
+Expected size 34,113,171 bytes; SHA-1 3819c14fe04efa0596a159d4a6f277570453ec41. PDF is downloaded to app-private storage only on user request; it is not shipped in these assets. Its page numbers are not mapped onto Hafs planner pages.
+
+Verified PDF SHA-256: ea71bbf6b01ecf6e9d827bb763a6618c0c10de170688c497c5bfd1b472ba8b48. Original PDF has 874 pages including covers/index/appendices. Quran reading uses printed pages 2–848 = PDF pages 4–850.

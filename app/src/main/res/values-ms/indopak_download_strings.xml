@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="indopak_download">Muat turun IndoPak · 34 MB</string>
+    <string name="indopak_open">Baca IndoPak luar talian</string>
+    <string name="indopak_downloading">Memuat turun… %1$d%%</string>
+    <string name="indopak_download_description">Muat turun edisi cetak 13 baris sekali untuk membaca luar talian. Halaman dan kedudukan bacaan disimpan berasingan daripada Madani.</string>
+    <string name="indopak_download_error">Muat turun terganggu. Semak sambungan dan cuba lagi.</string>
+    <string name="indopak_open_error">Tidak dapat membuka edisi setempat.</string>
+</resources>

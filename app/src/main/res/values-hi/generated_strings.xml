@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Assisted UI translations; scripture text is never translated by this script. -->
 <resources>
-    <string name="mushaf_picker_intro">वह स्क्रिप्ट चुनें जो आपको पढ़ने में सबसे आसान लगे। उपलब्ध संस्करण Hafs रीडिंग का अनुसरण करते हैं।</string>
+    <string name="mushaf_picker_intro">वह लिपि या पाठ चुनें जिसे पढ़ना आपको सबसे आसान लगे।</string>
     <string name="mushaf_name_uthmani">उथमानी Hafs</string>
     <string name="mushaf_description_qpc">मदनी QPC स्क्रिप्ट · स्पष्ट, प्रवाहमान पाठ</string>
     <string name="mushaf_description_tajweed">मदनी लिपि · तजवीद रंग हमेशा जलते रहते हैं</string>

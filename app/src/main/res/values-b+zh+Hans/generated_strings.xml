@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Assisted UI translations; scripture text is never translated by this script. -->
 <resources>
-    <string name="mushaf_picker_intro">选择您认为最容易阅读的脚本。可用版本遵循 Hafs 阅读。</string>
+    <string name="mushaf_picker_intro">选择您最容易阅读的字体或诵读传本。</string>
     <string name="mushaf_name_uthmani">乌斯曼尼 Hafs</string>
     <string name="mushaf_description_qpc">Madani QPC 脚本 · 清晰、流畅的文本</string>
     <string name="mushaf_description_tajweed">Madani 脚本 · Tajweed 颜色始终开启</string>

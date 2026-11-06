@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="indopak_download">IndoPak 다운로드 · 34 MB</string>
+    <string name="indopak_open">IndoPak 오프라인 읽기</string>
+    <string name="indopak_downloading">다운로드 중… %1$d%%</string>
+    <string name="indopak_download_description">13줄 인쇄판을 한 번 다운로드하면 오프라인으로 읽을 수 있습니다. 페이지와 읽기 위치는 마다니와 별도로 저장됩니다.</string>
+    <string name="indopak_download_error">다운로드가 중단되었습니다. 연결을 확인하고 다시 시도하세요.</string>
+    <string name="indopak_open_error">저장된 판을 열 수 없습니다.</string>
+</resources>

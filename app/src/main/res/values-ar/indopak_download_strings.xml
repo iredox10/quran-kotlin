@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="indopak_download">تنزيل المصحف الهندي · 34 م.ب</string>
+    <string name="indopak_open">قراءة المصحف الهندي دون إنترنت</string>
+    <string name="indopak_downloading">جارٍ التنزيل… %1$d%%</string>
+    <string name="indopak_download_description">نزّل النسخة المطبوعة ذات 13 سطرًا مرة واحدة للقراءة دون إنترنت. لها صفحاتها وموضع قراءة مستقل عن المصحف المدني.</string>
+    <string name="indopak_download_error">توقف التنزيل. تحقق من الاتصال وحاول مجددًا.</string>
+    <string name="indopak_open_error">تعذر فتح النسخة المحلية.</string>
+</resources>

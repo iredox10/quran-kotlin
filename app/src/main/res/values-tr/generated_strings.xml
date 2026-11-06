@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Assisted UI translations; scripture text is never translated by this script. -->
 <resources>
-    <string name="mushaf_picker_intro">Okumayı en kolay bulduğunuz komut dosyasını seçin. Mevcut sürümler Hafs okumasını takip eder.</string>
+    <string name="mushaf_picker_intro">En kolay okuyabildiğiniz yazıyı veya rivayeti seçin.</string>
     <string name="mushaf_name_uthmani">Osman Hafs</string>
     <string name="mushaf_description_qpc">Madani QPC komut dosyası · net, akıcı metin</string>
     <string name="mushaf_description_tajweed">Medeni yazısı · Tajweed renkleri her zaman açık</string>

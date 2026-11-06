@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="indopak_download">IndoPak indir · 34 MB</string>
+    <string name="indopak_open">IndoPak çevrimdışı oku</string>
+    <string name="indopak_downloading">İndiriliyor… %1$d%%</string>
+    <string name="indopak_download_description">Çevrimdışı okumak için 13 satırlık baskıyı bir kez indirin. Sayfalar ve okuma konumu Medine baskısından ayrı kaydedilir.</string>
+    <string name="indopak_download_error">İndirme kesildi. Bağlantıyı kontrol edip yeniden deneyin.</string>
+    <string name="indopak_open_error">Yerel baskı açılamadı.</string>
+</resources>

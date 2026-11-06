@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="indopak_download">Sauke IndoPak · 34 MB</string>
+    <string name="indopak_open">Karanta IndoPak ba tare da intanet ba</string>
+    <string name="indopak_downloading">Ana saukewa… %1$d%%</string>
+    <string name="indopak_download_description">Sauke cikakkiyar bugun layi 13 sau ɗaya don karatu ba tare da intanet ba. Shafukansa da wurin karatu suna daban da Madani.</string>
+    <string name="indopak_download_error">Saukewa ya tsaya. Duba haɗin intanet ka sake gwadawa.</string>
+    <string name="indopak_open_error">An kasa buɗe bugun da aka ajiye.</string>
+</resources>

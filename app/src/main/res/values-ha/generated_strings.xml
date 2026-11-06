@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Assisted UI translations; scripture text is never translated by this script. -->
 <resources>
-    <string name="mushaf_picker_intro">Zaɓi rubutun da kuka sami mafi sauƙin karantawa. Abubuwan da ke akwai suna bin karatun Hafs.</string>
+    <string name="mushaf_picker_intro">Zaɓi rubutu ko riwayar da ta fi maka sauƙin karantawa.</string>
     <string name="mushaf_name_uthmani">Uthmani Hafs</string>
     <string name="mushaf_description_qpc">Madani QPC rubutun · bayyananne, rubutu mai gudana</string>
     <string name="mushaf_description_tajweed">Rubutun Madani · Kalar Tajweed a koda yaushe</string>

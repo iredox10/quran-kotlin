@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Assisted UI translations; scripture text is never translated by this script. -->
 <resources>
-    <string name="mushaf_picker_intro">متنی را که خواندن آن راحت‌تر است انتخاب کنید. نسخه های موجود از خواندن Hafs پیروی می کنند.</string>
+    <string name="mushaf_picker_intro">رسم‌الخط یا روایتی را انتخاب کنید که خواندن آن برایتان آسان‌تر است.</string>
     <string name="mushaf_name_uthmani">عثمانی Hafs</string>
     <string name="mushaf_description_qpc">اسکریپت مدنی QPC · متن شفاف و روان</string>
     <string name="mushaf_description_tajweed">خط مدنی · رنگهای تجوید همیشه روشن</string>

@@ -70,13 +70,14 @@ class QuranRepository @Inject constructor(
         }
     }
 
-    suspend fun refreshReciters() = withContext(Dispatchers.IO) {
+    suspend fun refreshReciters(allowNetwork: Boolean = false) = withContext(Dispatchers.IO) {
         val key = "render_reciters"
         fun apply(json: String) {
             val response = gson.fromJson(json, com.nur.quran.data.api.rn.RnRecitersResponse::class.java)
             com.nur.quran.data.audio.Reciters.applyManifest(response)
         }
         quranDao.getCacheEntry(key)?.let { runCatching { apply(it.dataJson) } }
+        if (!allowNetwork) return@withContext
         try {
             val response = rnApiClient.getReciters()
             com.nur.quran.data.audio.Reciters.applyManifest(response)
@@ -102,18 +103,7 @@ class QuranRepository @Inject constructor(
         pagesEnd = apiChapter.pages?.lastOrNull() ?: 1
     )
 
-    suspend fun refreshChapters() = withContext(Dispatchers.IO) {
-        val existing = quranDao.getAllChapters().firstOrNull()
-        if (!existing.isNullOrEmpty()) {
-            return@withContext
-        }
-        try {
-            val response = rnApiClient.getChapters()
-            quranDao.insertChapters(response.chapters.map(::apiChapterToEntity))
-        } catch (e: Exception) {
-            ensureChaptersFromAssets()
-        }
-    }
+    suspend fun refreshChapters() = ensureChaptersFromAssets()
 
     /** Seed chapters from the bundled asset when Room is empty. No network. */
     suspend fun ensureChaptersFromAssets() = withContext(Dispatchers.IO) {
@@ -141,13 +131,20 @@ class QuranRepository @Inject constructor(
     /**
      * Seed a chapter's verses/words from bundled assets when Room is empty.
      * Returns true when verses are available afterwards. Never touches network —
-     * used to paint the screen instantly before the background network upgrade.
+     * used by every reader without any background network upgrade.
      */
     suspend fun ensureOfflineChapter(chapterId: Int): Boolean = withContext(Dispatchers.IO) {
-        val existing = quranDao.getVersesByChapter(chapterId).firstOrNull()
-        if (!existing.isNullOrEmpty()) {
+        val existing = quranDao.getVersesByChapterDirect(chapterId)
+        if (existing.isNotEmpty()) {
             val oldWords = quranDao.getWordsForVerses(existing.map { it.id })
-            val repaired = restoreBundledScripts(existing, oldWords, onlyLegacy = true)
+            // Page readers may have seeded only part of this chapter. Complete it locally.
+            val expected = offlineVersesByChapter[chapterId].orEmpty().mapTo(hashSetOf()) { it.verse_key }
+            val missing = expected - existing.mapTo(hashSetOf()) { it.verseKey }
+            val local = if (missing.isEmpty()) LocalPageContent(existing, oldWords) else {
+                val (verses, words) = loadOfflineVersesFromAssets(chapterId)
+                mergeLocalPage(LocalPageContent(existing, oldWords), LocalPageContent(verses, words))
+            }
+            val repaired = restoreBundledScripts(local.verses, local.words, onlyLegacy = true)
             val byId = existing.associateBy { it.id }
             val oldByVerse = oldWords.groupBy { it.verseId }
             val repairedByVerse = repaired.second.groupBy { it.verseId }
@@ -202,21 +199,8 @@ class QuranRepository @Inject constructor(
         if (translationId == com.nur.quran.data.translation.BundledTranslation.ID) {
             texts.putAll(com.nur.quran.data.translation.BundledTranslation.texts(context))
         }
-        for (chapter in verses.filter { texts[it.verseKey].isNullOrBlank() }.map { it.chapterId }.distinct()) {
-            try {
-                val response = rnApiClient.getVerses(chapter, translation = translationId, words = false)
-                val rows = response.verses.mapNotNull { verse ->
-                    verse.translations?.firstOrNull()?.text?.takeIf { it.isNotBlank() }?.let {
-                        com.nur.quran.data.db.entities.TranslationTextEntity(translationId, verse.verse_key, it)
-                    }
-                }
-                quranDao.upsertTranslationTexts(rows)
-                rows.forEach { texts[it.verseKey] = it.text }
-            } catch (e: CancellationException) { throw e }
-            catch (_: Exception) { /* Keep local Quran available when the edition is not downloaded. */ }
-        }
         verses.map { verse -> verse.copy(translation = texts[verse.verseKey]?.takeIf { it.isNotBlank() }
-            ?: "Download this translation to read it offline") }
+            ?: offlineTranslationsByVerseKey[verse.verseKey]) }
     }
 
     /** Sharing reads the active local edition directly, never a reader status message. */
@@ -328,7 +312,7 @@ class QuranRepository @Inject constructor(
                 LocalPageContent(verses, words)
             },
             persist = { quranDao.replaceVersesAndWords(it.verses, it.words) },
-            network = { fetchNetworkPage(pageNumber, translationId, mushaf.apiMushafId) },
+            network = { error("Bundled Quran page $pageNumber is unavailable") },
         )
         val repaired = restoreBundledScripts(content.verses, content.words, onlyLegacy = true)
         if (repaired.first != content.verses || repaired.second != content.words) {
@@ -471,9 +455,7 @@ class QuranRepository @Inject constructor(
 
     private fun loadOfflineVersesFromAssets(chapterId: Int): Pair<List<VerseEntity>, List<WordEntity>> {
         return try {
-            val allVerses = getAllOfflineVerses()
-            val prefix = "$chapterId:"
-            val filtered = allVerses.filter { it.verse_key.startsWith(prefix) }
+            val filtered = offlineVersesByChapter[chapterId].orEmpty()
             val verseEntities = mutableListOf<VerseEntity>()
             val wordEntities = mutableListOf<WordEntity>()
 
@@ -552,6 +534,7 @@ class QuranRepository @Inject constructor(
     /**
      * Load verses for a specific page from the offline asset.
      */
+    private val offlineVersesByChapter by lazy { getAllOfflineVerses().groupBy { it.verse_key.substringBefore(":").toInt() } }
     private val offlineVersesByPage by lazy { getAllOfflineVerses().groupBy { it.page_number } }
 
     private fun loadOfflineVersesForPage(pageNumber: Int): Pair<List<VerseEntity>, List<WordEntity>> {
@@ -679,9 +662,8 @@ class QuranRepository @Inject constructor(
      */
     private fun loadOfflineTajweedFromAssets(chapterId: Int): TajweedResponse {
         return try {
-            val allVerses = getAllOfflineVerses()
-            val tajweedVerses = allVerses
-                .filter { it.verse_key.split(":").firstOrNull()?.toIntOrNull() == chapterId && !it.text_uthmani_tajweed.isNullOrBlank() }
+            val tajweedVerses = offlineVersesByChapter[chapterId].orEmpty()
+                .filter { !it.text_uthmani_tajweed.isNullOrBlank() }
                 .map { ApiTajweedVerse(id = it.id, verse_key = it.verse_key, text_uthmani_tajweed = it.text_uthmani_tajweed!!) }
             TajweedResponse(verses = tajweedVerses)
         } catch (e: Exception) {
@@ -809,8 +791,7 @@ class QuranRepository @Inject constructor(
             // seeding works fully offline; only a missing bundle chapter (or
             // persist failure) falls back to the API download.
             if (wordPackManager.seedChapterFromBundle(chapterId)) return@withContext true
-            wordPackManager.downloadChapterWords(chapterId)
-            wordPackManager.isChapterCached(chapterId)
+            false
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
@@ -840,11 +821,7 @@ class QuranRepository @Inject constructor(
         } catch (_: Exception) { null }
         val rows = completeTajweedRows(chapterId, bundled.verses, cached?.verses.orEmpty())
         if (rows.isNotEmpty()) return@withContext TajweedResponse(rows)
-        try {
-            fetchWithOfflineCache("tajweed_chapter_$chapterId") { getBackendTajweed(chapterId) }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Exception) { bundled }
+        bundled
     }
 
     suspend fun getTajweedMapForVerses(verses: List<VerseEntity>): Map<String, String> = withContext(Dispatchers.IO) {

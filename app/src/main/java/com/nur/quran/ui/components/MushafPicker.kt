@@ -1,6 +1,13 @@
 package com.nur.quran.ui.components
 
 import android.content.Context
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.res.painterResource
+import com.nur.quran.data.mushaf.NarrationMushaf
+import com.nur.quran.data.mushaf.IndopakEdition
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
 import android.view.Gravity
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
@@ -58,6 +65,19 @@ fun MushafPicker(selectedMushafId: String, onSelect: (String) -> Unit) {
     val previews by produceState<List<MushafPreviewVerse>?>(null, context.applicationContext) {
         value = withContext(Dispatchers.IO) { loadMushafPreview(context.applicationContext) }
     }
+    val scope = rememberCoroutineScope()
+    var indopakInstalled by remember { mutableStateOf(IndopakEdition.installed(context)) }
+    var indopakProgress by remember { mutableStateOf<Float?>(null) }
+    var indopakError by remember { mutableStateOf(false) }
+    var openIndopak by remember { mutableStateOf(false) }
+    if (openIndopak) IndopakMushafReader { openIndopak = false }
+    var openNarration by remember { mutableStateOf<NarrationMushaf?>(null) }
+    val narrationSamples by produceState<Map<NarrationMushaf, List<com.nur.quran.data.mushaf.NarrationAyah>>>(emptyMap()) {
+        value = withContext(Dispatchers.IO) {
+            NarrationMushaf.entries.associateWith { it.ayahs(context.applicationContext).filter { row -> row.surah == 1 && row.number in 2..3 } }
+        }
+    }
+    openNarration?.let { edition -> NarrationMushafReader(edition) { openNarration = null } }
     Column(Modifier.fillMaxWidth().selectableGroup(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text(stringResource(R.string.mushaf_picker_intro), fontFamily = fontFamilyBody, fontSize = 13.sp, color = hInkMid, lineHeight = 20.sp)
         Mushaf.ALL.forEach { mushaf ->
@@ -73,7 +93,8 @@ fun MushafPicker(selectedMushafId: String, onSelect: (String) -> Unit) {
                             Text(mushafDisplayName(mushaf), fontFamily = fontFamilyUi, fontWeight = FontWeight.SemiBold, fontSize = 18.sp, color = hInk)
                             Text(mushafDescription(mushaf), fontFamily = fontFamilyBody, fontSize = 12.sp, color = hInkMid, lineHeight = 18.sp)
                         }
-                        RadioButton(selected = selected, enabled = mushaf.isSelectable, onClick = null, colors = RadioButtonDefaults.colors(selectedColor = hGold, unselectedColor = hInkMuted, disabledUnselectedColor = hInkMuted.copy(alpha = .35f)))
+                        if (mushaf.isSelectable) RadioButton(selected = selected, onClick = null, colors = RadioButtonDefaults.colors(selectedColor = hGold, unselectedColor = hInkMuted))
+                        else Icon(NurIcons.BookOpen, contentDescription = null, tint = hGold)
                     }
                     if (mushaf.isSelectable) {
                         Surface(shape = RoundedCornerShape(8.dp), color = hWhite, border = BorderStroke(.5.dp, hBoneDark)) {
@@ -91,8 +112,55 @@ fun MushafPicker(selectedMushafId: String, onSelect: (String) -> Unit) {
                             if (selected) Text(stringResource(R.string.mushaf_selected), fontFamily = fontFamilyBody, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = hInk)
                         }
                     } else {
-                        Text(stringResource(R.string.mushaf_indopak_unavailable), fontFamily = fontFamilyBody, fontSize = 12.sp, lineHeight = 18.sp, color = hInkMid)
+                        Image(painterResource(R.drawable.indopak_preview),
+                            contentDescription = "IndoPak Quran preview — Al-Fatihah, Quraan Al Majeed 13 lines",
+                            modifier = Modifier.fillMaxWidth())
+                        Text("Quraan Al Majeed · 13 lines · Al-Fatihah", fontFamily = fontFamilyBody, fontSize = 11.sp, color = hInkMid)
+                        Text(stringResource(R.string.indopak_download_description), fontFamily = fontFamilyBody, fontSize = 12.sp, lineHeight = 18.sp, color = hInkMid)
+                        Button(enabled = indopakProgress == null, onClick = {
+                            if (indopakInstalled) openIndopak = true
+                            else scope.launch {
+                                indopakProgress = 0f
+                                indopakError = false
+                                try {
+                                    IndopakEdition.download(context.applicationContext) { amount ->
+                                        scope.launch { indopakProgress = amount }
+                                    }
+                                    indopakInstalled = true
+                                    openIndopak = true
+                                } catch (cancel: CancellationException) { throw cancel }
+                                catch (_: Exception) { indopakError = true }
+                                finally { indopakProgress = null }
+                            }
+                        }) {
+                            Text(when {
+                                indopakInstalled -> stringResource(R.string.indopak_open)
+                                indopakProgress != null -> stringResource(R.string.indopak_downloading, (indopakProgress!! * 100).toInt())
+                                else -> stringResource(R.string.indopak_download)
+                            })
+                        }
+                        if (indopakError) Text(stringResource(R.string.indopak_download_error), color = hInkMid)
                     }
+                }
+            }
+        }
+        NarrationMushaf.entries.forEach { edition ->
+            Surface(shape = RoundedCornerShape(12.dp), color = hCream, border = BorderStroke(1.dp, hBoneDark),
+                modifier = Modifier.fillMaxWidth().clickable { openNarration = edition }) {
+                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(edition.title, fontFamily = fontFamilyUi, fontWeight = FontWeight.SemiBold,
+                            fontSize = 18.sp, color = hInk, modifier = Modifier.weight(1f))
+                        Icon(NurIcons.BookOpen, contentDescription = null, tint = hGold)
+                    }
+                    Surface(shape = RoundedCornerShape(8.dp), color = hWhite, border = BorderStroke(.5.dp, hBoneDark)) {
+                        Column(Modifier.fillMaxWidth().padding(12.dp)) {
+                            val sample = narrationSamples[edition]
+                            if (sample == null) Text(stringResource(R.string.mushaf_preview_preparing), color = hInkMid)
+                            else sample.forEach { NarrationAyahText(edition, it, preview = true) }
+                        }
+                    }
+                    Text("King Fahd Quran Complex · 604 pages · 6,214 ayahs", fontFamily = fontFamilyBody, fontSize = 11.sp, color = hInkMid)
                 }
             }
         }

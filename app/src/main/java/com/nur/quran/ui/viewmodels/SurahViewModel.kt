@@ -1567,31 +1567,8 @@ class SurahViewModel @Inject constructor(
                 chapterMemoryCache[chapterId] = successState
                 if (currentChapterId == chapterId) _uiState.value = successState
                 if (SurahPerfLog) android.util.Log.d("SurahPerf", "surah $chapterId first paint in ${System.currentTimeMillis() - t0}ms (offline)")
-                // Background upgrade: selected translation + line numbers + tajweed cache.
-                // Verse ids/order never change, so scroll position is preserved.
-                // Child of loadChapterJob: a fast chapter switch cancels it.
-                try {
-                    repository.refreshVersesByChapter(chapterId, _currentTranslationId.value, _mushafPreset.value)
-                    val updatedVerses = repository.getVersesByChapterDirect(chapterId)
-                    if (updatedVerses.isNotEmpty() && currentChapterId == chapterId) {
-                        val updatedWords = repository.getWordsForVerses(updatedVerses.map { it.id })
-                        val tajweed = repository.getTajweedMapForVerses(updatedVerses)
-                        val upgraded = SurahUiState.Success(chapter, updatedVerses, updatedWords, tajweed)
-                        chapterMemoryCache[chapterId] = upgraded
-                        loadedMushafByChapter[chapterId] = _mushafPreset.value
-                        _uiState.value = upgraded
-                    } else if (updatedVerses.isNotEmpty()) {
-                        loadedMushafByChapter[chapterId] = _mushafPreset.value
-                    }
-                } catch (e: Exception) {
-                    if (e is kotlinx.coroutines.CancellationException) throw e
-                }
-                try {
-                    if (currentChapterId == chapterId) loadTajweed(chapterId)
-                } catch (e: Exception) {
-                    if (e is kotlinx.coroutines.CancellationException) throw e
-                }
-                if (SurahPerfLog) android.util.Log.d("SurahPerf", "surah $chapterId background upgrade done in ${System.currentTimeMillis() - t0}ms total")
+                loadedMushafByChapter[chapterId] = _mushafPreset.value
+
             } else {
                 _uiState.value = SurahUiState.Error("Chapter $chapterId not found")
             }
@@ -1692,40 +1669,6 @@ class SurahViewModel @Inject constructor(
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 if (!pageReaderCache.isCurrent(gen)) return@launch
                 if (_uiState.value !is SurahUiState.Success) _uiState.value = SurahUiState.Error(e.localizedMessage ?: "Failed to load page verses")
-            }
-        }
-    }
-
-    private suspend fun loadVerses(chapter: ChapterEntity) {
-        val cachedVerses = repository.getVersesByChapterDirect(chapter.id)
-        if (cachedVerses.isNotEmpty()) {
-            val wordsMap = repository.getWordsForVerses(cachedVerses.map { it.id })
-            val tajweed = repository.getTajweedMapForVerses(cachedVerses)
-            _uiState.value = SurahUiState.Success(chapter, cachedVerses, wordsMap, tajweed)
-
-            val hasTranslations = cachedVerses.any { !it.translation.isNullOrBlank() }
-            if (!hasTranslations) {
-                try {
-                    repository.refreshVersesByChapter(chapter.id, _currentTranslationId.value, _mushafPreset.value)
-                    val updatedVerses = repository.getVersesByChapterDirect(chapter.id)
-                    val updatedWords = repository.getWordsForVerses(updatedVerses.map { it.id })
-                    _uiState.value = SurahUiState.Success(chapter, updatedVerses, updatedWords, tajweed)
-                } catch (_: Exception) {
-                    // Silent fallback — already showing cached verses
-                }
-            }
-        } else {
-            try {
-                repository.refreshVersesByChapter(chapter.id, _currentTranslationId.value, _mushafPreset.value)
-                val downloadedVerses = repository.getVersesByChapterDirect(chapter.id)
-                if (downloadedVerses.isEmpty()) {
-                    _uiState.value = SurahUiState.Error("Failed to load Surah ${chapter.nameSimple}.")
-                    return
-                }
-                val downloadedWords = repository.getWordsForVerses(downloadedVerses.map { it.id })
-                _uiState.value = SurahUiState.Success(chapter, downloadedVerses, downloadedWords, repository.getTajweedMapForVerses(downloadedVerses))
-            } catch (e: Exception) {
-                _uiState.value = SurahUiState.Error("Failed to load Surah ${chapter.nameSimple}.")
             }
         }
     }

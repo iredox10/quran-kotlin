@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="indopak_download">Unduh IndoPak · 34 MB</string>
+    <string name="indopak_open">Baca IndoPak offline</string>
+    <string name="indopak_downloading">Mengunduh… %1$d%%</string>
+    <string name="indopak_download_description">Unduh edisi cetak 13 baris sekali untuk membaca offline. Halaman dan posisi bacanya disimpan terpisah dari Madani.</string>
+    <string name="indopak_download_error">Unduhan terputus. Periksa koneksi dan coba lagi.</string>
+    <string name="indopak_open_error">Tidak dapat membuka edisi lokal.</string>
+</resources>

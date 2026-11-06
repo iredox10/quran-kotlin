@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Assisted UI translations; scripture text is never translated by this script. -->
 <resources>
-    <string name="mushaf_picker_intro">Chagua hati ambayo unaona rahisi kusoma. Matoleo yanayopatikana yanafuata usomaji wa Hafs.</string>
+    <string name="mushaf_picker_intro">Chagua maandishi au riwaya unayoona rahisi kusoma.</string>
     <string name="mushaf_name_uthmani">Uthmani Hafs</string>
     <string name="mushaf_description_qpc">Hati ya Madani QPC · maandishi wazi na yanayotiririka</string>
     <string name="mushaf_description_tajweed">Hati ya Madani · Rangi za Tajweed zimewashwa kila wakati</string>

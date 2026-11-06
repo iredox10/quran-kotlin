@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Assisted UI translations; scripture text is never translated by this script. -->
 <resources>
-    <string name="mushaf_picker_intro">আপনি যে স্ক্রিপ্টটি পড়তে সবচেয়ে সহজ মনে করেন সেটি বেছে নিন। উপলব্ধ সংস্করণগুলি Hafs পড়া অনুসরণ করে৷</string>
+    <string name="mushaf_picker_intro">যে লিপি বা কিরাআত পড়তে আপনার সুবিধা হয় তা বেছে নিন।</string>
     <string name="mushaf_name_uthmani">উসমানী Hafs</string>
     <string name="mushaf_description_qpc">মাদানী QPC স্ক্রিপ্ট · পরিষ্কার, প্রবাহিত পাঠ্য</string>
     <string name="mushaf_description_tajweed">মাদানী লিপি · তাজবীদের রং সবসময় চালু থাকে</string>

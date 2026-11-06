@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Assisted UI translations; scripture text is never translated by this script. -->
 <resources>
-    <string name="mushaf_picker_intro">Pilih skrip yang paling mudah dibaca. Edisi tersedia mengikut bacaan Hafs.</string>
+    <string name="mushaf_picker_intro">Pilih tulisan atau riwayat yang paling mudah anda baca.</string>
     <string name="mushaf_name_uthmani">Uthmani Hafs</string>
     <string name="mushaf_description_qpc">Skrip Madani QPC · teks yang jelas dan mengalir</string>
     <string name="mushaf_description_tajweed">Tulisan Madani · Warna Tajwid sentiasa menyala</string>

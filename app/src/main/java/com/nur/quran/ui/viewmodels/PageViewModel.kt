@@ -201,7 +201,8 @@ class PageViewModel @Inject constructor(
         val params = PageCacheParams(_mushafPreset.value, _currentTranslationId.value)
         val generation = pageCache.beginLoad()
         val cached = pageCache.cached(pageNumber, params)
-        _uiState.value = cached ?: PageUiState.Loading
+        if (cached != null) _uiState.value = cached
+        else if (pageCache.shouldEmitLoading(_uiState.value is PageUiState.Success)) _uiState.value = PageUiState.Loading
         loadJob = viewModelScope.launch(Dispatchers.IO) {
             try {
                 val state = cached ?: pageLoader.get(pageNumber, params)

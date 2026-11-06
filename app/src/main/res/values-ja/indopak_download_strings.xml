@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="indopak_download">IndoPak をダウンロード · 34 MB</string>
+    <string name="indopak_open">IndoPak をオフラインで読む</string>
+    <string name="indopak_downloading">ダウンロード中… %1$d%%</string>
+    <string name="indopak_download_description">13行の印刷版を一度ダウンロードすると、オフラインで読めます。ページと読書位置はマダニ版とは別に保存されます。</string>
+    <string name="indopak_download_error">ダウンロードが中断されました。接続を確認して再試行してください。</string>
+    <string name="indopak_open_error">保存された版を開けませんでした。</string>
+</resources>

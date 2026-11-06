@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Assisted UI translations; scripture text is never translated by this script. -->
 <resources>
-    <string name="mushaf_picker_intro">Wählen Sie das Skript, das für Sie am einfachsten zu lesen ist. Verfügbare Editionen folgen der Hafs-Lesung.</string>
+    <string name="mushaf_picker_intro">Wähle die Schrift oder Lesart, die du am besten lesen kannst.</string>
     <string name="mushaf_name_uthmani">Uthmani Hafs</string>
     <string name="mushaf_description_qpc">Madani QPC-Skript · klarer, fließender Text</string>
     <string name="mushaf_description_tajweed">Madani-Skript · Tajweed-Farben immer an</string>

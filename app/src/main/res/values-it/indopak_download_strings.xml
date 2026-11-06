@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="indopak_download">Scarica IndoPak · 34 MB</string>
+    <string name="indopak_open">Leggi IndoPak offline</string>
+    <string name="indopak_downloading">Download… %1$d%%</string>
+    <string name="indopak_download_description">Scarica una volta l’edizione stampata a 13 righe per leggere offline. Le pagine e la posizione salvata sono indipendenti da Madani.</string>
+    <string name="indopak_download_error">Download interrotto. Controlla la connessione e riprova.</string>
+    <string name="indopak_open_error">Impossibile aprire l’edizione locale.</string>
+</resources>

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Assisted UI translations; scripture text is never translated by this script. -->
 <resources>
-    <string name="mushaf_picker_intro">Выберите сценарий, который вам легче всего читать. Доступные выпуски соответствуют чтению Hafs.</string>
+    <string name="mushaf_picker_intro">Выберите наиболее удобный для вас шрифт или вариант чтения.</string>
     <string name="mushaf_name_uthmani">Усмани Hafs</string>
     <string name="mushaf_description_qpc">Сценарий Madani QPC · четкий, плавный текст</string>
     <string name="mushaf_description_tajweed">Сценарий Мадани · Цвета тайвида всегда включены.</string>

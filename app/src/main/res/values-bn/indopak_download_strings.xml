@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="indopak_download">ইন্দোপাক ডাউনলোড · 34 MB</string>
+    <string name="indopak_open">ইন্দোপাক অফলাইনে পড়ুন</string>
+    <string name="indopak_downloading">ডাউনলোড হচ্ছে… %1$d%%</string>
+    <string name="indopak_download_description">১৩ লাইনের সম্পূর্ণ মুদ্রিত সংস্করণ একবার ডাউনলোড করে অফলাইনে পড়ুন। এর পৃষ্ঠা ও পড়ার অবস্থান মাদানি থেকে আলাদা রাখা হয়।</string>
+    <string name="indopak_download_error">ডাউনলোড বন্ধ হয়েছে। সংযোগ দেখে আবার চেষ্টা করুন।</string>
+    <string name="indopak_open_error">স্থানীয় সংস্করণ খোলা যায়নি।</string>
+</resources>

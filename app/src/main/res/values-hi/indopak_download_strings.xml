@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="indopak_download">इंडोपाक डाउनलोड करें · 34 MB</string>
+    <string name="indopak_open">इंडोपाक ऑफ़लाइन पढ़ें</string>
+    <string name="indopak_downloading">डाउनलोड हो रहा है… %1$d%%</string>
+    <string name="indopak_download_description">13 पंक्तियों वाला पूरा मुद्रित संस्करण एक बार डाउनलोड करके ऑफ़लाइन पढ़ें। इसके पृष्ठ और पढ़ने की स्थिति मदनी से अलग सहेजे जाते हैं।</string>
+    <string name="indopak_download_error">डाउनलोड रुक गया। कनेक्शन जाँचकर फिर कोशिश करें।</string>
+    <string name="indopak_open_error">स्थानीय संस्करण नहीं खोला जा सका।</string>
+</resources>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="mushaf_picker_intro">اختر الخط الأسهل لك في القراءة. جميع الخيارات المتاحة برواية حفص.</string>
+    <string name="mushaf_picker_intro">اختر الرسم أو الرواية التي تجد قراءتها أسهل.</string>
     <string name="mushaf_name_uthmani">العثماني برواية حفص</string>
     <string name="mushaf_description_qpc">خط مصحف المدينة · نص واضح ومتصل</string>
     <string name="mushaf_description_tajweed">خط مصحف المدينة · ألوان التجويد مفعّلة دائمًا</string>

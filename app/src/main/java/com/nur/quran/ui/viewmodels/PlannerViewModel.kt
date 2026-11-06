@@ -360,6 +360,36 @@ class PlannerViewModel @Inject constructor(
      * stamp the completion date when all items are done, recompute
      * completedDays from completed-items lengths.
      */
+    fun recordPlannerResume(dayNumber: Int, page: Int) {
+        val plan = _activePlan.value ?: return
+        if (plan.lastReadPage != page) setLastReadPosition(page)
+        viewModelScope.launch {
+            val chapter = _chapters.value.firstOrNull { page in it.pagesStart..it.pagesEnd } ?: return@launch
+            repository.addRecentlyRead(chapter.id, chapter.nameSimple, pageNumber = page,
+                plannerId = plan.id, plannerDay = dayNumber)
+        }
+    }
+
+    fun restartActivePlan() {
+        viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
+            plannerMutationMutex.withLock {
+                val current = _activePlan.value ?: return@withLock
+                if (current.assignments.any { !PlannerEngine.getAssignmentProgress(current, it).isComplete }) return@withLock
+                val restarted = PlannerEngine.restartPlanner(current)
+                val archives = (_archivedPlans.value.filterNot { it.id == current.id } +
+                    current.copy(archivedAt = PlannerWire.isoFromEpochMs(System.currentTimeMillis())))
+                repository.saveArchivedPlans(archives)
+                _archivedPlans.value = archives
+                val plans = _allPlans.value.filterNot { it.id == current.id } + restarted
+                _allPlans.value = plans
+                _activePlan.value = restarted
+                _activePlannerId.value = restarted.id
+                repository.savePlannerSelection(plans, restarted.id)
+                loadPlanExtras(restarted.id)
+            }
+        }
+    }
+
     fun markPageRead(dayNumber: Int, pageNumber: Int) {
         val current = _activePlan.value ?: return
         val assignment = current.assignments.find { it.dayNumber == dayNumber } ?: return

@@ -54,7 +54,12 @@ fun ShareVerseDialog(verse: VerseEntity, chapterName: String, onDismiss: () -> U
     var error by remember { mutableStateOf<String?>(null) }
     var copied by remember { mutableStateOf(false) }
     val arabic = remember(verse) { TajweedProcessor.foldWaqfMarkSeparator(verse.textQpcHafs?.takeIf { it.isNotBlank() } ?: verse.textUthmani ?: verse.textIndopak ?: "") }
-    val translation = remember(verse) { verse.translation?.replace(Regex("<[^>]*>"), "")?.trim()?.takeIf { it.isNotEmpty() } }
+    val shareViewModel: com.nur.quran.ui.viewmodels.ShareVerseViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+    val edition = context.getSharedPreferences("hifdh_settings", Context.MODE_PRIVATE).getInt("translation_id", 20)
+    val translation by produceState<String?>(null, verse.verseKey, edition) {
+        value = shareViewModel.translation(edition, verse.verseKey)
+            ?.replace(Regex("<[^>]*>"), "")?.trim()?.takeIf { it.isNotEmpty() }
+    }
     val reference = "$chapterName • Ayah ${verse.verseKey.substringAfter(':')}"
     val shareText = "$arabic\n\n${translation.orEmpty()}\n— $chapterName ${verse.verseKey}\n\nQuran Nur"
     val page = remember(arabic, translation) { VerseCardPage(arabic, translation.orEmpty()) }
@@ -73,7 +78,7 @@ fun ShareVerseDialog(verse: VerseEntity, chapterName: String, onDismiss: () -> U
         }
     }
     fun export(save: Boolean) {
-        if (busy) return
+        if (busy || translation == null) return
         scope.launch {
             busy = true
             error = null
@@ -138,10 +143,10 @@ fun ShareVerseDialog(verse: VerseEntity, chapterName: String, onDismiss: () -> U
                             (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("Quran Nur", shareText))
                             copied = true
                         }) { Icon(if (copied) NurIcons.Check else NurIcons.Copy, if (copied) "Copied" else "Copy ayah text", tint = green) }
-                        IconButton(onClick = { export(true) }, enabled = !busy && preview != null) {
+                        IconButton(onClick = { export(true) }, enabled = !busy && preview != null && translation != null) {
                             Icon(NurIcons.Download, stringResource(R.string.ui_save_ayah_image_d6ab7d), tint = green)
                         }
-                        IconButton(onClick = { export(false) }, enabled = !busy && preview != null) {
+                        IconButton(onClick = { export(false) }, enabled = !busy && preview != null && translation != null) {
                             if (busy) CircularProgressIndicator(Modifier.size(20.dp), color = gold, strokeWidth = 2.dp)
                             else Icon(NurIcons.Share2, stringResource(R.string.ui_share_ayah_image_748994), tint = green)
                         }

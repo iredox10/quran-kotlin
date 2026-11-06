@@ -59,7 +59,7 @@ class ShareImageRenderTest {
             assertEquals(longTranslation, page.translation)
             val height = verseCardHeight(context, page, format)
             assertTrue("Card should grow beyond its minimum aspect ratio", height > format.height)
-            assertTrue("Arabic and translation overlap the footer", height >= verseCardContentHeight(context, page) + 320)
+            assertTrue("Arabic and translation overlap the footer", height >= verseCardContentHeight(context, page, format) + 320)
         }
     }
 

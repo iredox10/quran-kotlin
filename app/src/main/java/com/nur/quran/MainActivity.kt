@@ -206,6 +206,14 @@ class MainActivity : ComponentActivity() {
                                 onChapterClick = { chapterId, verseKey ->
                                     navController.navigate(Screen.SurahDetail.createRoute(chapterId, verseKey))
                                 },
+                                onResumePlanner = { planId, day ->
+                                    val plan = plannerViewModel.allPlans.value.find { it.id == planId }
+                                    if (plan != null && plan.assignments.any { it.dayNumber == day }) {
+                                        plannerViewModel.switchActivePlan(planId)
+                                        navController.navigate(Screen.PlannerReaderDetail.createRoute(day))
+                                        true
+                                    } else false
+                                },
                                 onPageClick = { pageNum ->
                                     navController.navigate(Screen.PageDetail.createRoute(pageNum))
                                 },

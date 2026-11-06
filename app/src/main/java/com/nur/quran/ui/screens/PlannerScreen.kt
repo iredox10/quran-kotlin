@@ -272,7 +272,7 @@ fun PlannerScreen(
             val hasStartedReading = todayDone > 0 || plan.lastReadPage != null
 
             val ctaLabel = when {
-                planDone -> stringResource(R.string.planner_plan_complete_check)
+                planDone -> stringResource(R.string.planner_restart)
                 todayComplete && nextAssignment != null -> stringResource(R.string.planner_continue_day , nextAssignment.dayNumber)
                 todayComplete -> stringResource(R.string.planner_all_caught_up)
                 hasStartedReading -> stringResource(R.string.planner_resume_reading)
@@ -297,8 +297,12 @@ fun PlannerScreen(
                         ctaLabel = ctaLabel,
                         ctaEnabled = true,
                         onPrimaryCtaClick = {
+                            if (planDone) {
+                                plannerViewModel.restartActivePlan()
+                            } else {
                             val targetDay = if (todayComplete && nextAssignment != null) nextAssignment.dayNumber else (todayAssignment?.dayNumber ?: currentDay)
                             onReadAssignment(targetDay)
+                            }
                         },
                         allPlans = allPlans,
                         onSwitchPlan = { planId -> plannerViewModel.switchActivePlan(planId) },

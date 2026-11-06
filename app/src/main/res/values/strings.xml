@@ -2,4 +2,5 @@
 <resources>
     <string name="app_name">Quran Nur</string>
     <string name="quran_playback_channel_name">Quran Audio Playback</string>
+    <string name="planner_restart">Restart planner</string>
 </resources>

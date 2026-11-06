@@ -32,7 +32,7 @@ class ShareLongestAyahTest {
                 assertEquals("A full ayah must remain on a single card",1,pages.size)
                 assertTrue("Both full texts belong to that one card",pages.single().arabic.isNotBlank() && pages.single().translation.isNotBlank())
                 val page = pages.single()
-                val contentHeight = verseCardContentHeight(context,page)
+                val contentHeight = verseCardContentHeight(context,page,format)
                 val measuredHeight = verseCardHeight(context,page,format)
                 assertTrue("Full shaped text overlaps the footer for $key",measuredHeight>=contentHeight+320)
                 val reference = "Al-Baqarah • Ayah $key"

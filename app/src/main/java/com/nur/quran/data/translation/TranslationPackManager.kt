@@ -75,12 +75,12 @@ class TranslationPackManager @Inject constructor(
     private val lock = Any()
 
     fun isDownloaded(translationId: Int): Boolean =
-        prefs.getStringSet(PREFS_KEY, emptySet())?.contains(translationId.toString()) == true
+        translationId == BundledTranslation.ID || prefs.getStringSet(PREFS_KEY, emptySet())?.contains(translationId.toString()) == true
 
     fun getDownloaded(): Set<Int> =
         prefs.getStringSet(PREFS_KEY, emptySet())
             ?.mapNotNull { it.toIntOrNull() }
-            ?.toSet() ?: emptySet()
+            ?.toSet().orEmpty() + BundledTranslation.ID
 
     /**
      * Downloads chapters 1..114 for [translationId] into `translation_texts`.
@@ -154,6 +154,7 @@ class TranslationPackManager @Inject constructor(
 
     /** Deletes all cached rows for [translationId] + unmarks prefs. Never throws. */
     suspend fun deletePack(translationId: Int) {
+        if (translationId == BundledTranslation.ID) return
         try {
             cancelPack(translationId)
             quranDao.deleteTranslationPack(translationId)

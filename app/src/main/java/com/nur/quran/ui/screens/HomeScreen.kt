@@ -144,7 +144,8 @@ fun HomeScreen(
     surahViewModel: SurahViewModel? = null,
     onChapterClick: (Int, String?) -> Unit,
     onPageClick: (Int) -> Unit,
-    onNavigateToRoute: (String) -> Unit = {}
+    onNavigateToRoute: (String) -> Unit = {},
+    onResumePlanner: (String, Int) -> Boolean = { _, _ -> false }
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
@@ -273,6 +274,10 @@ fun HomeScreen(
                                         // Reopen the exact reader the user was in:
                                         // page reads (page/juz/hizb) → page screen,
                                         // surah reads → surah screen at the anchor.
+                                        val resume = context.getSharedPreferences("ReaderResume", Context.MODE_PRIVATE)
+                                        val plannerId = resume.getString("plannerId", null)
+                                            ?.takeIf { resume.getLong("timestamp", -1L) == lastRead.timestamp }
+                                        if (plannerId != null && onResumePlanner(plannerId, resume.getInt("plannerDay", 1))) return@ContinueReadingCard
                                         val lastPage = lastRead.pageNumber
                                         if (lastPage != null && lastRead.verseKey == null) {
                                             onPageClick(lastPage)

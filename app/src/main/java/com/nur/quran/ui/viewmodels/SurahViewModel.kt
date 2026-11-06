@@ -1962,46 +1962,28 @@ class SurahViewModel @Inject constructor(
         val targetId = com.nur.quran.data.TranslationFallback.resolveTranslationId(translationId)
         _currentTranslationId.value = targetId
         hifdhPrefs.edit().putInt("translation_id", targetId).apply()
+        pageReaderCache.clear()
         loadedPageNumber?.let {
             loadPageVerses(it)
             return
         }
         val chapterId = currentChapterId
         if (chapterId <= 0) return
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                repository.refreshVersesByChapter(chapterId, targetId, _mushafPreset.value)
-            } catch (_: Exception) {
-            }
-            // Offline pack backfill: refresh may have left blank translations
-            // (offline fallback asset or failed fetch) — fill from packed
-            // translation_texts, then push into the Success verses state.
-            try {
-                val fresh = repository.getVersesByChapterDirect(chapterId)
-                val source = if (fresh.isNotEmpty()) fresh
-                    else (_uiState.value as? SurahUiState.Success)?.verses ?: emptyList()
-                if (source.isEmpty() || currentChapterId != chapterId) return@launch
-                val filled = source.map { verse ->
-                    if (!verse.translation.isNullOrBlank()) {
-                        verse
-                    } else {
-                        val packed = runCatching {
-                            repository.getStoredTranslation(translationId, verse.verseKey)
-                        }.getOrNull()
-                        if (!packed.isNullOrBlank()) verse.copy(translation = packed) else verse
-                    }
-                }
-                val current = _uiState.value
-                if (current is SurahUiState.Success && currentChapterId == chapterId) {
-                    val updated = current.copy(verses = filled)
-                    _uiState.value = updated
-                    chapterMemoryCache[chapterId] = updated
-                }
-            } catch (e: Exception) {
-                if (e is kotlinx.coroutines.CancellationException) throw e
-            }
+        translationSwitchJob?.cancel()
+        loadChapterJob?.cancel()
+        chapterMemoryCache.clear()
+        translationSwitchJob = viewModelScope.launch(Dispatchers.IO) {
+            val current = _uiState.value as? SurahUiState.Success ?: return@launch
+            val translated = repository.resolveReaderTranslations(current.verses, targetId)
+            if (_currentTranslationId.value != targetId || currentChapterId != chapterId || loadedPageNumber != null) return@launch
+            val latest = _uiState.value as? SurahUiState.Success ?: return@launch
+            val updated = latest.copy(verses = translated)
+            _uiState.value = updated
+            chapterMemoryCache[chapterId] = updated
         }
     }
+
+    private var translationSwitchJob: Job? = null
 
     fun toggleMemorizeMode() {
         _isMemorizeModeEnabled.value = !_isMemorizeModeEnabled.value

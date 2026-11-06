@@ -601,9 +601,16 @@ fun SettingsDrawer(
                                                     subtitle = edition.language,
                                                     selected = activeTranslationId == edition.id,
                                                     pack = packByTranslationId[edition.id],
+                                                    bundled = edition.id == com.nur.quran.data.translation.BundledTranslation.ID,
                                                     onSelect = {
-                                                        viewModel.setTranslationId(edition.id)
-                                                        activeSubView = null
+                                                        val pack = packByTranslationId[edition.id]
+                                                        if (edition.id == com.nur.quran.data.translation.BundledTranslation.ID ||
+                                                            (pack != null && pack.total > 0 && pack.downloaded >= pack.total)) {
+                                                            viewModel.setTranslationId(edition.id)
+                                                            activeSubView = null
+                                                        } else if (pack?.isDownloading != true) {
+                                                            onDownloadTranslation(edition.id)
+                                                        }
                                                     },
                                                     onDownload = { onDownloadTranslation(edition.id) },
                                                     onCancel = { onCancelTranslation(edition.id) },

@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -70,6 +71,7 @@ fun MiniPlayer(
     onSettings: (() -> Unit)? = null,
     onStop: (() -> Unit)? = null,
     onVerseClick: (() -> Unit)? = null,
+    overlay: Boolean = true,
 ) {
     // Title = surah name, subtitle = ayah number (clickable to jump to reciting ayah).
     val (titleText, subtitleText) = androidx.compose.runtime.remember(verseKey) {
@@ -93,8 +95,9 @@ fun MiniPlayer(
 
     Box(
         modifier = modifier
-            .fillMaxSize()
-            .padding(bottom = 24.dp)
+            .then(if (overlay) Modifier.fillMaxSize() else Modifier.fillMaxWidth())
+            .padding(horizontal = if (overlay) 0.dp else 8.dp, vertical = if (overlay) 0.dp else 8.dp)
+            .padding(bottom = if (overlay) 24.dp else 4.dp)
             .zIndex(100f),
         contentAlignment = Alignment.BottomCenter
     ) {
@@ -104,14 +107,15 @@ fun MiniPlayer(
             exit = slideOutVertically { it } + fadeOut()
         ) {
             Surface(
-                shape = RoundedCornerShape(18.dp),
+                modifier = Modifier.widthIn(max = 480.dp),
+                shape = RoundedCornerShape(999.dp),
                 color = playerBarBg,
                 shadowElevation = 14.dp
             ) {
                 Column {
                     Row(
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         // Artwork thumb.
@@ -119,8 +123,8 @@ fun MiniPlayer(
                             painter = painterResource(id = R.drawable.ic_logo),
                             contentDescription = "Quran Nur",
                             modifier = Modifier
-                                .size(46.dp)
-                                .clip(RoundedCornerShape(12.dp))
+                                .size(44.dp)
+                                .clip(CircleShape)
                         )
 
                         // Title + subtitle.
@@ -134,7 +138,7 @@ fun MiniPlayer(
                         ) {
                             Text(
                                 text = titleText,
-                                fontSize = 14.sp,
+                                fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 fontFamily = fontFamilyUi,
                                 color = playerTitleColor,
@@ -144,7 +148,7 @@ fun MiniPlayer(
                             if (subtitleText.isNotEmpty()) {
                                 Text(
                                     text = subtitleText,
-                                    fontSize = 12.sp,
+                                    fontSize = 10.sp,
                                     fontWeight = FontWeight.Medium,
                                     fontFamily = fontFamilyMono,
                                     color = playerSubtitleColor,
@@ -161,7 +165,7 @@ fun MiniPlayer(
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(34.dp)
+                                    .size(28.dp)
                                     .clip(CircleShape)
                                     .clickable { onPrevious() },
                                 contentAlignment = Alignment.Center
@@ -170,12 +174,12 @@ fun MiniPlayer(
                                     imageVector = NurIcons.ChevronLeft,
                                     contentDescription = stringResource(R.string.ui_previous_ayah_c0f697),
                                     tint = playerTitleColor,
-                                    modifier = Modifier.size(20.dp)
+                                    modifier = Modifier.size(18.dp)
                                 )
                             }
                             Box(
                                 modifier = Modifier
-                                    .size(42.dp)
+                                    .size(40.dp)
                                     .clip(CircleShape)
                                     .background(hGold)
                                     .clickable { onPlayPause() },
@@ -185,12 +189,12 @@ fun MiniPlayer(
                                     imageVector = if (isPlaying) NurIcons.PauseFilled else NurIcons.PlayFilled,
                                     contentDescription = if (isPlaying) "Pause" else "Play",
                                     tint = playerOnGoldColor,
-                                    modifier = Modifier.size(20.dp)
+                                    modifier = Modifier.size(18.dp)
                                 )
                             }
                             Box(
                                 modifier = Modifier
-                                    .size(34.dp)
+                                    .size(28.dp)
                                     .clip(CircleShape)
                                     .clickable { onNext() },
                                 contentAlignment = Alignment.Center
@@ -199,7 +203,7 @@ fun MiniPlayer(
                                     imageVector = NurIcons.ChevronRight,
                                     contentDescription = stringResource(R.string.ui_next_ayah_9de3c1),
                                     tint = playerTitleColor,
-                                    modifier = Modifier.size(20.dp)
+                                    modifier = Modifier.size(18.dp)
                                 )
                             }
                         }
@@ -208,7 +212,7 @@ fun MiniPlayer(
                         if (onSettings != null) {
                             Box(
                                 modifier = Modifier
-                                    .size(30.dp)
+                                    .size(28.dp)
                                     .clip(CircleShape)
                                     .clickable { onSettings() },
                                 contentAlignment = Alignment.Center
@@ -217,7 +221,7 @@ fun MiniPlayer(
                                     imageVector = NurIcons.Settings,
                                     contentDescription = stringResource(R.string.ui_audio_settings_cde748),
                                     tint = playerSubtitleColor,
-                                    modifier = Modifier.size(16.dp)
+                                    modifier = Modifier.size(14.dp)
                                 )
                             }
                         }
@@ -228,7 +232,7 @@ fun MiniPlayer(
                         if (onStop != null) {
                             Box(
                                 modifier = Modifier
-                                    .size(30.dp)
+                                    .size(28.dp)
                                     .clip(CircleShape)
                                     .clickable { onStop() },
                                 contentAlignment = Alignment.Center
@@ -237,7 +241,7 @@ fun MiniPlayer(
                                     imageVector = NurIcons.Square,
                                     contentDescription = stringResource(R.string.ui_stop_playback_3ee763),
                                     tint = playerSubtitleColor,
-                                    modifier = Modifier.size(14.dp)
+                                    modifier = Modifier.size(12.dp)
                                 )
                             }
                         }
@@ -245,7 +249,7 @@ fun MiniPlayer(
                         // Close.
                         Box(
                             modifier = Modifier
-                                .size(30.dp)
+                                .size(28.dp)
                                 .clip(CircleShape)
                                 .clickable { onClose() },
                             contentAlignment = Alignment.Center
@@ -254,7 +258,7 @@ fun MiniPlayer(
                                 imageVector = NurIcons.X,
                                 contentDescription = stringResource(R.string.ui_close_player_a40f5b),
                                 tint = playerSubtitleColor,
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(14.dp)
                             )
                         }
                     }
@@ -264,13 +268,13 @@ fun MiniPlayer(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(3.dp)
+                                .height(2.dp)
                                 .background(playerTrackColor)
                         ) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth(progress.coerceIn(0f, 1f))
-                                    .height(3.dp)
+                                    .height(2.dp)
                                     .background(hGold)
                             )
                         }

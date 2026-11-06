@@ -61,7 +61,8 @@ fun TranslationPickerRow(
     onSelect: () -> Unit,
     onDownload: () -> Unit,
     onCancel: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    bundled: Boolean = false
 ) {
     Column(
         modifier = Modifier
@@ -73,7 +74,7 @@ fun TranslationPickerRow(
     ) {
         val downloaded = pack?.downloaded ?: 0
         val total = pack?.total ?: 114
-        val isDownloaded = pack != null && total > 0 && downloaded >= total
+        val isDownloaded = bundled || (pack != null && total > 0 && downloaded >= total)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -121,8 +122,10 @@ fun TranslationPickerRow(
                     }
                     isDownloaded -> {
                         Icon(imageVector = NurIcons.CheckCircle2, contentDescription = stringResource(R.string.ui_downloaded_for_offline_07b4b8), tint = hGreen, modifier = Modifier.size(18.dp))
-                        IconButton(onClick = onDelete, modifier = Modifier.size(28.dp)) {
-                            Icon(imageVector = NurIcons.X, contentDescription = stringResource(R.string.ui_delete_download_d41b50), tint = hInkMuted, modifier = Modifier.size(16.dp))
+                        if (!bundled) {
+                            IconButton(onClick = onDelete, modifier = Modifier.size(28.dp)) {
+                                Icon(imageVector = NurIcons.X, contentDescription = stringResource(R.string.ui_delete_download_d41b50), tint = hInkMuted, modifier = Modifier.size(16.dp))
+                            }
                         }
                     }
                     else -> {

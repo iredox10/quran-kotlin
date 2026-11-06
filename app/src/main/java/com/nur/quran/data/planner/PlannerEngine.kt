@@ -582,6 +582,21 @@ object PlannerEngine {
         return "${unit.plural} ${first.rangeValue}-${last.rangeValue} Plan"
     }
 
+    /** Start a new run without losing the completed run's history or schedule shape. */
+    fun restartPlanner(plan: ReadingPlan, today: String = formatPlannerDate()): ReadingPlan = plan.copy(
+        id = java.util.UUID.randomUUID().toString(),
+        createdAt = PlannerWire.isoFromEpochMs(System.currentTimeMillis()),
+        startDate = today,
+        assignments = plan.assignments.mapIndexed { index, assignment ->
+            assignment.copy(date = getReadingDate(today, index, plan.excludeDays))
+        },
+        assignmentProgress = emptyMap(), assignmentReadPages = emptyMap(),
+        assignmentCompletedItems = emptyMap(), assignmentCompletedAt = emptyMap(),
+        completedDays = emptyList(), assignmentReflections = emptyMap(),
+        lastReadPage = null, lastReadVerseKey = null, archivedAt = null,
+        assignmentsUpdatedAt = System.currentTimeMillis()
+    )
+
     fun buildReadingPlanner(
         unitType: String,
         durationDays: Int,

@@ -122,6 +122,14 @@ class PageViewModel @Inject constructor(
                     loadPage(_currentPageNumber.value)
                 }
             }
+            "translation_id" -> {
+                val id = hifdhPrefs.getInt("translation_id", 20)
+                if (id != _currentTranslationId.value) {
+                    _currentTranslationId.value = id
+                    pageCache.clear()
+                    loadPage(_currentPageNumber.value)
+                }
+            }
             "arabic_font" -> _selectedArabicFontName.value = Mushaf.compatibleFontName(_mushafPreset.value, hifdhPrefs.getString(key, null))
             "is_tajweed_enabled" -> _isTajweedEnabled.value = hifdhPrefs.getBoolean(key, false)
             "is_translation_enabled" -> _isTranslationEnabled.value = hifdhPrefs.getBoolean(key, true)
@@ -168,6 +176,7 @@ class PageViewModel @Inject constructor(
         val targetId = if (translationId == 131) 20 else translationId
         _currentTranslationId.value = targetId
         hifdhPrefs.edit().putInt("translation_id", targetId).apply()
+        pageCache.clear()
         loadPage(_currentPageNumber.value)
     }
 

@@ -34,9 +34,9 @@ private const val TEXT_WIDTH = 864
 private const val ARABIC_SIZE = 96f
 private const val TRANSLATION_SIZE = 44f
 
-private fun arabicPaint(context: Context, color: Int) = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+private fun arabicPaint(context: Context, color: Int, size: Float = ARABIC_SIZE) = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
     typeface = ResourcesCompat.getFont(context, R.font.kfgqpc_hafs) ?: Typeface.DEFAULT
-    textSize = ARABIC_SIZE
+    textSize = size
     this.color = color
 }
 
@@ -51,7 +51,7 @@ private fun textLayout(text: String, paint: TextPaint, arabic: Boolean): StaticL
         .setAlignment(Layout.Alignment.ALIGN_CENTER)
         .setTextDirection(if (arabic) TextDirectionHeuristics.RTL else TextDirectionHeuristics.FIRSTSTRONG_LTR)
         .setIncludePad(true)
-        .setLineSpacing(if (arabic) 26f else 12f, 1f)
+        .setLineSpacing(if (arabic) paint.textSize * 0.27f else 12f, 1f)
         .build()
 
 /** A single growing canvas keeps the complete ayah and translation together at readable sizes. */
@@ -59,7 +59,7 @@ private fun textLayout(text: String, paint: TextPaint, arabic: Boolean): StaticL
 fun paginateVerseCard(context: Context, arabic: String, translation: String?, format: ShareCardFormat = ShareCardFormat.Square): List<VerseCardPage> =
     listOf(VerseCardPage(arabic, translation.orEmpty()))
 
-fun verseCardContentHeight(context: Context, page: VerseCardPage): Int {
+fun verseCardContentHeight(context: Context, page: VerseCardPage, format: ShareCardFormat = ShareCardFormat.Square): Int {
     val arabicHeight = if (page.arabic.isEmpty()) 0 else textLayout(page.arabic, arabicPaint(context, android.graphics.Color.BLACK), true).height
     val translationHeight = if (page.translation.isEmpty()) 0 else textLayout(page.translation, translationPaint(android.graphics.Color.BLACK), false).height
     return arabicHeight + translationHeight + if (arabicHeight > 0 && translationHeight > 0) 52 else 0
@@ -71,7 +71,7 @@ private fun hasBismillahHeader(page: VerseCardPage): Boolean {
 }
 
 fun verseCardHeight(context: Context, page: VerseCardPage, format: ShareCardFormat = ShareCardFormat.Square): Int =
-    maxOf(format.height, verseCardContentHeight(context, page) + 320 + if (hasBismillahHeader(page)) 80 else 0)
+    maxOf(format.height, verseCardContentHeight(context, page, format) + 320 + if (hasBismillahHeader(page)) 80 else 0)
 
 /** Preview and export use the same pixel layout; only the optional output resolution differs. */
 @Suppress("UNUSED_PARAMETER")

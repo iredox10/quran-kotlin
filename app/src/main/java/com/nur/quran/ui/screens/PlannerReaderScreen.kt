@@ -4,6 +4,9 @@ import androidx.compose.ui.res.stringResource
 import com.nur.quran.R
 import android.content.Context
 import androidx.compose.animation.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -164,7 +167,10 @@ fun PlannerReaderScreen(
     // hide-chrome): explicit user toggle that hides the header + bottom bar.
     // Separate from the existing scroll-driven headerVisible auto-hide.
     var isFocusMode by remember { mutableStateOf(false) }
-    var isReadingMode by remember { mutableStateOf(false) }
+    val readingModeKey = "reader_continuous:${activePlan?.id}"
+    var isReadingMode by remember(activePlan?.id) {
+        mutableStateOf(appPrefs.getBoolean(readingModeKey, false))
+    }
     var showPageJumpDialog by remember { mutableStateOf(false) }
     var showSettingsDrawer by remember { mutableStateOf(false) }
     var selectedWordForTooltip by remember { mutableStateOf<WordEntity?>(null) }
@@ -180,17 +186,12 @@ fun PlannerReaderScreen(
     }
 
     val advanceToNextPage: () -> Unit = {
+        plannerViewModel.markPageRead(dayNumber, currentPage)
         if (currentPage < pageEnd) {
-            val currentItem = assignment.items.find { currentPage in it.pageStart..it.pageEnd }
-            if (currentItem != null) {
-                val completedRanges = activePlan?.assignmentCompletedItems?.get(dayNumber) ?: emptyList()
-                if (!completedRanges.contains(currentItem.rangeValue)) {
-                    if (assignment.unitType == "page" || currentPage >= currentItem.pageEnd) {
-                        plannerViewModel.markPlannerItemComplete(dayNumber, currentItem.rangeValue)
-                    }
-                }
-            }
             currentPage++
+        } else {
+            plannerViewModel.markAssignmentCompleted(dayNumber)
+            showCelebrationDialog = true
         }
     }
 
@@ -365,7 +366,7 @@ fun PlannerReaderScreen(
     }
 
     LaunchedEffect(currentPage, dayNumber) {
-        plannerViewModel.markPageRead(dayNumber, currentPage)
+        plannerViewModel.recordPlannerResume(dayNumber, currentPage)
     }
 
     // ── Derived day progress (web parity: PlannerReader.jsx:92-95) ───────
@@ -375,17 +376,6 @@ fun PlannerReaderScreen(
         activePlan?.let { PlannerEngine.getAssignmentProgress(it, assignment) }
     }
     val isDayCompleted = dayProgress?.isComplete == true
-
-    // ── Auto-celebrate on completion (web parity: PlannerReader.jsx:378-413)
-    // Web pops the confetti/reflection card as soon as progress.isComplete
-    // flips true — not only on the manual Finish tap. Fire once per day.
-    var celebrationShownForDay by remember(dayNumber) { mutableStateOf(false) }
-    LaunchedEffect(isDayCompleted) {
-        if (isDayCompleted && !celebrationShownForDay) {
-            celebrationShownForDay = true
-            showCelebrationDialog = true
-        }
-    }
 
     // ── Completion progress tracking (web parity: PlannerReader.jsx:592-595) ──
     // Web derives pct from getAssignmentProgress: surah is pages-based
@@ -493,32 +483,6 @@ fun PlannerReaderScreen(
                             }
                         }
 
-                        // Center: Surah badge (web parity: PlannerReader.jsx:640-646 —
-                        // always when currentChapter != null, no unitType filter).
-                        if (currentChapter != null) {
-                            Box(
-                                modifier = Modifier.weight(1f),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Surface(
-                                    shape = RoundedCornerShape(100),
-                                    color = hTeal.copy(alpha = 0.08f),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, hTeal.copy(alpha = 0.2f))
-                                ) {
-                                    Text(
-                                        text = stringResource(R.string.planner_surah_header, currentChapter.id, plannerChapterName(currentChapter.id)),
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = hTeal,
-                                        fontFamily = fontFamilyUi,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                            }
-                        }
-
                         // Right: Timer pill + % Achieved
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -592,36 +556,6 @@ fun PlannerReaderScreen(
     fun PageFooter() {
         if (!isFocusMode) {
             Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-                    val currentItem = assignment.items.find { currentPage in it.pageStart..it.pageEnd }
-                        ?: assignment.items.firstOrNull()
-                    val dayProgressComplete = dayProgress?.isComplete == true
-                    val isCurrentItemComplete = currentItem == null ||
-                        (dayProgress?.completedRangeValues?.contains(currentItem.rangeValue) == true)
-                    if (currentItem != null && !isCurrentItemComplete && !dayProgressComplete &&
-                        (assignment.unitType != "surah" || currentPage >= assignment.pageEnd)
-                    ) {
-                        Surface(
-                            shape = RoundedCornerShape(100),
-                            color = hTeal,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 10.dp)
-                                .clickable {
-                                    plannerViewModel.markPlannerItemComplete(dayNumber, currentItem.rangeValue)
-                                }
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(vertical = 12.dp),
-                                horizontalArrangement = Arrangement.Center,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(imageVector = NurIcons.CheckCircle2, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(stringResource(R.string.planner_mark_item_done, plannerItemTitle(currentItem, assignment.unitType)), fontSize = 14.sp, color = Color.White, fontWeight = FontWeight.Bold)
-                            }
-                        }
-                    }
-
                 ReaderPageNavigation(
                     page = currentPage,
                     firstPage = pageStart,
@@ -629,11 +563,7 @@ fun PlannerReaderScreen(
                     onNext = advanceToNextPage,
                     onPrevious = goToPrevPage,
                     onPageClick = { showPageJumpDialog = true },
-                    onFinish = {
-                        plannerViewModel.markAssignmentCompleted(dayNumber)
-                        showCelebrationDialog = true
-                    },
-                    isCompleted = isDayCompleted
+                    onFinish = advanceToNextPage
                 )
             }
         }
@@ -665,7 +595,7 @@ fun PlannerReaderScreen(
                     }
                     if (horizontalWins == true) {
                         when {
-                            totalX > swipeThreshold && currentPage < pageEnd -> advanceToNextPage()
+                            totalX > swipeThreshold -> advanceToNextPage()
                             totalX < -swipeThreshold && currentPage > pageStart -> goToPrevPage()
                         }
                     }
@@ -692,6 +622,7 @@ fun PlannerReaderScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(
+                        modifier = Modifier.weight(1f),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         IconButton(onClick = onBack, modifier = Modifier.size(36.dp)) {
@@ -700,24 +631,19 @@ fun PlannerReaderScreen(
                         Spacer(modifier = Modifier.width(4.dp))
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable { showPageJumpDialog = true }
+                            modifier = Modifier.weight(1f, fill = false)
                                 .padding(horizontal = 4.dp, vertical = 2.dp)
                         ) {
                             Text(
-                                text = stringResource(R.string.planner_day , dayNumber),
+                                text = currentChapter?.let { plannerChapterName(it.id) }
+                                    ?: stringResource(R.string.planner_day, dayNumber),
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = hInk,
-                                fontFamily = fontFamilyUi
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Icon(
-                                imageVector = NurIcons.ChevronDown,
-                                contentDescription = stringResource(R.string.planner_select_page),
-                                tint = hInkMuted,
-                                modifier = Modifier.size(14.dp)
+                                fontFamily = fontFamilyUi,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.widthIn(max = 160.dp)
                             )
                         }
                     }
@@ -744,7 +670,10 @@ fun PlannerReaderScreen(
 
                         // 2. Reading mode: BookOpen (web Layout.jsx:257-259)
                         IconButton(
-                            onClick = { isReadingMode = !isReadingMode },
+                            onClick = {
+                                isReadingMode = !isReadingMode
+                                appPrefs.edit().putBoolean(readingModeKey, isReadingMode).apply()
+                            },
                             modifier = Modifier.size(36.dp)
                         ) {
                             Icon(
@@ -1096,7 +1025,7 @@ fun PlannerReaderScreen(
                                         translationFontScale = translationFontScale,
                                         fontFamilyArabic = fontFamilyArabic,
                                         selectedArabicFontName = selectedArabicFontName,
-                                        showShareAction = false
+                                        showShareAction = true
                                     )
                                 }
                             }
@@ -1126,12 +1055,13 @@ fun PlannerReaderScreen(
 
         // Mini-player has a stable slot; scrolling never changes its inset.
         AnimatedVisibility(
-            visible = isPlaying && !playerHiddenByUser && playingVerseKey != null,
+            visible = !playerHiddenByUser && playingVerseKey != null,
             enter = slideInVertically(initialOffsetY = { it }),
             exit = slideOutVertically(targetOffsetY = { it }),
         ) {
             val playerVerses = (uiState as? SurahUiState.Success)?.verses ?: emptyList()
             MiniPlayer(
+                overlay = false,
                 verseKey = playingVerseKey ?: "",
                 isPlaying = isPlaying,
                 onPlayPause = {
@@ -1748,8 +1678,9 @@ fun DayCelebrationCard(
     onSaveAndReturn: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val maxCardHeight = LocalConfiguration.current.screenHeightDp.dp * 0.9f
     Surface(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().heightIn(max = maxCardHeight).imePadding(),
         shape = RoundedCornerShape(24.dp),
         color = hTeal,
         shadowElevation = 8.dp
@@ -1770,14 +1701,22 @@ fun DayCelebrationCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(
-                    text = stringResource(R.string.planner_alhamdulillah),
-                    fontSize = 24.sp,
-                    fontFamily = fontFamilyUi,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = stringResource(R.string.planner_alhamdulillah),
+                        fontSize = 24.sp, fontFamily = fontFamilyUi,
+                        fontWeight = FontWeight.Bold, color = Color.White,
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(onClick = onSaveAndReturn) {
+                        Icon(NurIcons.X, contentDescription = stringResource(R.string.ui_close_bbfa77), tint = Color.White)
+                    }
+                }
+                Column(
+                    modifier = Modifier.fillMaxWidth().weight(1f, fill = false)
+                        .verticalScroll(rememberScrollState()),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
@@ -1903,7 +1842,8 @@ fun DayCelebrationCard(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(20.dp))
+                }
+                Spacer(modifier = Modifier.height(16.dp))
 
                 Button(
                     onClick = onSaveAndReturn,
@@ -1912,7 +1852,7 @@ fun DayCelebrationCard(
                         containerColor = Color.White,
                         contentColor = hTeal
                     ),
-                    modifier = Modifier.height(44.dp)
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                 ) {
                     Text(
                         text = if (reflectionNote.isNotBlank()) stringResource(R.string.planner_save_return) else stringResource(R.string.planner_return_planner),

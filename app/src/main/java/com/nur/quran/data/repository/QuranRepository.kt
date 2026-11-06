@@ -175,7 +175,9 @@ class QuranRepository @Inject constructor(
 
     suspend fun getVersesByChapterDirect(chapterId: Int): List<VerseEntity> = withContext(Dispatchers.IO) {
         val verses = quranDao.getVersesByChapterDirect(chapterId)
-        backfillBlankTranslations(verses, 20)
+        val selected = context.getSharedPreferences("hifdh_settings", android.content.Context.MODE_PRIVATE)
+            .getInt("translation_id", 20)
+        applyPackedTranslation(verses, selected)
     }
 
     suspend fun getVersesByKey(keys: List<String>): List<VerseEntity> = withContext(Dispatchers.IO) {
@@ -192,8 +194,42 @@ class QuranRepository @Inject constructor(
             runCatching { quranDao.getTranslationText(translationId, verseKey) }.getOrNull()
         }
 
+    /** Select edition-specific text rather than the shared verse row's previous edition. */
+    suspend fun resolveReaderTranslations(verses: List<VerseEntity>, translationId: Int): List<VerseEntity> = withContext(Dispatchers.IO) {
+        if (verses.isEmpty()) return@withContext verses
+        val keys = verses.map { it.verseKey }
+        val texts = quranDao.getTranslationTexts(translationId, keys).associate { it.verseKey to it.text }.toMutableMap()
+        if (translationId == com.nur.quran.data.translation.BundledTranslation.ID) {
+            texts.putAll(com.nur.quran.data.translation.BundledTranslation.texts(context))
+        }
+        for (chapter in verses.filter { texts[it.verseKey].isNullOrBlank() }.map { it.chapterId }.distinct()) {
+            try {
+                val response = rnApiClient.getVerses(chapter, translation = translationId, words = false)
+                val rows = response.verses.mapNotNull { verse ->
+                    verse.translations?.firstOrNull()?.text?.takeIf { it.isNotBlank() }?.let {
+                        com.nur.quran.data.db.entities.TranslationTextEntity(translationId, verse.verse_key, it)
+                    }
+                }
+                quranDao.upsertTranslationTexts(rows)
+                rows.forEach { texts[it.verseKey] = it.text }
+            } catch (e: CancellationException) { throw e }
+            catch (_: Exception) { /* Keep local Quran available when the edition is not downloaded. */ }
+        }
+        verses.map { verse -> verse.copy(translation = texts[verse.verseKey]?.takeIf { it.isNotBlank() }
+            ?: "Download this translation to read it offline") }
+    }
+
+    /** Sharing reads the active local edition directly, never a reader status message. */
+    suspend fun getShareTranslation(translationId: Int, verseKey: String): String? = withContext(Dispatchers.IO) {
+        if (translationId == com.nur.quran.data.translation.BundledTranslation.ID) {
+            return@withContext offlineTranslationsByVerseKey[verseKey]
+        }
+        quranDao.getTranslationText(translationId, verseKey)?.takeIf { it.isNotBlank() }
+            ?: offlineTranslationsByVerseKey[verseKey]?.takeIf { it.isNotBlank() }
+    }
+
     private val offlineTranslationsByVerseKey: Map<String, String> by lazy {
-        getAllOfflineVerses().associate { it.verse_key to (it.translation ?: "") }
+        com.nur.quran.data.translation.BundledTranslation.texts(context)
     }
 
     suspend fun repairBlankTranslations() = withContext(Dispatchers.IO) {
@@ -248,6 +284,9 @@ class QuranRepository @Inject constructor(
         translationId: Int
     ): List<VerseEntity> {
         if (verses.isEmpty()) return verses
+        if (translationId == com.nur.quran.data.translation.BundledTranslation.ID) {
+            return verses.map { it.copy(translation = offlineTranslationsByVerseKey[it.verseKey] ?: it.translation) }
+        }
         return try {
             com.nur.quran.data.TranslationFallback.backfillPageTranslations(
                 verses = verses,
@@ -295,13 +334,7 @@ class QuranRepository @Inject constructor(
         if (repaired.first != content.verses || repaired.second != content.words) {
             quranDao.replaceVersesAndWords(repaired.first, repaired.second)
         }
-        val cachedKeys = bundle.verses.mapTo(hashSetOf()) { it.verseKey }
-        val packed = if (repaired.first.any { it.verseKey !in cachedKeys }) {
-            quranDao.getTranslationTexts(translationId, repaired.first.map { it.verseKey })
-        } else bundle.packedTranslations
-        val merged = com.nur.quran.data.TranslationFallback.mergePageTranslations(
-            repaired.first, packed.associateBy({ it.verseKey }, { it.text }), { offlineTranslationsByVerseKey[it] }, true
-        )
+        val merged = resolveReaderTranslations(repaired.first, translationId)
         PageVerses(merged, repaired.second.groupBy { it.verseId })
     }
 
@@ -930,19 +963,25 @@ class QuranRepository @Inject constructor(
         chapterId: Int,
         chapterName: String,
         verseKey: String? = null,
-        pageNumber: Int? = null
+        pageNumber: Int? = null,
+        plannerId: String? = null,
+        plannerDay: Int? = null
     ) {
         if (verseKey != null && verseKey.substringBefore(":").toIntOrNull() != chapterId) return
         withContext(Dispatchers.IO) {
+            val readAt = System.currentTimeMillis()
             quranDao.upsertRecentlyRead(
                 RecentlyReadEntity(
                     chapterId = chapterId,
                     chapterName = chapterName,
                     verseKey = verseKey,
+                    timestamp = readAt,
                     pageNumber = pageNumber
                 )
             )
             quranDao.pruneRecentlyRead()
+            context.getSharedPreferences("ReaderResume", android.content.Context.MODE_PRIVATE)
+                .edit().putString("plannerId", plannerId).putInt("plannerDay", plannerDay ?: 1).putLong("timestamp", readAt).apply()
         }
     }
 

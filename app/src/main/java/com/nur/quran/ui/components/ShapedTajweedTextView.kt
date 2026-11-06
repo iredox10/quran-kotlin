@@ -32,7 +32,7 @@ internal class ShapedTajweedTextView(context: Context) : TextView(context) {
             val end = segment.end.coerceIn(start, text.length)
             if (start == end) continue
             val color = runCatching {
-                Color.parseColor(if (segment.ruleClass == "end") "#B8924A" else segment.colorHex)
+                Color.parseColor(segment.colorHex)
             }.getOrDefault(currentTextColor)
             layout.getSelectionPath(start, end, rangePath)
             paths.getOrPut(color) { Path() }.addPath(rangePath)

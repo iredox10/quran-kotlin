@@ -94,7 +94,11 @@ fun TajweedAndroidText(
             applyJustification(tv, justified)
             applyVerseLineSpacing(tv, lineHeightRatio, lineHeightMultiplier)
             tv.setTextColor(textColor.toArgb())
-            tv.colorSegments = segments
+            tv.colorSegments = segments.map { segment ->
+                segment.copy(colorHex = com.nur.quran.utils.DarkReaderPalette.color(
+                    if (segment.ruleClass == "end") "#B8924A" else segment.colorHex,
+                    com.nur.quran.ui.screens.isDarkThemeGlobal))
+            }
             tv.text = spannable
             scheduleWrapSpaceFix(tv)
         }

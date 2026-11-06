@@ -54,7 +54,7 @@ fun AutoScrollerBar(
     onClose: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val pillBg = if (isDarkThemeGlobal) Color(0xF22D2D2A) else Color(0xF2EFECE4)
+    val pillBg = if (isDarkThemeGlobal) Color(0xF2191F20) else Color(0xF2EFECE4)
     val pillBorder = if (isDarkThemeGlobal) Color(0xFF4A4A45) else Color(0x66FFFFFF)
     val btnSecondaryBg = if (isDarkThemeGlobal) Color(0xFF3A3A36) else Color(0xFFEDE8DA)
 

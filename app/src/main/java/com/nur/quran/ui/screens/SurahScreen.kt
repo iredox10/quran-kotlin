@@ -353,17 +353,17 @@ var isDarkThemeGlobal by mutableStateOf(false)
     internal set
 
 // Web: --h-cream      light: #FAF7F0  dark: #2D2D2A
-val hCream     get() = if (isDarkThemeGlobal) Color(0xFF2D2D2A) else Color(0xFFFAF7F0)
+val hCream     get() = if (isDarkThemeGlobal) Color(0xFF101415) else Color(0xFFFAF7F0)
 // Web: --h-bone       light: #EDE8DA  dark: #3A3A36
-val hBone      get() = if (isDarkThemeGlobal) Color(0xFF3A3A36) else Color(0xFFEDE8DA)
+val hBone      get() = if (isDarkThemeGlobal) Color(0xFF232B2D) else Color(0xFFEDE8DA)
 // Web: --h-bone-dark  light: #DDD7C7  dark: #4A4A45
-val hBoneDark  get() = if (isDarkThemeGlobal) Color(0xFF4A4A45) else Color(0xFFDDD7C7)
+val hBoneDark  get() = if (isDarkThemeGlobal) Color(0xFF354144) else Color(0xFFDDD7C7)
 // Web: --h-ink        light: #2B3F3C  dark: #EFECE4
 val hInk       get() = if (isDarkThemeGlobal) Color(0xFFEFECE4) else Color(0xFF2B3F3C)
 // Web: --h-ink-mid    light: #4D5F5C  dark: #B0ABA5
-val hInkMid    get() = if (isDarkThemeGlobal) Color(0xFFB0ABA5) else Color(0xFF4D5F5C)
+val hInkMid    get() = if (isDarkThemeGlobal) Color(0xFFC4CECB) else Color(0xFF4D5F5C)
 // Web: --h-ink-muted  light: #8E9B97  dark: #5C5855
-val hInkMuted  get() = if (isDarkThemeGlobal) Color(0xFF5C5855) else Color(0xFF8E9B97)
+val hInkMuted  get() = if (isDarkThemeGlobal) Color(0xFFA4B2AF) else Color(0xFF8E9B97)
 // Web: --h-gold       light: #B8924A  dark: #C6A87C
 val hGold      get() = if (isDarkThemeGlobal) Color(0xFFC6A87C) else Color(0xFFB8924A)
 // Web: --h-gold-soft  light: rgba(184,146,74,0.18) dark: rgba(198,168,124,0.1)
@@ -375,15 +375,15 @@ val hTeal      get() = if (isDarkThemeGlobal) Color(0xFF4A7A72) else Color(0xFF2
 // Web: --h-teal-soft  light: rgba(46,79,74,0.08)  dark: rgba(46,79,74,0.15)
 val hTealSoft  get() = if (isDarkThemeGlobal) Color(0x262E4F4A) else Color(0x142E4F4A)
 // Web: --h-white      light: #FAFAF5  dark: #1A1A18
-val hWhite     get() = if (isDarkThemeGlobal) Color(0xFF1A1A18) else Color(0xFFFAFAF5)
+val hWhite     get() = if (isDarkThemeGlobal) Color(0xFF101415) else Color(0xFFFAFAF5)
 // Web: --bg-surface   light: #EFECE4  dark: #2D2D2A
-val hSurface   get() = if (isDarkThemeGlobal) Color(0xFF2D2D2A) else Color(0xFFEFECE4)
+val hSurface   get() = if (isDarkThemeGlobal) Color(0xFF191F20) else Color(0xFFEFECE4)
 // Web: --border-color  (transparent in both, but we use bone-dark for visible borders)
-val hBorderColor get() = if (isDarkThemeGlobal) Color(0xFF4A4A45) else Color(0xFFDDD7C7)
+val hBorderColor get() = if (isDarkThemeGlobal) Color(0xFF354144) else Color(0xFFDDD7C7)
 val hGreen     get() = if (isDarkThemeGlobal) Color(0xFF10b981) else Color(0xFF10b981)
 val hRed       get() = if (isDarkThemeGlobal) Color(0xFFEF4444) else Color(0xFFEF4444)
 val hTealMid   get() = if (isDarkThemeGlobal) Color(0xFF3D6560) else Color(0xFF3D6560)
-val glassBg    get() = if (isDarkThemeGlobal) Color(0x802D2D2A) else Color(0x99EFECE4)
+val glassBg    get() = if (isDarkThemeGlobal) Color(0xE6191F20) else Color(0x99EFECE4)
 
 
 private fun computeHeaderOffset(
@@ -3516,14 +3516,14 @@ fun TajweedRuleBottomSheet(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(CircleShape)
-                    .background(Color(android.graphics.Color.parseColor(rule.colorHex)).copy(alpha = 0.2f)),
+                    .background(Color(android.graphics.Color.parseColor(com.nur.quran.utils.DarkReaderPalette.color(rule.colorHex, isDarkThemeGlobal))).copy(alpha = 0.2f)),
                 contentAlignment = Alignment.Center
             ) {
                 Box(
                     modifier = Modifier
                         .size(24.dp)
                         .clip(CircleShape)
-                        .background(Color(android.graphics.Color.parseColor(rule.colorHex)))
+                        .background(Color(android.graphics.Color.parseColor(com.nur.quran.utils.DarkReaderPalette.color(rule.colorHex, isDarkThemeGlobal))))
                 )
             }
             Spacer(modifier = Modifier.height(16.dp))

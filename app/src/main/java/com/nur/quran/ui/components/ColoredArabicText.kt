@@ -46,7 +46,7 @@ fun ColoredArabicText(
 
                 // Apply style
                 addStyle(
-                    style = SpanStyle(color = Color(android.graphics.Color.parseColor(seg.colorHex))),
+                    style = SpanStyle(color = Color(android.graphics.Color.parseColor(com.nur.quran.utils.DarkReaderPalette.color(seg.colorHex, com.nur.quran.ui.screens.isDarkThemeGlobal)))),
                     start = startIdx,
                     end = endIdx
                 )

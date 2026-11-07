@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="hifdh_correct">Верно, с усилием</string>
+    <string name="hifdh_correction">Исправление: отложенная проверка ещё нужна</string>
+</resources>

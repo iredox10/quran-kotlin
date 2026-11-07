@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="hifdh_correct">正确，需要思考</string>
+    <string name="hifdh_correction">纠错练习：仍需稍后回忆测试</string>
+</resources>

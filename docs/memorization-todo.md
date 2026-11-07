@@ -7,9 +7,9 @@ an explicit listener assessment. Speech recognition remains an opt-in evaluated 
 not a prerequisite for offline memorization.
 
 ## 1. Trustworthy recall and review
-- [ ] Correct rating semantics: a prompt is not an independent pass; distinguish effort from failure.
+- [x] Correct rating semantics: a prompt is not an independent pass; distinguish effort from failure.
 - [ ] Record cue usage and assessment mode; distinguish cue-based transition tests from unprompted recall.
-- [ ] Correct failures and requeue them after intervening practice without endless loops.
+- [x] Correct failures and requeue them after intervening practice without endless loops.
 - [ ] Refresh due work as time passes and when returning to the app.
 
 ## 2. Evidence and scheduling

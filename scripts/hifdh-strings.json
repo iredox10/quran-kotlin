@@ -1,0 +1,8 @@
+{
+ "hifdh_correct": {
+ "en":"Correct, with effort", "ar":"صحيح مع جهد", "fr":"Correct, avec effort", "es":"Correcto, con esfuerzo", "pt":"Correto, com esforço", "de":"Richtig, mit Mühe", "it":"Corretto, con impegno", "ru":"Верно, с усилием", "zh-Hans":"正确，需要思考", "ja":"考えて正しく思い出せた", "ko":"노력하여 정확히 기억함", "hi":"प्रयास से सही याद किया", "bn":"চেষ্টা করে সঠিক স্মরণ", "ur":"کوشش سے درست یاد آیا", "id":"Benar, dengan usaha", "ms":"Betul, dengan usaha", "tr":"Çabayla doğru", "fa":"درست، با تلاش", "sw":"Sahihi, kwa juhudi", "ha":"Daidai, da ƙoƙari", "yo":"Ó tọ́, pẹ̀lú ìsapá"
+ },
+ "hifdh_correction": {
+ "en":"Correction practice — delayed recall is still due", "ar":"تدريب تصحيحي — لا يزال اختبار التذكر اللاحق مطلوبًا", "fr":"Correction — rappel différé toujours nécessaire", "es":"Práctica correctiva: falta el repaso posterior", "pt":"Prática de correção: a revisão posterior continua pendente", "de":"Korrekturübung – späterer Abruf steht noch aus", "it":"Correzione: resta il richiamo a distanza", "ru":"Исправление: отложенная проверка ещё нужна", "zh-Hans":"纠错练习：仍需稍后回忆测试", "ja":"修正練習：後日の確認が必要です", "ko":"교정 연습: 나중에 회상 확인이 필요합니다", "hi":"सुधार अभ्यास: बाद में स्मरण की जाँच बाकी है", "bn":"সংশোধনের অনুশীলন: পরে স্মরণ যাচাই বাকি", "ur":"اصلاح کی مشق — بعد میں یادداشت کی جانچ باقی ہے", "id":"Latihan perbaikan — uji ingatan tertunda masih diperlukan", "ms":"Latihan pembetulan — ujian ingatan kemudian masih diperlukan", "tr":"Düzeltme alıştırması: gecikmeli hatırlama hâlâ gerekli", "fa":"تمرین اصلاح — آزمون یادآوری بعدی همچنان لازم است", "sw":"Mazoezi ya kusahihisha — bado unahitaji kukumbuka baadaye", "ha":"Atisayen gyara — har yanzu ana buƙatar gwajin tunawa daga baya", "yo":"Ìdánilẹ́kọ̀ọ́ àtúnṣe — ìdánwò ìrántí lẹ́yìn náà ṣì wà"
+ }
+}

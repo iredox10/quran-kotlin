@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="hifdh_correct">考えて正しく思い出せた</string>
+    <string name="hifdh_correction">修正練習：後日の確認が必要です</string>
+</resources>

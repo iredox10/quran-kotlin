@@ -29,7 +29,7 @@ import com.nur.quran.data.db.entities.ChapterEntity
 import com.nur.quran.data.db.entities.VerseEntity
 import com.nur.quran.ui.screens.*
 import com.nur.quran.utils.TajweedProcessor
-import kotlin.random.Random
+import com.nur.quran.data.hifdh.*
 
 /**
  * Hifdh recall test modal, mirroring the web HifdhTestModal:
@@ -45,21 +45,16 @@ fun HifdhTestModal(
     onDismiss: () -> Unit,
     onLogReview: (verseKey: String, rating: Int) -> Unit,
     loadVerses: suspend (List<String>) -> Map<String, VerseEntity>,
-    weakTransitions: Set<String> = emptySet()
+    weakTransitions: Set<String> = emptySet(),
+    onAssessment: ((String, RecallAssessment) -> Unit)? = null
 ) {
-    var remainingKeys by remember(testQueue) { mutableStateOf(testQueue.toMutableList()) }
-    var currentVerseKey by remember { mutableStateOf<String?>(null) }
+    val practice = remember(testQueue) { RecallPractice(testQueue.shuffled()) }
+    var currentVerseKey by remember(testQueue) { mutableStateOf(practice.current) }
     var isRevealed by remember { mutableStateOf(false) }
     var lastRating by remember { mutableStateOf<Int?>(null) }
-    var reviewedCount by remember { mutableStateOf(0) }
-    var isCompleted by remember { mutableStateOf(testQueue.isEmpty()) }
-
-    LaunchedEffect(Unit) {
-        if (remainingKeys.isNotEmpty()) {
-            val idx = Random.nextInt(remainingKeys.size)
-            currentVerseKey = remainingKeys.removeAt(idx)
-        }
-    }
+    var reviewedCount by remember { mutableIntStateOf(0) }
+    var isCompleted by remember(testQueue) { mutableStateOf(practice.finished) }
+    var startedAt by remember { mutableLongStateOf(android.os.SystemClock.elapsedRealtime()) }
 
     val previousVerseKey = remember(currentVerseKey) { previousVerseKeyFor(currentVerseKey, chapters) }
 
@@ -79,27 +74,26 @@ fun HifdhTestModal(
     val hasWeakTransition = currentVerseKey != null &&
         ayahNumForCue > 1 && weakTransitions.contains(currentVerseKey)
 
-    fun handleRating(rating: Int) {
+    fun handleRating(rating: Int, prompted: Boolean = false) {
         val key = currentVerseKey ?: return
-        // Web handleResult: log AFTER reveal; Again flags the transition link
-        // (surfaced as the pre-reveal cue next time), Easy/Good clears it.
-        onLogReview(key, rating)
-        lastRating = rating
+        val assessment = RecallAssessment(rating,
+            if (prompted) RecallCue.ANSWER_PROMPT else if (hasWeakTransition) RecallCue.PREVIOUS_AYAH else RecallCue.NONE,
+            if (practice.isCorrection) RecallTask.CORRECTION else if (hasWeakTransition) RecallTask.TRANSITION else RecallTask.AYAH,
+            ((android.os.SystemClock.elapsedRealtime() - startedAt) / 1000).toInt())
+        if (onAssessment != null) onAssessment(key, assessment)
+        else if (!practice.isCorrection) onLogReview(key, assessment.schedulerRating)
+        practice.grade(assessment.schedulerRating)
+        lastRating = assessment.schedulerRating
         reviewedCount++
         isRevealed = false
-        if (remainingKeys.isEmpty()) {
-            isCompleted = true
-        }
     }
 
     fun pickNext() {
         lastRating = null
-        if (remainingKeys.isNotEmpty()) {
-            val idx = Random.nextInt(remainingKeys.size)
-            currentVerseKey = remainingKeys.removeAt(idx)
-        } else {
-            isCompleted = true
-        }
+        practice.next()
+        currentVerseKey = practice.current
+        isCompleted = practice.finished
+        startedAt = android.os.SystemClock.elapsedRealtime()
     }
 
     Dialog(
@@ -197,6 +191,7 @@ fun HifdhTestModal(
                             }
                         }
                     } else if (currentVerseKey != null) {
+                        if (practice.isCorrection) Text(stringResource(R.string.hifdh_correction), color = hGold, fontSize = 12.sp)
                         val chapter = chapters.find { it.id == currentVerseKey?.split(":")?.getOrNull(0)?.toIntOrNull() }
                         val ayahNum = currentVerseKey?.split(":")?.getOrNull(1)?.toIntOrNull() ?: 0
 
@@ -333,7 +328,7 @@ fun HifdhTestModal(
                                     modifier = Modifier.padding(bottom = 8.dp)
                                 )
                                 // Web HifdhTestModal: 2x2 grid — Complete Blank/Again (red),
-                                // Needed Prompt/Hard (orange), Hesitated/Good (blue), Perfect/Easy (green).
+                                // Hard is an independent but effortful recall. Prompting is a failed recall.
                                 Column(
                                     modifier = Modifier.fillMaxWidth(),
                                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -342,14 +337,14 @@ fun HifdhTestModal(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        RatingButton(label = stringResource(R.string.ui_complete_blank_85cd86), sublabel = "Again", color = Color(0xFFEF4444), modifier = Modifier.weight(1f)) { handleRating(1) }
-                                        RatingButton(label = stringResource(R.string.ui_needed_prompt_353bdc), sublabel = "Hard", color = Color(0xFFF59E0B), modifier = Modifier.weight(1f)) { handleRating(2) }
+                                        RatingButton(label = stringResource(R.string.ui_complete_blank_85cd86) + " / " + stringResource(R.string.ui_needed_prompt_353bdc), sublabel = "Again", color = Color(0xFFEF4444), modifier = Modifier.weight(1f)) { handleRating(1) }
+                                        RatingButton(label = stringResource(R.string.ui_hesitated_3dbf06), sublabel = "Hard", color = Color(0xFFF59E0B), modifier = Modifier.weight(1f)) { handleRating(2) }
                                     }
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        RatingButton(label = stringResource(R.string.ui_hesitated_3dbf06), sublabel = "Good", color = Color(0xFF3B82F6), modifier = Modifier.weight(1f)) { handleRating(3) }
+                                        RatingButton(label = stringResource(R.string.hifdh_correct), sublabel = "Good", color = Color(0xFF3B82F6), modifier = Modifier.weight(1f)) { handleRating(3) }
                                         RatingButton(label = stringResource(R.string.ui_perfect_241f20), sublabel = "Easy", color = Color(0xFF10B981), modifier = Modifier.weight(1f)) { handleRating(4) }
                                     }
                                 }
@@ -385,7 +380,7 @@ fun HifdhTestModal(
                             ) {
                                 Button(
                                     onClick = { pickNext() },
-                                    enabled = remainingKeys.isNotEmpty() || !isCompleted,
+                                    enabled = !isCompleted,
                                     colors = ButtonDefaults.buttonColors(containerColor = hGold),
                                     shape = RoundedCornerShape(12.dp),
                                     modifier = Modifier.weight(1f).height(44.dp)

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="hifdh_correct">Correct, avec effort</string>
+    <string name="hifdh_correction">Correction — rappel différé toujours nécessaire</string>
+</resources>

@@ -2,6 +2,7 @@ package com.nur.quran.ui.screens
 
 
 
+import com.nur.quran.ui.components.NurIcons
 import androidx.compose.ui.res.stringResource
 import com.nur.quran.R
 
@@ -20,8 +21,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -76,7 +75,7 @@ fun DownloadsScreen(
         ) {
             IconButton(onClick = onBack) {
                 Icon(
-                    imageVector = Icons.Filled.ArrowBack,
+                    imageVector = NurIcons.ArrowLeft,
                     contentDescription = stringResource(R.string.ui_back_b52b36),
                     tint = hInk,
                     modifier = Modifier.size(22.dp)

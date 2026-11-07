@@ -277,7 +277,7 @@ fun HifdhReaderScreen(
                         Icon(
                             imageVector = if (isDarkThemeGlobal) NurIcons.Sun else NurIcons.Moon,
                             contentDescription = stringResource(R.string.ui_theme_a797e3),
-                            tint = hInkMid,
+                            tint = hInkMuted,
                             modifier = Modifier.size(18.dp)
                         )
                     }

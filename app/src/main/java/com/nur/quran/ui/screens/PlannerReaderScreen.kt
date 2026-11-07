@@ -736,7 +736,7 @@ fun PlannerReaderScreen(
                             Icon(
                                 imageVector = if (isDarkThemeGlobal) NurIcons.Sun else NurIcons.Moon,
                                 contentDescription = stringResource(R.string.planner_toggle_theme),
-                                tint = if (isDarkThemeGlobal) hGold else hInkMuted,
+                                tint = hInkMuted,
                                 modifier = Modifier.size(18.dp)
                             )
                         }

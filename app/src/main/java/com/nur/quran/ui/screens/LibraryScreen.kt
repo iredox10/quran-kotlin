@@ -1,13 +1,12 @@
 package com.nur.quran.ui.screens
 
+import com.nur.quran.ui.components.NurIcons
 import androidx.compose.ui.res.stringResource
 import com.nur.quran.R
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -57,7 +56,7 @@ fun LibraryScreen(
         ) {
             IconButton(onClick = onBackClick) {
                 Icon(
-                    imageVector = Icons.Filled.ArrowBack,
+                    imageVector = NurIcons.ArrowLeft,
                     contentDescription = stringResource(R.string.ui_back_b52b36),
                     tint = hInk,
                     modifier = Modifier.size(22.dp)

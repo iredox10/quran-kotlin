@@ -26,12 +26,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.window.Dialog
@@ -839,7 +833,7 @@ fun SurahScreen(
                     ) { showAudioSetupDialog = true }
                     TopBarIconBtn(
                         icon = if (isDarkThemeGlobal) NurIcons.Sun else NurIcons.Moon,
-                        active = isDarkThemeGlobal,
+                        active = false,
                         label = stringResource(R.string.ui_toggle_theme_9b0eaf)
                     ) { isDarkThemeGlobal = !isDarkThemeGlobal; themePrefs.edit().putBoolean("is_dark_theme", isDarkThemeGlobal).apply() }
 
@@ -1137,7 +1131,7 @@ fun SurahScreen(
                                             prefs.edit().putBoolean("has_seen_swipe_tip", true).apply()
                                         }) {
                                             Icon(
-                                                imageVector = Icons.Default.Close,
+                                                imageVector = NurIcons.X,
                                                 contentDescription = stringResource(R.string.ui_dismiss_70afe9),
                                                 tint = hInkMuted,
                                                 modifier = Modifier.size(16.dp)
@@ -3308,7 +3302,7 @@ fun SettingsSelectionRow(
             Text(value, fontFamily = fontFamilyBody, fontSize = 12.sp, color = hInkMuted)
         }
         Icon(
-            imageVector = Icons.Default.KeyboardArrowRight,
+            imageVector = NurIcons.ChevronRight,
             contentDescription = null,
             tint = hInkMuted,
             modifier = Modifier.size(16.dp)
@@ -3802,7 +3796,7 @@ fun SurahNavigationModal(
                         modifier = Modifier.size(36.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Close,
+                            imageVector = NurIcons.X,
                             contentDescription = stringResource(R.string.ui_close_bbfa77),
                             tint = hInkMuted
                         )
@@ -3881,11 +3875,11 @@ fun SurahNavigationModal(
                                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                     )
                                 },
-                                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = hInkMuted) },
+                                leadingIcon = { Icon(NurIcons.Search, contentDescription = null, tint = hInkMuted) },
                                 trailingIcon = {
                                     if (searchQuery.isNotEmpty()) {
                                         IconButton(onClick = { searchQuery = "" }) {
-                                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.ui_clear_719ea3), tint = hInkMuted)
+                                            Icon(NurIcons.X, contentDescription = stringResource(R.string.ui_clear_719ea3), tint = hInkMuted)
                                         }
                                     }
                                 },

@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
@@ -171,10 +172,10 @@ fun MiniPlayer(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = NurIcons.ChevronLeft,
+                                    imageVector = NurIcons.SkipBack,
                                     contentDescription = stringResource(R.string.ui_previous_ayah_c0f697),
                                     tint = playerTitleColor,
-                                    modifier = Modifier.size(18.dp)
+                                    modifier = Modifier.size(16.dp)
                                 )
                             }
                             Box(
@@ -189,7 +190,7 @@ fun MiniPlayer(
                                     imageVector = if (isPlaying) NurIcons.PauseFilled else NurIcons.PlayFilled,
                                     contentDescription = if (isPlaying) "Pause" else "Play",
                                     tint = playerOnGoldColor,
-                                    modifier = Modifier.size(18.dp)
+                                    modifier = Modifier.size(18.dp).offset(x = if (isPlaying) 0.dp else 1.dp)
                                 )
                             }
                             Box(
@@ -200,10 +201,10 @@ fun MiniPlayer(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = NurIcons.ChevronRight,
+                                    imageVector = NurIcons.SkipForward,
                                     contentDescription = stringResource(R.string.ui_next_ayah_9de3c1),
                                     tint = playerTitleColor,
-                                    modifier = Modifier.size(18.dp)
+                                    modifier = Modifier.size(16.dp)
                                 )
                             }
                         }
@@ -218,10 +219,10 @@ fun MiniPlayer(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = NurIcons.Settings,
+                                    imageVector = NurIcons.Settings2,
                                     contentDescription = stringResource(R.string.ui_audio_settings_cde748),
                                     tint = playerSubtitleColor,
-                                    modifier = Modifier.size(14.dp)
+                                    modifier = Modifier.size(16.dp)
                                 )
                             }
                         }
@@ -238,10 +239,10 @@ fun MiniPlayer(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = NurIcons.Square,
+                                    imageVector = NurIcons.SquareFilled,
                                     contentDescription = stringResource(R.string.ui_stop_playback_3ee763),
                                     tint = playerSubtitleColor,
-                                    modifier = Modifier.size(12.dp)
+                                    modifier = Modifier.size(14.dp)
                                 )
                             }
                         }
@@ -258,7 +259,7 @@ fun MiniPlayer(
                                 imageVector = NurIcons.X,
                                 contentDescription = stringResource(R.string.ui_close_player_a40f5b),
                                 tint = playerSubtitleColor,
-                                modifier = Modifier.size(14.dp)
+                                modifier = Modifier.size(16.dp)
                             )
                         }
                     }

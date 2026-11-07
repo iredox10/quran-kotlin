@@ -82,7 +82,7 @@ internal fun NativeReaderHeader(
         actions = {
             TopBarIconBtn(NurIcons.ChevronsDown, auto.active, stringResource(R.string.ui_auto_scroll_a03e7f)) { auto.active = !auto.active; auto.paused = false }
             TopBarIconBtn(NurIcons.BookOpen, false, stringResource(R.string.ui_reading_mode_d75871), onReadingMode)
-            TopBarIconBtn(if (isDarkThemeGlobal) NurIcons.Sun else NurIcons.Moon, isDarkThemeGlobal,
+            TopBarIconBtn(if (isDarkThemeGlobal) NurIcons.Sun else NurIcons.Moon, false,
                 stringResource(R.string.ui_toggle_theme_9b0eaf)) {
                 isDarkThemeGlobal = !isDarkThemeGlobal
                 context.getSharedPreferences("Settings", 0).edit().putBoolean("is_dark_theme", isDarkThemeGlobal).apply()

@@ -2,4 +2,21 @@
 <resources>
     <string name="hifdh_correct">صحيح مع جهد</string>
     <string name="hifdh_correction">تدريب تصحيحي — لا يزال اختبار التذكر اللاحق مطلوبًا</string>
+    <string name="hifdh_start_today">ابدأ اليوم</string>
+    <string name="hifdh_practice">تدريب</string>
+    <string name="hifdh_independent">تذكر دون مساعدة</string>
+    <string name="hifdh_self">تقييم ذاتي</string>
+    <string name="hifdh_listener">تقييم المستمع</string>
+    <string name="hifdh_teacher">تقييم المعلم</string>
+    <string name="hifdh_notes">ملاحظات التصحيح</string>
+    <string name="hifdh_record">تسجيل محلي</string>
+    <string name="hifdh_stop_recording">إيقاف التسجيل</string>
+    <string name="hifdh_similar">مقاطع متشابهة</string>
+    <string name="hifdh_passage">تسميع متصل</string>
+    <string name="hifdh_imported">إقرار ذاتي؛ الاختبارات السابقة غير معروفة</string>
+    <string name="hifdh_learning">قيد التعلم</string>
+    <string name="hifdh_retained">تم التذكر في أيام لاحقة</string>
+    <string name="hifdh_repair">يحتاج مراجعة تصحيحية</string>
+    <string name="hifdh_scope">حفظ حفص · نسخة محفوظة</string>
+    <string name="hifdh_permission">يلزم إذن الميكروفون للتسجيل. يبقى الصوت على هذا الجهاز.</string>
 </resources>

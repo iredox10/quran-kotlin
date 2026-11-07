@@ -2,4 +2,21 @@
 <resources>
     <string name="hifdh_correct">درست، با تلاش</string>
     <string name="hifdh_correction">تمرین اصلاح — آزمون یادآوری بعدی همچنان لازم است</string>
+    <string name="hifdh_start_today">امروز شروع کنید</string>
+    <string name="hifdh_practice">تمرین</string>
+    <string name="hifdh_independent">یادآوری بدون کمک</string>
+    <string name="hifdh_self">خودارزیابی</string>
+    <string name="hifdh_listener">ارزیابی شنونده</string>
+    <string name="hifdh_teacher">ارزیابی معلم</string>
+    <string name="hifdh_notes">یادداشت اصلاح</string>
+    <string name="hifdh_record">ضبط روی دستگاه</string>
+    <string name="hifdh_stop_recording">توقف ضبط</string>
+    <string name="hifdh_similar">بخش‌های مشابه</string>
+    <string name="hifdh_passage">تلاوت پیوسته</string>
+    <string name="hifdh_imported">خوداظهاری؛ آزمون‌های قبلی نامعلوم</string>
+    <string name="hifdh_learning">در حال یادگیری</string>
+    <string name="hifdh_retained">یادآوری در روزهای بعد</string>
+    <string name="hifdh_repair">نیاز به تقویت</string>
+    <string name="hifdh_scope">حفظ حفص · نسخه ذخیره‌شده</string>
+    <string name="hifdh_permission">ضبط به اجازه میکروفون نیاز دارد. صدا روی همین دستگاه می‌ماند.</string>
 </resources>

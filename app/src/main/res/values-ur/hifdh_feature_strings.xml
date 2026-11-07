@@ -2,4 +2,21 @@
 <resources>
     <string name="hifdh_correct">کوشش سے درست یاد آیا</string>
     <string name="hifdh_correction">اصلاح کی مشق — بعد میں یادداشت کی جانچ باقی ہے</string>
+    <string name="hifdh_start_today">آج شروع کریں</string>
+    <string name="hifdh_practice">مشق</string>
+    <string name="hifdh_independent">بغیر مدد یاد کرنا</string>
+    <string name="hifdh_self">خود جانچ</string>
+    <string name="hifdh_listener">سننے والے کی جانچ</string>
+    <string name="hifdh_teacher">استاد کی جانچ</string>
+    <string name="hifdh_notes">اصلاحی نوٹس</string>
+    <string name="hifdh_record">آلے پر ریکارڈ کریں</string>
+    <string name="hifdh_stop_recording">ریکارڈنگ روکیں</string>
+    <string name="hifdh_similar">ملتے جلتے حصے</string>
+    <string name="hifdh_passage">مسلسل حصہ</string>
+    <string name="hifdh_imported">خود درج کردہ؛ پچھلی جانچ نامعلوم</string>
+    <string name="hifdh_learning">سیکھ رہے ہیں</string>
+    <string name="hifdh_retained">بعد کے دنوں میں یاد رہا</string>
+    <string name="hifdh_repair">اصلاح درکار</string>
+    <string name="hifdh_scope">حفظ حفص · محفوظ نسخہ</string>
+    <string name="hifdh_permission">ریکارڈنگ کے لیے مائیکروفون کی اجازت چاہیے۔ آڈیو اسی آلے پر رہتا ہے۔</string>
 </resources>

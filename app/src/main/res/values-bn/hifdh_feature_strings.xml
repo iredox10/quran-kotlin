@@ -2,4 +2,21 @@
 <resources>
     <string name="hifdh_correct">চেষ্টা করে সঠিক স্মরণ</string>
     <string name="hifdh_correction">সংশোধনের অনুশীলন: পরে স্মরণ যাচাই বাকি</string>
+    <string name="hifdh_start_today">আজ শুরু করুন</string>
+    <string name="hifdh_practice">অনুশীলন</string>
+    <string name="hifdh_independent">সাহায্য ছাড়া স্মরণ</string>
+    <string name="hifdh_self">স্ব-মূল্যায়ন</string>
+    <string name="hifdh_listener">শ্রোতার মূল্যায়ন</string>
+    <string name="hifdh_teacher">শিক্ষকের মূল্যায়ন</string>
+    <string name="hifdh_notes">সংশোধন নোট</string>
+    <string name="hifdh_record">ডিভাইসে রেকর্ড করুন</string>
+    <string name="hifdh_stop_recording">রেকর্ডিং বন্ধ করুন</string>
+    <string name="hifdh_similar">সদৃশ অংশ</string>
+    <string name="hifdh_passage">ধারাবাহিক অংশ</string>
+    <string name="hifdh_imported">স্বঘোষিত; পূর্বের পরীক্ষা অজানা</string>
+    <string name="hifdh_learning">শিখছেন</string>
+    <string name="hifdh_retained">পরের দিনগুলোতে স্মরণ</string>
+    <string name="hifdh_repair">সংশোধন প্রয়োজন</string>
+    <string name="hifdh_scope">হাফস মুখস্থ · সংরক্ষিত সংস্করণ</string>
+    <string name="hifdh_permission">রেকর্ড করতে মাইক্রোফোনের অনুমতি দরকার। অডিও এই ডিভাইসে থাকে।</string>
 </resources>

@@ -2,4 +2,21 @@
 <resources>
     <string name="hifdh_correct">Benar, dengan usaha</string>
     <string name="hifdh_correction">Latihan perbaikan — uji ingatan tertunda masih diperlukan</string>
+    <string name="hifdh_start_today">Mulai hari ini</string>
+    <string name="hifdh_practice">Latihan</string>
+    <string name="hifdh_independent">Mengingat tanpa bantuan</string>
+    <string name="hifdh_self">Penilaian mandiri</string>
+    <string name="hifdh_listener">Penilaian pendengar</string>
+    <string name="hifdh_teacher">Penilaian guru</string>
+    <string name="hifdh_notes">Catatan perbaikan</string>
+    <string name="hifdh_record">Rekam di perangkat</string>
+    <string name="hifdh_stop_recording">Hentikan rekaman</string>
+    <string name="hifdh_similar">Bagian serupa</string>
+    <string name="hifdh_passage">Bacaan berurutan</string>
+    <string name="hifdh_imported">Ditandai sendiri; tes sebelumnya tidak diketahui</string>
+    <string name="hifdh_learning">Sedang belajar</string>
+    <string name="hifdh_retained">Diingat pada hari berikutnya</string>
+    <string name="hifdh_repair">Perlu perbaikan</string>
+    <string name="hifdh_scope">Hafalan Hafs · edisi tersimpan</string>
+    <string name="hifdh_permission">Izin mikrofon diperlukan. Audio tetap di perangkat ini.</string>
 </resources>

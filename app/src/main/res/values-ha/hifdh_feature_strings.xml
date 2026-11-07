@@ -2,4 +2,21 @@
 <resources>
     <string name="hifdh_correct">Daidai, da ƙoƙari</string>
     <string name="hifdh_correction">Atisayen gyara — har yanzu ana buƙatar gwajin tunawa daga baya</string>
+    <string name="hifdh_start_today">Fara yau</string>
+    <string name="hifdh_practice">Atisaye</string>
+    <string name="hifdh_independent">Tunawa ba tare da taimako ba</string>
+    <string name="hifdh_self">Tantance kai</string>
+    <string name="hifdh_listener">Tantancewar mai sauraro</string>
+    <string name="hifdh_teacher">Tantancewar malami</string>
+    <string name="hifdh_notes">Bayanan gyara</string>
+    <string name="hifdh_record">Yi rikodi a na’ura</string>
+    <string name="hifdh_stop_recording">Dakatar da rikodi</string>
+    <string name="hifdh_similar">Sassa masu kama</string>
+    <string name="hifdh_passage">Sashe mai ci gaba</string>
+    <string name="hifdh_imported">An nuna da kai; ba a san gwaje-gwajen baya ba</string>
+    <string name="hifdh_learning">Ana koyo</string>
+    <string name="hifdh_retained">An tuna a ranaku na gaba</string>
+    <string name="hifdh_repair">Ana buƙatar gyara</string>
+    <string name="hifdh_scope">Hifzin Hafs · bugun da aka ajiye</string>
+    <string name="hifdh_permission">Ana buƙatar izinin makirufo. Sauti yana nan a wannan na’ura.</string>
 </resources>

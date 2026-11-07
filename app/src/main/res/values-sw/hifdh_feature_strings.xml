@@ -2,4 +2,21 @@
 <resources>
     <string name="hifdh_correct">Sahihi, kwa juhudi</string>
     <string name="hifdh_correction">Mazoezi ya kusahihisha — bado unahitaji kukumbuka baadaye</string>
+    <string name="hifdh_start_today">Anza leo</string>
+    <string name="hifdh_practice">Mazoezi</string>
+    <string name="hifdh_independent">Kukumbuka bila msaada</string>
+    <string name="hifdh_self">Kujitathmini</string>
+    <string name="hifdh_listener">Tathmini ya msikilizaji</string>
+    <string name="hifdh_teacher">Tathmini ya mwalimu</string>
+    <string name="hifdh_notes">Maelezo ya marekebisho</string>
+    <string name="hifdh_record">Rekodi kwenye kifaa</string>
+    <string name="hifdh_stop_recording">Simamisha kurekodi</string>
+    <string name="hifdh_similar">Vifungu vinavyofanana</string>
+    <string name="hifdh_passage">Kifungu mfululizo</string>
+    <string name="hifdh_imported">Umejitambulisha; majaribio ya awali hayajulikani</string>
+    <string name="hifdh_learning">Unajifunza</string>
+    <string name="hifdh_retained">Umekumbuka siku za baadaye</string>
+    <string name="hifdh_repair">Inahitaji kurekebishwa</string>
+    <string name="hifdh_scope">Hifdhi Hafs · toleo lililohifadhiwa</string>
+    <string name="hifdh_permission">Ruhusa ya maikrofoni inahitajika. Sauti inabaki kwenye kifaa hiki.</string>
 </resources>

@@ -86,6 +86,7 @@ fun MemorizeScreen(
     var viewMode by remember { mutableStateOf("surah") } // "surah" | "juz"
     var activeTestQueue by remember { mutableStateOf<Pair<String, List<String>>?>(null) }
     var showSettingsDrawer by remember { mutableStateOf(false) }
+    var showWorkshop by remember { mutableStateOf(false) }
     var showGoalModal by remember { mutableStateOf(false) }
     var activeBreakdownModal by remember { mutableStateOf<Pair<String, List<Pair<String, String>>>?>(null) }
 
@@ -140,6 +141,14 @@ fun MemorizeScreen(
             modifier = Modifier.weight(1f),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 20.dp)
         ) {
+            item {
+                Button(onClick = { showWorkshop = true }, modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = hGold)) {
+                    Icon(NurIcons.Brain, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(10.dp))
+                    Text(stringResource(R.string.hifdh_start_today))
+                }
+            }
             // ── Header Title & Subtitle (Web MemorizeIndex.jsx) ──
             item {
                 Column(
@@ -803,6 +812,8 @@ fun MemorizeScreen(
             onDismiss = { activeBreakdownModal = null }
         )
     }
+
+    if (showWorkshop) com.nur.quran.ui.components.HifdhWorkshop(surahViewModel, chapters) { showWorkshop = false }
 
     activeTestQueue?.let { (queueName, queueItems) ->
         HifdhTestModal(

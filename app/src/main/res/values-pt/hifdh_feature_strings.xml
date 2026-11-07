@@ -2,4 +2,21 @@
 <resources>
     <string name="hifdh_correct">Correto, com esforço</string>
     <string name="hifdh_correction">Prática de correção: a revisão posterior continua pendente</string>
+    <string name="hifdh_start_today">Começar hoje</string>
+    <string name="hifdh_practice">Prática</string>
+    <string name="hifdh_independent">Recordação sem ajuda</string>
+    <string name="hifdh_self">Autoavaliação</string>
+    <string name="hifdh_listener">Avaliação por ouvinte</string>
+    <string name="hifdh_teacher">Avaliação do professor</string>
+    <string name="hifdh_notes">Notas de correção</string>
+    <string name="hifdh_record">Gravar no dispositivo</string>
+    <string name="hifdh_stop_recording">Parar gravação</string>
+    <string name="hifdh_similar">Trechos semelhantes</string>
+    <string name="hifdh_passage">Recitação contínua</string>
+    <string name="hifdh_imported">Declarado; testes anteriores desconhecidos</string>
+    <string name="hifdh_learning">Aprendendo</string>
+    <string name="hifdh_retained">Recordado em dias posteriores</string>
+    <string name="hifdh_repair">Precisa de reforço</string>
+    <string name="hifdh_scope">Memorização Hafs · edição salva</string>
+    <string name="hifdh_permission">É necessária permissão do microfone. O áudio fica neste dispositivo.</string>
 </resources>

@@ -2,4 +2,21 @@
 <resources>
     <string name="hifdh_correct">노력하여 정확히 기억함</string>
     <string name="hifdh_correction">교정 연습: 나중에 회상 확인이 필요합니다</string>
+    <string name="hifdh_start_today">오늘 시작</string>
+    <string name="hifdh_practice">연습</string>
+    <string name="hifdh_independent">도움 없이 회상</string>
+    <string name="hifdh_self">자기 평가</string>
+    <string name="hifdh_listener">청취자 평가</string>
+    <string name="hifdh_teacher">교사 평가</string>
+    <string name="hifdh_notes">교정 메모</string>
+    <string name="hifdh_record">기기에 녹음</string>
+    <string name="hifdh_stop_recording">녹음 중지</string>
+    <string name="hifdh_similar">비슷한 구절</string>
+    <string name="hifdh_passage">이어지는 구절</string>
+    <string name="hifdh_imported">직접 표시함; 이전 평가 알 수 없음</string>
+    <string name="hifdh_learning">학습 중</string>
+    <string name="hifdh_retained">다음 날에도 기억함</string>
+    <string name="hifdh_repair">보완 필요</string>
+    <string name="hifdh_scope">하프스 암기 · 저장된 판</string>
+    <string name="hifdh_permission">녹음하려면 마이크 권한이 필요합니다. 음성은 기기에만 저장됩니다.</string>
 </resources>

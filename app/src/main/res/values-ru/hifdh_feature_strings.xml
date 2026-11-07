@@ -2,4 +2,21 @@
 <resources>
     <string name="hifdh_correct">Верно, с усилием</string>
     <string name="hifdh_correction">Исправление: отложенная проверка ещё нужна</string>
+    <string name="hifdh_start_today">Начать сегодня</string>
+    <string name="hifdh_practice">Практика</string>
+    <string name="hifdh_independent">Без подсказок</string>
+    <string name="hifdh_self">Самооценка</string>
+    <string name="hifdh_listener">Оценка слушателя</string>
+    <string name="hifdh_teacher">Оценка учителя</string>
+    <string name="hifdh_notes">Заметки об исправлении</string>
+    <string name="hifdh_record">Записать на устройстве</string>
+    <string name="hifdh_stop_recording">Остановить запись</string>
+    <string name="hifdh_similar">Похожие отрывки</string>
+    <string name="hifdh_passage">Непрерывный отрывок</string>
+    <string name="hifdh_imported">Отмечено самостоятельно; прошлые проверки неизвестны</string>
+    <string name="hifdh_learning">Изучается</string>
+    <string name="hifdh_retained">Вспомнено в последующие дни</string>
+    <string name="hifdh_repair">Нужно повторить</string>
+    <string name="hifdh_scope">Заучивание Хафс · сохранённое издание</string>
+    <string name="hifdh_permission">Нужен доступ к микрофону. Аудио остаётся на устройстве.</string>
 </resources>

@@ -2,4 +2,21 @@
 <resources>
     <string name="hifdh_correct">Çabayla doğru</string>
     <string name="hifdh_correction">Düzeltme alıştırması: gecikmeli hatırlama hâlâ gerekli</string>
+    <string name="hifdh_start_today">Bugün başla</string>
+    <string name="hifdh_practice">Alıştırma</string>
+    <string name="hifdh_independent">Yardımsız hatırlama</string>
+    <string name="hifdh_self">Öz değerlendirme</string>
+    <string name="hifdh_listener">Dinleyici değerlendirmesi</string>
+    <string name="hifdh_teacher">Öğretmen değerlendirmesi</string>
+    <string name="hifdh_notes">Düzeltme notları</string>
+    <string name="hifdh_record">Cihaza kaydet</string>
+    <string name="hifdh_stop_recording">Kaydı durdur</string>
+    <string name="hifdh_similar">Benzer bölümler</string>
+    <string name="hifdh_passage">Kesintisiz bölüm</string>
+    <string name="hifdh_imported">Kendi beyanı; eski testler bilinmiyor</string>
+    <string name="hifdh_learning">Öğreniliyor</string>
+    <string name="hifdh_retained">Sonraki günlerde hatırlandı</string>
+    <string name="hifdh_repair">Pekiştirme gerekli</string>
+    <string name="hifdh_scope">Hafs ezberi · kayıtlı baskı</string>
+    <string name="hifdh_permission">Kayıt için mikrofon izni gerekir. Ses bu cihazda kalır.</string>
 </resources>

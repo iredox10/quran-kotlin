@@ -2,4 +2,21 @@
 <resources>
     <string name="hifdh_correct">Ó tọ́, pẹ̀lú ìsapá</string>
     <string name="hifdh_correction">Ìdánilẹ́kọ̀ọ́ àtúnṣe — ìdánwò ìrántí lẹ́yìn náà ṣì wà</string>
+    <string name="hifdh_start_today">Bẹ̀rẹ̀ lónìí</string>
+    <string name="hifdh_practice">Ìdánilẹ́kọ̀ọ́</string>
+    <string name="hifdh_independent">Ìrántí láìsí ìrànlọ́wọ́</string>
+    <string name="hifdh_self">Ìdájọ́ ara ẹni</string>
+    <string name="hifdh_listener">Ìdájọ́ olùgbọ́</string>
+    <string name="hifdh_teacher">Ìdájọ́ olùkọ́</string>
+    <string name="hifdh_notes">Àkọsílẹ̀ àtúnṣe</string>
+    <string name="hifdh_record">Ṣe àkọsílẹ̀ ohùn lórí ẹ̀rọ</string>
+    <string name="hifdh_stop_recording">Dá àkọsílẹ̀ ohùn dúró</string>
+    <string name="hifdh_similar">Àwọn ẹsẹ tó jọra</string>
+    <string name="hifdh_passage">Kíkà àwọn ẹsẹ lẹ́sẹ̀sẹ̀</string>
+    <string name="hifdh_imported">A fi ọwọ́ sàmì sí; àyẹ̀wò tẹ́lẹ̀ kò mọ̀</string>
+    <string name="hifdh_learning">Ń kọ́ ẹ̀kọ́</string>
+    <string name="hifdh_retained">A rántí ní àwọn ọjọ́ tó tẹ̀ lé</string>
+    <string name="hifdh_repair">Ó nílò àtúnṣe</string>
+    <string name="hifdh_scope">Hifdh Hafs · ẹ̀dà tí a fi pamọ́</string>
+    <string name="hifdh_permission">A nílò àṣẹ makirofóònù. Ohùn yóò wà lórí ẹ̀rọ yìí.</string>
 </resources>

@@ -2,4 +2,21 @@
 <resources>
     <string name="hifdh_correct">Corretto, con impegno</string>
     <string name="hifdh_correction">Correzione: resta il richiamo a distanza</string>
+    <string name="hifdh_start_today">Inizia oggi</string>
+    <string name="hifdh_practice">Pratica</string>
+    <string name="hifdh_independent">Richiamo senza aiuto</string>
+    <string name="hifdh_self">Autovalutazione</string>
+    <string name="hifdh_listener">Valutazione di un ascoltatore</string>
+    <string name="hifdh_teacher">Valutazione dell’insegnante</string>
+    <string name="hifdh_notes">Note di correzione</string>
+    <string name="hifdh_record">Registra sul dispositivo</string>
+    <string name="hifdh_stop_recording">Ferma registrazione</string>
+    <string name="hifdh_similar">Passaggi simili</string>
+    <string name="hifdh_passage">Recitazione continua</string>
+    <string name="hifdh_imported">Dichiarato; prove precedenti sconosciute</string>
+    <string name="hifdh_learning">In apprendimento</string>
+    <string name="hifdh_retained">Ricordato nei giorni successivi</string>
+    <string name="hifdh_repair">Da consolidare</string>
+    <string name="hifdh_scope">Memorizzazione Hafs · edizione salvata</string>
+    <string name="hifdh_permission">Serve il permesso del microfono. L’audio resta sul dispositivo.</string>
 </resources>

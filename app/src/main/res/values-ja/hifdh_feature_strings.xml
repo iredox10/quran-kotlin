@@ -2,4 +2,21 @@
 <resources>
     <string name="hifdh_correct">考えて正しく思い出せた</string>
     <string name="hifdh_correction">修正練習：後日の確認が必要です</string>
+    <string name="hifdh_start_today">今日の練習を開始</string>
+    <string name="hifdh_practice">練習</string>
+    <string name="hifdh_independent">ヒントなしの想起</string>
+    <string name="hifdh_self">自己評価</string>
+    <string name="hifdh_listener">聞き手の評価</string>
+    <string name="hifdh_teacher">先生の評価</string>
+    <string name="hifdh_notes">修正メモ</string>
+    <string name="hifdh_record">端末に録音</string>
+    <string name="hifdh_stop_recording">録音を停止</string>
+    <string name="hifdh_similar">似ている箇所</string>
+    <string name="hifdh_passage">連続した暗唱</string>
+    <string name="hifdh_imported">自己申告・過去の確認は不明</string>
+    <string name="hifdh_learning">学習中</string>
+    <string name="hifdh_retained">後日も思い出せた</string>
+    <string name="hifdh_repair">復習が必要</string>
+    <string name="hifdh_scope">ハフス暗記・保存された版</string>
+    <string name="hifdh_permission">録音にはマイクの許可が必要です。音声は端末に保存されます。</string>
 </resources>

@@ -2,4 +2,21 @@
 <resources>
     <string name="hifdh_correct">Richtig, mit Mühe</string>
     <string name="hifdh_correction">Korrekturübung – späterer Abruf steht noch aus</string>
+    <string name="hifdh_start_today">Heute starten</string>
+    <string name="hifdh_practice">Üben</string>
+    <string name="hifdh_independent">Abruf ohne Hilfe</string>
+    <string name="hifdh_self">Selbsteinschätzung</string>
+    <string name="hifdh_listener">Bewertung durch Zuhörer</string>
+    <string name="hifdh_teacher">Bewertung durch Lehrkraft</string>
+    <string name="hifdh_notes">Korrekturhinweise</string>
+    <string name="hifdh_record">Lokal aufnehmen</string>
+    <string name="hifdh_stop_recording">Aufnahme stoppen</string>
+    <string name="hifdh_similar">Ähnliche Stellen</string>
+    <string name="hifdh_passage">Zusammenhängender Abschnitt</string>
+    <string name="hifdh_imported">Selbst angegeben; frühere Tests unbekannt</string>
+    <string name="hifdh_learning">Wird gelernt</string>
+    <string name="hifdh_retained">An späteren Tagen erinnert</string>
+    <string name="hifdh_repair">Nacharbeiten</string>
+    <string name="hifdh_scope">Hafs lernen · gespeicherte Ausgabe</string>
+    <string name="hifdh_permission">Mikrofonzugriff nötig. Audio bleibt auf diesem Gerät.</string>
 </resources>

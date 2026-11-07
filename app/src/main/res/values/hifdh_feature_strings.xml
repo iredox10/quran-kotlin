@@ -2,4 +2,21 @@
 <resources>
     <string name="hifdh_correct">Correct, with effort</string>
     <string name="hifdh_correction">Correction practice — delayed recall is still due</string>
+    <string name="hifdh_start_today">Start today</string>
+    <string name="hifdh_practice">Practice</string>
+    <string name="hifdh_independent">Independent recall</string>
+    <string name="hifdh_self">Self-assessment</string>
+    <string name="hifdh_listener">Listener assessment</string>
+    <string name="hifdh_teacher">Teacher assessment</string>
+    <string name="hifdh_notes">Correction notes</string>
+    <string name="hifdh_record">Record locally</string>
+    <string name="hifdh_stop_recording">Stop recording</string>
+    <string name="hifdh_similar">Similar passages</string>
+    <string name="hifdh_passage">Continuous passage</string>
+    <string name="hifdh_imported">Self-declared; earlier tests unknown</string>
+    <string name="hifdh_learning">Learning</string>
+    <string name="hifdh_retained">Recalled on later days</string>
+    <string name="hifdh_repair">Needs repair</string>
+    <string name="hifdh_scope">Hafs memorization · saved edition</string>
+    <string name="hifdh_permission">Microphone permission is needed to record. Audio stays on this device.</string>
 </resources>

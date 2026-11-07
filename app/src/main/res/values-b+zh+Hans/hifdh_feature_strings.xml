@@ -2,4 +2,21 @@
 <resources>
     <string name="hifdh_correct">正确，需要思考</string>
     <string name="hifdh_correction">纠错练习：仍需稍后回忆测试</string>
+    <string name="hifdh_start_today">开始今日练习</string>
+    <string name="hifdh_practice">练习</string>
+    <string name="hifdh_independent">独立回忆</string>
+    <string name="hifdh_self">自我评估</string>
+    <string name="hifdh_listener">听者评估</string>
+    <string name="hifdh_teacher">教师评估</string>
+    <string name="hifdh_notes">纠错笔记</string>
+    <string name="hifdh_record">本地录音</string>
+    <string name="hifdh_stop_recording">停止录音</string>
+    <string name="hifdh_similar">相似经文</string>
+    <string name="hifdh_passage">连续背诵</string>
+    <string name="hifdh_imported">自行标记；此前测试未知</string>
+    <string name="hifdh_learning">学习中</string>
+    <string name="hifdh_retained">后续日期已回忆</string>
+    <string name="hifdh_repair">需要巩固</string>
+    <string name="hifdh_scope">哈夫斯背诵 · 已保存版本</string>
+    <string name="hifdh_permission">录音需要麦克风权限。音频仅保存在本机。</string>
 </resources>

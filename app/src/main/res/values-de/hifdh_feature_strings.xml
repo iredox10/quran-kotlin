@@ -20,4 +20,5 @@
     <string name="hifdh_scope">Hafs lernen · gespeicherte Ausgabe</string>
     <string name="hifdh_permission">Mikrofonzugriff nötig. Audio bleibt auf diesem Gerät.</string>
     <string name="hifdh_portion_note">Wähle Übungswörter mit deiner Lehrkraft; dies legt keine Rezitationspause fest. Der Test umfasst die ganze Aya.</string>
+    <string name="hifdh_word_error">Wortfehler</string>
 </resources>

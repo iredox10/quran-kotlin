@@ -20,4 +20,5 @@
     <string name="hifdh_scope">ハフス暗記・保存された版</string>
     <string name="hifdh_permission">録音にはマイクの許可が必要です。音声は端末に保存されます。</string>
     <string name="hifdh_portion_note">練習する単語は先生と選んでください。ここは朗誦の停止位置ではありません。テストはアーヤ全体が対象です。</string>
+    <string name="hifdh_word_error">単語の間違い</string>
 </resources>

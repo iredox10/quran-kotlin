@@ -38,6 +38,7 @@ internal fun HifdhMistakeNotebook(viewModel: SurahViewModel, events: List<HifdhR
             Column(Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
                 Text(listOfNotNull(event.verseKey, event.relatedVerse).joinToString(" ↔ "), color = hGold)
                 Text(stringResource(when (event.errorType) {
+                    "word" -> R.string.hifdh_word_error
                     "prompt" -> R.string.ui_needed_prompt_353bdc
                     "hesitation" -> R.string.ui_hesitated_3dbf06
                     "transition" -> R.string.ui_weak_transition_detected_c43370
@@ -79,7 +80,7 @@ private fun HifdhMistakeForm(viewModel: SurahViewModel, onDismiss: () -> Unit) {
             OutlinedTextField(key, { key = it.filter { ch -> ch.isDigit() || ch == ':' }.take(7) }, label = { Text(stringResource(R.string.ui_go_to_ayah_ee520e)) }, placeholder = { Text("2:255") })
             verse?.let { WorkshopArabic(it) }
             OutlinedTextField(position, { position = it.filter(Char::isDigit).take(3) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), label = { Text(stringResource(R.string.ui_words_1_s_2_s_b2e62d, "", words.size)) })
-            listOf("word" to R.string.ui_word_translations_1f21be, "prompt" to R.string.ui_needed_prompt_353bdc,
+            listOf("word" to R.string.hifdh_word_error, "prompt" to R.string.ui_needed_prompt_353bdc,
                 "hesitation" to R.string.ui_hesitated_3dbf06, "transition" to R.string.ui_weak_transition_detected_c43370,
                 "pronunciation" to R.string.settings_tajweed).forEach { (id, label) ->
                 Row(Modifier.clickable { type = id }) { RadioButton(type == id, { type = id }); Text(stringResource(label), color = hInk, modifier = Modifier.padding(top = 12.dp)) }

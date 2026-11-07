@@ -458,5 +458,28 @@
     "zh-Hans": "请与老师选择练习词语；这不表示诵读停顿位置。测试涵盖整节经文。",
     "ja": "練習する単語は先生と選んでください。ここは朗誦の停止位置ではありません。テストはアーヤ全体が対象です。",
     "ko": "연습할 단어는 선생님과 선택하세요. 낭송을 멈추는 지점이 아닙니다. 시험은 아야 전체를 다룹니다."
+  },
+  "hifdh_word_error": {
+    "en": "Word error",
+    "ar": "خطأ في كلمة",
+    "fr": "Erreur de mot",
+    "es": "Error de palabra",
+    "pt": "Erro de palavra",
+    "de": "Wortfehler",
+    "it": "Errore di parola",
+    "ru": "Ошибка в слове",
+    "tr": "Kelime hatası",
+    "id": "Kesalahan kata",
+    "ms": "Kesalahan perkataan",
+    "sw": "Kosa la neno",
+    "ha": "Kuskuren kalma",
+    "yo": "Àṣìṣe ọ̀rọ̀",
+    "ur": "لفظ کی غلطی",
+    "fa": "خطای واژه",
+    "bn": "শব্দের ভুল",
+    "hi": "शब्द की गलती",
+    "zh-Hans": "词语错误",
+    "ja": "単語の間違い",
+    "ko": "단어 오류"
   }
 }

@@ -20,4 +20,5 @@
     <string name="hifdh_scope">Mémorisation Hafs · édition enregistrée</string>
     <string name="hifdh_permission">Le microphone est nécessaire. L’audio reste sur cet appareil.</string>
     <string name="hifdh_portion_note">Choisissez les mots avec votre enseignant ; ceci ne définit pas un arrêt de récitation. Le test porte sur le verset entier.</string>
+    <string name="hifdh_word_error">Erreur de mot</string>
 </resources>

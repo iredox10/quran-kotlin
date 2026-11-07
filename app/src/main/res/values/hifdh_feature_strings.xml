@@ -20,4 +20,5 @@
     <string name="hifdh_scope">Hafs memorization · saved edition</string>
     <string name="hifdh_permission">Microphone permission is needed to record. Audio stays on this device.</string>
     <string name="hifdh_portion_note">Choose practice words with your teacher; this is not a recitation stop. Tests cover the full ayah.</string>
+    <string name="hifdh_word_error">Word error</string>
 </resources>

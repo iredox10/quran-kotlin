@@ -44,6 +44,16 @@ import java.time.format.DateTimeFormatter
 /** Offline workshop. Ordinary reading preferences never change this plan's Hafs identity. */
 @Composable
 fun HifdhWorkshop(viewModel: SurahViewModel, chapters: List<ChapterEntity>, onDismiss: () -> Unit) {
+    MaterialTheme(colorScheme = MaterialTheme.colorScheme.copy(
+        primary = hGold, onPrimary = androidx.compose.ui.graphics.Color(0xFF141915),
+        secondary = hGold, onSecondary = androidx.compose.ui.graphics.Color(0xFF141915),
+        background = hCream, onBackground = hInk, surface = hSurface, onSurface = hInk,
+        surfaceVariant = hSurface, onSurfaceVariant = hInkMid, outline = hBoneDark
+    )) { HifdhWorkshopContent(viewModel, chapters, onDismiss) }
+}
+
+@Composable
+private fun HifdhWorkshopContent(viewModel: SurahViewModel, chapters: List<ChapterEntity>, onDismiss: () -> Unit) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("hifdh_workshop", 0) }
     val scope = rememberCoroutineScope()
@@ -128,17 +138,18 @@ fun HifdhWorkshop(viewModel: SurahViewModel, chapters: List<ChapterEntity>, onDi
                         item {
                             val total = memorized.size
                             val retained = evidence.count { it.value.mastery == HifdhMastery.RETAINED }
-                            val independent = events.count { it.independentPass }
-                            val failed = events.count { it.outcome == "review" && it.rating == 1 && it.task != "CORRECTION" }
+                            val independent = evidence.count { it.value.mastery == HifdhMastery.RECALLED }
+                            val failed = evidence.count { it.value.mastery == HifdhMastery.REPAIR }
                             Text(stringResource(R.string.hifdh_retained) + ": $retained / $total", color = hInk, modifier = Modifier.padding(vertical = 16.dp))
                             Text(stringResource(R.string.hifdh_independent) + ": $independent · " + stringResource(R.string.hifdh_repair) + ": $failed", color = hInkMid)
-                            Text(stringResource(R.string.hifdh_learning) + ": " + evidence.count { it.value.mastery == HifdhMastery.LEARNING } + " · " + stringResource(R.string.hifdh_independent) + ": " + evidence.count { it.value.mastery == HifdhMastery.RECALLED }, color = hInkMid)
+                            Text(stringResource(R.string.hifdh_learning) + ": " + evidence.count { it.value.mastery == HifdhMastery.LEARNING }, color = hInkMid)
                             val practiceSeconds = events.filter { it.outcome in setOf("practice", "listening") }.sumOf { it.durationSeconds.toLong() }
                             val assessedSeconds = events.filter { it.outcome == "review" }.sumOf { it.durationSeconds.toLong() }
                             Text(stringResource(R.string.hifdh_practice) + " · " + stringResource(R.string.ui_total_time_d7da73) + ": ${practiceSeconds / 60} " + stringResource(R.string.ui_minutes_092f99), color = hInkMuted)
                             Text(stringResource(R.string.hifdh_independent) + " · " + stringResource(R.string.ui_total_time_d7da73) + ": ${assessedSeconds / 60} " + stringResource(R.string.ui_minutes_092f99), color = hInkMuted)
                             val covered = events.filter { it.outcome == "review" && it.task != "CORRECTION" && it.timestamp >= System.currentTimeMillis() - 7 * 86400000L }.map { it.verseKey }.toSet()
-                            Text(stringResource(R.string.ui_review_due_b4ee46) + ": ${history.count { isHifdhDue(it.value.card, System.currentTimeMillis()) }} · ${covered.size} / $total", color = hInkMid)
+                            Text(stringResource(R.string.ui_review_due_b4ee46) + ": ${history.count { isHifdhDue(it.value.card, System.currentTimeMillis()) }}", color = hInkMid)
+                            Text(stringResource(R.string.planner_weekly_progress) + ": ${covered.size} / $total", color = hInkMid)
                             Text(stringResource(R.string.hifdh_imported) + ": " + memorized.count { evidence[it]?.learnedAt == null }, color = hInkMuted, modifier = Modifier.padding(vertical = 12.dp))
                         }
                         item { HifdhRecordingLibrary(viewModel) }
@@ -234,7 +245,7 @@ private fun HifdhLesson(viewModel: SurahViewModel, keys: List<String>, onDismiss
                     Text(verse.verseKey, color = hGold, modifier = Modifier.padding(top = 20.dp))
                     if (visible) {
                         PracticePortion(verse)
-                        Text(verse.translation.orEmpty(), color = hInkMid, modifier = Modifier.padding(vertical = 12.dp))
+                        Text(remember(verse.translation) { hifdhTranslationText(verse.translation) }, color = hInkMid, modifier = Modifier.padding(vertical = 12.dp))
                     } else TextButton(onClick = { visible = true }) { Text(stringResource(R.string.ui_tap_to_reveal_505d60)) }
                 } }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {

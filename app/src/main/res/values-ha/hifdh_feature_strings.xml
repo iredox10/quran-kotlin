@@ -20,4 +20,5 @@
     <string name="hifdh_scope">Hifzin Hafs · bugun da aka ajiye</string>
     <string name="hifdh_permission">Ana buƙatar izinin makirufo. Sauti yana nan a wannan na’ura.</string>
     <string name="hifdh_portion_note">Zaɓi kalmomin atisaye tare da malaminka; wannan ba wurin tsayawar karatu ba ne. Gwajin ya shafi aya gaba ɗaya.</string>
+    <string name="hifdh_word_error">Kuskuren kalma</string>
 </resources>

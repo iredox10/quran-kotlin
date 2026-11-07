@@ -20,4 +20,5 @@
     <string name="hifdh_scope">حفظ حفص · نسخه ذخیره‌شده</string>
     <string name="hifdh_permission">ضبط به اجازه میکروفون نیاز دارد. صدا روی همین دستگاه می‌ماند.</string>
     <string name="hifdh_portion_note">واژه‌های تمرین را با استاد انتخاب کنید؛ این محل وقف تلاوت نیست. آزمون کل آیه را در بر می‌گیرد.</string>
+    <string name="hifdh_word_error">خطای واژه</string>
 </resources>

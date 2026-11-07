@@ -20,4 +20,5 @@
     <string name="hifdh_scope">Hafalan Hafs · edisi tersimpan</string>
     <string name="hifdh_permission">Izin mikrofon diperlukan. Audio tetap di perangkat ini.</string>
     <string name="hifdh_portion_note">Pilih kata latihan bersama guru; ini bukan tanda berhenti bacaan. Tes mencakup seluruh ayat.</string>
+    <string name="hifdh_word_error">Kesalahan kata</string>
 </resources>

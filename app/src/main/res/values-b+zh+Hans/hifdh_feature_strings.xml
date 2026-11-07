@@ -20,4 +20,5 @@
     <string name="hifdh_scope">哈夫斯背诵 · 已保存版本</string>
     <string name="hifdh_permission">录音需要麦克风权限。音频仅保存在本机。</string>
     <string name="hifdh_portion_note">请与老师选择练习词语；这不表示诵读停顿位置。测试涵盖整节经文。</string>
+    <string name="hifdh_word_error">词语错误</string>
 </resources>

@@ -288,7 +288,7 @@ fun HifdhTestModal(
                                     if (!currentVerse?.translation.isNullOrBlank()) {
                                         Spacer(modifier = Modifier.height(12.dp))
                                         Text(
-                                            text = currentVerse?.translation.orEmpty(),
+                                            text = remember(currentVerse?.translation) { hifdhTranslationText(currentVerse?.translation) },
                                             fontSize = 12.sp,
                                             lineHeight = 18.sp,
                                             color = hInkMid,

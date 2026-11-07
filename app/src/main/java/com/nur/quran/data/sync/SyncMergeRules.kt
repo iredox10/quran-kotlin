@@ -32,6 +32,7 @@ private val DEEP_MERGE_FIELDS: Set<String> = setOf(
     "plannerSessionTimers",
     "saukaProgress",
     "hifdhHistory",
+    "hifdhReviewEvents",
     "offlinePackStatus"
 )
 

@@ -443,6 +443,7 @@ class SyncService @Inject constructor(
         }
         hifdh.getString("hifdh_history", null)?.let { parseJsonAny(it) }?.let { out["hifdhHistory"] = it }
         hifdh.getString("hifdh_goals", null)?.let { parseJsonAny(it) }?.let { out["hifdhGoals"] = it }
+        out["hifdhReviewEvents"] = com.nur.quran.data.hifdh.HifdhJournal(context, currentUserId() ?: "local").syncEnvelope()
         // Planner (parsed structures so they merge as objects, not strings).
         val plans = runSuspendCatching {
             dao?.getCacheEntry("planner_all_plans")?.dataJson?.takeIf { it.isNotBlank() }?.let { parseJsonAny(it) }
@@ -593,6 +594,7 @@ class SyncService @Inject constructor(
         asMap(state["hifdhHistory"])?.let { hifdh["hifdh_history"] = gson.toJson(it) }
         asList(state["hifdhGoals"])?.let { hifdh["hifdh_goals"] = gson.toJson(it) }
         applyPrefs("hifdh_settings", hifdh)
+        com.nur.quran.data.hifdh.HifdhJournal(context, currentUserId() ?: "local").mergeEnvelope(state["hifdhReviewEvents"])
     }
 
     /** Legacy Android `hifdhJson` blob → hifdh_settings keys. */

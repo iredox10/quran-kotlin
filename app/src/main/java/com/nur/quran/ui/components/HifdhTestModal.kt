@@ -75,6 +75,7 @@ fun HifdhTestModal(
         ayahNumForCue > 1 && weakTransitions.contains(currentVerseKey)
 
     fun handleRating(rating: Int, prompted: Boolean = false) {
+        if (lastRating != null || currentVerse == null) return
         val key = currentVerseKey ?: return
         val assessment = RecallAssessment(rating,
             if (prompted) RecallCue.ANSWER_PROMPT else if (hasWeakTransition) RecallCue.PREVIOUS_AYAH else RecallCue.NONE,
@@ -185,6 +186,7 @@ fun HifdhTestModal(
                                 color = hInkMuted,
                                 textAlign = TextAlign.Center
                             )
+                            if (practice.unresolved.isNotEmpty()) Text(stringResource(R.string.ui_review_mistakes_961ede) + ": ${practice.unresolved.size}", color = hGold)
                             Spacer(modifier = Modifier.height(20.dp))
                             Button(onClick = onDismiss, colors = ButtonDefaults.buttonColors(containerColor = hGold), shape = RoundedCornerShape(12.dp)) {
                                 Text(stringResource(R.string.ui_done_e9b450), color = Color.White, fontWeight = FontWeight.Bold)
@@ -268,7 +270,10 @@ fun HifdhTestModal(
                                     fontFamily = fontFamilyUi
                                 )
 
-                                if (isRevealed) {
+                                if (isRevealed && currentVerse != null) {
+                                TextButton(onClick = { handleRating(1, prompted = true) }) {
+                                    Text(stringResource(R.string.ui_needed_prompt_353bdc) + " · Again", color = hRed)
+                                }
                                     Spacer(modifier = Modifier.height(16.dp))
                                     if (currentVerse?.textUthmani != null) {
                                         Text(
@@ -337,7 +342,7 @@ fun HifdhTestModal(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        RatingButton(label = stringResource(R.string.ui_complete_blank_85cd86) + " / " + stringResource(R.string.ui_needed_prompt_353bdc), sublabel = "Again", color = Color(0xFFEF4444), modifier = Modifier.weight(1f)) { handleRating(1) }
+                                        RatingButton(label = stringResource(R.string.ui_complete_blank_85cd86), sublabel = "Again", color = Color(0xFFEF4444), modifier = Modifier.weight(1f)) { handleRating(1) }
                                         RatingButton(label = stringResource(R.string.ui_hesitated_3dbf06), sublabel = "Hard", color = Color(0xFFF59E0B), modifier = Modifier.weight(1f)) { handleRating(2) }
                                     }
                                     Row(

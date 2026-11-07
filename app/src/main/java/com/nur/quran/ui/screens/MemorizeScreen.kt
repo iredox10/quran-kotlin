@@ -74,6 +74,8 @@ fun MemorizeScreen(
     val homeState by homeViewModel.uiState.collectAsState()
     val memorizedAyahs by surahViewModel.memorizedAyahs.collectAsState()
     val hifdhHistory by surahViewModel.hifdhHistory.collectAsState()
+    val hifdhEvents by surahViewModel.hifdhEvents.collectAsState()
+    val evidence = remember(hifdhEvents) { hifdhEvents.groupBy { it.verseKey }.mapValues { com.nur.quran.data.hifdh.evidenceFor(it.value) } }
     val hifdhGoals by surahViewModel.hifdhGoals.collectAsState()
     val transitionLinks by surahViewModel.transitionLinks.collectAsState()
     val readingSessions by homeViewModel.readingSessions.collectAsState()
@@ -89,13 +91,20 @@ fun MemorizeScreen(
 
     val chapters = (homeState as? HomeUiState.Success)?.chapters ?: emptyList()
 
+    val dueClock by produceState(System.currentTimeMillis()) {
+        while (true) { value = System.currentTimeMillis(); kotlinx.coroutines.delay(15_000) }
+    }
     // Web MemorizeIndex.jsx queue split: sabaq = new/learning/reps<3,
     // sabqi = in last memorizing chapter, manzil = the rest. Due = no card or due <= now.
-    val queueData = remember(memorizedAyahs, hifdhHistory, readingSessions) {
-        val lastMemChapterId = readingSessions
-            .filter { it.type == "memorizing" && it.chapterId != null }
-            .maxByOrNull { it.timestamp }?.chapterId
-        buildQueueData(memorizedAyahs, hifdhHistory, lastMemChapterId, System.currentTimeMillis())
+    val queueData = remember(memorizedAyahs, hifdhHistory, evidence, dueClock) {
+        val keys = memorizedAyahs.sortedWith(compareBy({ it.substringBefore(":").toIntOrNull() ?: 0 }, { it.substringAfter(":").toIntOrNull() ?: 0 }))
+        val groups = keys.groupBy { key -> com.nur.quran.data.hifdh.classifyEvidenceQueue(
+            evidence[key] ?: com.nur.quran.data.hifdh.HifdhEvidence(), hifdhHistory[key]?.card, dueClock) }
+        fun all(queue: com.nur.quran.data.hifdh.HifdhQueue) = groups[queue].orEmpty()
+        fun due(queue: com.nur.quran.data.hifdh.HifdhQueue) = all(queue).filter { com.nur.quran.data.hifdh.isHifdhDue(hifdhHistory[it]?.card, dueClock) }
+        QueueData(all(com.nur.quran.data.hifdh.HifdhQueue.SABAQ), due(com.nur.quran.data.hifdh.HifdhQueue.SABAQ),
+            all(com.nur.quran.data.hifdh.HifdhQueue.SABQI), due(com.nur.quran.data.hifdh.HifdhQueue.SABQI),
+            all(com.nur.quran.data.hifdh.HifdhQueue.MANZIL), due(com.nur.quran.data.hifdh.HifdhQueue.MANZIL))
     }
     val totalDueToday = queueData.sabaqDue.size + queueData.sabqiDue.size + queueData.manzilDue.size
 
@@ -803,7 +812,8 @@ fun MemorizeScreen(
             onDismiss = { activeTestQueue = null },
             onLogReview = { verseKey, rating -> surahViewModel.logHifdhReview(verseKey, rating) },
             loadVerses = { keys -> surahViewModel.getVerseTexts(keys) },
-            weakTransitions = transitionLinks
+            weakTransitions = transitionLinks,
+            onAssessment = { key, result -> surahViewModel.logHifdhAssessment(key, result) }
         )
     }
 

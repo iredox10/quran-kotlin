@@ -178,7 +178,14 @@ class QuranRepository @Inject constructor(
     }
 
     suspend fun getVersesByKey(keys: List<String>): List<VerseEntity> = withContext(Dispatchers.IO) {
-        quranDao.getVersesByKey(keys)
+        val existing = quranDao.getVersesByKey(keys)
+        val missing = keys.toSet() - existing.mapTo(hashSetOf()) { it.verseKey }
+        missing.mapNotNull { it.substringBefore(":").toIntOrNull() }.distinct().forEach { ensureOfflineChapter(it) }
+        resolveReaderTranslations(quranDao.getVersesByKey(keys), context.getSharedPreferences("hifdh_settings", 0).getInt("translation_id", 20))
+    }
+
+    suspend fun memorizationInventory(): Map<String, Int> = withContext(Dispatchers.IO) {
+        getAllOfflineVerses().associate { it.verse_key to (it.text_uthmani.orEmpty().split(Regex("\\s+")).count { word -> word.isNotBlank() }) }
     }
 
     /**

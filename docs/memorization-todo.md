@@ -8,16 +8,16 @@ not a prerequisite for offline memorization.
 
 ## 1. Trustworthy recall and review
 - [x] Correct rating semantics: a prompt is not an independent pass; distinguish effort from failure.
-- [ ] Record cue usage and assessment mode; distinguish cue-based transition tests from unprompted recall.
+- [x] Record cue usage and assessment mode; distinguish cue-based transition tests from unprompted recall.
 - [x] Correct failures and requeue them after intervening practice without endless loops.
-- [ ] Refresh due work as time passes and when returning to the app.
+- [x] Refresh due work as time passes and when returning to the app.
 
 ## 2. Evidence and scheduling
-- [ ] Add append-only review events with unique IDs, passage identity, rating, cues and timestamps.
-- [ ] Persist acquisition and independent-pass dates; migrate old material as imported/unknown.
-- [ ] Classify recent revision by learning dates, not last-opened surah.
+- [x] Add append-only review events with unique IDs, passage identity, rating, cues and timestamps.
+- [x] Persist acquisition and independent-pass dates; migrate old material as imported/unknown.
+- [x] Classify recent revision by learning dates, not last-opened surah.
 - [ ] Preserve web/mobile sync compatibility; merge events idempotently and retain existing cards.
-- [ ] Show learning, independent recall, delayed retention and repair states separately from teacher assessment.
+- [x] Show learning, independent recall, delayed retention and repair states separately from teacher assessment.
 
 ## 3. Guided daily work
 - [ ] Add Start Today with time budget and New / Recent / Older revision sections.

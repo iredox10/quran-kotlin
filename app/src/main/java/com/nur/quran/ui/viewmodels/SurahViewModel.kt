@@ -39,6 +39,9 @@ import com.nur.quran.data.hifdh.FsrsScheduler
 import com.nur.quran.data.hifdh.HifdhGoal
 import com.nur.quran.data.hifdh.HifdhHistoryEntry
 import com.nur.quran.data.hifdh.HifdhStore
+import com.nur.quran.data.hifdh.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import com.nur.quran.data.repository.QuranRepository
 import com.nur.quran.services.QuranAudioService
 import com.nur.quran.utils.TajweedProcessor
@@ -337,6 +340,44 @@ class SurahViewModel @Inject constructor(
 
     // ── Hifdh (memorization) tracking ──────────────────────────────────
     private val hifdhStore = HifdhStore(context)
+    private val evidenceLock = Mutex()
+    private val _hifdhEvents = MutableStateFlow<List<HifdhReviewEvent>>(emptyList())
+    val hifdhEvents = _hifdhEvents.asStateFlow()
+    private fun journal() = HifdhJournal(context, backend.storedUserId() ?: "local")
+    fun logHifdhAssessment(verseKey: String, assessment: RecallAssessment, assessor: String = "self",
+        note: String = "", errorType: String? = null, wordPosition: Int? = null, relatedVerse: String? = null,
+        recordingId: String? = null, outcome: String = "review") {
+        val event = HifdhReviewEvent(verseKey = verseKey, rating = assessment.schedulerRating,
+            cue = assessment.cue.name, task = assessment.task.name, durationSeconds = assessment.durationSeconds.coerceIn(0, 86_400),
+            assessor = assessor, note = note.take(2000), errorType = errorType, wordPosition = wordPosition,
+            relatedVerse = relatedVerse, recordingId = recordingId, outcome = outcome)
+        val owner = backend.storedUserId() ?: "local"
+        viewModelScope.launch(Dispatchers.IO) {
+            evidenceLock.withLock {
+                val capturedJournal = HifdhJournal(context, owner)
+                capturedJournal.append(event)
+                if ((backend.storedUserId() ?: "local") != owner) return@withLock
+                _hifdhEvents.value = capturedJournal.events()
+                withContext(Dispatchers.Main) {
+                    if (outcome == "review" && assessment.task == RecallTask.TRANSITION) {
+                        val links = _transitionLinks.value.toMutableSet()
+                        if (assessment.schedulerRating == 1) links.add(verseKey) else links.remove(verseKey)
+                        _transitionLinks.value = links
+                        hifdhStore.saveTransitionLinks(links)
+                    }
+                    if (outcome == "review" && assessment.task == RecallTask.AYAH) {
+                        logHifdhReview(verseKey, assessment.schedulerRating)
+                        if (assessment.independent) {
+                            val learned = _memorizedAyahs.value + verseKey
+                            hifdhPrefs.edit().putStringSet("memorized_ayahs", learned).apply()
+                            _memorizedAyahs.value = learned
+                        }
+                    }
+                }
+            }
+            com.nur.quran.data.sync.SyncWorker.enqueueOnce(context)
+        }
+    }
     private val fsrsScheduler = FsrsScheduler()
 
     private val _hifdhHistory = MutableStateFlow(hifdhStore.loadHifdhHistory())
@@ -369,8 +410,8 @@ class SurahViewModel @Inject constructor(
 
         // Web: Again flags the transition link; Easy/Good clears it (Hard leaves it).
         val links = _transitionLinks.value.toMutableSet()
+        // A failed recall is not automatically evidence of a broken transition.
         when (rating) {
-            1 -> links.add(verseKey)
             3, 4 -> links.remove(verseKey)
         }
         _transitionLinks.value = links
@@ -398,10 +439,11 @@ class SurahViewModel @Inject constructor(
     }
 
     /** Cached verse lookups used by the hifdh test modals. */
-    private val verseTextCache = mutableMapOf<String, VerseEntity>()
+    private val verseTextCache = java.util.concurrent.ConcurrentHashMap<String, VerseEntity>()
+    suspend fun memorizationInventory() = repository.memorizationInventory()
 
     suspend fun getVerseTexts(keys: List<String>): Map<String, VerseEntity> {
-        val missing = keys.filterNot { it in verseTextCache }
+        val missing = keys.filterNot { verseTextCache.containsKey(it) }
         if (missing.isNotEmpty()) {
             repository.getVersesByKey(missing).forEach { verseTextCache[it.verseKey] = it }
         }
@@ -432,6 +474,9 @@ class SurahViewModel @Inject constructor(
             hifdhPrefs.edit().putInt("translation_id", 20).apply()
         }
         ensureController()
+        viewModelScope.launch(Dispatchers.IO) {
+            HifdhJournal.changes.collect { _hifdhEvents.value = journal().events() }
+        }
         // Cloud restore parity: when a sync pull writes hifdh state to prefs,
         // re-read it here so the UI updates immediately (these flows are
         // prefs-snapshotted at construction, not reactive like the Room flows).
@@ -454,6 +499,7 @@ class SurahViewModel @Inject constructor(
         _hifdhHistory.value = hifdhStore.loadHifdhHistory()
         _transitionLinks.value = hifdhStore.loadTransitionLinks()
         _hifdhGoals.value = hifdhStore.loadHifdhGoals()
+        viewModelScope.launch(Dispatchers.IO) { _hifdhEvents.value = journal().events() }
         android.util.Log.d(
             "NurSync",
             "reloadHifdhState: ayahs=${_memorizedAyahs.value.size} history=${_hifdhHistory.value.size} goals=${_hifdhGoals.value.size}"

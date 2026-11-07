@@ -131,6 +131,13 @@ fun HifdhWorkshop(viewModel: SurahViewModel, chapters: List<ChapterEntity>, onDi
                             val failed = events.count { it.outcome == "review" && it.rating == 1 && it.task != "CORRECTION" }
                             Text(stringResource(R.string.hifdh_retained) + ": $retained / $total", color = hInk, modifier = Modifier.padding(vertical = 16.dp))
                             Text(stringResource(R.string.hifdh_independent) + ": $independent · " + stringResource(R.string.hifdh_repair) + ": $failed", color = hInkMid)
+                            Text(stringResource(R.string.hifdh_learning) + ": " + evidence.count { it.value.mastery == HifdhMastery.LEARNING } + " · " + stringResource(R.string.hifdh_independent) + ": " + evidence.count { it.value.mastery == HifdhMastery.RECALLED }, color = hInkMid)
+                            val practiceSeconds = events.filter { it.outcome in setOf("practice", "listening") }.sumOf { it.durationSeconds.toLong() }
+                            val assessedSeconds = events.filter { it.outcome == "review" }.sumOf { it.durationSeconds.toLong() }
+                            Text(stringResource(R.string.hifdh_practice) + " · " + stringResource(R.string.ui_total_time_d7da73) + ": ${practiceSeconds / 60} " + stringResource(R.string.ui_minutes_092f99), color = hInkMuted)
+                            Text(stringResource(R.string.hifdh_independent) + " · " + stringResource(R.string.ui_total_time_d7da73) + ": ${assessedSeconds / 60} " + stringResource(R.string.ui_minutes_092f99), color = hInkMuted)
+                            val covered = events.filter { it.outcome == "review" && it.task != "CORRECTION" && it.timestamp >= System.currentTimeMillis() - 7 * 86400000L }.map { it.verseKey }.toSet()
+                            Text(stringResource(R.string.ui_review_due_b4ee46) + ": ${history.count { isHifdhDue(it.value.card, System.currentTimeMillis()) }} · ${covered.size} / $total", color = hInkMid)
                             Text(stringResource(R.string.hifdh_imported) + ": " + memorized.count { evidence[it]?.learnedAt == null }, color = hInkMuted, modifier = Modifier.padding(vertical = 12.dp))
                         }
                         item { HifdhRecordingLibrary(viewModel) }
@@ -186,6 +193,27 @@ private fun WorkshopSection(title: String, keys: List<String>, onStart: () -> Un
 @Composable
 private fun HifdhLesson(viewModel: SurahViewModel, keys: List<String>, onDismiss: () -> Unit, onTest: () -> Unit) {
     val verses by produceState<List<VerseEntity>>(emptyList(), keys) { value = viewModel.getVerseTexts(keys).let { byKey -> keys.mapNotNull { byKey[it] } } }
+    val lifecycle = androidx.compose.ui.platform.LocalLifecycleOwner.current.lifecycle
+    var activeSince by remember { mutableLongStateOf(android.os.SystemClock.elapsedRealtime()) }
+    fun savePractice() {
+        if (activeSince == Long.MAX_VALUE) return
+        val seconds = ((android.os.SystemClock.elapsedRealtime() - activeSince) / 1000).toInt().coerceIn(0, 86400)
+        activeSince = android.os.SystemClock.elapsedRealtime()
+        if (seconds >= 3) keys.forEach { key ->
+            viewModel.logHifdhAssessment(key, RecallAssessment(3, durationSeconds = seconds / keys.size), outcome = "practice")
+        }
+    }
+    DisposableEffect(lifecycle) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            when (event) {
+                androidx.lifecycle.Lifecycle.Event.ON_STOP -> { savePractice(); viewModel.stopPlaying(); activeSince = Long.MAX_VALUE }
+                androidx.lifecycle.Lifecycle.Event.ON_START -> activeSince = android.os.SystemClock.elapsedRealtime()
+                else -> Unit
+            }
+        }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer); savePractice(); viewModel.stopPlaying() }
+    }
     var visible by remember { mutableStateOf(true) }
     var step by remember { mutableIntStateOf(0) }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
@@ -212,7 +240,7 @@ private fun HifdhLesson(viewModel: SurahViewModel, keys: List<String>, onDismiss
             }
         }
     }
-    DisposableEffect(Unit) { onDispose { viewModel.stopPlaying() } }
+
 }
 
 @Composable

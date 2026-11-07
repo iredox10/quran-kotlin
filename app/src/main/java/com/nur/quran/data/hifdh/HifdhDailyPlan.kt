@@ -14,7 +14,8 @@ fun buildDailyHifdhPlan(
     events: List<HifdhReviewEvent>, now: Long, budgetMinutes: Int = 20,
     wordCounts: Map<String, Int> = emptyMap(), newLimit: Int = 3, recentDays: Int = 7
 ): HifdhDailyPlan {
-    val evidence = events.groupBy { it.verseKey }.mapValues { evidenceFor(it.value) }
+    val byVerse = events.groupBy { it.verseKey }
+    val evidence = byVerse.mapValues { evidenceFor(it.value) }
     val minutes = budgetMinutes.coerceIn(5, 120)
     val allReview = memorized.sortedWith(compareBy<String> {
         val e = evidence[it]
@@ -26,7 +27,7 @@ fun buildDailyHifdhPlan(
     }.thenBy { evidence[it]?.lastIndependentPass ?: history[it]?.lastReviewed ?: 0L }
         .thenBy { it.substringBefore(":").toIntOrNull() ?: 0 }.thenBy { it.substringAfter(":").toIntOrNull() ?: 0 })
     fun cost(key: String): Int {
-        val observed = events.filter { it.verseKey == key && it.durationSeconds in 3..600 && it.task != "CORRECTION" }
+        val observed = byVerse[key].orEmpty().filter { it.outcome == "review" && it.durationSeconds in 3..600 && it.task != "CORRECTION" }
             .take(5).map { it.durationSeconds }
         return if (observed.isEmpty()) max(12, (wordCounts[key] ?: 20) * 2) else observed.average().toInt().coerceIn(12, 600)
     }

@@ -28,7 +28,7 @@ data class HifdhReviewEvent(
         edition == "hafs" && timestamp > 0 && rating in 1..4 && note.length <= 2000 &&
         durationSeconds in 0..86_400 && assessor in setOf("self", "listener", "teacher") &&
         cue in RecallCue.entries.map { it.name } && task in RecallTask.entries.map { it.name } &&
-        outcome in setOf("review", "mistake", "resolved", "confusion")
+        outcome in setOf("review", "mistake", "resolved", "confusion", "practice", "listening")
     }.getOrDefault(false)
 }
 

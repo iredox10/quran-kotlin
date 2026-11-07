@@ -132,7 +132,12 @@ internal fun HifdhRecordingLibrary(viewModel: SurahViewModel) {
     val store = remember { viewModel.createHifdhRecordings() }
     var files by remember { mutableStateOf(store.files()) }
     var player by remember { mutableStateOf<MediaPlayer?>(null) }
-    DisposableEffect(Unit) { onDispose { player?.release() } }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(lifecycle) {
+        val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_STOP) { player?.release(); player = null } }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer); player?.release() }
+    }
     files.forEach { file ->
         Row(Modifier.fillMaxWidth()) {
             TextButton(onClick = {

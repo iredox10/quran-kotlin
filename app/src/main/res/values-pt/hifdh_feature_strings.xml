@@ -19,4 +19,5 @@
     <string name="hifdh_repair">Precisa de reforço</string>
     <string name="hifdh_scope">Memorização Hafs · edição salva</string>
     <string name="hifdh_permission">É necessária permissão do microfone. O áudio fica neste dispositivo.</string>
+    <string name="hifdh_portion_note">Escolha as palavras com seu professor; isto não define uma pausa de recitação. O teste cobre a ayah inteira.</string>
 </resources>

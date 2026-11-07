@@ -83,9 +83,9 @@ fun HifdhTestModal(
             ((android.os.SystemClock.elapsedRealtime() - startedAt) / 1000).toInt())
         if (onAssessment != null) onAssessment(key, assessment)
         else if (!practice.isCorrection) onLogReview(key, assessment.schedulerRating)
+        if (assessment.task != RecallTask.CORRECTION) reviewedCount++
         practice.grade(assessment.schedulerRating)
         lastRating = assessment.schedulerRating
-        reviewedCount++
         isRevealed = false
     }
 

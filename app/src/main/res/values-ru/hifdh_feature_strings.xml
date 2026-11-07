@@ -19,4 +19,5 @@
     <string name="hifdh_repair">Нужно повторить</string>
     <string name="hifdh_scope">Заучивание Хафс · сохранённое издание</string>
     <string name="hifdh_permission">Нужен доступ к микрофону. Аудио остаётся на устройстве.</string>
+    <string name="hifdh_portion_note">Выбирайте слова для практики с учителем; это не место остановки при чтении. Проверяется весь аят.</string>
 </resources>

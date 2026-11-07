@@ -19,4 +19,5 @@
     <string name="hifdh_repair">يحتاج مراجعة تصحيحية</string>
     <string name="hifdh_scope">حفظ حفص · نسخة محفوظة</string>
     <string name="hifdh_permission">يلزم إذن الميكروفون للتسجيل. يبقى الصوت على هذا الجهاز.</string>
+    <string name="hifdh_portion_note">اختر كلمات التدريب مع معلمك؛ هذا ليس موضع وقف. الاختبار للآية كاملة.</string>
 </resources>

@@ -19,4 +19,5 @@
     <string name="hifdh_repair">Pekiştirme gerekli</string>
     <string name="hifdh_scope">Hafs ezberi · kayıtlı baskı</string>
     <string name="hifdh_permission">Kayıt için mikrofon izni gerekir. Ses bu cihazda kalır.</string>
+    <string name="hifdh_portion_note">Çalışma kelimelerini hocanızla seçin; bu bir durak yeri değildir. Test ayetin tamamını kapsar.</string>
 </resources>

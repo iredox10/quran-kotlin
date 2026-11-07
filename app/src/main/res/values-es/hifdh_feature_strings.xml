@@ -19,4 +19,5 @@
     <string name="hifdh_repair">Necesita refuerzo</string>
     <string name="hifdh_scope">Memorización Hafs · edición guardada</string>
     <string name="hifdh_permission">Se necesita permiso del micrófono. El audio queda en este dispositivo.</string>
+    <string name="hifdh_portion_note">Elige las palabras con tu maestro; esto no define una pausa de recitación. La prueba abarca toda la aleya.</string>
 </resources>

@@ -19,4 +19,5 @@
     <string name="hifdh_repair">اصلاح درکار</string>
     <string name="hifdh_scope">حفظ حفص · محفوظ نسخہ</string>
     <string name="hifdh_permission">ریکارڈنگ کے لیے مائیکروفون کی اجازت چاہیے۔ آڈیو اسی آلے پر رہتا ہے۔</string>
+    <string name="hifdh_portion_note">مشق کے الفاظ استاد کے ساتھ منتخب کریں؛ یہ تلاوت کا مقام وقف نہیں۔ امتحان پوری آیت کا ہے۔</string>
 </resources>

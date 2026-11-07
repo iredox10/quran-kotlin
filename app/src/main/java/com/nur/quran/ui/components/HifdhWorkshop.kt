@@ -62,6 +62,7 @@ fun HifdhWorkshop(viewModel: SurahViewModel, chapters: List<ChapterEntity>, onDi
     var lesson by remember { mutableStateOf<List<String>?>(null) }
     var assessmentKeys by remember { mutableStateOf<List<String>?>(null) }
     var task by remember { mutableStateOf(RecallTask.AYAH) }
+    val pageTransitions by produceState<List<String>>(emptyList(), selection) { value = viewModel.memorizationPageTransitions(selection) }
     val keys = remember(inventory, selection) { inventory.keys.filter { it.startsWith("$selection:") } }
     val daily = remember(keys, memorized, history, events, minutes) {
         buildDailyHifdhPlan(keys, memorized, history, events, System.currentTimeMillis(), minutes, inventory)
@@ -116,9 +117,12 @@ fun HifdhWorkshop(viewModel: SurahViewModel, chapters: List<ChapterEntity>, onDi
                         Button(enabled = valid, onClick = { startTest(range) }) { Text(stringResource(R.string.hifdh_independent)) }
                         OutlinedButton(enabled = valid && start > 1, onClick = { startTest(range, RecallTask.TRANSITION) }) { Text(stringResource(R.string.ui_weak_transition_detected_c43370)) }
                         OutlinedButton(enabled = valid, onClick = { startTest(range, RecallTask.PASSAGE) }) { Text(stringResource(R.string.hifdh_passage)) }
+                        OutlinedButton(enabled = pageTransitions.isNotEmpty(), onClick = { startTest(pageTransitions, RecallTask.TRANSITION) }) {
+                            Text(stringResource(R.string.planner_pages) + " · " + stringResource(R.string.hifdh_practice))
+                        }
                         Text(stringResource(R.string.hifdh_scope), color = hInkMuted)
                     }
-                    2 -> HifdhMistakeNotebook(viewModel, events, onRepair = { startTest(listOf(it)) })
+                    2 -> HifdhMistakeNotebook(viewModel, events, onRepair = { startTest(it) })
                     else -> LazyColumn(Modifier.weight(1f).padding(horizontal = 20.dp)) {
                         item {
                             val total = memorized.size
@@ -132,8 +136,17 @@ fun HifdhWorkshop(viewModel: SurahViewModel, chapters: List<ChapterEntity>, onDi
                         item { HifdhRecordingLibrary(viewModel) }
                         items(events.take(250), key = { it.id }) { event ->
                             val stamp = remember(event.timestamp) { Instant.ofEpochMilli(event.timestamp).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("MMM d, HH:mm")) }
-                            ListItem(headlineContent = { Text(event.verseKey + " · " + event.task, color = hInk) },
-                                supportingContent = { Text("$stamp · ${event.assessor} · ${event.rating} · ${event.durationSeconds}s\n${event.note}", color = hInkMid) },
+                            ListItem(headlineContent = { Text(event.verseKey + " · " + stringResource(when (event.task) {
+                                "PASSAGE" -> R.string.hifdh_passage
+                                "TRANSITION" -> R.string.ui_weak_transition_detected_c43370
+                                "CORRECTION" -> R.string.hifdh_correction
+                                else -> R.string.hifdh_independent
+                            }), color = hInk) },
+                                supportingContent = { Text(stamp + " · " + stringResource(when (event.assessor) {
+                                    "teacher" -> R.string.hifdh_teacher
+                                    "listener" -> R.string.hifdh_listener
+                                    else -> R.string.hifdh_self
+                                }) + " · ${event.rating} · ${event.durationSeconds}s\n${event.note}", color = hInkMid) },
                                 colors = ListItemDefaults.colors(containerColor = hCream))
                         }
                     }
@@ -188,7 +201,7 @@ private fun HifdhLesson(viewModel: SurahViewModel, keys: List<String>, onDismiss
                 LazyColumn(Modifier.weight(1f)) { items(verses, key = { it.verseKey }) { verse ->
                     Text(verse.verseKey, color = hGold, modifier = Modifier.padding(top = 20.dp))
                     if (visible) {
-                        WorkshopArabic(verse)
+                        PracticePortion(verse)
                         Text(verse.translation.orEmpty(), color = hInkMid, modifier = Modifier.padding(vertical = 12.dp))
                     } else TextButton(onClick = { visible = true }) { Text(stringResource(R.string.ui_tap_to_reveal_505d60)) }
                 } }
@@ -208,4 +221,26 @@ internal fun WorkshopArabic(verse: VerseEntity) {
         wordRanges = emptyList(), segments = emptyList(), selectedArabicFontName = "KFGQPC Hafs",
         fontSizeSp = 28f, lineHeightRatio = 1.8f, textColor = hInk, isInteractive = false,
         onWordClick = {}, onTajweedClick = {}, modifier = Modifier.fillMaxWidth())
+}
+
+/** A user-chosen study slice never changes the source or the full-ayah assessment. */
+@Composable
+private fun PracticePortion(verse: VerseEntity) {
+    val source = verse.textQpcHafs?.takeIf { it.isNotBlank() } ?: verse.textUthmani.orEmpty()
+    val words = remember(source) { Regex("\\S+").findAll(source).toList() }
+    var start by remember(source) { mutableStateOf("1") }
+    var end by remember(source) { mutableStateOf(words.size.toString()) }
+    if (words.size > 15) {
+        Text(stringResource(R.string.hifdh_portion_note), color = hInkMuted, fontSize = 12.sp)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(start, { start = it.filter(Char::isDigit).take(3) }, modifier = Modifier.weight(1f), singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), label = { Text(stringResource(R.string.ui_words_1_s_2_s_b2e62d, start, words.size)) })
+            OutlinedTextField(end, { end = it.filter(Char::isDigit).take(3) }, modifier = Modifier.weight(1f), singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), label = { Text(stringResource(R.string.ui_words_1_s_2_s_b2e62d, end, words.size)) })
+        }
+    }
+    val first = (start.toIntOrNull() ?: 1).coerceIn(1, words.size.coerceAtLeast(1))
+    val last = (end.toIntOrNull() ?: words.size).coerceIn(first, words.size.coerceAtLeast(1))
+    val text = if (words.isEmpty()) source else source.substring(words[first - 1].range.first, words[last - 1].range.last + 1)
+    WorkshopArabic(verse.copy(textQpcHafs = text, textUthmani = text))
 }

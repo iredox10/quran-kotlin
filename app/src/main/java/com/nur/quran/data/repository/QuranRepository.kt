@@ -188,6 +188,15 @@ class QuranRepository @Inject constructor(
         getAllOfflineVerses().associate { it.verse_key to (it.text_uthmani.orEmpty().split(Regex("\\s+")).count { word -> word.isNotBlank() }) }
     }
 
+    /** First ayah anchored to each next Madani page; reference comes only from bundled data. */
+    suspend fun memorizationPageTransitions(chapter: Int): List<String> = withContext(Dispatchers.IO) {
+        val verses = getAllOfflineVerses()
+        verses.zipWithNext().filter { (previous, next) ->
+            previous.page_number != next.page_number && next.verse_key.substringBefore(":").toIntOrNull() == chapter &&
+                next.verse_key.substringAfter(":").toIntOrNull() != 1
+        }.map { it.second.verse_key }
+    }
+
     /**
      * Packed-translation read: single verse text for [translationId] from the
      * `translation_texts` table (filled by the pack manager). Null on any miss

@@ -19,4 +19,5 @@
     <string name="hifdh_repair">सुधार आवश्यक</string>
     <string name="hifdh_scope">हफ़्स हिफ़्ज़ · सहेजा संस्करण</string>
     <string name="hifdh_permission">रिकॉर्ड करने के लिए माइक्रोफ़ोन की अनुमति चाहिए। ऑडियो डिवाइस पर रहता है।</string>
+    <string name="hifdh_portion_note">अभ्यास के शब्द शिक्षक के साथ चुनें; यह तिलावत में रुकने का स्थान नहीं है। परीक्षा पूरी आयत की होगी।</string>
 </resources>

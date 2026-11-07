@@ -24,9 +24,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 @Composable
-internal fun HifdhMistakeNotebook(viewModel: SurahViewModel, events: List<HifdhReviewEvent>, onRepair: (String) -> Unit) {
+internal fun HifdhMistakeNotebook(viewModel: SurahViewModel, events: List<HifdhReviewEvent>, onRepair: (List<String>) -> Unit) {
     val resolved = events.filter { it.outcome == "resolved" }.mapNotNull { it.relatedEventId }.toSet()
-    val mistakes = events.filter { it.outcome == "mistake" || (it.outcome == "review" && it.rating == 1 && it.task != "CORRECTION") }
+    val mistakes = events.filter { it.outcome == "mistake" || it.outcome == "confusion" || (it.outcome == "review" && it.rating == 1 && it.task != "CORRECTION") }
         .filter { failed -> failed.id !in resolved && events.none { it.verseKey == failed.verseKey && it.timestamp > failed.timestamp && it.independentPass } }
     var newNote by remember { mutableStateOf(false) }
     var compare by remember { mutableStateOf<String?>(null) }
@@ -37,11 +37,18 @@ internal fun HifdhMistakeNotebook(viewModel: SurahViewModel, events: List<HifdhR
         }
         items(mistakes, key = { it.id }) { event ->
             Column(Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
-                Text(event.verseKey + " · " + (event.errorType ?: stringResource(R.string.hifdh_repair)), color = hGold)
+                Text(listOfNotNull(event.verseKey, event.relatedVerse).joinToString(" ↔ "), color = hGold)
+                Text(stringResource(when (event.errorType) {
+                    "prompt" -> R.string.ui_needed_prompt_353bdc
+                    "hesitation" -> R.string.ui_hesitated_3dbf06
+                    "transition" -> R.string.ui_weak_transition_detected_c43370
+                    "pronunciation" -> R.string.settings_tajweed
+                    else -> R.string.hifdh_repair
+                }), color = hInkMuted)
                 Text(event.note, color = hInk)
                 if (event.wordPosition != null) Text(stringResource(R.string.ui_words_1_s_2_s_b2e62d, event.wordPosition, ""), color = hInkMuted)
                 Row {
-                    TextButton(onClick = { onRepair(event.verseKey) }) { Text(stringResource(R.string.hifdh_practice)) }
+                    TextButton(onClick = { onRepair(listOfNotNull(event.verseKey, event.relatedVerse)) }) { Text(stringResource(R.string.hifdh_practice)) }
                     TextButton(onClick = { compare = event.verseKey }) { Text(stringResource(R.string.hifdh_similar)) }
                     TextButton(onClick = {
                         viewModel.logHifdhAssessment(event.verseKey, RecallAssessment(3), outcome = "resolved", relatedEventId = event.id)

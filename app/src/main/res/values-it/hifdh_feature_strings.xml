@@ -19,4 +19,5 @@
     <string name="hifdh_repair">Da consolidare</string>
     <string name="hifdh_scope">Memorizzazione Hafs · edizione salvata</string>
     <string name="hifdh_permission">Serve il permesso del microfono. L’audio resta sul dispositivo.</string>
+    <string name="hifdh_portion_note">Scegli le parole con il tuo insegnante; questo non indica una pausa di recitazione. Il test copre tutta la ayah.</string>
 </resources>

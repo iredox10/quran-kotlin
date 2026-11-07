@@ -441,6 +441,8 @@ class SurahViewModel @Inject constructor(
 
     /** Cached verse lookups used by the hifdh test modals. */
     private val verseTextCache = java.util.concurrent.ConcurrentHashMap<String, VerseEntity>()
+    suspend fun memorizationPageTransitions(chapter: Int) = repository.memorizationPageTransitions(chapter)
+
     suspend fun memorizationInventory() = repository.memorizationInventory()
 
     suspend fun getVerseTexts(keys: List<String>): Map<String, VerseEntity> {

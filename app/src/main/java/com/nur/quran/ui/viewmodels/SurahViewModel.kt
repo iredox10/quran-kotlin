@@ -343,14 +343,15 @@ class SurahViewModel @Inject constructor(
     private val evidenceLock = Mutex()
     private val _hifdhEvents = MutableStateFlow<List<HifdhReviewEvent>>(emptyList())
     val hifdhEvents = _hifdhEvents.asStateFlow()
+    fun createHifdhRecordings() = HifdhRecordings(context, backend.storedUserId() ?: "local")
     private fun journal() = HifdhJournal(context, backend.storedUserId() ?: "local")
     fun logHifdhAssessment(verseKey: String, assessment: RecallAssessment, assessor: String = "self",
         note: String = "", errorType: String? = null, wordPosition: Int? = null, relatedVerse: String? = null,
-        recordingId: String? = null, outcome: String = "review") {
+        recordingId: String? = null, outcome: String = "review", relatedEventId: String? = null) {
         val event = HifdhReviewEvent(verseKey = verseKey, rating = assessment.schedulerRating,
             cue = assessment.cue.name, task = assessment.task.name, durationSeconds = assessment.durationSeconds.coerceIn(0, 86_400),
             assessor = assessor, note = note.take(2000), errorType = errorType, wordPosition = wordPosition,
-            relatedVerse = relatedVerse, recordingId = recordingId, outcome = outcome)
+            relatedVerse = relatedVerse, recordingId = recordingId, outcome = outcome, relatedEventId = relatedEventId)
         val owner = backend.storedUserId() ?: "local"
         viewModelScope.launch(Dispatchers.IO) {
             evidenceLock.withLock {
@@ -365,7 +366,7 @@ class SurahViewModel @Inject constructor(
                         _transitionLinks.value = links
                         hifdhStore.saveTransitionLinks(links)
                     }
-                    if (outcome == "review" && assessment.task == RecallTask.AYAH) {
+                    if (outcome == "review" && assessment.task in setOf(RecallTask.AYAH, RecallTask.PASSAGE)) {
                         logHifdhReview(verseKey, assessment.schedulerRating)
                         if (assessment.independent) {
                             val learned = _memorizedAyahs.value + verseKey

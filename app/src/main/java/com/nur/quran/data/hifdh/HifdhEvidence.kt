@@ -19,7 +19,8 @@ data class HifdhReviewEvent(
     val errorType: String? = null,
     val wordPosition: Int? = null,
     val relatedVerse: String? = null,
-    val recordingId: String? = null
+    val recordingId: String? = null,
+    val relatedEventId: String? = null
 ) {
     val independentPass get() = rating in 2..4 && cue == RecallCue.NONE.name &&
         task != RecallTask.CORRECTION.name && outcome == "review"

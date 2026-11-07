@@ -38,6 +38,9 @@ class OfflineReaderContentTest {
             val dao = repository.javaClass.getDeclaredField("quranDao").apply { isAccessible = true }.get(repository) as com.nur.quran.data.db.dao.QuranDao
             val testEdition = 987654321
             try {
+                assertEquals(6236, repository.memorizationInventory().size)
+                assertTrue(repository.memorizationPageTransitions(2).isNotEmpty())
+                assertEquals(setOf("1:1", "2:255", "114:6"), reader.getVerseTexts(listOf("1:1", "2:255", "114:6")).keys)
                 repository.refreshChapters()
                 repository.refreshReciters()
                 for (page in listOf(1, 2, 3, 50, 300, 603, 604)) {

@@ -34,7 +34,7 @@ class PreferredMushafUiTest {
         assertTrue(node.performAction(AccessibilityNodeInfo.ACTION_CLICK))
         instrumentation.waitForIdleSync()
     }
-    private fun open(): ActivityScenario<ComponentActivity> = ActivityScenario.launch(ComponentActivity::class.java).also { scenario ->
+    private fun open(): ActivityScenario<MainActivity> = ActivityScenario.launch(MainActivity::class.java).also { scenario ->
         val context = instrumentation.targetContext
         scenario.onActivity { activity -> activity.setContent { MaterialTheme {
             PreferredMushafReader(onDismiss = {}, onSelectHafs = { ReaderMushafPreference.select(context, it) }) {
@@ -77,7 +77,7 @@ class PreferredMushafUiTest {
                 waitFor("1 / 604")
                 assertEquals("qaloon", ReaderMushafPreference.selected(context))
                 click(context.getString(R.string.ui_settings_c7f73b))
-                click(context.getString(R.string.settings_choose_mushaf))
+                click(context.getString(R.string.settings_mushaf))
                 click(context.getString(R.string.settings_madani_standard))
                 waitFor("Hafs test reader")
                 assertEquals("madani-standard", ReaderMushafPreference.selected(context))
@@ -120,7 +120,7 @@ class PreferredMushafUiTest {
         val before = prefs.getString(ReaderMushafPreference.KEY, null)
         ReaderMushafPreference.select(context, "warsh")
         try {
-            ActivityScenario.launch(ComponentActivity::class.java).use { scenario ->
+            ActivityScenario.launch(MainActivity::class.java).use { scenario ->
                 scenario.onActivity { activity -> activity.setContent { MaterialTheme {
                     PreferredMushafReader(onDismiss = {}, onSelectHafs = {}, hafsVerseKey = "2:255") {
                         Text("Exact Hafs verse 2:255")
@@ -147,7 +147,7 @@ class PreferredMushafUiTest {
             PreferredMushafReader(onDismiss = {}, onSelectHafs = {}, initialPage = 2) { Text("Hafs test reader") }
         } } }
         try {
-            ActivityScenario.launch(ComponentActivity::class.java).use { scenario ->
+            ActivityScenario.launch(MainActivity::class.java).use { scenario ->
                 scenario.onActivity(::render)
                 waitFor("2 / 604")
                 swipeMushafPage(right = true)

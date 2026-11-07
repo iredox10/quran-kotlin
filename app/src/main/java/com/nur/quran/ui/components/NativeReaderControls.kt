@@ -3,8 +3,6 @@ package com.nur.quran.ui.components
 import android.content.Context
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,7 +14,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nur.quran.R
-import com.nur.quran.data.mushaf.ReaderMushafPreference
 import com.nur.quran.ui.screens.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.CancellationException
@@ -100,28 +97,15 @@ internal fun NativeReaderSettings(
     size: Float, minimum: Float, maximum: Float, onSize: (Float) -> Unit,
     onJump: () -> Unit, onDismiss: () -> Unit, onSelectHafs: (String) -> Unit
 ) {
-    val context = LocalContext.current
-    var chooseMushaf by remember { mutableStateOf(false) }
-    AlertDialog(onDismissRequest = onDismiss, containerColor = hCream,
-        title = { Text(stringResource(if (chooseMushaf) R.string.settings_choose_mushaf else R.string.ui_settings_c7f73b), color = hInk, fontFamily = fontFamilyUi) },
-        text = { Column(Modifier.heightIn(max = 540.dp).verticalScroll(rememberScrollState())) {
-            if (chooseMushaf) MushafPicker(ReaderMushafPreference.selected(context), {
-                if (!ReaderMushafPreference.isNative(it)) onSelectHafs(it)
-                onDismiss()
-            }, openOnSelect = false)
-            else {
-                Text(stringResource(R.string.ui_text_sizes_4dfc49), color = hInk)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(onClick = { onSize((size - (maximum - minimum) / 8).coerceAtLeast(minimum)) }) { Text("A−", color = hInk) }
-                    Slider(value = size, onValueChange = onSize, valueRange = minimum..maximum, modifier = Modifier.weight(1f))
-                    TextButton(onClick = { onSize((size + (maximum - minimum) / 8).coerceAtMost(maximum)) }) { Text("A+", color = hInk) }
-                }
-                TextButton(onClick = { chooseMushaf = true }) { Text(stringResource(R.string.settings_choose_mushaf), color = hInk) }
-                TextButton(onClick = onJump) { Text(stringResource(R.string.ui_go_to_page_af1382), color = hInk) }
-            }
-        } },
-        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.ui_done_e9b450), color = hInk) } }
-    )
+    AppSettingsSection(onDismiss = onDismiss, readerControls = {
+        Text(stringResource(R.string.settings_arabic_size), color = hInk)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = { onSize((size - (maximum - minimum) / 8).coerceAtLeast(minimum)) }) { Text("A−", color = hInk) }
+            Slider(value = size, onValueChange = onSize, valueRange = minimum..maximum, modifier = Modifier.weight(1f))
+            TextButton(onClick = { onSize((size + (maximum - minimum) / 8).coerceAtMost(maximum)) }) { Text("A+", color = hInk) }
+        }
+        TextButton(onClick = onJump) { Text(stringResource(R.string.ui_go_to_page_af1382), color = hInk) }
+    })
 }
 
 @Composable

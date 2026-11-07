@@ -76,3 +76,5 @@ Home’s browse lists also use the selected edition’s page range, juz/hizb sta
 An explicit Hafs verse-key link (for example an existing bookmark or active Hafs audio notification) also retains its Hafs owner and exact verse anchor. Opening such a link does not reset the saved default edition used for ordinary Quran reading.
 
 Navigation anchors apply once on entry. Native page state and the applied-anchor flag survive activity recreation, so rotating the device or changing interface language does not snap a reader back to the page/surah originally used to open it.
+
+All reader gear buttons open the standard app Settings drawer (General/Reading). Native text size/zoom and page jump are included in Reading; there is no separate native quick-settings popup. The drawer shares the app's reader/pack view models, so library and sync actions stay connected to the same settings state.

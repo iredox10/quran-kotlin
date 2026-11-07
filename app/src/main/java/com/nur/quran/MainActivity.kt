@@ -52,6 +52,8 @@ import com.nur.quran.ui.viewmodels.PlannerViewModel
 import com.nur.quran.ui.viewmodels.LibraryViewModel
 import com.nur.quran.ui.viewmodels.PackViewModel
 import com.nur.quran.ui.components.NurIcons
+import com.nur.quran.ui.components.AppSettingsModels
+import com.nur.quran.ui.components.LocalAppSettingsModels
 import com.nur.quran.ui.components.PreferredMushafReader
 import dagger.hilt.android.AndroidEntryPoint
 import com.nur.quran.ui.screens.*
@@ -179,6 +181,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            CompositionLocalProvider(LocalAppSettingsModels provides remember { AppSettingsModels(surahViewModel, packViewModel) }) {
             MaterialTheme {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentDestination = navBackStackEntry?.destination
@@ -454,6 +457,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        }
         runCatching {
             if (Build.VERSION.SDK_INT >= 33 &&
                 ContextCompat.checkSelfPermission(

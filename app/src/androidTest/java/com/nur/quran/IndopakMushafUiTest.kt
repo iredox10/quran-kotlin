@@ -30,6 +30,18 @@ class IndopakMushafUiTest {
         error("Missing $label")
     }
     private fun click(label: String) {
+        repeat(8) {
+            if (find(label) == null) {
+                fun scroll(node: AccessibilityNodeInfo?): Boolean {
+                    node ?: return false
+                    if (node.isScrollable && node.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD)) return true
+                    for (i in 0 until node.childCount) if (scroll(node.getChild(i))) return true
+                    return false
+                }
+                scroll(instrumentation.uiAutomation.rootInActiveWindow)
+                Thread.sleep(150)
+            }
+        }
         var node = waitFor(label)
         while (!node.isClickable) node = node.parent ?: error("Not clickable: $label")
         assertTrue(node.performAction(AccessibilityNodeInfo.ACTION_CLICK))
@@ -46,7 +58,7 @@ class IndopakMushafUiTest {
         val saved = if (prefs.contains("indopak")) prefs.getInt("indopak", 2) else null
         prefs.edit().putInt("indopak", 2).commit()
         try {
-            ActivityScenario.launch(ComponentActivity::class.java).use { scenario ->
+            ActivityScenario.launch(MainActivity::class.java).use { scenario ->
                 scenario.onActivity { it.setContent { MaterialTheme { IndopakMushafReader {} } } }
                 waitFor("IndoPak · 2")
                 assertNull(find(context.getString(R.string.ui_next_0fed81)))
@@ -56,13 +68,16 @@ class IndopakMushafUiTest {
                 repeat(100) { if (prefs.getInt("indopak", 0) != 3) Thread.sleep(50) }
                 assertEquals(3, prefs.getInt("indopak", 0))
                 click(context.getString(R.string.ui_settings_c7f73b))
+                waitFor(context.getString(R.string.settings_general))
+                click(context.getString(R.string.settings_reading))
                 click("A+")
-                click(context.getString(R.string.ui_done_e9b450))
+                click(context.getString(R.string.settings_close))
                 swipeMushafPage(right = true) // A zoomed page pans instead of turning.
                 assertEquals(3, prefs.getInt("indopak", 0))
                 click(context.getString(R.string.ui_settings_c7f73b))
+                click(context.getString(R.string.settings_reading))
                 click("A−")
-                click(context.getString(R.string.ui_done_e9b450))
+                click(context.getString(R.string.settings_close))
                 swipeMushafPage(right = false)
                 waitFor("IndoPak · 2")
                 assertEquals(2, prefs.getInt("indopak", 0))

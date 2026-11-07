@@ -85,7 +85,8 @@ fun SettingsDrawer(
     onBackup: () -> Unit = {},
     onRestore: () -> Unit = {},
     onLoginClick: () -> Unit = {},
-    completedEvents: kotlinx.coroutines.flow.SharedFlow<String>? = null
+    completedEvents: kotlinx.coroutines.flow.SharedFlow<String>? = null,
+    readerControls: (@Composable () -> Unit)? = null
 ) {
     val arabicFontScale by viewModel.arabicFontScale.collectAsState()
     val translationFontScale by viewModel.translationFontScale.collectAsState()
@@ -484,6 +485,7 @@ fun SettingsDrawer(
                                             border = androidx.compose.foundation.BorderStroke(1.dp, hBoneDark)
                                         ) {
                                             Column(modifier = Modifier.padding(14.dp)) {
+                                                if (readerControls != null) readerControls() else {
                                                 Row(
                                                     modifier = Modifier.fillMaxWidth(),
                                                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -498,6 +500,7 @@ fun SettingsDrawer(
                                                     valueRange = 0.7f..2.0f,
                                                     colors = SliderDefaults.colors(thumbColor = hGold, activeTrackColor = hGold)
                                                 )
+                                                }
                                                 Spacer(modifier = Modifier.height(6.dp))
                                                 Row(
                                                     modifier = Modifier.fillMaxWidth(),

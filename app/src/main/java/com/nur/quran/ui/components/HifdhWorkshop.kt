@@ -71,6 +71,7 @@ private fun HifdhWorkshopContent(viewModel: SurahViewModel, chapters: List<Chapt
     var chapterPicker by remember { mutableStateOf(false) }
     var lesson by remember { mutableStateOf<List<String>?>(null) }
     var assessmentKeys by remember { mutableStateOf<List<String>?>(null) }
+    var acquisitionKeys by remember { mutableStateOf(emptySet<String>()) }
     var task by remember { mutableStateOf(RecallTask.AYAH) }
     val pageTransitions by produceState<List<String>>(emptyList(), selection) { value = viewModel.memorizationPageTransitions(selection) }
     val keys = remember(inventory, selection) { inventory.keys.filter { it.startsWith("$selection:") } }
@@ -78,7 +79,8 @@ private fun HifdhWorkshopContent(viewModel: SurahViewModel, chapters: List<Chapt
     val daily = remember(keys, memorized, history, events, minutes, clock) {
         buildDailyHifdhPlan(keys, memorized, history, events, clock, minutes, inventory)
     }
-    fun startTest(items: List<String>, mode: RecallTask = RecallTask.AYAH) {
+    fun startTest(items: List<String>, mode: RecallTask = RecallTask.AYAH, newLearning: Boolean = false) {
+        acquisitionKeys = if (newLearning) items.filterNot { it in memorized }.toSet() else emptySet()
         viewModel.stopPlaying(); task = mode; assessmentKeys = items
     }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
@@ -139,7 +141,7 @@ private fun HifdhWorkshopContent(viewModel: SurahViewModel, chapters: List<Chapt
                             val total = memorized.size
                             val retained = evidence.count { it.value.mastery == HifdhMastery.RETAINED }
                             val independent = evidence.count { it.value.mastery == HifdhMastery.RECALLED }
-                            val failed = evidence.count { it.value.mastery == HifdhMastery.REPAIR }
+                            val failed = (evidence.filterValues { it.mastery == HifdhMastery.REPAIR }.keys + unresolvedHifdhMistakes(events).flatMap { listOfNotNull(it.verseKey, it.relatedVerse) }).toSet().size
                             Text(stringResource(R.string.hifdh_retained) + ": $retained / $total", color = hInk, modifier = Modifier.padding(vertical = 16.dp))
                             Text(stringResource(R.string.hifdh_independent) + ": $independent · " + stringResource(R.string.hifdh_repair) + ": $failed", color = hInkMid)
                             Text(stringResource(R.string.hifdh_learning) + ": " + evidence.count { it.value.mastery == HifdhMastery.LEARNING }, color = hInkMid)
@@ -184,14 +186,14 @@ private fun HifdhWorkshopContent(viewModel: SurahViewModel, chapters: List<Chapt
                 prefs.edit().putInt("chapter", selection).apply(); chapterPicker = false
             }.padding(vertical = 12.dp))
         } } }, confirmButton = { TextButton(onClick = { chapterPicker = false }) { Text(stringResource(R.string.ui_done_e9b450)) } })
-    lesson?.let { HifdhLesson(viewModel, it, { lesson = null }, { startTest(it); lesson = null }) }
+    lesson?.let { HifdhLesson(viewModel, it, { lesson = null }, { startTest(it, newLearning = true); lesson = null }) }
     assessmentKeys?.let { test ->
         if (task == RecallTask.PASSAGE) HifdhPassageAssessment(viewModel, test, { assessmentKeys = null })
         else HifdhTestModal(test, if (task == RecallTask.TRANSITION) "Rabt" else "Hifdh", chapters,
             onDismiss = { assessmentKeys = null }, onLogReview = viewModel::logHifdhReview,
             loadVerses = viewModel::getVerseTexts,
             weakTransitions = if (task == RecallTask.TRANSITION) test.toSet() else emptySet(),
-            onAssessment = { key, result -> viewModel.logHifdhAssessment(key, result) })
+            onAssessment = { key, result -> viewModel.logHifdhAssessment(key, result, acquisition = key in acquisitionKeys) })
     }
 }
 

@@ -23,4 +23,17 @@ class HifdhDailyPlanTest {
         assertTrue(plan.remainingReviewCount > 0)
         assertEquals(known.size, plan.reviewKeys.size + plan.remainingReviewCount)
     }
+    @Test fun recordedMistakesArePrioritizedEvenWithoutAnExistingCard() {
+        val note = HifdhReviewEvent(verseKey = "2:255", rating = 1, outcome = "mistake", timestamp = now)
+        val plan = buildDailyHifdhPlan(listOf("2:255", "2:256"), emptySet(), emptyMap(), listOf(note), now)
+        assertTrue("2:255" in plan.recentKeys)
+        assertFalse("2:255" in plan.newKeys)
+    }
+    @Test fun writingANoteDoesNotHideMissedPracticeDays() {
+        val reviewed = HifdhReviewEvent(verseKey = "1:1", rating = 3, timestamp = now - 5 * 86400000L)
+        val note = HifdhReviewEvent(verseKey = "1:2", rating = 1, outcome = "mistake", timestamp = now)
+        val plan = buildDailyHifdhPlan(listOf("1:3"), setOf("1:1"), emptyMap(), listOf(note,reviewed), now)
+        assertTrue(plan.recovery)
+        assertTrue(plan.newKeys.isEmpty())
+    }
 }

@@ -347,11 +347,11 @@ class SurahViewModel @Inject constructor(
     private fun journal() = HifdhJournal(context, backend.storedUserId() ?: "local")
     fun logHifdhAssessment(verseKey: String, assessment: RecallAssessment, assessor: String = "self",
         note: String = "", errorType: String? = null, wordPosition: Int? = null, relatedVerse: String? = null,
-        recordingId: String? = null, outcome: String = "review", relatedEventId: String? = null) {
+        recordingId: String? = null, outcome: String = "review", relatedEventId: String? = null, acquisition: Boolean = false) {
         val event = HifdhReviewEvent(verseKey = verseKey, rating = assessment.schedulerRating,
             cue = assessment.cue.name, task = assessment.task.name, durationSeconds = assessment.durationSeconds.coerceIn(0, 86_400),
             assessor = assessor, note = note.take(2000), errorType = errorType, wordPosition = wordPosition,
-            relatedVerse = relatedVerse, recordingId = recordingId, outcome = outcome, relatedEventId = relatedEventId)
+            relatedVerse = relatedVerse, recordingId = recordingId, outcome = outcome, relatedEventId = relatedEventId, acquisition = acquisition && assessment.independent)
         val owner = backend.storedUserId() ?: "local"
         viewModelScope.launch(Dispatchers.IO) {
             evidenceLock.withLock {

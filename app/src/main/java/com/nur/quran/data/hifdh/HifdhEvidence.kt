@@ -20,7 +20,8 @@ data class HifdhReviewEvent(
     val wordPosition: Int? = null,
     val relatedVerse: String? = null,
     val recordingId: String? = null,
-    val relatedEventId: String? = null
+    val relatedEventId: String? = null,
+    val acquisition: Boolean = false
 ) {
     val independentPass get() = rating in 2..4 && cue == RecallCue.NONE.name &&
         task != RecallTask.CORRECTION.name && outcome == "review"
@@ -54,13 +55,13 @@ fun evidenceFor(events: List<HifdhReviewEvent>, zone: ZoneId = ZoneId.systemDefa
         ordered.any { it.outcome == "review" } -> HifdhMastery.LEARNING
         else -> HifdhMastery.IMPORTED
     }
-    return HifdhEvidence(passes.firstOrNull()?.timestamp, lastPass, days, failure, teacher, state)
+    return HifdhEvidence(passes.firstOrNull { it.acquisition }?.timestamp, lastPass, days, failure, teacher, state)
 }
 
 /** Unknown-age imports stay older revision; looking at a surah does not change acquisition. */
 fun classifyEvidenceQueue(evidence: HifdhEvidence, card: FsrsCard?, now: Long, recentDays: Int = 7): HifdhQueue {
     if (evidence.mastery == HifdhMastery.REPAIR || card?.state == FsrsState.RELEARNING) return HifdhQueue.SABQI
-    val learned = evidence.learnedAt ?: return if (card?.state in setOf(FsrsState.NEW, FsrsState.LEARNING)) HifdhQueue.SABAQ else HifdhQueue.MANZIL
+    val learned = evidence.learnedAt ?: return if (evidence.lastIndependentPass == null && card?.state in setOf(FsrsState.NEW, FsrsState.LEARNING)) HifdhQueue.SABAQ else HifdhQueue.MANZIL
     val age = (now - learned).coerceAtLeast(0)
     return when {
         age < 86_400_000 -> HifdhQueue.SABAQ

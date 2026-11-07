@@ -32,7 +32,6 @@ private val DEEP_MERGE_FIELDS: Set<String> = setOf(
     "plannerSessionTimers",
     "saukaProgress",
     "hifdhHistory",
-    "hifdhReviewEvents",
     "offlinePackStatus"
 )
 
@@ -358,8 +357,19 @@ private fun mergePageVisitCounts(base: Any?, incoming: Any?): Map<String, Any?> 
     return counts
 }
 
+/** Same bounded, immutable recent-event window as the backend; full history stays in SQLite. */
+private fun mergeHifdhEvents(existing: Any?, incoming: Any?): Map<String, Any?> {
+    val rows = linkedMapOf<String, Any?>()
+    (existing as? Map<*, *>)?.forEach { (id, event) -> rows[id.toString()] = event }
+    (incoming as? Map<*, *>)?.forEach { (id, event) -> if (!rows.containsKey(id.toString())) rows[id.toString()] = event }
+    return rows.entries.filter { isPlainObject(it.value) && numberFiniteOrZero(fieldOf(it.value, "timestamp")) > 0 }
+        .sortedWith(compareByDescending<Map.Entry<String, Any?>> { numberFiniteOrZero(fieldOf(it.value, "timestamp")) }.thenBy { it.key })
+        .take(500).associate { it.key to it.value }
+}
+
 /** Single-field merge (same rules as [mergeStateInto], without planner re-derivation). */
 fun mergeField(field: String, existing: Any?, value: Any?): Any? = when {
+    field == "hifdhReviewEvents" -> mergeHifdhEvents(existing, value)
     field == "recentlyRead" -> mergeArray(existing, value, field)
     field == "collections" -> mergeCollections(existing, value)
     field == "planners" -> mergePlanners(existing, value)

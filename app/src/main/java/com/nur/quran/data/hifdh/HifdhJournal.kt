@@ -36,14 +36,17 @@ class HifdhJournal(context: Context, private val owner: String) {
             .getOrNull()?.takeIf { it.isValid }?.let(::add) }
     }
     /** Bounded sync window. Complete event history remains local; duplicate pulls are harmless. */
-    fun syncEnvelope(): Map<String, HifdhReviewEvent> = events(500).associateBy { it.id }
+    fun syncEnvelope(): Map<String, Map<String, Any?>> = events(500).associate { event ->
+        val type = object : com.google.gson.reflect.TypeToken<Map<String, Any?>>() {}.type
+        event.id to gson.fromJson<Map<String, Any?>>(gson.toJson(event), type)
+    }
     fun mergeEnvelope(value: Any?) {
         if (value !is Map<*, *>) return
-        val rows = value.entries.take(10_000).mapNotNull { (id, raw) ->
+        val rows = value.entries.mapNotNull { (id, raw) ->
             runCatching { gson.fromJson(gson.toJson(raw), HifdhReviewEvent::class.java) }.getOrNull()
                 ?.takeIf { it.isValid && it.id == id }
         }
-        merge(rows)
+        merge(rows.sortedByDescending { it.timestamp }.take(10_000))
     }
     companion object {
         private val revision = MutableStateFlow(0L)

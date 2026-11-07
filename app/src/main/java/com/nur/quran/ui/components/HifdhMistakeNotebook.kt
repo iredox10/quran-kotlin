@@ -27,7 +27,7 @@ import kotlinx.coroutines.withContext
 internal fun HifdhMistakeNotebook(viewModel: SurahViewModel, events: List<HifdhReviewEvent>, onRepair: (List<String>) -> Unit) {
     val resolved = events.filter { it.outcome == "resolved" }.mapNotNull { it.relatedEventId }.toSet()
     val mistakes = events.filter { it.outcome == "mistake" || it.outcome == "confusion" || (it.outcome == "review" && it.rating == 1 && it.task != "CORRECTION") }
-        .filter { failed -> failed.id !in resolved && events.none { it.verseKey == failed.verseKey && it.timestamp > failed.timestamp && it.independentPass } }
+        .filter { failed -> failed.id !in resolved && events.none { it.verseKey == failed.verseKey && it.timestamp > failed.timestamp && it.independentPass && (failed.relatedVerse == null || events.any { paired -> paired.verseKey == failed.relatedVerse && paired.timestamp > failed.timestamp && paired.independentPass }) } }
     var newNote by remember { mutableStateOf(false) }
     var compare by remember { mutableStateOf<String?>(null) }
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
@@ -46,6 +46,8 @@ internal fun HifdhMistakeNotebook(viewModel: SurahViewModel, events: List<HifdhR
                     else -> R.string.hifdh_repair
                 }), color = hInkMuted)
                 Text(event.note, color = hInk)
+                Text(java.text.DateFormat.getDateTimeInstance().format(java.util.Date(event.timestamp)), color = hInkMuted)
+                Text(stringResource(R.string.ui_review_mistakes_961ede) + ": " + events.count { it.verseKey == event.verseKey && (it.outcome == "mistake" || it.outcome == "confusion" || (it.outcome == "review" && it.rating == 1)) }, color = hInkMuted)
                 if (event.wordPosition != null) Text(stringResource(R.string.ui_words_1_s_2_s_b2e62d, event.wordPosition, ""), color = hInkMuted)
                 Row {
                     TextButton(onClick = { onRepair(listOfNotNull(event.verseKey, event.relatedVerse)) }) { Text(stringResource(R.string.hifdh_practice)) }

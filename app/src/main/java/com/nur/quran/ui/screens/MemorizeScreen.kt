@@ -92,11 +92,7 @@ fun MemorizeScreen(
 
     val chapters = (homeState as? HomeUiState.Success)?.chapters ?: emptyList()
 
-    val dueClock by produceState(System.currentTimeMillis()) {
-        while (true) { value = System.currentTimeMillis(); kotlinx.coroutines.delay(15_000) }
-    }
-    // Web MemorizeIndex.jsx queue split: sabaq = new/learning/reps<3,
-    // sabqi = in last memorizing chapter, manzil = the rest. Due = no card or due <= now.
+    val dueClock = com.nur.quran.ui.components.rememberHifdhClock()
     val queueData = remember(memorizedAyahs, hifdhHistory, evidence, dueClock) {
         val keys = memorizedAyahs.sortedWith(compareBy({ it.substringBefore(":").toIntOrNull() ?: 0 }, { it.substringAfter(":").toIntOrNull() ?: 0 }))
         val groups = keys.groupBy { key -> com.nur.quran.data.hifdh.classifyEvidenceQueue(

@@ -40,6 +40,7 @@ internal fun HifdhPassageAssessment(viewModel: SurahViewModel, keys: List<String
     var markedErrors by remember { mutableStateOf(setOf<String>()) }
     var submitted by remember { mutableStateOf(false) }
     var startedAt by remember { mutableLongStateOf(0) }
+    var recordingActive by remember { mutableStateOf(false) }
     var recordingId by remember { mutableStateOf<String?>(null) }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(Modifier.fillMaxSize(), color = hCream) {
@@ -64,11 +65,11 @@ internal fun HifdhPassageAssessment(viewModel: SurahViewModel, keys: List<String
                         }
                     }
                     Row { Checkbox(prompted, { prompted = it }); Text(stringResource(R.string.ui_needed_prompt_353bdc), color = hInk) }
-                    HifdhRecordingPanel(viewModel, onSaved = { recordingId = it })
+                    HifdhRecordingPanel(viewModel, onSaved = { recordingId = it }, onRecordingChanged = { recordingActive = it })
                     if (!checked) Button(onClick = { checked = true }) { Text(stringResource(R.string.ui_tap_to_reveal_505d60)) }
                     if (checked) {
                         OutlinedTextField(notes, { notes = it.take(2000) }, label = { Text(stringResource(R.string.hifdh_notes)) })
-                        Button(onClick = {
+                        Button(enabled = !recordingActive, onClick = {
                             if (submitted) return@Button
                             submitted = true
                             val seconds = ((android.os.SystemClock.elapsedRealtime() - startedAt) / 1000).toInt().coerceAtLeast(1)
@@ -91,7 +92,7 @@ internal fun HifdhPassageAssessment(viewModel: SurahViewModel, keys: List<String
 }
 
 @Composable
-internal fun HifdhRecordingPanel(viewModel: SurahViewModel, onSaved: (String?) -> Unit = {}) {
+internal fun HifdhRecordingPanel(viewModel: SurahViewModel, onSaved: (String?) -> Unit = {}, onRecordingChanged: (Boolean) -> Unit = {}) {
     val context = LocalContext.current
     val store = remember { viewModel.createHifdhRecordings() }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -99,10 +100,10 @@ internal fun HifdhRecordingPanel(viewModel: SurahViewModel, onSaved: (String?) -
     var id by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf(false) }
     var player by remember { mutableStateOf<MediaPlayer?>(null) }
-    fun stop() { id = store.stop(); recording = false; onSaved(id) }
+    fun stop() { id = store.stop(); recording = false; onSaved(id); onRecordingChanged(false) }
     fun start() {
-        try { viewModel.stopPlaying(); id = store.start { stop() }; recording = true; error = false }
-        catch (_: Exception) { error = true; recording = false }
+        try { viewModel.stopPlaying(); onSaved(null); id = store.start { stop() }; recording = true; onRecordingChanged(true); error = false }
+        catch (_: Exception) { error = true; recording = false; onRecordingChanged(false) }
     }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted -> if (granted) start() else error = true }
     DisposableEffect(lifecycle) {

@@ -64,8 +64,9 @@ fun HifdhWorkshop(viewModel: SurahViewModel, chapters: List<ChapterEntity>, onDi
     var task by remember { mutableStateOf(RecallTask.AYAH) }
     val pageTransitions by produceState<List<String>>(emptyList(), selection) { value = viewModel.memorizationPageTransitions(selection) }
     val keys = remember(inventory, selection) { inventory.keys.filter { it.startsWith("$selection:") } }
-    val daily = remember(keys, memorized, history, events, minutes) {
-        buildDailyHifdhPlan(keys, memorized, history, events, System.currentTimeMillis(), minutes, inventory)
+    val clock = rememberHifdhClock()
+    val daily = remember(keys, memorized, history, events, minutes, clock) {
+        buildDailyHifdhPlan(keys, memorized, history, events, clock, minutes, inventory)
     }
     fun startTest(items: List<String>, mode: RecallTask = RecallTask.AYAH) {
         viewModel.stopPlaying(); task = mode; assessmentKeys = items
@@ -143,12 +144,15 @@ fun HifdhWorkshop(viewModel: SurahViewModel, chapters: List<ChapterEntity>, onDi
                         item { HifdhRecordingLibrary(viewModel) }
                         items(events.take(250), key = { it.id }) { event ->
                             val stamp = remember(event.timestamp) { Instant.ofEpochMilli(event.timestamp).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("MMM d, HH:mm")) }
-                            ListItem(headlineContent = { Text(event.verseKey + " · " + stringResource(when (event.task) {
+                            ListItem(headlineContent = { Text(event.verseKey + " · " + stringResource(when {
+                                event.outcome in setOf("practice", "listening") -> R.string.hifdh_practice
+                                event.outcome in setOf("mistake", "resolved", "confusion") -> R.string.hifdh_notes
+                                else -> when (event.task) {
                                 "PASSAGE" -> R.string.hifdh_passage
                                 "TRANSITION" -> R.string.ui_weak_transition_detected_c43370
                                 "CORRECTION" -> R.string.hifdh_correction
                                 else -> R.string.hifdh_independent
-                            }), color = hInk) },
+                            } }), color = hInk) },
                                 supportingContent = { Text(stamp + " · " + stringResource(when (event.assessor) {
                                     "teacher" -> R.string.hifdh_teacher
                                     "listener" -> R.string.hifdh_listener

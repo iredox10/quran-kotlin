@@ -360,6 +360,7 @@ class SurahViewModel @Inject constructor(
                 if ((backend.storedUserId() ?: "local") != owner) return@withLock
                 _hifdhEvents.value = capturedJournal.events()
                 withContext(Dispatchers.Main) {
+                    if ((backend.storedUserId() ?: "local") != owner) return@withContext
                     if (outcome == "review" && assessment.task == RecallTask.TRANSITION) {
                         val links = _transitionLinks.value.toMutableSet()
                         if (assessment.schedulerRating == 1) links.add(verseKey) else links.remove(verseKey)

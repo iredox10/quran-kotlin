@@ -52,7 +52,7 @@ fun evidenceFor(events: List<HifdhReviewEvent>, zone: ZoneId = ZoneId.systemDefa
         failure != null && (lastPass == null || failure >= lastPass) -> HifdhMastery.REPAIR
         days >= 2 && passes.last().timestamp - passes.first().timestamp >= 86_400_000 -> HifdhMastery.RETAINED
         lastPass != null -> HifdhMastery.RECALLED
-        ordered.any { it.outcome == "review" } -> HifdhMastery.LEARNING
+        ordered.any { it.outcome in setOf("review", "practice", "listening") } -> HifdhMastery.LEARNING
         else -> HifdhMastery.IMPORTED
     }
     return HifdhEvidence(passes.firstOrNull { it.acquisition }?.timestamp, lastPass, days, failure, teacher, state)

@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import com.nur.quran.R
+import com.nur.quran.ui.theme.ReaderSystemBars
 import com.nur.quran.i18n.AppLanguages
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -140,6 +141,7 @@ fun SettingsDrawer(
             dismissOnClickOutside = true
         )
     ) {
+        ReaderSystemBars()
         Box(modifier = Modifier.fillMaxSize()) {
             // Backdrop blur overlay matching web app
             AnimatedVisibility(

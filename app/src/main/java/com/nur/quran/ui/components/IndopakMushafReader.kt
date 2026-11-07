@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.nur.quran.R
+import com.nur.quran.ui.theme.ReaderSystemBars
 import com.nur.quran.data.mushaf.IndopakEdition
 import com.nur.quran.ui.screens.*
 import kotlinx.coroutines.ensureActive
@@ -118,6 +119,7 @@ fun IndopakMushafReader(initialSurah: Int? = null, initialPage: Int? = null,
         } } }, confirmButton = { TextButton(onClick = { surahPicker = false }) { Text(stringResource(R.string.ui_close_bbfa77)) } })
     if (jump && pageCount > 0) PageJumpDialog(page, IndopakEdition.FIRST_PAGE, pageCount, { page = it; jump = false }, { jump = false })
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+        ReaderSystemBars()
         val view = LocalView.current
         DisposableEffect(view) {
             val window = (view.parent as? DialogWindowProvider)?.window

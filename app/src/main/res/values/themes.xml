@@ -2,6 +2,9 @@
 <resources>
     <!-- Base application theme. -->
     <style name="Theme.Quran" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:statusBarColor">#004d40</item>
+        <item name="android:statusBarColor">#FAF7F0</item>
+        <item name="android:navigationBarColor">#FAF7F0</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
     </style>
 </resources>

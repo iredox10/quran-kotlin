@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.nur.quran.R
+import com.nur.quran.ui.theme.ReaderSystemBars
 import com.nur.quran.data.mushaf.NarrationAyah
 import com.nur.quran.data.mushaf.NarrationMushaf
 import com.nur.quran.ui.screens.*
@@ -63,6 +64,7 @@ fun NarrationMushafReader(edition: NarrationMushaf, initialSurah: Int? = null, i
         list.scrollToItem(0)
     }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        ReaderSystemBars()
         Surface(Modifier.fillMaxSize(), color = hCream) {
             Column(Modifier.fillMaxSize().navigationBarsPadding().imePadding()) {
                 if (controls) NativeReaderHeader(pageRows.firstOrNull()?.surahName ?: edition.title, auto,

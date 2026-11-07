@@ -46,6 +46,8 @@ import com.nur.quran.ui.viewmodels.PlannerViewModel
 import com.nur.quran.ui.viewmodels.LibraryViewModel
 import com.nur.quran.ui.viewmodels.PackViewModel
 import com.nur.quran.ui.components.NurIcons
+import com.nur.quran.ui.theme.ReaderSystemBars
+import com.nur.quran.ui.theme.applyReaderSystemBars
 import com.nur.quran.ui.components.AppSettingsModels
 import com.nur.quran.ui.components.LocalAppSettingsModels
 import com.nur.quran.ui.components.PreferredMushafReader
@@ -145,7 +147,9 @@ class MainActivity : ComponentActivity() {
             else -> false
         }
         
+        window.applyReaderSystemBars(isDarkThemeGlobal)
         setContent {
+            ReaderSystemBars()
             // Remote restores write Settings too; observe them while the app is open.
             DisposableEffect(prefs) {
                 val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { source, key ->

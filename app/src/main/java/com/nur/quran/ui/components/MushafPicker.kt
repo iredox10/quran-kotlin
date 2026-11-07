@@ -5,6 +5,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.res.painterResource
 import com.nur.quran.data.mushaf.NarrationMushaf
+import com.nur.quran.data.mushaf.ReaderMushafPreference
+import com.nur.quran.data.mushaf.rememberReaderMushaf
 import com.nur.quran.data.mushaf.IndopakEdition
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
@@ -60,8 +62,9 @@ internal fun loadMushafPreview(context: Context): List<MushafPreviewVerse> {
 }
 
 @Composable
-fun MushafPicker(selectedMushafId: String, onSelect: (String) -> Unit) {
+fun MushafPicker(selectedMushafId: String, onSelect: (String) -> Unit, openOnSelect: Boolean = true) {
     val context = LocalContext.current
+    val preferredMushaf = rememberReaderMushaf()
     val previews by produceState<List<MushafPreviewVerse>?>(null, context.applicationContext) {
         value = withContext(Dispatchers.IO) { loadMushafPreview(context.applicationContext) }
     }
@@ -70,22 +73,30 @@ fun MushafPicker(selectedMushafId: String, onSelect: (String) -> Unit) {
     var indopakProgress by remember { mutableStateOf<Float?>(null) }
     var indopakError by remember { mutableStateOf(false) }
     var openIndopak by remember { mutableStateOf(false) }
-    if (openIndopak) IndopakMushafReader { openIndopak = false }
     var openNarration by remember { mutableStateOf<NarrationMushaf?>(null) }
     val narrationSamples by produceState<Map<NarrationMushaf, List<com.nur.quran.data.mushaf.NarrationAyah>>>(emptyMap()) {
         value = withContext(Dispatchers.IO) {
             NarrationMushaf.entries.associateWith { it.ayahs(context.applicationContext).filter { row -> row.surah == 1 && row.number in 2..3 } }
         }
     }
-    openNarration?.let { edition -> NarrationMushafReader(edition) { openNarration = null } }
+    if (openIndopak || openNarration != null) key(preferredMushaf) {
+        if (preferredMushaf == "indopak") IndopakMushafReader(onDismiss = { openIndopak = false; openNarration = null }, onSelectHafs = onSelect)
+        else NarrationMushaf.entries.firstOrNull { it.id == preferredMushaf }?.let { edition ->
+            NarrationMushafReader(edition, onDismiss = { openNarration = null; openIndopak = false }, onSelectHafs = onSelect)
+        }
+    }
     Column(Modifier.fillMaxWidth().selectableGroup(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text(stringResource(R.string.mushaf_picker_intro), fontFamily = fontFamilyBody, fontSize = 13.sp, color = hInkMid, lineHeight = 20.sp)
         Mushaf.ALL.forEach { mushaf ->
-            val selected = selectedMushafId == mushaf.id && mushaf.isSelectable
+            val cardSelectable = mushaf.isSelectable || (mushaf.id == "indopak" && indopakInstalled)
+            val selected = preferredMushaf == mushaf.id && cardSelectable
             Surface(
                 shape = RoundedCornerShape(12.dp), color = if (selected) hGold.copy(alpha = .07f) else hCream,
                 border = BorderStroke(if (selected) 1.5.dp else 1.dp, if (selected) hGold else hBoneDark),
-                modifier = Modifier.fillMaxWidth().selectable(selected = selected, enabled = mushaf.isSelectable, role = Role.RadioButton, onClick = { onSelect(mushaf.id) })
+                modifier = Modifier.fillMaxWidth().selectable(selected = selected, enabled = cardSelectable, role = Role.RadioButton, onClick = {
+                    ReaderMushafPreference.select(context, mushaf.id)
+                    if (mushaf.id == "indopak" && openOnSelect) openIndopak = true else onSelect(mushaf.id)
+                })
             ) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -93,7 +104,7 @@ fun MushafPicker(selectedMushafId: String, onSelect: (String) -> Unit) {
                             Text(mushafDisplayName(mushaf), fontFamily = fontFamilyUi, fontWeight = FontWeight.SemiBold, fontSize = 18.sp, color = hInk)
                             Text(mushafDescription(mushaf), fontFamily = fontFamilyBody, fontSize = 12.sp, color = hInkMid, lineHeight = 18.sp)
                         }
-                        if (mushaf.isSelectable) RadioButton(selected = selected, onClick = null, colors = RadioButtonDefaults.colors(selectedColor = hGold, unselectedColor = hInkMuted))
+                        if (cardSelectable) RadioButton(selected = selected, onClick = null, colors = RadioButtonDefaults.colors(selectedColor = hGold, unselectedColor = hInkMuted))
                         else Icon(NurIcons.BookOpen, contentDescription = null, tint = hGold)
                     }
                     if (mushaf.isSelectable) {
@@ -118,7 +129,7 @@ fun MushafPicker(selectedMushafId: String, onSelect: (String) -> Unit) {
                         Text("Quraan Al Majeed · 13 lines · Al-Fatihah", fontFamily = fontFamilyBody, fontSize = 11.sp, color = hInkMid)
                         Text(stringResource(R.string.indopak_download_description), fontFamily = fontFamilyBody, fontSize = 12.sp, lineHeight = 18.sp, color = hInkMid)
                         Button(enabled = indopakProgress == null, onClick = {
-                            if (indopakInstalled) openIndopak = true
+                            if (indopakInstalled) { ReaderMushafPreference.select(context, "indopak"); if (openOnSelect) openIndopak = true else onSelect("indopak") }
                             else scope.launch {
                                 indopakProgress = 0f
                                 indopakError = false
@@ -127,7 +138,8 @@ fun MushafPicker(selectedMushafId: String, onSelect: (String) -> Unit) {
                                         scope.launch { indopakProgress = amount }
                                     }
                                     indopakInstalled = true
-                                    openIndopak = true
+                                    ReaderMushafPreference.select(context, "indopak")
+                                    if (openOnSelect) openIndopak = true else onSelect("indopak")
                                 } catch (cancel: CancellationException) { throw cancel }
                                 catch (_: Exception) { indopakError = true }
                                 finally { indopakProgress = null }
@@ -145,13 +157,13 @@ fun MushafPicker(selectedMushafId: String, onSelect: (String) -> Unit) {
             }
         }
         NarrationMushaf.entries.forEach { edition ->
-            Surface(shape = RoundedCornerShape(12.dp), color = hCream, border = BorderStroke(1.dp, hBoneDark),
-                modifier = Modifier.fillMaxWidth().clickable { openNarration = edition }) {
+            Surface(shape = RoundedCornerShape(12.dp), color = hCream, border = BorderStroke(if (preferredMushaf == edition.id) 1.5.dp else 1.dp, if (preferredMushaf == edition.id) hGold else hBoneDark),
+                modifier = Modifier.fillMaxWidth().clickable { ReaderMushafPreference.select(context, edition.id); if (openOnSelect) openNarration = edition else onSelect(edition.id) }) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(edition.title, fontFamily = fontFamilyUi, fontWeight = FontWeight.SemiBold,
                             fontSize = 18.sp, color = hInk, modifier = Modifier.weight(1f))
-                        Icon(NurIcons.BookOpen, contentDescription = null, tint = hGold)
+                        Icon(if (preferredMushaf == edition.id) NurIcons.Check else NurIcons.BookOpen, contentDescription = null, tint = hGold)
                     }
                     Surface(shape = RoundedCornerShape(8.dp), color = hWhite, border = BorderStroke(.5.dp, hBoneDark)) {
                         Column(Modifier.fillMaxWidth().padding(12.dp)) {

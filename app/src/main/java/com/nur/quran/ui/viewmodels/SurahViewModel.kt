@@ -2018,6 +2018,7 @@ class SurahViewModel @Inject constructor(
     fun setMushafPreset(preset: String) {
         // Web: setSelectedMushaf — canonicalize, coerce font, force tajweed rules, reload.
         val mushaf = com.nur.quran.data.mushaf.Mushaf.forReading(preset)
+        com.nur.quran.data.mushaf.ReaderMushafPreference.select(context, mushaf.id)
         val switchingEdition = _mushafPreset.value != mushaf.id
         _mushafPreset.value = mushaf.id
         hifdhPrefs.edit().putString("mushaf_preset", mushaf.id).apply()

@@ -52,6 +52,7 @@ import com.nur.quran.ui.viewmodels.PlannerViewModel
 import com.nur.quran.ui.viewmodels.LibraryViewModel
 import com.nur.quran.ui.viewmodels.PackViewModel
 import com.nur.quran.ui.components.NurIcons
+import com.nur.quran.ui.components.PreferredMushafReader
 import dagger.hilt.android.AndroidEntryPoint
 import com.nur.quran.ui.screens.*
 
@@ -381,6 +382,9 @@ class MainActivity : ComponentActivity() {
                         ) { backStackEntry ->
                             val chapterId = backStackEntry.arguments?.getInt("chapterId") ?: 1
                             val targetVerseKey = backStackEntry.arguments?.getString("verseKey")
+                            PreferredMushafReader(onDismiss = { navController.popBackStack() },
+                                onSelectHafs = surahViewModel::setMushafPreset,
+                                initialSurah = chapterId, hafsVerseKey = targetVerseKey) {
                             SurahScreen(
                                 viewModel = surahViewModel,
                                 chapterId = chapterId,
@@ -392,9 +396,13 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             )
+                            }
                         }
                         composable(Screen.PageDetail.route) { backStackEntry ->
                             val pageNum = backStackEntry.arguments?.getString("pageNumber")?.toIntOrNull() ?: 1
+                            PreferredMushafReader(onDismiss = { navController.popBackStack() },
+                                onSelectHafs = surahViewModel::setMushafPreset,
+                                initialPage = pageNum) {
                             PageScreen(
                                 pageNumber = pageNum,
                                 onBackClick = { navController.popBackStack() },
@@ -404,6 +412,7 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             )
+                            }
                         }
                     }
 

@@ -1,0 +1,1030 @@
+{
+  "firstPage": 2,
+  "lastPage": 848,
+  "chapters": [
+    {
+      "id": 1,
+      "page": 2,
+      "count": 7
+    },
+    {
+      "id": 2,
+      "page": 3,
+      "count": 286
+    },
+    {
+      "id": 3,
+      "page": 68,
+      "count": 200
+    },
+    {
+      "id": 4,
+      "page": 106,
+      "count": 176
+    },
+    {
+      "id": 5,
+      "page": 147,
+      "count": 120
+    },
+    {
+      "id": 6,
+      "page": 177,
+      "count": 165
+    },
+    {
+      "id": 7,
+      "page": 209,
+      "count": 206
+    },
+    {
+      "id": 8,
+      "page": 246,
+      "count": 75
+    },
+    {
+      "id": 9,
+      "page": 260,
+      "count": 129
+    },
+    {
+      "id": 10,
+      "page": 288,
+      "count": 109
+    },
+    {
+      "id": 11,
+      "page": 308,
+      "count": 123
+    },
+    {
+      "id": 12,
+      "page": 328,
+      "count": 111
+    },
+    {
+      "id": 13,
+      "page": 346,
+      "count": 43
+    },
+    {
+      "id": 14,
+      "page": 355,
+      "count": 52
+    },
+    {
+      "id": 15,
+      "page": 364,
+      "count": 99
+    },
+    {
+      "id": 16,
+      "page": 372,
+      "count": 128
+    },
+    {
+      "id": 17,
+      "page": 393,
+      "count": 111
+    },
+    {
+      "id": 18,
+      "page": 408,
+      "count": 110
+    },
+    {
+      "id": 19,
+      "page": 425,
+      "count": 98
+    },
+    {
+      "id": 20,
+      "page": 435,
+      "count": 135
+    },
+    {
+      "id": 21,
+      "page": 449,
+      "count": 112
+    },
+    {
+      "id": 22,
+      "page": 462,
+      "count": 78
+    },
+    {
+      "id": 23,
+      "page": 477,
+      "count": 118
+    },
+    {
+      "id": 24,
+      "page": 487,
+      "count": 64
+    },
+    {
+      "id": 25,
+      "page": 501,
+      "count": 77
+    },
+    {
+      "id": 26,
+      "page": 511,
+      "count": 227
+    },
+    {
+      "id": 27,
+      "page": 525,
+      "count": 93
+    },
+    {
+      "id": 28,
+      "page": 537,
+      "count": 88
+    },
+    {
+      "id": 29,
+      "page": 552,
+      "count": 69
+    },
+    {
+      "id": 30,
+      "page": 562,
+      "count": 60
+    },
+    {
+      "id": 31,
+      "page": 571,
+      "count": 34
+    },
+    {
+      "id": 32,
+      "page": 577,
+      "count": 30
+    },
+    {
+      "id": 33,
+      "page": 581,
+      "count": 73
+    },
+    {
+      "id": 34,
+      "page": 595,
+      "count": 54
+    },
+    {
+      "id": 35,
+      "page": 603,
+      "count": 45
+    },
+    {
+      "id": 36,
+      "page": 611,
+      "count": 83
+    },
+    {
+      "id": 37,
+      "page": 618,
+      "count": 182
+    },
+    {
+      "id": 38,
+      "page": 628,
+      "count": 88
+    },
+    {
+      "id": 39,
+      "page": 635,
+      "count": 75
+    },
+    {
+      "id": 40,
+      "page": 647,
+      "count": 85
+    },
+    {
+      "id": 41,
+      "page": 659,
+      "count": 54
+    },
+    {
+      "id": 42,
+      "page": 668,
+      "count": 53
+    },
+    {
+      "id": 43,
+      "page": 677,
+      "count": 89
+    },
+    {
+      "id": 44,
+      "page": 686,
+      "count": 59
+    },
+    {
+      "id": 45,
+      "page": 691,
+      "count": 37
+    },
+    {
+      "id": 46,
+      "page": 697,
+      "count": 35
+    },
+    {
+      "id": 47,
+      "page": 704,
+      "count": 38
+    },
+    {
+      "id": 48,
+      "page": 710,
+      "count": 29
+    },
+    {
+      "id": 49,
+      "page": 716,
+      "count": 18
+    },
+    {
+      "id": 50,
+      "page": 721,
+      "count": 45
+    },
+    {
+      "id": 51,
+      "page": 725,
+      "count": 60
+    },
+    {
+      "id": 52,
+      "page": 729,
+      "count": 49
+    },
+    {
+      "id": 53,
+      "page": 732,
+      "count": 62
+    },
+    {
+      "id": 54,
+      "page": 736,
+      "count": 55
+    },
+    {
+      "id": 55,
+      "page": 740,
+      "count": 78
+    },
+    {
+      "id": 56,
+      "page": 745,
+      "count": 96
+    },
+    {
+      "id": 57,
+      "page": 750,
+      "count": 29
+    },
+    {
+      "id": 58,
+      "page": 757,
+      "count": 22
+    },
+    {
+      "id": 59,
+      "page": 761,
+      "count": 24
+    },
+    {
+      "id": 60,
+      "page": 766,
+      "count": 13
+    },
+    {
+      "id": 61,
+      "page": 770,
+      "count": 14
+    },
+    {
+      "id": 62,
+      "page": 773,
+      "count": 11
+    },
+    {
+      "id": 63,
+      "page": 775,
+      "count": 11
+    },
+    {
+      "id": 64,
+      "page": 777,
+      "count": 18
+    },
+    {
+      "id": 65,
+      "page": 780,
+      "count": 12
+    },
+    {
+      "id": 66,
+      "page": 783,
+      "count": 12
+    },
+    {
+      "id": 67,
+      "page": 787,
+      "count": 30
+    },
+    {
+      "id": 68,
+      "page": 790,
+      "count": 52
+    },
+    {
+      "id": 69,
+      "page": 794,
+      "count": 52
+    },
+    {
+      "id": 70,
+      "page": 797,
+      "count": 44
+    },
+    {
+      "id": 71,
+      "page": 800,
+      "count": 28
+    },
+    {
+      "id": 72,
+      "page": 803,
+      "count": 28
+    },
+    {
+      "id": 73,
+      "page": 806,
+      "count": 20
+    },
+    {
+      "id": 74,
+      "page": 808,
+      "count": 56
+    },
+    {
+      "id": 75,
+      "page": 811,
+      "count": 40
+    },
+    {
+      "id": 76,
+      "page": 813,
+      "count": 31
+    },
+    {
+      "id": 77,
+      "page": 816,
+      "count": 50
+    },
+    {
+      "id": 78,
+      "page": 819,
+      "count": 40
+    },
+    {
+      "id": 79,
+      "page": 820,
+      "count": 46
+    },
+    {
+      "id": 80,
+      "page": 822,
+      "count": 42
+    },
+    {
+      "id": 81,
+      "page": 824,
+      "count": 29
+    },
+    {
+      "id": 82,
+      "page": 825,
+      "count": 19
+    },
+    {
+      "id": 83,
+      "page": 826,
+      "count": 36
+    },
+    {
+      "id": 84,
+      "page": 828,
+      "count": 25
+    },
+    {
+      "id": 85,
+      "page": 829,
+      "count": 22
+    },
+    {
+      "id": 86,
+      "page": 830,
+      "count": 17
+    },
+    {
+      "id": 87,
+      "page": 831,
+      "count": 19
+    },
+    {
+      "id": 88,
+      "page": 832,
+      "count": 26
+    },
+    {
+      "id": 89,
+      "page": 833,
+      "count": 30
+    },
+    {
+      "id": 90,
+      "page": 835,
+      "count": 20
+    },
+    {
+      "id": 91,
+      "page": 836,
+      "count": 15
+    },
+    {
+      "id": 92,
+      "page": 837,
+      "count": 21
+    },
+    {
+      "id": 93,
+      "page": 838,
+      "count": 11
+    },
+    {
+      "id": 94,
+      "page": 838,
+      "count": 8
+    },
+    {
+      "id": 95,
+      "page": 839,
+      "count": 8
+    },
+    {
+      "id": 96,
+      "page": 839,
+      "count": 19
+    },
+    {
+      "id": 97,
+      "page": 840,
+      "count": 5
+    },
+    {
+      "id": 98,
+      "page": 840,
+      "count": 8
+    },
+    {
+      "id": 99,
+      "page": 841,
+      "count": 8
+    },
+    {
+      "id": 100,
+      "page": 842,
+      "count": 11
+    },
+    {
+      "id": 101,
+      "page": 843,
+      "count": 11
+    },
+    {
+      "id": 102,
+      "page": 843,
+      "count": 8
+    },
+    {
+      "id": 103,
+      "page": 844,
+      "count": 3
+    },
+    {
+      "id": 104,
+      "page": 844,
+      "count": 9
+    },
+    {
+      "id": 105,
+      "page": 844,
+      "count": 5
+    },
+    {
+      "id": 106,
+      "page": 845,
+      "count": 4
+    },
+    {
+      "id": 107,
+      "page": 845,
+      "count": 7
+    },
+    {
+      "id": 108,
+      "page": 846,
+      "count": 3
+    },
+    {
+      "id": 109,
+      "page": 846,
+      "count": 6
+    },
+    {
+      "id": 110,
+      "page": 846,
+      "count": 3
+    },
+    {
+      "id": 111,
+      "page": 847,
+      "count": 5
+    },
+    {
+      "id": 112,
+      "page": 847,
+      "count": 4
+    },
+    {
+      "id": 113,
+      "page": 847,
+      "count": 5
+    },
+    {
+      "id": 114,
+      "page": 848,
+      "count": 6
+    }
+  ],
+  "juz": [
+    {
+      "id": 1,
+      "page": 2,
+      "surah": 1
+    },
+    {
+      "id": 2,
+      "page": 29,
+      "surah": 2
+    },
+    {
+      "id": 3,
+      "page": 57,
+      "surah": 2
+    },
+    {
+      "id": 4,
+      "page": 85,
+      "surah": 3
+    },
+    {
+      "id": 5,
+      "page": 113,
+      "surah": 4
+    },
+    {
+      "id": 6,
+      "page": 141,
+      "surah": 4
+    },
+    {
+      "id": 7,
+      "page": 169,
+      "surah": 5
+    },
+    {
+      "id": 8,
+      "page": 197,
+      "surah": 6
+    },
+    {
+      "id": 9,
+      "page": 225,
+      "surah": 7
+    },
+    {
+      "id": 10,
+      "page": 253,
+      "surah": 8
+    },
+    {
+      "id": 11,
+      "page": 281,
+      "surah": 9
+    },
+    {
+      "id": 12,
+      "page": 309,
+      "surah": 11
+    },
+    {
+      "id": 13,
+      "page": 337,
+      "surah": 12
+    },
+    {
+      "id": 14,
+      "page": 365,
+      "surah": 15
+    },
+    {
+      "id": 15,
+      "page": 393,
+      "surah": 17
+    },
+    {
+      "id": 16,
+      "page": 421,
+      "surah": 18
+    },
+    {
+      "id": 17,
+      "page": 449,
+      "surah": 21
+    },
+    {
+      "id": 18,
+      "page": 477,
+      "surah": 23
+    },
+    {
+      "id": 19,
+      "page": 505,
+      "surah": 25
+    },
+    {
+      "id": 20,
+      "page": 533,
+      "surah": 27
+    },
+    {
+      "id": 21,
+      "page": 559,
+      "surah": 29
+    },
+    {
+      "id": 22,
+      "page": 587,
+      "surah": 33
+    },
+    {
+      "id": 23,
+      "page": 613,
+      "surah": 36
+    },
+    {
+      "id": 24,
+      "page": 641,
+      "surah": 39
+    },
+    {
+      "id": 25,
+      "page": 667,
+      "surah": 41
+    },
+    {
+      "id": 26,
+      "page": 697,
+      "surah": 46
+    },
+    {
+      "id": 27,
+      "page": 727,
+      "surah": 51
+    },
+    {
+      "id": 28,
+      "page": 757,
+      "surah": 58
+    },
+    {
+      "id": 29,
+      "page": 787,
+      "surah": 67
+    },
+    {
+      "id": 30,
+      "page": 819,
+      "surah": 78
+    }
+  ],
+  "hizb": [
+    {
+      "id": 1,
+      "page": 2,
+      "surah": 1
+    },
+    {
+      "id": 2,
+      "page": 16,
+      "surah": 2
+    },
+    {
+      "id": 3,
+      "page": 29,
+      "surah": 2
+    },
+    {
+      "id": 4,
+      "page": 42,
+      "surah": 2
+    },
+    {
+      "id": 5,
+      "page": 57,
+      "surah": 2
+    },
+    {
+      "id": 6,
+      "page": 71,
+      "surah": 3
+    },
+    {
+      "id": 7,
+      "page": 85,
+      "surah": 3
+    },
+    {
+      "id": 8,
+      "page": 99,
+      "surah": 3
+    },
+    {
+      "id": 9,
+      "page": 113,
+      "surah": 4
+    },
+    {
+      "id": 10,
+      "page": 126,
+      "surah": 4
+    },
+    {
+      "id": 11,
+      "page": 141,
+      "surah": 4
+    },
+    {
+      "id": 12,
+      "page": 155,
+      "surah": 5
+    },
+    {
+      "id": 13,
+      "page": 169,
+      "surah": 5
+    },
+    {
+      "id": 14,
+      "page": 183,
+      "surah": 6
+    },
+    {
+      "id": 15,
+      "page": 197,
+      "surah": 6
+    },
+    {
+      "id": 16,
+      "page": 208,
+      "surah": 6
+    },
+    {
+      "id": 17,
+      "page": 225,
+      "surah": 7
+    },
+    {
+      "id": 18,
+      "page": 238,
+      "surah": 7
+    },
+    {
+      "id": 19,
+      "page": 253,
+      "surah": 8
+    },
+    {
+      "id": 20,
+      "page": 267,
+      "surah": 9
+    },
+    {
+      "id": 21,
+      "page": 281,
+      "surah": 9
+    },
+    {
+      "id": 22,
+      "page": 295,
+      "surah": 10
+    },
+    {
+      "id": 23,
+      "page": 309,
+      "surah": 11
+    },
+    {
+      "id": 24,
+      "page": 322,
+      "surah": 11
+    },
+    {
+      "id": 25,
+      "page": 337,
+      "surah": 12
+    },
+    {
+      "id": 26,
+      "page": 351,
+      "surah": 13
+    },
+    {
+      "id": 27,
+      "page": 365,
+      "surah": 15
+    },
+    {
+      "id": 28,
+      "page": 378,
+      "surah": 16
+    },
+    {
+      "id": 29,
+      "page": 393,
+      "surah": 17
+    },
+    {
+      "id": 30,
+      "page": 406,
+      "surah": 17
+    },
+    {
+      "id": 31,
+      "page": 421,
+      "surah": 18
+    },
+    {
+      "id": 32,
+      "page": 435,
+      "surah": 20
+    },
+    {
+      "id": 33,
+      "page": 449,
+      "surah": 21
+    },
+    {
+      "id": 34,
+      "page": 462,
+      "surah": 22
+    },
+    {
+      "id": 35,
+      "page": 477,
+      "surah": 23
+    },
+    {
+      "id": 36,
+      "page": 490,
+      "surah": 24
+    },
+    {
+      "id": 37,
+      "page": 505,
+      "surah": 25
+    },
+    {
+      "id": 38,
+      "page": 518,
+      "surah": 26
+    },
+    {
+      "id": 39,
+      "page": 533,
+      "surah": 27
+    },
+    {
+      "id": 40,
+      "page": 545,
+      "surah": 28
+    },
+    {
+      "id": 41,
+      "page": 559,
+      "surah": 29
+    },
+    {
+      "id": 42,
+      "page": 573,
+      "surah": 31
+    },
+    {
+      "id": 43,
+      "page": 587,
+      "surah": 33
+    },
+    {
+      "id": 44,
+      "page": 599,
+      "surah": 34
+    },
+    {
+      "id": 45,
+      "page": 613,
+      "surah": 36
+    },
+    {
+      "id": 46,
+      "page": 626,
+      "surah": 37
+    },
+    {
+      "id": 47,
+      "page": 641,
+      "surah": 39
+    },
+    {
+      "id": 48,
+      "page": 653,
+      "surah": 40
+    },
+    {
+      "id": 49,
+      "page": 667,
+      "surah": 41
+    },
+    {
+      "id": 50,
+      "page": 680,
+      "surah": 43
+    },
+    {
+      "id": 51,
+      "page": 697,
+      "surah": 46
+    },
+    {
+      "id": 52,
+      "page": 713,
+      "surah": 48
+    },
+    {
+      "id": 53,
+      "page": 727,
+      "surah": 51
+    },
+    {
+      "id": 54,
+      "page": 741,
+      "surah": 55
+    },
+    {
+      "id": 55,
+      "page": 757,
+      "surah": 58
+    },
+    {
+      "id": 56,
+      "page": 770,
+      "surah": 61
+    },
+    {
+      "id": 57,
+      "page": 787,
+      "surah": 67
+    },
+    {
+      "id": 58,
+      "page": 802,
+      "surah": 71
+    },
+    {
+      "id": 59,
+      "page": 819,
+      "surah": 78
+    },
+    {
+      "id": 60,
+      "page": 833,
+      "surah": 89
+    }
+  ]
+}

@@ -42,7 +42,7 @@ class NarrationMushafUiTest {
             try {
                 ActivityScenario.launch(ComponentActivity::class.java).use { scenario ->
                     scenario.onActivity { it.setContent { MaterialTheme { NarrationMushafReader(edition) {} } } }
-                    waitFor(edition.title)
+                    waitFor(edition.ayahs(context).first().surahName)
                     waitFor("1 / 604")
                     val first = edition.ayahs(context).first()
                     waitFor(first.text)

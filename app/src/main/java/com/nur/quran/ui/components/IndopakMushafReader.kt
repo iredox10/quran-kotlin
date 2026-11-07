@@ -5,12 +5,22 @@ import android.graphics.pdf.PdfRenderer
 import android.os.ParcelFileDescriptor
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.scrollBy
+import com.nur.quran.data.mushaf.IndopakNavigation
+import com.nur.quran.data.mushaf.IndopakSurah
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
@@ -35,20 +45,42 @@ import kotlinx.coroutines.withContext
 
 /** Printed IndoPak pages keep their original type, marks, and thirteen-line layout. */
 @Composable
-fun IndopakMushafReader(onDismiss: () -> Unit) {
+fun IndopakMushafReader(initialSurah: Int? = null, initialPage: Int? = null,
+    onSelectHafs: (String) -> Unit = {}, onDismiss: () -> Unit) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("NarrationReader", 0) }
-    var page by remember { mutableIntStateOf(prefs.getInt("indopak", IndopakEdition.FIRST_PAGE).coerceIn(IndopakEdition.FIRST_PAGE, IndopakEdition.LAST_PAGE)) }
+    var page by rememberSaveable(initialSurah, initialPage) { mutableIntStateOf((initialPage ?: prefs.getInt("indopak", IndopakEdition.FIRST_PAGE)).coerceIn(IndopakEdition.FIRST_PAGE, IndopakEdition.LAST_PAGE)) }
     var renderedPage by remember { mutableIntStateOf(page) }
     var pageCount by remember { mutableIntStateOf(0) }
     var image by remember { mutableStateOf<Bitmap?>(null) }
     var error by remember { mutableStateOf(false) }
-    var controls by remember { mutableStateOf(false) }
-    var zoom by remember { mutableFloatStateOf(1f) }
+    var controls by remember { mutableStateOf(true) }
+    var settings by remember { mutableStateOf(false) }
+    var surahPicker by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val surahs by produceState<List<IndopakSurah>>(emptyList()) {
+        value = withContext(Dispatchers.IO) { IndopakNavigation.surahs(context) }
+    }
+    var anchorApplied by rememberSaveable(initialSurah) { mutableStateOf(initialSurah == null) }
+    LaunchedEffect(surahs, initialSurah) {
+        if (!anchorApplied && surahs.isNotEmpty()) {
+            val current = surahs.lastOrNull { it.page <= page }?.surah
+            if (current != initialSurah) surahs.firstOrNull { it.surah == initialSurah }?.let { page = it.page }
+            anchorApplied = true
+        }
+    }
+    var zoom by remember { mutableFloatStateOf(prefs.getFloat("indopak_zoom", 1f).coerceIn(1f, 3f)) }
     var jump by remember { mutableStateOf(false) }
     val pages = remember { android.util.LruCache<Int, Bitmap>(3) }
     val vertical = rememberScrollState()
     val horizontal = rememberScrollState()
+    val auto = rememberNativeAutoScroll(page, { vertical.canScrollForward }, { vertical.scrollBy(it) },
+        { if (page < IndopakEdition.LAST_PAGE) { page++; true } else false })
+    LaunchedEffect(zoom) { prefs.edit().putFloat("indopak_zoom", zoom).apply() }
+    val nightFilter = if (isDarkThemeGlobal) ColorFilter.colorMatrix(ColorMatrix(floatArrayOf(
+        -.8745f, 0f, 0f, 0f, 239f, 0f, -.847f, 0f, 0f, 236f,
+        0f, 0f, -.812f, 0f, 228f, 0f, 0f, 0f, 1f, 0f
+    ))) else null
     LaunchedEffect(page) {
         image = pages.get(page) ?: image
         error = false
@@ -63,7 +95,7 @@ fun IndopakMushafReader(onDismiss: () -> Unit) {
             renderedPage = result.third
             pageCount = result.second
             page = result.third
-            prefs.edit().putInt("indopak", page).apply()
+            prefs.edit().putInt("indopak", page).putLong("indopak_timestamp", System.currentTimeMillis()).apply()
             withContext(Dispatchers.IO) {
                 for (nearby in listOf(page + 1, page - 1)) {
                     kotlinx.coroutines.currentCoroutineContext().ensureActive()
@@ -76,6 +108,14 @@ fun IndopakMushafReader(onDismiss: () -> Unit) {
         } catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
         catch (failure: Exception) { android.util.Log.e("IndopakReader", "Local page $page could not be rendered", failure); error = true }
     }
+    if (settings) NativeReaderSettings(zoom, 1f, 3f, { zoom = it },
+        { settings = false; jump = true }, { settings = false }, onSelectHafs)
+    if (surahPicker) AlertDialog(onDismissRequest = { surahPicker = false }, containerColor = hCream,
+        title = { Text(stringResource(R.string.ui_select_surah_97d36a), color = hInk) },
+        text = { LazyColumn(Modifier.heightIn(max = 480.dp)) { items(surahs, key = { it.surah }) { surah ->
+            Text("${surah.surah}. ${surah.name}", color = hInk,
+                modifier = Modifier.fillMaxWidth().clickable { page = surah.page; surahPicker = false }.padding(vertical = 14.dp))
+        } } }, confirmButton = { TextButton(onClick = { surahPicker = false }) { Text(stringResource(R.string.ui_close_bbfa77)) } })
     if (jump && pageCount > 0) PageJumpDialog(page, IndopakEdition.FIRST_PAGE, pageCount, { page = it; jump = false }, { jump = false })
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         val view = LocalView.current
@@ -96,7 +136,7 @@ fun IndopakMushafReader(onDismiss: () -> Unit) {
                 controller?.show(WindowInsetsCompat.Type.systemBars())
             }
         }
-        Surface(Modifier.fillMaxSize(), color = androidx.compose.ui.graphics.Color.White) {
+        Surface(Modifier.fillMaxSize(), color = hCream) {
             BoxWithConstraints(Modifier.fillMaxSize().mushafPageSwipe(
                 enabled = zoom == 1f && !jump,
                 onNext = { if (image != null && page < IndopakEdition.LAST_PAGE) page++ },
@@ -111,23 +151,18 @@ fun IndopakMushafReader(onDismiss: () -> Unit) {
                     val tap = Modifier.pointerInput(Unit) { detectTapGestures(onTap = { controls = !controls }) }
                     if (zoom == 1f) {
                         Image(bitmap.asImageBitmap(), "IndoPak · $renderedPage",
-                            Modifier.fillMaxSize().then(tap), contentScale = ContentScale.Fit)
+                            Modifier.fillMaxSize().then(tap), contentScale = ContentScale.Fit, colorFilter = nightFilter)
                     } else {
                         Box(Modifier.fillMaxSize().verticalScroll(vertical).horizontalScroll(horizontal)) {
                             Image(bitmap.asImageBitmap(), "IndoPak · $renderedPage",
-                                Modifier.requiredSize(viewportWidth * zoom, viewportHeight * zoom).then(tap), contentScale = ContentScale.Fit)
+                                Modifier.requiredSize(viewportWidth * zoom, viewportHeight * zoom).then(tap), contentScale = ContentScale.Fit, colorFilter = nightFilter)
                         }
                     }
                 } else CircularProgressIndicator(color = hGold, modifier = Modifier.align(Alignment.Center))
-                if (controls) Surface(color = hCream.copy(alpha = .97f), modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth()) {
-                    Row(Modifier.safeDrawingPadding(), verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = onDismiss) { Icon(NurIcons.ArrowLeft, stringResource(R.string.planner_back), tint = hInk) }
-                        TextButton(onClick = { jump = true }) { Text("$renderedPage / ${IndopakEdition.LAST_PAGE}", color = hInk) }
-                        Spacer(Modifier.weight(1f))
-                        TextButton(onClick = { zoom = (zoom - .25f).coerceAtLeast(1f) }) { Text("A−", color = hInk) }
-                        TextButton(onClick = { zoom = (zoom + .25f).coerceAtMost(3f) }) { Text("A+", color = hInk) }
-                    }
-                }
+                if (controls) NativeReaderHeader(surahs.lastOrNull { it.page <= renderedPage }?.name ?: "IndoPak", auto,
+                    onDismiss, { auto.paused = auto.active; surahPicker = true }, { controls = false }, { auto.paused = auto.active; settings = true })
+                NativeAutoScrollerBar(auto, { scope.launch { vertical.animateScrollTo(0) } },
+                    { scope.launch { if (vertical.canScrollForward) vertical.animateScrollTo(vertical.maxValue) else if (page < IndopakEdition.LAST_PAGE) page++ } })
             }
         }
     }

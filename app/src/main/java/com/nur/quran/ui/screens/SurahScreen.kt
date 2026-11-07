@@ -1730,7 +1730,7 @@ fun SurahScreen(
 
 // ── Top bar icon button (web Layout IconBtn style) ──────────────────────
 @Composable
-private fun TopBarIconBtn(
+internal fun TopBarIconBtn(
     icon: ImageVector,
     active: Boolean,
     label: String,

@@ -62,3 +62,17 @@ Only the Al-Fatihah preview is bundled. No complete PDF is bundled or redistribu
 ### Reading gestures
 
 IndoPak opens as an immersive page, with scanner whitespace trimmed from its local bitmap without changing the printed letters. The page fits the viewport with its original proportions; there is no bottom navigation panel. Tap the page to show or hide back, page-jump and zoom controls. Swipe right for the next printed page and left for the previous. At increased zoom, dragging pans the enlarged page instead of turning it. First/last pages are bounded. Warsh and Qaloon use the same page-swipe direction alongside their existing footer; vertical scrolling remains independent.
+
+### Saved reading edition and shared controls
+
+`preferred_reader_mushaf` in `hifdh_settings` persists the selected ordinary reading edition. It is observed by the mushaf picker and the Surah/Page navigation destinations, so native choices do not get silently coerced back to Madani when the app reopens. Each edition owns its saved page. Home Continue Reading uses that edition’s saved native position. Selecting a Hafs presentation updates the existing Hafs font/script settings too. An IndoPak default is only saved after the original PDF has been installed and verified.
+
+The native readers now share the Hafs header’s icon component and styling: surah chooser, auto-scroll, immersive reading, theme and settings. Settings provide text/zoom size, page jump and mushaf selection. Auto-scroll has the existing speed/pause/jump bar, scrolls flowing text and advances pages; a page that fits the viewport gets a reading interval before advancing. IndoPak’s local bitmap is mapped to the app’s dark background and light ink without changing the source text. The printed PDF bookmark index is bundled for all 114 surahs.
+
+This preferred edition applies to ordinary Quran reading. Existing Hafs planner assignments, memorization records, audio, translations and tafsir retain their own Hafs keys; alternate-narration verse numbers and 848-page IndoPak positions are never written into those records.
+
+Home’s browse lists also use the selected edition’s page range, juz/hizb starts and chapter counts. A newer planner reading session retains priority in Continue Reading and reopens the planner; normal native reading resumes its own edition/page. Manual scrolling pauses native auto-scroll rather than leaving an apparently active but cancelled scroller.
+
+An explicit Hafs verse-key link (for example an existing bookmark or active Hafs audio notification) also retains its Hafs owner and exact verse anchor. Opening such a link does not reset the saved default edition used for ordinary Quran reading.
+
+Navigation anchors apply once on entry. Native page state and the applied-anchor flag survive activity recreation, so rotating the device or changing interface language does not snap a reader back to the page/surah originally used to open it.

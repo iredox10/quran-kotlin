@@ -1,0 +1,1150 @@
+{
+  "firstPage": 1,
+  "lastPage": 604,
+  "chapters": [
+    {
+      "id": 1,
+      "page": 1,
+      "count": 7
+    },
+    {
+      "id": 2,
+      "page": 2,
+      "count": 285
+    },
+    {
+      "id": 3,
+      "page": 50,
+      "count": 200
+    },
+    {
+      "id": 4,
+      "page": 77,
+      "count": 175
+    },
+    {
+      "id": 5,
+      "page": 106,
+      "count": 122
+    },
+    {
+      "id": 6,
+      "page": 128,
+      "count": 167
+    },
+    {
+      "id": 7,
+      "page": 151,
+      "count": 206
+    },
+    {
+      "id": 8,
+      "page": 177,
+      "count": 76
+    },
+    {
+      "id": 9,
+      "page": 187,
+      "count": 130
+    },
+    {
+      "id": 10,
+      "page": 208,
+      "count": 109
+    },
+    {
+      "id": 11,
+      "page": 221,
+      "count": 121
+    },
+    {
+      "id": 12,
+      "page": 235,
+      "count": 111
+    },
+    {
+      "id": 13,
+      "page": 249,
+      "count": 44
+    },
+    {
+      "id": 14,
+      "page": 255,
+      "count": 54
+    },
+    {
+      "id": 15,
+      "page": 262,
+      "count": 99
+    },
+    {
+      "id": 16,
+      "page": 267,
+      "count": 128
+    },
+    {
+      "id": 17,
+      "page": 282,
+      "count": 110
+    },
+    {
+      "id": 18,
+      "page": 293,
+      "count": 105
+    },
+    {
+      "id": 19,
+      "page": 305,
+      "count": 99
+    },
+    {
+      "id": 20,
+      "page": 312,
+      "count": 134
+    },
+    {
+      "id": 21,
+      "page": 322,
+      "count": 111
+    },
+    {
+      "id": 22,
+      "page": 332,
+      "count": 76
+    },
+    {
+      "id": 23,
+      "page": 342,
+      "count": 119
+    },
+    {
+      "id": 24,
+      "page": 350,
+      "count": 62
+    },
+    {
+      "id": 25,
+      "page": 359,
+      "count": 77
+    },
+    {
+      "id": 26,
+      "page": 367,
+      "count": 226
+    },
+    {
+      "id": 27,
+      "page": 377,
+      "count": 95
+    },
+    {
+      "id": 28,
+      "page": 385,
+      "count": 88
+    },
+    {
+      "id": 29,
+      "page": 396,
+      "count": 69
+    },
+    {
+      "id": 30,
+      "page": 404,
+      "count": 59
+    },
+    {
+      "id": 31,
+      "page": 411,
+      "count": 33
+    },
+    {
+      "id": 32,
+      "page": 415,
+      "count": 30
+    },
+    {
+      "id": 33,
+      "page": 418,
+      "count": 73
+    },
+    {
+      "id": 34,
+      "page": 428,
+      "count": 54
+    },
+    {
+      "id": 35,
+      "page": 434,
+      "count": 46
+    },
+    {
+      "id": 36,
+      "page": 440,
+      "count": 82
+    },
+    {
+      "id": 37,
+      "page": 446,
+      "count": 182
+    },
+    {
+      "id": 38,
+      "page": 453,
+      "count": 86
+    },
+    {
+      "id": 39,
+      "page": 458,
+      "count": 72
+    },
+    {
+      "id": 40,
+      "page": 467,
+      "count": 84
+    },
+    {
+      "id": 41,
+      "page": 477,
+      "count": 53
+    },
+    {
+      "id": 42,
+      "page": 483,
+      "count": 50
+    },
+    {
+      "id": 43,
+      "page": 489,
+      "count": 89
+    },
+    {
+      "id": 44,
+      "page": 496,
+      "count": 56
+    },
+    {
+      "id": 45,
+      "page": 499,
+      "count": 36
+    },
+    {
+      "id": 46,
+      "page": 502,
+      "count": 34
+    },
+    {
+      "id": 47,
+      "page": 507,
+      "count": 39
+    },
+    {
+      "id": 48,
+      "page": 511,
+      "count": 29
+    },
+    {
+      "id": 49,
+      "page": 515,
+      "count": 18
+    },
+    {
+      "id": 50,
+      "page": 518,
+      "count": 45
+    },
+    {
+      "id": 51,
+      "page": 520,
+      "count": 60
+    },
+    {
+      "id": 52,
+      "page": 523,
+      "count": 47
+    },
+    {
+      "id": 53,
+      "page": 526,
+      "count": 61
+    },
+    {
+      "id": 54,
+      "page": 528,
+      "count": 55
+    },
+    {
+      "id": 55,
+      "page": 531,
+      "count": 77
+    },
+    {
+      "id": 56,
+      "page": 534,
+      "count": 99
+    },
+    {
+      "id": 57,
+      "page": 537,
+      "count": 28
+    },
+    {
+      "id": 58,
+      "page": 542,
+      "count": 21
+    },
+    {
+      "id": 59,
+      "page": 545,
+      "count": 24
+    },
+    {
+      "id": 60,
+      "page": 549,
+      "count": 13
+    },
+    {
+      "id": 61,
+      "page": 551,
+      "count": 14
+    },
+    {
+      "id": 62,
+      "page": 553,
+      "count": 11
+    },
+    {
+      "id": 63,
+      "page": 554,
+      "count": 11
+    },
+    {
+      "id": 64,
+      "page": 556,
+      "count": 18
+    },
+    {
+      "id": 65,
+      "page": 558,
+      "count": 12
+    },
+    {
+      "id": 66,
+      "page": 560,
+      "count": 12
+    },
+    {
+      "id": 67,
+      "page": 562,
+      "count": 31
+    },
+    {
+      "id": 68,
+      "page": 564,
+      "count": 52
+    },
+    {
+      "id": 69,
+      "page": 566,
+      "count": 52
+    },
+    {
+      "id": 70,
+      "page": 568,
+      "count": 44
+    },
+    {
+      "id": 71,
+      "page": 570,
+      "count": 30
+    },
+    {
+      "id": 72,
+      "page": 572,
+      "count": 28
+    },
+    {
+      "id": 73,
+      "page": 574,
+      "count": 18
+    },
+    {
+      "id": 74,
+      "page": 575,
+      "count": 55
+    },
+    {
+      "id": 75,
+      "page": 577,
+      "count": 39
+    },
+    {
+      "id": 76,
+      "page": 578,
+      "count": 31
+    },
+    {
+      "id": 77,
+      "page": 580,
+      "count": 50
+    },
+    {
+      "id": 78,
+      "page": 582,
+      "count": 40
+    },
+    {
+      "id": 79,
+      "page": 583,
+      "count": 45
+    },
+    {
+      "id": 80,
+      "page": 585,
+      "count": 42
+    },
+    {
+      "id": 81,
+      "page": 586,
+      "count": 29
+    },
+    {
+      "id": 82,
+      "page": 587,
+      "count": 19
+    },
+    {
+      "id": 83,
+      "page": 587,
+      "count": 36
+    },
+    {
+      "id": 84,
+      "page": 589,
+      "count": 25
+    },
+    {
+      "id": 85,
+      "page": 590,
+      "count": 22
+    },
+    {
+      "id": 86,
+      "page": 591,
+      "count": 17
+    },
+    {
+      "id": 87,
+      "page": 591,
+      "count": 19
+    },
+    {
+      "id": 88,
+      "page": 592,
+      "count": 26
+    },
+    {
+      "id": 89,
+      "page": 593,
+      "count": 32
+    },
+    {
+      "id": 90,
+      "page": 594,
+      "count": 20
+    },
+    {
+      "id": 91,
+      "page": 595,
+      "count": 15
+    },
+    {
+      "id": 92,
+      "page": 595,
+      "count": 21
+    },
+    {
+      "id": 93,
+      "page": 596,
+      "count": 11
+    },
+    {
+      "id": 94,
+      "page": 596,
+      "count": 8
+    },
+    {
+      "id": 95,
+      "page": 597,
+      "count": 8
+    },
+    {
+      "id": 96,
+      "page": 597,
+      "count": 20
+    },
+    {
+      "id": 97,
+      "page": 598,
+      "count": 5
+    },
+    {
+      "id": 98,
+      "page": 598,
+      "count": 8
+    },
+    {
+      "id": 99,
+      "page": 599,
+      "count": 9
+    },
+    {
+      "id": 100,
+      "page": 599,
+      "count": 11
+    },
+    {
+      "id": 101,
+      "page": 600,
+      "count": 10
+    },
+    {
+      "id": 102,
+      "page": 600,
+      "count": 8
+    },
+    {
+      "id": 103,
+      "page": 601,
+      "count": 3
+    },
+    {
+      "id": 104,
+      "page": 601,
+      "count": 9
+    },
+    {
+      "id": 105,
+      "page": 601,
+      "count": 5
+    },
+    {
+      "id": 106,
+      "page": 602,
+      "count": 5
+    },
+    {
+      "id": 107,
+      "page": 602,
+      "count": 6
+    },
+    {
+      "id": 108,
+      "page": 602,
+      "count": 3
+    },
+    {
+      "id": 109,
+      "page": 603,
+      "count": 6
+    },
+    {
+      "id": 110,
+      "page": 603,
+      "count": 3
+    },
+    {
+      "id": 111,
+      "page": 603,
+      "count": 5
+    },
+    {
+      "id": 112,
+      "page": 604,
+      "count": 4
+    },
+    {
+      "id": 113,
+      "page": 604,
+      "count": 5
+    },
+    {
+      "id": 114,
+      "page": 604,
+      "count": 6
+    }
+  ],
+  "juz": [
+    {
+      "id": 1,
+      "page": 1,
+      "surah": 1
+    },
+    {
+      "id": 2,
+      "page": 22,
+      "surah": 2
+    },
+    {
+      "id": 3,
+      "page": 42,
+      "surah": 2
+    },
+    {
+      "id": 4,
+      "page": 62,
+      "surah": 3
+    },
+    {
+      "id": 5,
+      "page": 82,
+      "surah": 4
+    },
+    {
+      "id": 6,
+      "page": 102,
+      "surah": 4
+    },
+    {
+      "id": 7,
+      "page": 121,
+      "surah": 5
+    },
+    {
+      "id": 8,
+      "page": 142,
+      "surah": 6
+    },
+    {
+      "id": 9,
+      "page": 162,
+      "surah": 7
+    },
+    {
+      "id": 10,
+      "page": 182,
+      "surah": 8
+    },
+    {
+      "id": 11,
+      "page": 201,
+      "surah": 9
+    },
+    {
+      "id": 12,
+      "page": 222,
+      "surah": 11
+    },
+    {
+      "id": 13,
+      "page": 242,
+      "surah": 12
+    },
+    {
+      "id": 14,
+      "page": 262,
+      "surah": 15
+    },
+    {
+      "id": 15,
+      "page": 282,
+      "surah": 17
+    },
+    {
+      "id": 16,
+      "page": 302,
+      "surah": 18
+    },
+    {
+      "id": 17,
+      "page": 322,
+      "surah": 21
+    },
+    {
+      "id": 18,
+      "page": 342,
+      "surah": 23
+    },
+    {
+      "id": 19,
+      "page": 362,
+      "surah": 25
+    },
+    {
+      "id": 20,
+      "page": 382,
+      "surah": 27
+    },
+    {
+      "id": 21,
+      "page": 402,
+      "surah": 29
+    },
+    {
+      "id": 22,
+      "page": 422,
+      "surah": 33
+    },
+    {
+      "id": 23,
+      "page": 442,
+      "surah": 36
+    },
+    {
+      "id": 24,
+      "page": 462,
+      "surah": 39
+    },
+    {
+      "id": 25,
+      "page": 482,
+      "surah": 41
+    },
+    {
+      "id": 26,
+      "page": 502,
+      "surah": 46
+    },
+    {
+      "id": 27,
+      "page": 522,
+      "surah": 51
+    },
+    {
+      "id": 28,
+      "page": 542,
+      "surah": 58
+    },
+    {
+      "id": 29,
+      "page": 562,
+      "surah": 67
+    },
+    {
+      "id": 30,
+      "page": 582,
+      "surah": 78
+    }
+  ],
+  "hizb": [
+    {
+      "id": 1,
+      "page": 1,
+      "surah": 1,
+      "nativeAyahId": 1,
+      "anchor": "surah-start"
+    },
+    {
+      "id": 2,
+      "page": 11,
+      "surah": 2,
+      "nativeAyahId": 81,
+      "anchor": "افتطمعونانيومنوالكموقدكانفريقمنهميسمعونك"
+    },
+    {
+      "id": 3,
+      "page": 22,
+      "surah": 2,
+      "nativeAyahId": 148,
+      "anchor": "سيقولالسفهامنالناسماولياهمعنقبلتهمالتيكا"
+    },
+    {
+      "id": 4,
+      "page": 32,
+      "surah": 2,
+      "nativeAyahId": 208,
+      "anchor": "واذكروااللهفياياممعدوداتفمنتعجلفييومينفل"
+    },
+    {
+      "id": 5,
+      "page": 42,
+      "surah": 2,
+      "nativeAyahId": 258,
+      "anchor": "تلكالرسلفضلنابعضهمعليابعضمنهممنكلماللهور"
+    },
+    {
+      "id": 6,
+      "page": 51,
+      "surah": 3,
+      "nativeAyahId": 307,
+      "anchor": "قلاونبيكمبخيرمنذالكمللذيناتقواعندربهمجنا"
+    },
+    {
+      "id": 7,
+      "page": 62,
+      "surah": 3,
+      "nativeAyahId": 385,
+      "anchor": "كلالطعامكانحلالبنياسرايلالاماحرماسرايلعل"
+    },
+    {
+      "id": 8,
+      "page": 72,
+      "surah": 3,
+      "nativeAyahId": 463,
+      "anchor": "يستبشرونبنعمةمناللهوفضلواناللهلايضيعاجرا"
+    },
+    {
+      "id": 9,
+      "page": 82,
+      "surah": 4,
+      "nativeAyahId": 516,
+      "anchor": "والمحصناتمنالنساالاماملكتايمانكمكتابالله"
+    },
+    {
+      "id": 10,
+      "page": 92,
+      "surah": 4,
+      "nativeAyahId": 579,
+      "anchor": "فمالكمفيالمنافقينفيتينواللهاركسهمبماكسبو"
+    },
+    {
+      "id": 11,
+      "page": 102,
+      "surah": 4,
+      "nativeAyahId": 639,
+      "anchor": "لايحباللهالجهربالسومنالقولالامنظلموكانال"
+    },
+    {
+      "id": 12,
+      "page": 112,
+      "surah": 5,
+      "nativeAyahId": 696,
+      "anchor": "واتلعليهمنباابني"
+    },
+    {
+      "id": 13,
+      "page": 121,
+      "surah": 5,
+      "nativeAyahId": 751,
+      "anchor": "لتجدناشدالناسعداوةللذينامنوااليهودوالذين"
+    },
+    {
+      "id": 14,
+      "page": 132,
+      "surah": 6,
+      "nativeAyahId": 826,
+      "anchor": "انمايستجيبالذينيسمعونوالموتيايبعثهماللهث"
+    },
+    {
+      "id": 15,
+      "page": 142,
+      "surah": 6,
+      "nativeAyahId": 901,
+      "anchor": "ولواننانزلنااليهمالملايكةوكلمهمالموتياوح"
+    },
+    {
+      "id": 16,
+      "page": 151,
+      "surah": 7,
+      "nativeAyahId": 957,
+      "anchor": "surah-start"
+    },
+    {
+      "id": 17,
+      "page": 162,
+      "surah": 7,
+      "nativeAyahId": 1043,
+      "anchor": "قالالملاالذيناستكبروامنقومهلنخرجنكياشعيب"
+    },
+    {
+      "id": 18,
+      "page": 173,
+      "surah": 7,
+      "nativeAyahId": 1127,
+      "anchor": "واذنتقناالجبلفوقهمكانهظلةوظنواانهواقعبهم"
+    },
+    {
+      "id": 19,
+      "page": 182,
+      "surah": 8,
+      "nativeAyahId": 1203,
+      "anchor": "واعلمواانماغنمتممنشيفانللهخمسهوللرسولولذ"
+    },
+    {
+      "id": 20,
+      "page": 192,
+      "surah": 9,
+      "nativeAyahId": 1272,
+      "anchor": "ياايهاالذينامنواانكثيرامنالاحباروالرهبان"
+    },
+    {
+      "id": 21,
+      "page": 201,
+      "surah": 9,
+      "nativeAyahId": 1332,
+      "anchor": "انماالسبيلعليالذ"
+    },
+    {
+      "id": 22,
+      "page": 212,
+      "surah": 10,
+      "nativeAyahId": 1394,
+      "anchor": "للذيناحسنواالحسنياوزيادةولايرهقوجوههمقتر"
+    },
+    {
+      "id": 23,
+      "page": 222,
+      "surah": 11,
+      "nativeAyahId": 1483,
+      "anchor": "ومامندابةفيالارضالاعلياللهرزقهاويعلممستق"
+    },
+    {
+      "id": 24,
+      "page": 231,
+      "surah": 11,
+      "nativeAyahId": 1560,
+      "anchor": "واليامديناخاهمشعيباقالياقوماعبدوااللهمال"
+    },
+    {
+      "id": 25,
+      "page": 242,
+      "surah": 12,
+      "nativeAyahId": 1651,
+      "anchor": "وماابرينفسيانالنفسلامارةبالسوالامارحمربي"
+    },
+    {
+      "id": 26,
+      "page": 252,
+      "surah": 13,
+      "nativeAyahId": 1730,
+      "anchor": "افمنيعلمانماانزلاليكمنربكالحقكمنهواعمياا"
+    },
+    {
+      "id": 27,
+      "page": 262,
+      "surah": 15,
+      "nativeAyahId": 1808,
+      "anchor": "surah-start"
+    },
+    {
+      "id": 28,
+      "page": 272,
+      "surah": 16,
+      "nativeAyahId": 1957,
+      "anchor": "وقالاللهلاتتخذواالاهيناثنينانماهوالاهواح"
+    },
+    {
+      "id": 29,
+      "page": 282,
+      "surah": 17,
+      "nativeAyahId": 2035,
+      "anchor": "surah-start"
+    },
+    {
+      "id": 30,
+      "page": 292,
+      "surah": 17,
+      "nativeAyahId": 2133,
+      "anchor": "اولميروااناللهالذيخلقالسماواتوالارضقادرع"
+    },
+    {
+      "id": 31,
+      "page": 302,
+      "surah": 18,
+      "nativeAyahId": 2218,
+      "anchor": "قالالماقللكانكلنتستطيعمعيصبرا"
+    },
+    {
+      "id": 32,
+      "page": 312,
+      "surah": 20,
+      "nativeAyahId": 2349,
+      "anchor": "surah-start"
+    },
+    {
+      "id": 33,
+      "page": 322,
+      "surah": 21,
+      "nativeAyahId": 2483,
+      "anchor": "surah-start"
+    },
+    {
+      "id": 34,
+      "page": 332,
+      "surah": 22,
+      "nativeAyahId": 2594,
+      "anchor": "surah-start"
+    },
+    {
+      "id": 35,
+      "page": 342,
+      "surah": 23,
+      "nativeAyahId": 2670,
+      "anchor": "surah-start"
+    },
+    {
+      "id": 36,
+      "page": 352,
+      "surah": 24,
+      "nativeAyahId": 2809,
+      "anchor": "ياايهاالذينامنوالاتتبعواخطواتالشيطانومني"
+    },
+    {
+      "id": 37,
+      "page": 362,
+      "surah": 25,
+      "nativeAyahId": 2871,
+      "anchor": "وقالالذينلايرجونلقانالولاانزلعليناالملاي"
+    },
+    {
+      "id": 38,
+      "page": 371,
+      "surah": 26,
+      "nativeAyahId": 3038,
+      "anchor": "قالواانومنلكواتبعكالارذلون"
+    },
+    {
+      "id": 39,
+      "page": 382,
+      "surah": 27,
+      "nativeAyahId": 3211,
+      "anchor": "فماكانجوابقومهالاانقالوااخرجوااللوطمنقري"
+    },
+    {
+      "id": 40,
+      "page": 392,
+      "surah": 28,
+      "nativeAyahId": 3299,
+      "anchor": "ولقدوصلنالهمالقوللعلهميتذكرون"
+    },
+    {
+      "id": 41,
+      "page": 402,
+      "surah": 29,
+      "nativeAyahId": 3382,
+      "anchor": "ولاتجادلوااهلالكتابالابالتيهياحسنالاالذي"
+    },
+    {
+      "id": 42,
+      "page": 413,
+      "surah": 31,
+      "nativeAyahId": 3485,
+      "anchor": "ومنيسلموجههالياللهوهومحسنفقداستمسكبالعرو"
+    },
+    {
+      "id": 43,
+      "page": 422,
+      "surah": 33,
+      "nativeAyahId": 3558,
+      "anchor": "ومنيقنتمنكنللهورسولهوتعملصالحانوتهااجرها"
+    },
+    {
+      "id": 44,
+      "page": 431,
+      "surah": 34,
+      "nativeAyahId": 3624,
+      "anchor": "قلمنيرزقكممنالسماواتوالارضقلاللهوانااواي"
+    },
+    {
+      "id": 45,
+      "page": 442,
+      "surah": 36,
+      "nativeAyahId": 3727,
+      "anchor": "وماانزلناعلياقومهمنبعدهمنجندمنالسماوماكن"
+    },
+    {
+      "id": 46,
+      "page": 451,
+      "surah": 37,
+      "nativeAyahId": 3927,
+      "anchor": "فنبذناهبالعراوهوسقيم"
+    },
+    {
+      "id": 47,
+      "page": 462,
+      "surah": 39,
+      "nativeAyahId": 4081,
+      "anchor": "فمناظلمممنكذبعلياللهوكذببالصدقاذجاهاليسف"
+    },
+    {
+      "id": 48,
+      "page": 472,
+      "surah": 40,
+      "nativeAyahId": 4163,
+      "anchor": "وياقومماليادعوكماليالنجواةوتدعوننياليالن"
+    },
+    {
+      "id": 49,
+      "page": 482,
+      "surah": 41,
+      "nativeAyahId": 4252,
+      "anchor": "اليهيردعلمالساعةوماتخرجمنثمراتمناكمامهاو"
+    },
+    {
+      "id": 50,
+      "page": 491,
+      "surah": 43,
+      "nativeAyahId": 4332,
+      "anchor": "اولوجيتكمباهديامماوجدتمعليهاباكمقالواانا"
+    },
+    {
+      "id": 51,
+      "page": 502,
+      "surah": 46,
+      "nativeAyahId": 4491,
+      "anchor": "surah-start"
+    },
+    {
+      "id": 52,
+      "page": 513,
+      "surah": 48,
+      "nativeAyahId": 4581,
+      "anchor": "لقدرضياللهعنالمومنيناذيبايعونكتحتالشجرةف"
+    },
+    {
+      "id": 53,
+      "page": 522,
+      "surah": 51,
+      "nativeAyahId": 4686,
+      "anchor": "قالفماخطبكمايهاالمرسلون"
+    },
+    {
+      "id": 54,
+      "page": 531,
+      "surah": 55,
+      "nativeAyahId": 4879,
+      "anchor": "surah-start"
+    },
+    {
+      "id": 55,
+      "page": 542,
+      "surah": 58,
+      "nativeAyahId": 5083,
+      "anchor": "surah-start"
+    },
+    {
+      "id": 56,
+      "page": 553,
+      "surah": 62,
+      "nativeAyahId": 5155,
+      "anchor": "surah-start"
+    },
+    {
+      "id": 57,
+      "page": 562,
+      "surah": 67,
+      "nativeAyahId": 5219,
+      "anchor": "surah-start"
+    },
+    {
+      "id": 58,
+      "page": 572,
+      "surah": 72,
+      "nativeAyahId": 5428,
+      "anchor": "surah-start"
+    },
+    {
+      "id": 59,
+      "page": 582,
+      "surah": 78,
+      "nativeAyahId": 5649,
+      "anchor": "surah-start"
+    },
+    {
+      "id": 60,
+      "page": 591,
+      "surah": 87,
+      "nativeAyahId": 5924,
+      "anchor": "surah-start"
+    }
+  ]
+}

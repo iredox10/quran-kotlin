@@ -55,12 +55,14 @@ class IndopakMushafUiTest {
                 waitFor("IndoPak · 3")
                 repeat(100) { if (prefs.getInt("indopak", 0) != 3) Thread.sleep(50) }
                 assertEquals(3, prefs.getInt("indopak", 0))
-                tapMushafPage()
+                click(context.getString(R.string.ui_settings_c7f73b))
                 click("A+")
+                click(context.getString(R.string.ui_done_e9b450))
                 swipeMushafPage(right = true) // A zoomed page pans instead of turning.
                 assertEquals(3, prefs.getInt("indopak", 0))
+                click(context.getString(R.string.ui_settings_c7f73b))
                 click("A−")
-                tapMushafPage()
+                click(context.getString(R.string.ui_done_e9b450))
                 swipeMushafPage(right = false)
                 waitFor("IndoPak · 2")
                 assertEquals(2, prefs.getInt("indopak", 0))

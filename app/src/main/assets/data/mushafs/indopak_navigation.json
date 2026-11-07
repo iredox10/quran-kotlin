@@ -1,0 +1,572 @@
+[
+  {
+    "surah": 1,
+    "name": "Al-Fatihah",
+    "page": 2
+  },
+  {
+    "surah": 2,
+    "name": "Al-Baqarah",
+    "page": 3
+  },
+  {
+    "surah": 3,
+    "name": "Ali 'Imran",
+    "page": 68
+  },
+  {
+    "surah": 4,
+    "name": "An-Nisa",
+    "page": 106
+  },
+  {
+    "surah": 5,
+    "name": "Al-Ma'idah",
+    "page": 147
+  },
+  {
+    "surah": 6,
+    "name": "Al-An'am",
+    "page": 177
+  },
+  {
+    "surah": 7,
+    "name": "Al-A'raf",
+    "page": 209
+  },
+  {
+    "surah": 8,
+    "name": "Al-Anfal",
+    "page": 246
+  },
+  {
+    "surah": 9,
+    "name": "At-Tawbah",
+    "page": 260
+  },
+  {
+    "surah": 10,
+    "name": "Yunus",
+    "page": 288
+  },
+  {
+    "surah": 11,
+    "name": "Hud",
+    "page": 308
+  },
+  {
+    "surah": 12,
+    "name": "Yusuf",
+    "page": 328
+  },
+  {
+    "surah": 13,
+    "name": "Ar-Ra'd",
+    "page": 346
+  },
+  {
+    "surah": 14,
+    "name": "Ibrahim",
+    "page": 355
+  },
+  {
+    "surah": 15,
+    "name": "Al-Hijr",
+    "page": 364
+  },
+  {
+    "surah": 16,
+    "name": "An-Nahl",
+    "page": 372
+  },
+  {
+    "surah": 17,
+    "name": "Al-Isra",
+    "page": 393
+  },
+  {
+    "surah": 18,
+    "name": "Al-Kahf",
+    "page": 408
+  },
+  {
+    "surah": 19,
+    "name": "Maryam",
+    "page": 425
+  },
+  {
+    "surah": 20,
+    "name": "Taha",
+    "page": 435
+  },
+  {
+    "surah": 21,
+    "name": "Al-Anbya",
+    "page": 449
+  },
+  {
+    "surah": 22,
+    "name": "Al-Hajj",
+    "page": 462
+  },
+  {
+    "surah": 23,
+    "name": "Al-Mu'minun",
+    "page": 477
+  },
+  {
+    "surah": 24,
+    "name": "An-Nur",
+    "page": 487
+  },
+  {
+    "surah": 25,
+    "name": "Al-Furqan",
+    "page": 501
+  },
+  {
+    "surah": 26,
+    "name": "Ash-Shu'ara",
+    "page": 511
+  },
+  {
+    "surah": 27,
+    "name": "An-Naml",
+    "page": 525
+  },
+  {
+    "surah": 28,
+    "name": "Al-Qasas",
+    "page": 537
+  },
+  {
+    "surah": 29,
+    "name": "Al-'Ankabut",
+    "page": 552
+  },
+  {
+    "surah": 30,
+    "name": "Ar-Rum",
+    "page": 562
+  },
+  {
+    "surah": 31,
+    "name": "Luqman",
+    "page": 571
+  },
+  {
+    "surah": 32,
+    "name": "As-Sajdah",
+    "page": 577
+  },
+  {
+    "surah": 33,
+    "name": "Al-Ahzab",
+    "page": 581
+  },
+  {
+    "surah": 34,
+    "name": "Saba",
+    "page": 595
+  },
+  {
+    "surah": 35,
+    "name": "Fatir",
+    "page": 603
+  },
+  {
+    "surah": 36,
+    "name": "Ya-Sin",
+    "page": 611
+  },
+  {
+    "surah": 37,
+    "name": "As-Saffat",
+    "page": 618
+  },
+  {
+    "surah": 38,
+    "name": "Sad",
+    "page": 628
+  },
+  {
+    "surah": 39,
+    "name": "Az-Zumar",
+    "page": 635
+  },
+  {
+    "surah": 40,
+    "name": "Ghafir",
+    "page": 647
+  },
+  {
+    "surah": 41,
+    "name": "Fussilat",
+    "page": 659
+  },
+  {
+    "surah": 42,
+    "name": "Ash-Shuraa",
+    "page": 668
+  },
+  {
+    "surah": 43,
+    "name": "Az-Zukhruf",
+    "page": 677
+  },
+  {
+    "surah": 44,
+    "name": "Ad-Dukhan",
+    "page": 686
+  },
+  {
+    "surah": 45,
+    "name": "Al-Jathiyah",
+    "page": 691
+  },
+  {
+    "surah": 46,
+    "name": "Al-Ahqaf",
+    "page": 697
+  },
+  {
+    "surah": 47,
+    "name": "Muhammad",
+    "page": 704
+  },
+  {
+    "surah": 48,
+    "name": "Al-Fath",
+    "page": 710
+  },
+  {
+    "surah": 49,
+    "name": "Al-Hujurat",
+    "page": 716
+  },
+  {
+    "surah": 50,
+    "name": "Qaf",
+    "page": 721
+  },
+  {
+    "surah": 51,
+    "name": "Adh-Dhariyat",
+    "page": 725
+  },
+  {
+    "surah": 52,
+    "name": "At-Tur",
+    "page": 729
+  },
+  {
+    "surah": 53,
+    "name": "An-Najm",
+    "page": 732
+  },
+  {
+    "surah": 54,
+    "name": "Al-Qamar",
+    "page": 736
+  },
+  {
+    "surah": 55,
+    "name": "Ar-Rahman",
+    "page": 740
+  },
+  {
+    "surah": 56,
+    "name": "Al-Waqi'ah",
+    "page": 745
+  },
+  {
+    "surah": 57,
+    "name": "Al-Hadid",
+    "page": 750
+  },
+  {
+    "surah": 58,
+    "name": "Al-Mujadila",
+    "page": 757
+  },
+  {
+    "surah": 59,
+    "name": "Al-Hashr",
+    "page": 761
+  },
+  {
+    "surah": 60,
+    "name": "Al-Mumtahanah",
+    "page": 766
+  },
+  {
+    "surah": 61,
+    "name": "As-Saf",
+    "page": 770
+  },
+  {
+    "surah": 62,
+    "name": "Al-Jumu'ah",
+    "page": 773
+  },
+  {
+    "surah": 63,
+    "name": "Al-Munafiqun",
+    "page": 775
+  },
+  {
+    "surah": 64,
+    "name": "At-Taghabun",
+    "page": 777
+  },
+  {
+    "surah": 65,
+    "name": "At-Talaq",
+    "page": 780
+  },
+  {
+    "surah": 66,
+    "name": "At-Tahrim",
+    "page": 783
+  },
+  {
+    "surah": 67,
+    "name": "Al-Mulk",
+    "page": 787
+  },
+  {
+    "surah": 68,
+    "name": "Al-Qalam",
+    "page": 790
+  },
+  {
+    "surah": 69,
+    "name": "Al-Haqqah",
+    "page": 794
+  },
+  {
+    "surah": 70,
+    "name": "Al-Ma'arij",
+    "page": 797
+  },
+  {
+    "surah": 71,
+    "name": "Nuh",
+    "page": 800
+  },
+  {
+    "surah": 72,
+    "name": "Al-Jinn",
+    "page": 803
+  },
+  {
+    "surah": 73,
+    "name": "Al-Muzzammil",
+    "page": 806
+  },
+  {
+    "surah": 74,
+    "name": "Al-Muddaththir",
+    "page": 808
+  },
+  {
+    "surah": 75,
+    "name": "Al-Qiyamah",
+    "page": 811
+  },
+  {
+    "surah": 76,
+    "name": "Al-Insan",
+    "page": 813
+  },
+  {
+    "surah": 77,
+    "name": "Al-Mursalat",
+    "page": 816
+  },
+  {
+    "surah": 78,
+    "name": "An-Naba",
+    "page": 819
+  },
+  {
+    "surah": 79,
+    "name": "An-Nazi'at",
+    "page": 820
+  },
+  {
+    "surah": 80,
+    "name": "'Abasa",
+    "page": 822
+  },
+  {
+    "surah": 81,
+    "name": "At-Takwir",
+    "page": 824
+  },
+  {
+    "surah": 82,
+    "name": "Al-Infitar",
+    "page": 825
+  },
+  {
+    "surah": 83,
+    "name": "Al-Mutaffifin",
+    "page": 826
+  },
+  {
+    "surah": 84,
+    "name": "Al-Inshiqaq",
+    "page": 828
+  },
+  {
+    "surah": 85,
+    "name": "Al-Buruj",
+    "page": 829
+  },
+  {
+    "surah": 86,
+    "name": "At-Tariq",
+    "page": 830
+  },
+  {
+    "surah": 87,
+    "name": "Al-A'la",
+    "page": 831
+  },
+  {
+    "surah": 88,
+    "name": "Al-Ghashiyah",
+    "page": 832
+  },
+  {
+    "surah": 89,
+    "name": "Al-Fajr",
+    "page": 833
+  },
+  {
+    "surah": 90,
+    "name": "Al-Balad",
+    "page": 835
+  },
+  {
+    "surah": 91,
+    "name": "Ash-Shams",
+    "page": 836
+  },
+  {
+    "surah": 92,
+    "name": "Al-Layl",
+    "page": 837
+  },
+  {
+    "surah": 93,
+    "name": "Ad-Duhaa",
+    "page": 838
+  },
+  {
+    "surah": 94,
+    "name": "Ash-Sharh",
+    "page": 838
+  },
+  {
+    "surah": 95,
+    "name": "At-Tin",
+    "page": 839
+  },
+  {
+    "surah": 96,
+    "name": "Al-'Alaq",
+    "page": 839
+  },
+  {
+    "surah": 97,
+    "name": "Al-Qadr",
+    "page": 840
+  },
+  {
+    "surah": 98,
+    "name": "Al-Bayyinah",
+    "page": 840
+  },
+  {
+    "surah": 99,
+    "name": "Az-Zalzalah",
+    "page": 841
+  },
+  {
+    "surah": 100,
+    "name": "Al-'Adiyat",
+    "page": 842
+  },
+  {
+    "surah": 101,
+    "name": "Al-Qari'ah",
+    "page": 843
+  },
+  {
+    "surah": 102,
+    "name": "At-Takathur",
+    "page": 843
+  },
+  {
+    "surah": 103,
+    "name": "Al-'Asr",
+    "page": 844
+  },
+  {
+    "surah": 104,
+    "name": "Al-Humazah",
+    "page": 844
+  },
+  {
+    "surah": 105,
+    "name": "Al-Fil",
+    "page": 844
+  },
+  {
+    "surah": 106,
+    "name": "Quraysh",
+    "page": 845
+  },
+  {
+    "surah": 107,
+    "name": "Al-Ma'un",
+    "page": 845
+  },
+  {
+    "surah": 108,
+    "name": "Al-Kawthar",
+    "page": 846
+  },
+  {
+    "surah": 109,
+    "name": "Al-Kafirun",
+    "page": 846
+  },
+  {
+    "surah": 110,
+    "name": "An-Nasr",
+    "page": 846
+  },
+  {
+    "surah": 111,
+    "name": "Al-Masad",
+    "page": 847
+  },
+  {
+    "surah": 112,
+    "name": "Al-Ikhlas",
+    "page": 847
+  },
+  {
+    "surah": 113,
+    "name": "Al-Falaq",
+    "page": 847
+  },
+  {
+    "surah": 114,
+    "name": "An-Nas",
+    "page": 848
+  }
+]

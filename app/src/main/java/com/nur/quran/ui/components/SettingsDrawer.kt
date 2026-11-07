@@ -100,7 +100,10 @@ fun SettingsDrawer(
     val currentMushaf = remember(mushafPreset) {
         com.nur.quran.data.mushaf.Mushaf.fromId(mushafPreset)
     }
-    val currentMushafName = when (currentMushaf.id) {
+    val preferredMushaf = com.nur.quran.data.mushaf.rememberReaderMushaf()
+    val currentMushafName = when (preferredMushaf) {
+        "warsh" -> "Warsh ‘an Nafi‘"
+        "qaloon" -> "Qaloon ‘an Nafi‘"
         "madani-standard" -> stringResource(R.string.settings_madani_standard)
         "madani-tajweed" -> stringResource(R.string.settings_madani_tajweed)
         "uthmani-hafs" -> stringResource(R.string.mushaf_name_uthmani)

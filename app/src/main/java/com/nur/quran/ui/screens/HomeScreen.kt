@@ -158,6 +158,13 @@ fun HomeScreen(
     val homeVisits by viewModel.homeVisits.collectAsState()
     val context = LocalContext.current
 
+    val preferredMushaf = com.nur.quran.data.mushaf.rememberReaderMushaf()
+    val nativeResume = com.nur.quran.ui.components.rememberNativeReadingResume(preferredMushaf)
+    val nativeIndex by produceState<com.nur.quran.data.mushaf.NativeBrowseIndex?>(null, preferredMushaf) {
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            com.nur.quran.data.mushaf.NativeBrowseIndex.load(context, preferredMushaf)
+        }
+    }
     // Page-visit analytics (feeds the tour visit thresholds, like the web app)
     LaunchedEffect(Unit) { viewModel.recordHomeVisit() }
 
@@ -243,9 +250,14 @@ fun HomeScreen(
                 }
                 is HomeUiState.Success -> {
                     val chapters = state.chapters
-                    val lastRead = recentlyRead.firstOrNull()
-                    val browseItems = remember(browseMode, chapters, searchQuery) {
-                        filterBrowseItems(buildBrowseItems(browseMode, chapters, context), searchQuery)
+                    val latestRead = recentlyRead.firstOrNull()
+                    val resumeSource = context.getSharedPreferences("ReaderResume", Context.MODE_PRIVATE)
+                    val latestIsPlanner = latestRead != null && resumeSource.getString("plannerId", null) != null &&
+                        resumeSource.getLong("timestamp", -1L) == latestRead.timestamp
+                    val lastRead = if (latestIsPlanner && latestRead!!.timestamp > (nativeResume?.timestamp ?: 0L)) latestRead
+                        else nativeResume ?: latestRead
+                    val browseItems = remember(browseMode, chapters, searchQuery, nativeIndex) {
+                        filterBrowseItems(buildBrowseItems(browseMode, chapters, context, nativeIndex), searchQuery)
                     }
 
             androidx.compose.animation.AnimatedVisibility(
@@ -274,6 +286,10 @@ fun HomeScreen(
                                         // Reopen the exact reader the user was in:
                                         // page reads (page/juz/hizb) → page screen,
                                         // surah reads → surah screen at the anchor.
+                                        if (nativeResume != null && lastRead === nativeResume && com.nur.quran.data.mushaf.ReaderMushafPreference.isNative(preferredMushaf)) {
+                                            onPageClick(nativeResume.pageNumber ?: 1)
+                                            return@ContinueReadingCard
+                                        }
                                         val resume = context.getSharedPreferences("ReaderResume", Context.MODE_PRIVATE)
                                         val plannerId = resume.getString("plannerId", null)
                                             ?.takeIf { resume.getLong("timestamp", -1L) == lastRead.timestamp }
@@ -815,6 +831,7 @@ private fun ContinueReadingCard(item: RecentlyReadEntity, onClick: () -> Unit) {
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 val verseLabel = item.verseKey?.split(":")?.getOrNull(1)?.let { "Verse $it" }
+                    ?: item.pageNumber?.let { stringResource(R.string.ui_page_1_s_6654d7, it) }
                     ?: stringResource(R.string.ui_from_the_beginning_8c8e8d)
                 Text(
                     text = stringResource(R.string.ui_1_s_2_s_c1aacd, verseLabel, com.nur.quran.i18n.relativeTime(item.timestamp)),
@@ -1227,8 +1244,23 @@ private fun BrowseItemCard(
 // ── Helpers ─────────────────────────────────────────────────────────────
 
 /** Mirrors the web app's getBrowseItems(). */
-private fun buildBrowseItems(mode: String, chapters: List<ChapterEntity>, context: Context): List<BrowseItem> {
+private fun buildBrowseItems(mode: String, chapters: List<ChapterEntity>, context: Context,
+    native: com.nur.quran.data.mushaf.NativeBrowseIndex? = null): List<BrowseItem> {
     val chapMap = chapters.associateBy { it.id }
+    if (native != null && mode in setOf("page", "juz", "hizb")) return when (mode) {
+        "page" -> (native.firstPage..native.lastPage).map { n ->
+            val juz = native.juz.lastOrNull { it.page <= n }?.id ?: 1
+            BrowseItem("page-$n", context.getString(R.string.ui_page_1_s_6654d7, n),
+                context.getString(R.string.ui_juz_1_s_mushaf_view_98d63e, juz),
+                context.getString(R.string.ui_page_1_s_6654d7, n), "صفحة $n", n, pageNumber = n)
+        }
+        else -> (if (mode == "juz") native.juz else native.hizb).map { division ->
+            BrowseItem("$mode-${division.id}", context.getString(if (mode == "juz") R.string.ui_juz_1_s_146e8b else R.string.ui_hizb_1_s_ab29bf, division.id),
+                chapMap[division.surah]?.nameSimple.orEmpty(), context.getString(R.string.ui_page_1_s_6654d7, division.page),
+                if (mode == "juz") "الجزء ${division.id}" else "حزب ${division.id}", division.id,
+                chapterId = division.surah, pageNumber = division.page)
+        }
+    }
     return when (mode) {
         "page" -> (1..MUSHAF_PAGE_COUNT).map { n ->
             val juz = getJuzByPage(n)
@@ -1276,7 +1308,7 @@ private fun buildBrowseItems(mode: String, chapters: List<ChapterEntity>, contex
                 key = "surah-${chapter.id}",
                 title = chapter.nameSimple,
                 subtitle = chapter.translatedName.ifEmpty { context.getString(R.string.ui_surah_1_s_ffa393, chapter.id) },
-                meta = context.getString(R.string.ui_1_s_2_s_ayahs_165547, place, chapter.versesCount),
+                meta = context.getString(R.string.ui_1_s_2_s_ayahs_165547, place, native?.chapters?.firstOrNull { it.id == chapter.id }?.count ?: chapter.versesCount),
                 arabic = chapter.nameArabic,
                 prefix = chapter.id,
                 chapterId = chapter.id

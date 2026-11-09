@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Assisted UI translations; scripture text is never translated by this script. -->
 <resources>
-    <string name="mushaf_picker_intro">가장 읽기 편한 서체나 전승을 선택하세요.</string>
+    <string name="mushaf_picker_intro">읽기 가장 쉬운 대본이나 읽기를 선택하십시오.</string>
     <string name="mushaf_name_uthmani">우트마니 Hafs</string>
     <string name="mushaf_description_qpc">Madani QPC 스크립트 · 명확하고 흐르는 텍스트</string>
     <string name="mushaf_description_tajweed">Madani 스크립트 · Tajweed 색상이 항상 켜져 있음</string>
@@ -12,6 +12,47 @@
     <string name="mushaf_selected">선택된</string>
     <string name="mushaf_indopak_unavailable">이 버전에는 일치하는 꾸란 텍스트와 글꼴이 필요합니다. 이 빌드에서는 사용할 수 없으므로 선택할 수 없습니다.</string>
     <string name="mushaf_flow_note">텍스트는 화면과 읽기 크기에 맞게 조정됩니다. 이러한 미리보기는 고정된 인쇄 페이지 줄 수를 보장하지 않습니다.</string>
+    <string name="planner_outside_intro">실제 꾸란이나 다른 곳에서 읽으십니까? 여기에 플래너 페이지를 기록한 후 읽지 않은 다음 페이지부터 계속하세요.</string>
+    <string name="planner_outside_numbering">이 플래너의 페이지 번호를 사용하십시오(604페이지 Madani 번호 매기기).</string>
+    <string name="planner_outside_from">첫 번째 페이지</string>
+    <string name="planner_outside_to">마지막 페이지</string>
+    <string name="planner_outside_date">판독 날짜</string>
+    <string name="planner_outside_timing">독서시간</string>
+    <string name="planner_outside_estimate">내 독서 평균을 사용하세요.</string>
+    <string name="planner_outside_pace">페이지당 %1$s · 플래너의 %2$d 측정 페이지 기준</string>
+    <string name="planner_outside_no_pace">아직 측정된 페이지 평균이 없습니다. 아래에 시간을 입력하세요. 인앱 타이머로 페이지를 마친 후 개인 견적을 사용할 수 있습니다.</string>
+    <string name="planner_outside_manual">내 시간을 입력하세요</string>
+    <string name="planner_outside_minutes">분/페이지</string>
+    <string name="planner_outside_seconds">초</string>
+    <string name="planner_outside_each">각 페이지마다 다른 시간을 설정</string>
+    <string name="planner_outside_page">페이지 %1$d</string>
+    <string name="planner_outside_preview">%1$d 새 페이지 · %2$s</string>
+    <string name="planner_outside_skipped">이미 읽혀진 %1$d 페이지는 건너뛸 것이다. 해당 시간은 다시 추가되지 않습니다.</string>
+    <string name="planner_outside_resume">플래너의 %1$d 페이지부터 계속하세요.</string>
+    <string name="planner_outside_complete">이로써 귀하의 계획이 완료되었습니다. 귀하가 읽은 내용은 기록에 저장됩니다.</string>
+    <string name="planner_outside_save_continue">저장하고 계속 읽으세요</string>
+    <string name="planner_outside_save">판독값 저장</string>
+    <string name="planner_outside_saving">저장 중…</string>
+    <string name="planner_outside_error_range">1부터 604까지의 유효한 페이지 범위를 입력하세요.</string>
+    <string name="planner_outside_error_plan">범위의 모든 페이지는 이 플래너에 속해야 합니다.</string>
+    <string name="planner_outside_error_read">이들 페이지는 이미 기록되어 있다. 읽지 않은 페이지를 선택하세요.</string>
+    <string name="planner_outside_error_date">오늘이나 그 이전에 읽을 날짜를 선택하세요.</string>
+    <string name="planner_outside_error_time">총 24시간을 넘지 않도록 각 페이지에 대해 양의 시간(초 0-59)을 입력합니다.</string>
+    <string name="planner_outside_error_changed">이 플래너는 변경되었거나 더 이상 활성화되지 않습니다. 돌아가서 다시 열어보세요.</string>
+    <string name="planner_outside_error_save">저장을 완료할 수 없습니다. 다시 시도해 주세요. 저장된 항목은 두 번 계산되지 않습니다.</string>
+    <string name="planner_outside_history">외부 독서</string>
+    <string name="planner_outside_pages_label">페이지 %1$s</string>
+    <string name="planner_outside_estimate_note">예상 시간은 총계에 영향을 미치며 측정된 판독값과 별도로 유지됩니다.</string>
+    <string name="planner_outside_per_page">페이지당 %1$s</string>
+    <string name="planner_outside_show_page_times">페이지당 표시 시간</string>
+    <string name="planner_outside_hide_page_times">페이지 시간 숨기기</string>
+    <string name="planner_outside_current">현재 페이지 · %1$d</string>
+    <string name="planner_outside_bounds">활성 플래너 · 페이지 %1$d–%2$d</string>
+    <string name="planner_outside_count">페이지 수</string>
+    <string name="planner_outside_last_choice">마지막 페이지 읽기</string>
+    <string name="planner_outside_start_hint">현재 페이지인 %1$d에서 시작합니다. 본 플래너에서는 %2$d 페이지까지 로그인하실 수 있습니다.</string>
+    <string name="planner_outside_active_range_error">양수 페이지 수 또는 현재 페이지부터 이 플래너 끝까지의 마지막 페이지를 입력하십시오.</string>
+    <string name="planner_outside_position_changed">플래너 읽기 위치가 변경되었습니다. 현재 페이지를 사용하려면 돌아가서 이 양식을 다시 엽니다.</string>
     <string name="planner_adjust_pace">페이스 조정</string>
     <string name="planner_apply">적용하다</string>
     <string name="planner_cancel">취소</string>

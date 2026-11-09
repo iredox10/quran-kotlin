@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="planner_outside_log">Записать чтение вне приложения</string>
+    <string name="planner_outside_in_app">В приложении · измеренное время</string>
+    <string name="planner_outside_entered">Вне приложения · введённое время</string>
+    <string name="planner_outside_estimated">Вне приложения · примерное время</string>
+</resources>

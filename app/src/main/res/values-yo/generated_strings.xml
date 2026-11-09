@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Assisted UI translations; scripture text is never translated by this script. -->
 <resources>
-    <string name="mushaf_picker_intro">Yan irú ìkọ̀wé tàbí ìwájú kíkà tí ó rọrùn jù fún ọ láti kà.</string>
+    <string name="mushaf_picker_intro">Yan iwe afọwọkọ tabi kika ti o rọrun julọ lati ka.</string>
     <string name="mushaf_name_uthmani">Uthmani Hafs</string>
     <string name="mushaf_description_qpc">Madani QPC akosile · ko o, ti nṣàn ọrọ</string>
     <string name="mushaf_description_tajweed">Madani akosile · Tajweed awọn awọ nigbagbogbo lori</string>
@@ -12,6 +12,47 @@
     <string name="mushaf_selected">Ti yan</string>
     <string name="mushaf_indopak_unavailable">Atẹjade yii nilo ọrọ Al-Qur’an ti o baamu ati fonti rẹ. Ko si ni kikọ yii, nitorinaa ko le yan.</string>
     <string name="mushaf_flow_note">Ọrọ ṣatunṣe si iboju rẹ ati iwọn kika. Awọn awotẹlẹ wọnyi ko ṣe ileri kika laini oju-iwe ti o wa titi.</string>
+    <string name="planner_outside_intro">Ka lati inu Al-Qur’an ti ara tabi ibomiiran? Ṣe igbasilẹ awọn oju-iwe oluṣeto rẹ nibi, lẹhinna tẹsiwaju lati oju-iwe atẹle ti a ko ka.</string>
+    <string name="planner_outside_numbering">Lo awọn nọmba oju-iwe ni oluṣeto yii (nọmba Madani oju-iwe 604).</string>
+    <string name="planner_outside_from">Oju-iwe akọkọ</string>
+    <string name="planner_outside_to">Oju-iwe ti o kẹhin</string>
+    <string name="planner_outside_date">Ọjọ kika</string>
+    <string name="planner_outside_timing">Akoko kika</string>
+    <string name="planner_outside_estimate">Lo aropin kika mi</string>
+    <string name="planner_outside_pace">%1$s fun oju-iwe · da lori awọn oju-iwe ti a ṣewọn %2$d ninu awọn oluṣeto rẹ</string>
+    <string name="planner_outside_no_pace">Ko si aropin oju-iwe ti a ṣewọn sibẹsibẹ. Tẹ akoko rẹ sii ni isalẹ; Iṣiro ti ara ẹni yoo wa lẹhin ti o pari awọn oju-iwe pẹlu aago in-app.</string>
+    <string name="planner_outside_manual">Tẹ mi akoko</string>
+    <string name="planner_outside_minutes">Iṣẹju / iwe</string>
+    <string name="planner_outside_seconds">Aaya</string>
+    <string name="planner_outside_each">Ṣeto akoko ti o yatọ fun oju-iwe kọọkan</string>
+    <string name="planner_outside_page">Oju-iwe %1$d</string>
+    <string name="planner_outside_preview">%1$d awọn oju-iwe tuntun · %2$s</string>
+    <string name="planner_outside_skipped">Awọn oju-iwe %1$d ti a ti ka tẹlẹ ni yoo fo. Akoko won ko ni fi kun lẹẹkansi.</string>
+    <string name="planner_outside_resume">Tẹsiwaju lati oju-iwe %1$d ninu oluṣeto rẹ.</string>
+    <string name="planner_outside_complete">Eyi pari ero rẹ. Kika rẹ yoo wa ni ipamọ ninu itan-akọọlẹ rẹ.</string>
+    <string name="planner_outside_save_continue">Fipamọ ati tẹsiwaju kika</string>
+    <string name="planner_outside_save">Fipamọ kika</string>
+    <string name="planner_outside_saving">Nfipamọ…</string>
+    <string name="planner_outside_error_range">Tẹ iwọn oju-iwe to wulo sii lati 1 si 604.</string>
+    <string name="planner_outside_error_plan">Gbogbo oju-iwe ti o wa ni sakani gbọdọ jẹ ti oluṣeto yii.</string>
+    <string name="planner_outside_error_read">Awọn oju-iwe wọnyi ti wa ni igbasilẹ tẹlẹ. Yan awọn oju-iwe ti a ko ka.</string>
+    <string name="planner_outside_error_date">Yan ọjọ kika loni tabi ṣaju.</string>
+    <string name="planner_outside_error_time">Tẹ akoko rere sii fun oju-iwe kọọkan (aaya 0–59), pẹlu ko ju wakati 24 lọ lapapọ.</string>
+    <string name="planner_outside_error_changed">Alakoso yii yipada tabi ko ṣiṣẹ mọ. Pada ki o ṣi i lẹẹkansi.</string>
+    <string name="planner_outside_error_save">Ko le pari fifipamọ. Jọwọ gbiyanju lẹẹkansi; titẹsi ti o fipamọ ko ni ka lẹmeji.</string>
+    <string name="planner_outside_history">Ita kika</string>
+    <string name="planner_outside_pages_label">Awọn oju-iwe %1$s</string>
+    <string name="planner_outside_estimate_note">Akoko ifoju ṣe alabapin si apapọ rẹ ati ki o duro lọtọ si kika kika.</string>
+    <string name="planner_outside_per_page">%1$s fun oju-iwe kan</string>
+    <string name="planner_outside_show_page_times">Ṣafihan akoko fun oju-iwe kan</string>
+    <string name="planner_outside_hide_page_times">Tọju awọn akoko oju-iwe</string>
+    <string name="planner_outside_current">Oju-iwe lọwọlọwọ · %1$d</string>
+    <string name="planner_outside_bounds">Alakoso ti nṣiṣe lọwọ · awọn oju-iwe %1$d–%2$d</string>
+    <string name="planner_outside_count">Nọmba awọn oju-iwe</string>
+    <string name="planner_outside_last_choice">Oju-iwe ti o kẹhin ka</string>
+    <string name="planner_outside_start_hint">Bẹrẹ ni oju-iwe rẹ lọwọlọwọ, %1$d. O le wọle si oju-iwe %2$d ninu oluṣeto yii.</string>
+    <string name="planner_outside_active_range_error">Tẹ kika oju-iwe rere tabi oju-iwe ti o kẹhin lati oju-iwe lọwọlọwọ rẹ titi de opin oluṣeto yii.</string>
+    <string name="planner_outside_position_changed">Ipo kika oluṣeto rẹ yipada. Pada pada ki o tun ṣii fọọmu yii lati lo oju-iwe lọwọlọwọ.</string>
     <string name="planner_adjust_pace">Ṣatunṣe Pace</string>
     <string name="planner_apply">Waye</string>
     <string name="planner_cancel">Fagilee</string>

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Assisted UI translations; scripture text is never translated by this script. -->
 <resources>
-    <string name="mushaf_picker_intro">رسم‌الخط یا روایتی را انتخاب کنید که خواندن آن برایتان آسان‌تر است.</string>
+    <string name="mushaf_picker_intro">اسکریپت یا خواندنی را که خواندن آن راحت‌تر است را انتخاب کنید.</string>
     <string name="mushaf_name_uthmani">عثمانی Hafs</string>
     <string name="mushaf_description_qpc">اسکریپت مدنی QPC · متن شفاف و روان</string>
     <string name="mushaf_description_tajweed">خط مدنی · رنگهای تجوید همیشه روشن</string>
@@ -12,6 +12,47 @@
     <string name="mushaf_selected">انتخاب شد</string>
     <string name="mushaf_indopak_unavailable">این نسخه به متن و فونت قرآن منطبق نیاز دارد. در این ساختنی موجود نیست، بنابراین نمی توان آن را انتخاب کرد.</string>
     <string name="mushaf_flow_note">متن با صفحه نمایش و اندازه خواندن شما تنظیم می شود. این پیش‌نمایش‌ها تعداد خطوط چاپ شده ثابت را وعده نمی‌دهند.</string>
+    <string name="planner_outside_intro">از قرآن فیزیکی یا جای دیگر بخوانید؟ صفحات برنامه ریز خود را در اینجا ضبط کنید، سپس از صفحه خوانده نشده بعدی ادامه دهید.</string>
+    <string name="planner_outside_numbering">از شماره صفحه در این برنامه ریز استفاده کنید (شماره مدنی 604 صفحه).</string>
+    <string name="planner_outside_from">صفحه اول</string>
+    <string name="planner_outside_to">صفحه آخر</string>
+    <string name="planner_outside_date">تاریخ خواندن</string>
+    <string name="planner_outside_timing">زمان خواندن</string>
+    <string name="planner_outside_estimate">از میانگین خواندن من استفاده کنید</string>
+    <string name="planner_outside_pace">%1$s در هر صفحه · بر اساس %2$d صفحات اندازه گیری شده در برنامه ریزان شما</string>
+    <string name="planner_outside_no_pace">هنوز میانگین صفحه اندازه گیری نشده است. زمان خود را در زیر وارد کنید؛ پس از اتمام صفحات با تایمر درون برنامه، یک تخمین شخصی در دسترس قرار می گیرد.</string>
+    <string name="planner_outside_manual">زمان من را وارد کنید</string>
+    <string name="planner_outside_minutes">دقیقه / صفحه</string>
+    <string name="planner_outside_seconds">ثانیه</string>
+    <string name="planner_outside_each">برای هر صفحه زمان متفاوتی تعیین کنید</string>
+    <string name="planner_outside_page">صفحه %1$d</string>
+    <string name="planner_outside_preview">%1$d صفحات جدید · %2$s</string>
+    <string name="planner_outside_skipped">صفحات %1$d از قبل خوانده شده نادیده گرفته می شوند. زمان آنها دیگر اضافه نخواهد شد.</string>
+    <string name="planner_outside_resume">از صفحه %1$d در برنامه ریز خود ادامه دهید.</string>
+    <string name="planner_outside_complete">این طرح شما را به پایان می رساند. خواندن شما در تاریخچه آن ذخیره می شود.</string>
+    <string name="planner_outside_save_continue">ذخیره کنید و به خواندن ادامه دهید</string>
+    <string name="planner_outside_save">ذخیره خواندن</string>
+    <string name="planner_outside_saving">در حال ذخیره…</string>
+    <string name="planner_outside_error_range">یک محدوده صفحه معتبر از 1 تا 604 وارد کنید.</string>
+    <string name="planner_outside_error_plan">هر صفحه در محدوده باید به این برنامه ریز تعلق داشته باشد.</string>
+    <string name="planner_outside_error_read">این صفحات قبلاً ضبط شده اند. صفحات خوانده نشده را انتخاب کنید</string>
+    <string name="planner_outside_error_date">تاریخ خواندن امروز یا زودتر را انتخاب کنید.</string>
+    <string name="planner_outside_error_time">یک زمان مثبت برای هر صفحه وارد کنید (ثانیه 0-59)، که در مجموع بیش از 24 ساعت نباشد.</string>
+    <string name="planner_outside_error_changed">این برنامه ریز تغییر کرد یا دیگر فعال نیست. برگردید و دوباره آن را باز کنید.</string>
+    <string name="planner_outside_error_save">ذخیره نشد. لطفا دوباره امتحان کنید؛ یک ورودی ذخیره شده دو بار شمارش نمی شود.</string>
+    <string name="planner_outside_history">خواندن خارج</string>
+    <string name="planner_outside_pages_label">صفحات %1$s</string>
+    <string name="planner_outside_estimate_note">زمان تخمینی به کل شما کمک می کند و از خواندن اندازه گیری شده جدا می ماند.</string>
+    <string name="planner_outside_per_page">%1$s در هر صفحه</string>
+    <string name="planner_outside_show_page_times">نمایش زمان در هر صفحه</string>
+    <string name="planner_outside_hide_page_times">دفعات صفحه را پنهان کنید</string>
+    <string name="planner_outside_current">صفحه فعلی · %1$d</string>
+    <string name="planner_outside_bounds">برنامه ریز فعال · صفحات %1$d–%2$d</string>
+    <string name="planner_outside_count">تعداد صفحات</string>
+    <string name="planner_outside_last_choice">آخرین صفحه خوانده شده</string>
+    <string name="planner_outside_start_hint">از صفحه فعلی شما، %1$d شروع می شود. می توانید در این برنامه ریز به صفحه %2$d وارد شوید.</string>
+    <string name="planner_outside_active_range_error">تعداد صفحات مثبت یا آخرین صفحه از صفحه فعلی خود را تا انتهای این برنامه ریز وارد کنید.</string>
+    <string name="planner_outside_position_changed">موقعیت خواندن برنامه ریز شما تغییر کرد. به عقب برگردید و این فرم را دوباره باز کنید تا از صفحه فعلی استفاده کنید.</string>
     <string name="planner_adjust_pace">تنظیم سرعت</string>
     <string name="planner_apply">درخواست کنید</string>
     <string name="planner_cancel">لغو</string>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="planner_outside_log">ایپ سے باہر کی تلاوت درج کریں</string>
+    <string name="planner_outside_in_app">ایپ میں · ناپا گیا وقت</string>
+    <string name="planner_outside_entered">ایپ سے باہر · درج کیا گیا وقت</string>
+    <string name="planner_outside_estimated">ایپ سے باہر · اندازاً وقت</string>
+</resources>

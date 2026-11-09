@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="planner_outside_log">ऐप के बाहर की पढ़ाई दर्ज करें</string>
+    <string name="planner_outside_in_app">ऐप में · मापा गया समय</string>
+    <string name="planner_outside_entered">ऐप के बाहर · दर्ज किया गया समय</string>
+    <string name="planner_outside_estimated">ऐप के बाहर · अनुमानित समय</string>
+</resources>

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Assisted UI translations; scripture text is never translated by this script. -->
 <resources>
-    <string name="mushaf_picker_intro">যে লিপি বা কিরাআত পড়তে আপনার সুবিধা হয় তা বেছে নিন।</string>
+    <string name="mushaf_picker_intro">স্ক্রিপ্ট বা রিডিং বেছে নিন যা আপনার পড়া সবচেয়ে সহজ মনে হয়।</string>
     <string name="mushaf_name_uthmani">উসমানী Hafs</string>
     <string name="mushaf_description_qpc">মাদানী QPC স্ক্রিপ্ট · পরিষ্কার, প্রবাহিত পাঠ্য</string>
     <string name="mushaf_description_tajweed">মাদানী লিপি · তাজবীদের রং সবসময় চালু থাকে</string>
@@ -12,6 +12,47 @@
     <string name="mushaf_selected">নির্বাচিত</string>
     <string name="mushaf_indopak_unavailable">এই সংস্করণের জন্য এর মিলিত কুরআন পাঠ এবং ফন্ট প্রয়োজন। এটি এই বিল্ডে উপলব্ধ নেই, তাই এটি নির্বাচন করা যাবে না।</string>
     <string name="mushaf_flow_note">পাঠ্য আপনার স্ক্রীন এবং পড়ার আকারের সাথে সামঞ্জস্য করে। এই প্রিভিউগুলি একটি নির্দিষ্ট মুদ্রিত-পৃষ্ঠা লাইন গণনার প্রতিশ্রুতি দেয় না।</string>
+    <string name="planner_outside_intro">একটি ভৌত কুরআন বা অন্য কোথাও থেকে পড়া? আপনার পরিকল্পনাকারী পৃষ্ঠাগুলি এখানে রেকর্ড করুন, তারপর পরবর্তী অপঠিত পৃষ্ঠা থেকে চালিয়ে যান।</string>
+    <string name="planner_outside_numbering">এই প্ল্যানারে পৃষ্ঠা নম্বর ব্যবহার করুন (604-পৃষ্ঠা মাদানী সংখ্যায়ন)।</string>
+    <string name="planner_outside_from">প্রথম পাতা</string>
+    <string name="planner_outside_to">শেষ পৃষ্ঠা</string>
+    <string name="planner_outside_date">পড়ার তারিখ</string>
+    <string name="planner_outside_timing">পড়ার সময়</string>
+    <string name="planner_outside_estimate">আমার পড়ার গড় ব্যবহার করুন</string>
+    <string name="planner_outside_pace">%1$s প্রতি পৃষ্ঠা · %2$d পরিমাপিত পৃষ্ঠাগুলির উপর ভিত্তি করে আপনার পরিকল্পনাকারী</string>
+    <string name="planner_outside_no_pace">এখনও পর্যন্ত কোনো পরিমাপ করা পৃষ্ঠার গড়। নীচে আপনার সময় লিখুন; আপনি ইন-অ্যাপ টাইমার দিয়ে পৃষ্ঠাগুলি শেষ করার পরে একটি ব্যক্তিগত অনুমান উপলব্ধ হয়৷</string>
+    <string name="planner_outside_manual">আমার সময় লিখুন</string>
+    <string name="planner_outside_minutes">মিনিট / পৃষ্ঠা</string>
+    <string name="planner_outside_seconds">সেকেন্ড</string>
+    <string name="planner_outside_each">প্রতিটি পৃষ্ঠার জন্য আলাদা সময় সেট করুন</string>
+    <string name="planner_outside_page">পৃষ্ঠা %1$d</string>
+    <string name="planner_outside_preview">%1$d নতুন পাতা · %2$s</string>
+    <string name="planner_outside_skipped">%1$d ইতিমধ্যে পড়া পৃষ্ঠাগুলি এড়িয়ে যাবে৷ তাদের সময় আর যোগ করা হবে না।</string>
+    <string name="planner_outside_resume">আপনার প্ল্যানারে %1$d পৃষ্ঠা থেকে চালিয়ে যান।</string>
+    <string name="planner_outside_complete">এটি আপনার পরিকল্পনা শেষ করে। আপনার পড়া এর ইতিহাসে সংরক্ষিত হবে।</string>
+    <string name="planner_outside_save_continue">সংরক্ষণ করুন এবং পড়া চালিয়ে যান</string>
+    <string name="planner_outside_save">পড়া সংরক্ষণ করুন</string>
+    <string name="planner_outside_saving">সংরক্ষণ করা হচ্ছে...</string>
+    <string name="planner_outside_error_range">1 থেকে 604 পর্যন্ত একটি বৈধ পৃষ্ঠা পরিসর লিখুন।</string>
+    <string name="planner_outside_error_plan">পরিসরের প্রতিটি পৃষ্ঠা অবশ্যই এই পরিকল্পনাকারীর অন্তর্গত।</string>
+    <string name="planner_outside_error_read">এই পৃষ্ঠাগুলি ইতিমধ্যে রেকর্ড করা হয়েছে. অপঠিত পৃষ্ঠা নির্বাচন করুন.</string>
+    <string name="planner_outside_error_date">আজ বা তার আগে পড়ার তারিখ বেছে নিন।</string>
+    <string name="planner_outside_error_time">প্রতিটি পৃষ্ঠার জন্য একটি ইতিবাচক সময় লিখুন (সেকেন্ড 0-59), মোট 24 ঘন্টার বেশি নয়।</string>
+    <string name="planner_outside_error_changed">এই পরিকল্পনাকারী পরিবর্তিত হয়েছে বা আর সক্রিয় নেই৷ ফিরে যান এবং আবার খুলুন।</string>
+    <string name="planner_outside_error_save">সংরক্ষণ শেষ করা যায়নি. অনুগ্রহ করে আবার চেষ্টা করুন; একটি সংরক্ষিত এন্ট্রি দুবার গণনা করা হবে না।</string>
+    <string name="planner_outside_history">পড়ার বাইরে</string>
+    <string name="planner_outside_pages_label">পাতা %1$s</string>
+    <string name="planner_outside_estimate_note">আনুমানিক সময় আপনার টোটালে অবদান রাখে এবং মাপা পড়া থেকে আলাদা থাকে।</string>
+    <string name="planner_outside_per_page">%1$s প্রতি পৃষ্ঠা</string>
+    <string name="planner_outside_show_page_times">প্রতি পৃষ্ঠায় সময় দেখান</string>
+    <string name="planner_outside_hide_page_times">পাতা বার লুকান</string>
+    <string name="planner_outside_current">বর্তমান পৃষ্ঠা · %1$d</string>
+    <string name="planner_outside_bounds">সক্রিয় পরিকল্পনাকারী · পৃষ্ঠাগুলি %1$d–%2$d</string>
+    <string name="planner_outside_count">পৃষ্ঠার সংখ্যা</string>
+    <string name="planner_outside_last_choice">শেষ পাতা পড়া</string>
+    <string name="planner_outside_start_hint">আপনার বর্তমান পৃষ্ঠা, %1$d থেকে শুরু হয়। আপনি এই প্ল্যানারে %2$d পৃষ্ঠায় লগ আপ করতে পারেন৷</string>
+    <string name="planner_outside_active_range_error">আপনার বর্তমান পৃষ্ঠা থেকে এই পরিকল্পনাকারীর শেষ পর্যন্ত একটি ইতিবাচক পৃষ্ঠা সংখ্যা বা একটি শেষ পৃষ্ঠা লিখুন।</string>
+    <string name="planner_outside_position_changed">আপনার পরিকল্পনাকারী পড়ার অবস্থান পরিবর্তিত হয়েছে। ফিরে যান এবং বর্তমান পৃষ্ঠাটি ব্যবহার করতে এই ফর্মটি পুনরায় খুলুন৷</string>
     <string name="planner_adjust_pace">গতি সামঞ্জস্য করুন</string>
     <string name="planner_apply">আবেদন করুন</string>
     <string name="planner_cancel">বাতিল</string>

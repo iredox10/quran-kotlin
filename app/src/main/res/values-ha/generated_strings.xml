@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Assisted UI translations; scripture text is never translated by this script. -->
 <resources>
-    <string name="mushaf_picker_intro">Zaɓi rubutu ko riwayar da ta fi maka sauƙin karantawa.</string>
+    <string name="mushaf_picker_intro">Zaɓi rubutun ko karantawa ka sami mafi sauƙin karantawa.</string>
     <string name="mushaf_name_uthmani">Uthmani Hafs</string>
     <string name="mushaf_description_qpc">Madani QPC rubutun · bayyananne, rubutu mai gudana</string>
     <string name="mushaf_description_tajweed">Rubutun Madani · Kalar Tajweed a koda yaushe</string>
@@ -12,6 +12,47 @@
     <string name="mushaf_selected">An zaɓa</string>
     <string name="mushaf_indopak_unavailable">Wannan fitowar tana buqatar rubutun Alqur\'ani da ya dace da su. Babu shi a cikin wannan ginin, don haka ba za a iya zaɓar shi ba.</string>
     <string name="mushaf_flow_note">Rubutu yana daidaita ga allonku da girman karatun ku. Waɗannan samfotin ba su yi alkawarin ƙididdige layukan da aka buga ba.</string>
+    <string name="planner_outside_intro">Karanta daga Alqur\'ani na zahiri ko wani wuri? Yi rikodin shafukan mai tsarawa a nan, sannan ci gaba daga shafin da ba a karanta ba na gaba.</string>
+    <string name="planner_outside_numbering">Yi amfani da lambobin shafi a cikin wannan mai tsarawa (lambar Madani mai shafi 604).</string>
+    <string name="planner_outside_from">shafi na farko</string>
+    <string name="planner_outside_to">Shafin karshe</string>
+    <string name="planner_outside_date">Ranar karatu</string>
+    <string name="planner_outside_timing">Lokacin karatu</string>
+    <string name="planner_outside_estimate">Yi amfani da matsakaicin karatuna</string>
+    <string name="planner_outside_pace">%1$s kowane shafi · bisa ga ma\'aunin %2$d a cikin masu tsarawa</string>
+    <string name="planner_outside_no_pace">Ba a auna matsakaicin shafi tukuna. Shigar da lokacin ku a ƙasa; kimantawa na sirri yana samuwa bayan kun gama shafuka tare da mai ƙidayar in-app.</string>
+    <string name="planner_outside_manual">Shiga lokaci na</string>
+    <string name="planner_outside_minutes">Minti / shafi</string>
+    <string name="planner_outside_seconds">Dakika</string>
+    <string name="planner_outside_each">Saita lokaci daban don kowane shafi</string>
+    <string name="planner_outside_page">Shafi %1$d</string>
+    <string name="planner_outside_preview">%1$d sababbin shafuka · %2$s</string>
+    <string name="planner_outside_skipped">Za a tsallake shafukan %1$d da aka riga aka karanta. Ba za a ƙara lokacinsu ba.</string>
+    <string name="planner_outside_resume">Ci gaba daga shafi %1$d a cikin mai tsarawa.</string>
+    <string name="planner_outside_complete">Wannan ya ƙare shirin ku. Za a adana karatun ku a cikin tarihinsa.</string>
+    <string name="planner_outside_save_continue">Ajiye kuma ci gaba da karantawa</string>
+    <string name="planner_outside_save">Ajiye karatu</string>
+    <string name="planner_outside_saving">Ajiye…</string>
+    <string name="planner_outside_error_range">Shigar da ingantaccen kewayon shafi daga 1 zuwa 604.</string>
+    <string name="planner_outside_error_plan">Kowane shafi a cikin kewayon dole ne ya kasance na wannan mai tsarawa.</string>
+    <string name="planner_outside_error_read">An riga an rubuta waɗannan shafuka. Zaɓi shafukan da ba a karanta ba.</string>
+    <string name="planner_outside_error_date">Zaɓi ranar karatu yau ko a baya.</string>
+    <string name="planner_outside_error_time">Shigar da ingantaccen lokaci ga kowane shafi (dakika 0-59), ba tare da jimlar sa\'o\'i 24 ba.</string>
+    <string name="planner_outside_error_changed">Wannan mai tsarawa ya canza ko baya aiki. Koma ka sake budewa.</string>
+    <string name="planner_outside_error_save">An kasa gama adanawa. Da fatan za a sake gwadawa; shigarwar da aka adana ba za a ƙidaya sau biyu ba.</string>
+    <string name="planner_outside_history">Waje karatu</string>
+    <string name="planner_outside_pages_label">Shafukan %1$s</string>
+    <string name="planner_outside_estimate_note">Ƙididdigan lokaci yana ba da gudummawa ga jimlar ku kuma ya bambanta da karatun da aka auna.</string>
+    <string name="planner_outside_per_page">%1$s a kowace shafi</string>
+    <string name="planner_outside_show_page_times">Nuna lokaci kowane shafi</string>
+    <string name="planner_outside_hide_page_times">Boye lokutan shafi</string>
+    <string name="planner_outside_current">Shafin na yanzu · %1$d</string>
+    <string name="planner_outside_bounds">Mai tsara aiki mai aiki · shafuka %1$d–%2$d</string>
+    <string name="planner_outside_count">Yawan shafuka</string>
+    <string name="planner_outside_last_choice">Shafin karshe ya karanta</string>
+    <string name="planner_outside_start_hint">Yana farawa daga shafinku na yanzu, %1$d. Kuna iya shiga zuwa shafi %2$d a cikin wannan mai tsarawa.</string>
+    <string name="planner_outside_active_range_error">Shigar da ƙididdige ƙimar shafi ko shafi na ƙarshe daga shafinku na yanzu har zuwa ƙarshen wannan mai tsarawa.</string>
+    <string name="planner_outside_position_changed">Matsayin karatun mai tsarawa ya canza. Koma ka sake buɗe wannan fom don amfani da shafin na yanzu.</string>
     <string name="planner_adjust_pace">Daidaita Taki</string>
     <string name="planner_apply">Aiwatar</string>
     <string name="planner_cancel">Soke</string>

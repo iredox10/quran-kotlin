@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="planner_outside_log">Registrar leitura fora do aplicativo</string>
+    <string name="planner_outside_in_app">No aplicativo · tempo medido</string>
+    <string name="planner_outside_entered">Fora do aplicativo · tempo informado</string>
+    <string name="planner_outside_estimated">Fora do aplicativo · tempo estimado</string>
+</resources>

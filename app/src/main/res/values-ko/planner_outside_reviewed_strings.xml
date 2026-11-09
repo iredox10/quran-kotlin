@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="planner_outside_log">앱 밖에서 읽은 내용 기록</string>
+    <string name="planner_outside_in_app">앱 안 · 측정 시간</string>
+    <string name="planner_outside_entered">앱 밖 · 직접 입력한 시간</string>
+    <string name="planner_outside_estimated">앱 밖 · 예상 시간</string>
+</resources>

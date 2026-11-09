@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Assisted UI translations; scripture text is never translated by this script. -->
 <resources>
-    <string name="mushaf_picker_intro">Pilih aksara atau riwayat yang paling mudah Anda baca.</string>
+    <string name="mushaf_picker_intro">Pilih naskah atau bacaan yang menurut Anda paling mudah dibaca.</string>
     <string name="mushaf_name_uthmani">Utsmani Hafs</string>
     <string name="mushaf_description_qpc">Skrip Madani QPC · teks yang jelas dan mengalir</string>
     <string name="mushaf_description_tajweed">Aksara Madani · Warna Tajwid selalu menyala</string>
@@ -12,6 +12,47 @@
     <string name="mushaf_selected">Dipilih</string>
     <string name="mushaf_indopak_unavailable">Edisi ini membutuhkan teks dan font Alquran yang cocok. Itu tidak tersedia di build ini, jadi tidak dapat dipilih.</string>
     <string name="mushaf_flow_note">Teks menyesuaikan dengan layar dan ukuran bacaan Anda. Pratinjau ini tidak menjanjikan jumlah baris halaman cetak yang tetap.</string>
+    <string name="planner_outside_intro">Membaca dari Al-Quran fisik atau di tempat lain? Catat halaman perencana Anda di sini, lalu lanjutkan dari halaman berikutnya yang belum dibaca.</string>
+    <string name="planner_outside_numbering">Gunakan nomor halaman dalam perencana ini (penomoran Madani 604 halaman).</string>
+    <string name="planner_outside_from">Halaman pertama</string>
+    <string name="planner_outside_to">Halaman terakhir</string>
+    <string name="planner_outside_date">Tanggal membaca</string>
+    <string name="planner_outside_timing">Waktu membaca</string>
+    <string name="planner_outside_estimate">Gunakan rata-rata bacaan saya</string>
+    <string name="planner_outside_pace">%1$s per halaman · berdasarkan halaman terukur %2$d di perencana Anda</string>
+    <string name="planner_outside_no_pace">Belum ada rata-rata halaman yang diukur. Masukkan waktu Anda di bawah; perkiraan pribadi tersedia setelah Anda menyelesaikan halaman dengan pengatur waktu dalam aplikasi.</string>
+    <string name="planner_outside_manual">Masukkan waktu saya</string>
+    <string name="planner_outside_minutes">Menit / halaman</string>
+    <string name="planner_outside_seconds">Detik</string>
+    <string name="planner_outside_each">Tetapkan waktu berbeda untuk setiap halaman</string>
+    <string name="planner_outside_page">Halaman %1$d</string>
+    <string name="planner_outside_preview">%1$d halaman baru · %2$s</string>
+    <string name="planner_outside_skipped">Halaman %1$d yang sudah dibaca akan dilewati. Waktu mereka tidak akan ditambah lagi.</string>
+    <string name="planner_outside_resume">Lanjutkan dari halaman %1$d di perencana Anda.</string>
+    <string name="planner_outside_complete">Ini menyelesaikan rencanamu. Bacaan Anda akan disimpan dalam riwayatnya.</string>
+    <string name="planner_outside_save_continue">Simpan dan lanjutkan membaca</string>
+    <string name="planner_outside_save">Simpan bacaan</string>
+    <string name="planner_outside_saving">Menyimpan…</string>
+    <string name="planner_outside_error_range">Masukkan rentang halaman yang valid dari 1 hingga 604.</string>
+    <string name="planner_outside_error_plan">Setiap halaman dalam rentang harus menjadi milik perencana ini.</string>
+    <string name="planner_outside_error_read">Halaman-halaman ini sudah direkam. Pilih halaman yang belum dibaca.</string>
+    <string name="planner_outside_error_date">Pilih tanggal membaca hari ini atau lebih awal.</string>
+    <string name="planner_outside_error_time">Masukkan waktu positif untuk setiap halaman (detik 0–59), dengan total tidak lebih dari 24 jam.</string>
+    <string name="planner_outside_error_changed">Perencana ini berubah atau tidak aktif lagi. Kembali dan buka lagi.</string>
+    <string name="planner_outside_error_save">Tidak dapat menyelesaikan penyimpanan. Silakan coba lagi; entri yang disimpan tidak akan dihitung dua kali.</string>
+    <string name="planner_outside_history">Membaca di luar</string>
+    <string name="planner_outside_pages_label">Halaman %1$s</string>
+    <string name="planner_outside_estimate_note">Perkiraan waktu berkontribusi pada total Anda dan tetap terpisah dari pembacaan terukur.</string>
+    <string name="planner_outside_per_page">%1$s per halaman</string>
+    <string name="planner_outside_show_page_times">Tampilkan waktu per halaman</string>
+    <string name="planner_outside_hide_page_times">Sembunyikan waktu halaman</string>
+    <string name="planner_outside_current">Halaman saat ini · %1$d</string>
+    <string name="planner_outside_bounds">Perencana aktif · halaman %1$d–%2$d</string>
+    <string name="planner_outside_count">Jumlah halaman</string>
+    <string name="planner_outside_last_choice">Halaman terakhir dibaca</string>
+    <string name="planner_outside_start_hint">Dimulai dari halaman Anda saat ini, %1$d. Anda dapat masuk ke halaman %2$d di perencana ini.</string>
+    <string name="planner_outside_active_range_error">Masukkan jumlah halaman positif atau halaman terakhir dari halaman Anda saat ini hingga akhir perencana ini.</string>
+    <string name="planner_outside_position_changed">Posisi membaca perencana Anda berubah. Kembali dan buka kembali formulir ini untuk menggunakan halaman saat ini.</string>
     <string name="planner_adjust_pace">Sesuaikan Kecepatan</string>
     <string name="planner_apply">Lamar</string>
     <string name="planner_cancel">Batal</string>

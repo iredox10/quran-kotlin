@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="planner_outside_log">Ṣàkọsílẹ̀ kíka tí o ṣe níta ohun èlò</string>
+    <string name="planner_outside_in_app">Nínú ohun èlò · àkókò tí a wọn</string>
+    <string name="planner_outside_entered">Níta ohun èlò · àkókò tí o tẹ̀ sílẹ̀</string>
+    <string name="planner_outside_estimated">Níta ohun èlò · àkókò àfojúsùn</string>
+</resources>

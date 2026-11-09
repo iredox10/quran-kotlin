@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Assisted UI translations; scripture text is never translated by this script. -->
 <resources>
-    <string name="mushaf_picker_intro">Выберите наиболее удобный для вас шрифт или вариант чтения.</string>
+    <string name="mushaf_picker_intro">Выберите сценарий или текст, который вам легче всего читать.</string>
     <string name="mushaf_name_uthmani">Усмани Hafs</string>
     <string name="mushaf_description_qpc">Сценарий Madani QPC · четкий, плавный текст</string>
     <string name="mushaf_description_tajweed">Сценарий Мадани · Цвета тайвида всегда включены.</string>
@@ -12,6 +12,47 @@
     <string name="mushaf_selected">Выбрано</string>
     <string name="mushaf_indopak_unavailable">Для этого издания необходим соответствующий текст и шрифт Корана. В этой сборке он недоступен, поэтому его нельзя выбрать.</string>
     <string name="mushaf_flow_note">Текст подстраивается под ваш экран и размер чтения. Эти предварительные просмотры не обещают фиксированного количества строк напечатанной страницы.</string>
+    <string name="planner_outside_intro">Читать из Корана на физическом носителе или где-то еще? Запишите сюда свои страницы планировщика, а затем продолжите со следующей непрочитанной страницы.</string>
+    <string name="planner_outside_numbering">Используйте номера страниц в этом ежедневнике (604-страничная нумерация Мадани).</string>
+    <string name="planner_outside_from">Первая страница</string>
+    <string name="planner_outside_to">Последняя страница</string>
+    <string name="planner_outside_date">Дата считывания</string>
+    <string name="planner_outside_timing">Время чтения</string>
+    <string name="planner_outside_estimate">Используйте мой средний показатель чтения</string>
+    <string name="planner_outside_pace">%1$s на страницу · на основе измеренных %2$d страниц в ваших планировщиках.</string>
+    <string name="planner_outside_no_pace">Измеренного среднего значения страницы пока нет. Введите свое время ниже; персональная оценка станет доступна после того, как вы завершите страницы с таймером в приложении.</string>
+    <string name="planner_outside_manual">Введите мое время</string>
+    <string name="planner_outside_minutes">Минуты/страница</string>
+    <string name="planner_outside_seconds">Секунды</string>
+    <string name="planner_outside_each">Установите разное время для каждой страницы</string>
+    <string name="planner_outside_page">Страница %1$d</string>
+    <string name="planner_outside_preview">%1$d новые страницы · %2$s</string>
+    <string name="planner_outside_skipped">%1$d уже прочитанные страницы будут пропущены. Их время больше не будет добавлено.</string>
+    <string name="planner_outside_resume">Продолжайте со страницы %1$d в своем ежедневнике.</string>
+    <string name="planner_outside_complete">На этом ваш план закончен. Ваше чтение будет сохранено в истории.</string>
+    <string name="planner_outside_save_continue">Сохраните и продолжите чтение.</string>
+    <string name="planner_outside_save">Сохраните чтение</string>
+    <string name="planner_outside_saving">Сохранение…</string>
+    <string name="planner_outside_error_range">Введите действительный диапазон страниц от 1 до 604.</string>
+    <string name="planner_outside_error_plan">Каждая страница в диапазоне должна принадлежать этому планировщику.</string>
+    <string name="planner_outside_error_read">Эти страницы уже записаны. Выберите непрочитанные страницы.</string>
+    <string name="planner_outside_error_date">Выберите дату чтения сегодня или раньше.</string>
+    <string name="planner_outside_error_time">Введите положительное время для каждой страницы (секунды 0–59), всего не более 24 часов.</string>
+    <string name="planner_outside_error_changed">Этот планировщик изменился или больше не активен. Вернитесь и откройте его снова.</string>
+    <string name="planner_outside_error_save">Не удалось завершить сохранение. Пожалуйста, попробуйте еще раз; сохраненная запись не будет засчитана дважды.</string>
+    <string name="planner_outside_history">Вне чтения</string>
+    <string name="planner_outside_pages_label">Страницы %1$s</string>
+    <string name="planner_outside_estimate_note">Расчетное время учитывается в ваших итоговых значениях и не зависит от измеренных значений.</string>
+    <string name="planner_outside_per_page">%1$s на страницу</string>
+    <string name="planner_outside_show_page_times">Время показа на странице</string>
+    <string name="planner_outside_hide_page_times">Скрыть время страницы</string>
+    <string name="planner_outside_current">Текущая страница · %1$d</string>
+    <string name="planner_outside_bounds">Активный планировщик · страницы %1$d–%2$d</string>
+    <string name="planner_outside_count">Количество страниц</string>
+    <string name="planner_outside_last_choice">Последняя прочитанная страница</string>
+    <string name="planner_outside_start_hint">Начинается с вашей текущей страницы, %1$d. Вы можете зарегистрироваться на странице %2$d в этом планировщике.</string>
+    <string name="planner_outside_active_range_error">Введите положительное количество страниц или последнюю страницу от текущей страницы до конца этого планировщика.</string>
+    <string name="planner_outside_position_changed">Изменилось положение чтения вашего планировщика. Вернитесь и снова откройте эту форму, чтобы использовать текущую страницу.</string>
     <string name="planner_adjust_pace">Регулировка темпа</string>
     <string name="planner_apply">Применить</string>
     <string name="planner_cancel">Отмена</string>

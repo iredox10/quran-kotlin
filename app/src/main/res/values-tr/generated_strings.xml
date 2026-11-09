@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Assisted UI translations; scripture text is never translated by this script. -->
 <resources>
-    <string name="mushaf_picker_intro">En kolay okuyabildiğiniz yazıyı veya rivayeti seçin.</string>
+    <string name="mushaf_picker_intro">Okuması en kolay bulduğunuz metni veya okumayı seçin.</string>
     <string name="mushaf_name_uthmani">Osman Hafs</string>
     <string name="mushaf_description_qpc">Madani QPC komut dosyası · net, akıcı metin</string>
     <string name="mushaf_description_tajweed">Medeni yazısı · Tajweed renkleri her zaman açık</string>
@@ -12,6 +12,47 @@
     <string name="mushaf_selected">Seçilmiş</string>
     <string name="mushaf_indopak_unavailable">Bu baskının eşleşen Kur\'an metni ve yazı tipine ihtiyacı var. Bu yapıda mevcut olmadığından seçilemez.</string>
     <string name="mushaf_flow_note">Metin ekranınıza ve okuma boyutunuza göre ayarlanır. Bu önizlemeler sabit bir basılı sayfa satırı sayısı vaat etmez.</string>
+    <string name="planner_outside_intro">Fiziksel bir Kuran\'dan mı yoksa başka bir yerden mi okudunuz? Planlayıcı sayfalarınızı buraya kaydedin ve bir sonraki okunmamış sayfadan devam edin.</string>
+    <string name="planner_outside_numbering">Bu planlayıcıdaki sayfa numaralarını kullanın (604 sayfalık Medeni numaralandırma).</string>
+    <string name="planner_outside_from">İlk sayfa</string>
+    <string name="planner_outside_to">Son sayfa</string>
+    <string name="planner_outside_date">Okuma tarihi</string>
+    <string name="planner_outside_timing">Okuma süresi</string>
+    <string name="planner_outside_estimate">Okuma ortalamamı kullan</string>
+    <string name="planner_outside_pace">Sayfa başına %1$s · planlayıcılarınızdaki %2$d ölçülen sayfalara dayanmaktadır</string>
+    <string name="planner_outside_no_pace">Henüz ölçülen sayfa ortalaması yok. Aşağıya saatinizi girin; uygulama içi zamanlayıcıyla sayfaları bitirdikten sonra kişisel bir tahmin yapılabilir.</string>
+    <string name="planner_outside_manual">Zamanımı girin</string>
+    <string name="planner_outside_minutes">Dakika / sayfa</string>
+    <string name="planner_outside_seconds">Saniye</string>
+    <string name="planner_outside_each">Her sayfa için farklı bir zaman ayarlayın</string>
+    <string name="planner_outside_page">Sayfa %1$d</string>
+    <string name="planner_outside_preview">%1$d yeni sayfalar · %2$s</string>
+    <string name="planner_outside_skipped">Halihazırda okunmuş olan %1$d sayfaları atlanacaktır. Süreleri tekrar eklenmeyecektir.</string>
+    <string name="planner_outside_resume">Planlayıcınızdaki %1$d sayfasından devam edin.</string>
+    <string name="planner_outside_complete">Bu, planınızı tamamlar. Okumanız geçmişine kaydedilecektir.</string>
+    <string name="planner_outside_save_continue">Kaydet ve okumaya devam et</string>
+    <string name="planner_outside_save">Okumayı kaydet</string>
+    <string name="planner_outside_saving">Kaydediliyor…</string>
+    <string name="planner_outside_error_range">1\'den 604\'e kadar geçerli bir sayfa aralığı girin.</string>
+    <string name="planner_outside_error_plan">Aralıktaki her sayfa bu planlayıcıya ait olmalıdır.</string>
+    <string name="planner_outside_error_read">Bu sayfalar zaten kaydedilmiştir. Okunmamış sayfaları seçin.</string>
+    <string name="planner_outside_error_date">Bugün veya daha erken bir okuma tarihi seçin.</string>
+    <string name="planner_outside_error_time">Toplamda 24 saatten fazla olmayacak şekilde her sayfa için pozitif bir süre girin (saniye 0-59).</string>
+    <string name="planner_outside_error_changed">Bu planlayıcı değişti veya artık aktif değil. Geri dönüp tekrar açın.</string>
+    <string name="planner_outside_error_save">Kaydetme işlemi tamamlanamadı. Lütfen tekrar deneyin; kaydedilen bir giriş iki kez sayılmayacaktır.</string>
+    <string name="planner_outside_history">Dış okuma</string>
+    <string name="planner_outside_pages_label">Sayfalar %1$s</string>
+    <string name="planner_outside_estimate_note">Tahmini süre toplamlarınıza katkıda bulunur ve ölçülen okumadan ayrı kalır.</string>
+    <string name="planner_outside_per_page">sayfa başına %1$s</string>
+    <string name="planner_outside_show_page_times">Sayfa başına süreyi göster</string>
+    <string name="planner_outside_hide_page_times">Sayfa sürelerini gizle</string>
+    <string name="planner_outside_current">Geçerli sayfa · %1$d</string>
+    <string name="planner_outside_bounds">Aktif planlayıcı · sayfalar %1$d–%2$d</string>
+    <string name="planner_outside_count">Sayfa sayısı</string>
+    <string name="planner_outside_last_choice">Son okunan sayfa</string>
+    <string name="planner_outside_start_hint">Geçerli sayfanızda başlar, %1$d. Bu planlayıcıda %2$d sayfasına giriş yapabilirsiniz.</string>
+    <string name="planner_outside_active_range_error">Mevcut sayfanızdan bu planlayıcının sonuna kadar olan pozitif sayfa sayısını veya son sayfayı girin.</string>
+    <string name="planner_outside_position_changed">Planlayıcınızın okuma konumu değişti. Geçerli sayfayı kullanmak için geri dönün ve bu formu yeniden açın.</string>
     <string name="planner_adjust_pace">Hızı Ayarla</string>
     <string name="planner_apply">Uygula</string>
     <string name="planner_cancel">İptal</string>

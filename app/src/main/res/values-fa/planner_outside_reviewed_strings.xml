@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="planner_outside_log">ثبت مطالعه خارج از برنامه</string>
+    <string name="planner_outside_in_app">داخل برنامه · زمان اندازه‌گیری‌شده</string>
+    <string name="planner_outside_entered">خارج از برنامه · زمان واردشده</string>
+    <string name="planner_outside_estimated">خارج از برنامه · زمان تخمینی</string>
+</resources>

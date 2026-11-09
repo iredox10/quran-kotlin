@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="planner_outside_log">アプリ外で読んだ分を記録</string>
+    <string name="planner_outside_in_app">アプリ内 · 計測した時間</string>
+    <string name="planner_outside_entered">アプリ外 · 入力した時間</string>
+    <string name="planner_outside_estimated">アプリ外 · 推定時間</string>
+</resources>

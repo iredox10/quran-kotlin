@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="planner_outside_log">记录在应用外的阅读</string>
+    <string name="planner_outside_in_app">应用内 · 实测时长</string>
+    <string name="planner_outside_entered">应用外 · 手动输入时长</string>
+    <string name="planner_outside_estimated">应用外 · 估算时长</string>
+</resources>

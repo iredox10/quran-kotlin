@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Assisted UI translations; scripture text is never translated by this script. -->
 <resources>
-    <string name="mushaf_picker_intro">読みやすい書体や伝承を選んでください。</string>
+    <string name="mushaf_picker_intro">読みやすい台本または読み物を選択してください。</string>
     <string name="mushaf_name_uthmani">ウスマニ Hafs</string>
     <string name="mushaf_description_qpc">Madani QPC スクリプト · 明確で流れるようなテキスト</string>
     <string name="mushaf_description_tajweed">マダニ文字・タジウィードカラーが常にオン</string>
@@ -12,6 +12,47 @@
     <string name="mushaf_selected">選択された</string>
     <string name="mushaf_indopak_unavailable">このエディションには、一致するコーランのテキストとフォントが必要です。このビルドでは使用できないため、選択できません。</string>
     <string name="mushaf_flow_note">テキストは、画面と読書サイズに合わせて調整されます。これらのプレビューは、印刷ページの固定行数を保証するものではありません。</string>
+    <string name="planner_outside_intro">物理的なコーランまたは他の場所から読みますか?ここにプランナー ページを記録し、次の未読のページから続行します。</string>
+    <string name="planner_outside_numbering">このプランナーのページ番号を使用します (604 ページのマダニ番号)。</string>
+    <string name="planner_outside_from">最初のページ</string>
+    <string name="planner_outside_to">最後のページ</string>
+    <string name="planner_outside_date">読書日</string>
+    <string name="planner_outside_timing">読書時間</string>
+    <string name="planner_outside_estimate">私の読書平均値を使用する</string>
+    <string name="planner_outside_pace">ページあたりの %1$s · プランナーで測定された %2$d ページに基づく</string>
+    <string name="planner_outside_no_pace">ページ平均はまだ測定されていない。以下に時間を入力してください。アプリ内タイマーを使用してページを終了すると、個人的な見積もりが利用可能になります。</string>
+    <string name="planner_outside_manual">私の時間を入力してください</string>
+    <string name="planner_outside_minutes">分/ページ</string>
+    <string name="planner_outside_seconds">秒</string>
+    <string name="planner_outside_each">各ページに異なる時間を設定する</string>
+    <string name="planner_outside_page">ページ %1$d</string>
+    <string name="planner_outside_preview">%1$d 新しいページ · %2$s</string>
+    <string name="planner_outside_skipped">すでに読み込まれている %1$d ページはスキップされます。彼らの時間は再び追加されません。</string>
+    <string name="planner_outside_resume">プランナーのページ %1$d から続けます。</string>
+    <string name="planner_outside_complete">これで計画は完了です。読んだ内容は履歴に保存されます。</string>
+    <string name="planner_outside_save_continue">保存して読み続けてください</string>
+    <string name="planner_outside_save">読み取り値の保存</string>
+    <string name="planner_outside_saving">保存中…</string>
+    <string name="planner_outside_error_range">1 ～ 604 の有効なページ範囲を入力します。</string>
+    <string name="planner_outside_error_plan">範囲内のすべてのページは、このプランナに属さなければなりません。</string>
+    <string name="planner_outside_error_read">これらのページはすでに記録されています。未読のページを選択します。</string>
+    <string name="planner_outside_error_date">今日またはそれ以前の読書日を選択してください。</string>
+    <string name="planner_outside_error_time">各ページの正の時間（秒０〜５９）を、合計２４時間を超えないように入力する。</string>
+    <string name="planner_outside_error_changed">このプランナは変更されたか、もうアクティブではありません。戻ってもう一度開きます。</string>
+    <string name="planner_outside_error_save">保存を完了できませんでした。もう一度試してください。保存されたエントリは 2 回カウントされません。</string>
+    <string name="planner_outside_history">外部読書</string>
+    <string name="planner_outside_pages_label">ページ %1$s</string>
+    <string name="planner_outside_estimate_note">推定時間は合計に寄与し、測定された読み取り値とは切り離されます。</string>
+    <string name="planner_outside_per_page">ページあたり %1$s</string>
+    <string name="planner_outside_show_page_times">ページあたりの表示時間</string>
+    <string name="planner_outside_hide_page_times">ページ時間を隠す</string>
+    <string name="planner_outside_current">現在のページ · %1$d</string>
+    <string name="planner_outside_bounds">アクティブ プランナー · ページ %1$d ～ %2$d</string>
+    <string name="planner_outside_count">ページ数</string>
+    <string name="planner_outside_last_choice">最後に読み取られたページ</string>
+    <string name="planner_outside_start_hint">現在のページ、%1$d から始まります。このプランナーでは %2$d ページまでログインできます。</string>
+    <string name="planner_outside_active_range_error">正のページ数、または現在のページからこのプランナーの最後までの最後のページを入力します。</string>
+    <string name="planner_outside_position_changed">プランナーの読む位置が変わりました。現在のページを使用するには、このフォームに戻って再度開きます。</string>
     <string name="planner_adjust_pace">ペースを調整する</string>
     <string name="planner_apply">適用する</string>
     <string name="planner_cancel">キャンセル</string>

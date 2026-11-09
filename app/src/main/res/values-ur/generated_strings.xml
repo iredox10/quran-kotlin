@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Assisted UI translations; scripture text is never translated by this script. -->
 <resources>
-    <string name="mushaf_picker_intro">وہ رسم الخط یا روایت منتخب کریں جسے پڑھنا آپ کے لیے آسان ہو۔</string>
+    <string name="mushaf_picker_intro">اسکرپٹ کا انتخاب کریں یا پڑھنا آپ کو پڑھنے میں سب سے آسان لگتا ہے۔</string>
     <string name="mushaf_name_uthmani">عثمانی Hafs</string>
     <string name="mushaf_description_qpc">مدنی QPC رسم الخط · واضح، بہتا ہوا متن</string>
     <string name="mushaf_description_tajweed">مدنی رسم الخط · تجوید کے رنگ ہمیشہ جاری رہتے ہیں۔</string>
@@ -12,6 +12,47 @@
     <string name="mushaf_selected">منتخب</string>
     <string name="mushaf_indopak_unavailable">اس ایڈیشن کو اس کے مماثل قرآنی متن اور فونٹ کی ضرورت ہے۔ یہ اس عمارت میں دستیاب نہیں ہے، اس لیے اسے منتخب نہیں کیا جا سکتا۔</string>
     <string name="mushaf_flow_note">متن آپ کی سکرین اور پڑھنے کے سائز کے مطابق ہوتا ہے۔ یہ پیش نظارہ ایک مقررہ طباعت شدہ صفحہ کی لائن کی گنتی کا وعدہ نہیں کرتے ہیں۔</string>
+    <string name="planner_outside_intro">طبعی قرآن پڑھا یا کسی اور جگہ سے؟ اپنے منصوبہ ساز صفحات کو یہاں ریکارڈ کریں، پھر اگلے بغیر پڑھے ہوئے صفحہ سے جاری رکھیں۔</string>
+    <string name="planner_outside_numbering">اس پلانر میں صفحہ نمبر استعمال کریں (604 صفحات پر مشتمل مدنی نمبر)۔</string>
+    <string name="planner_outside_from">پہلا صفحہ</string>
+    <string name="planner_outside_to">آخری صفحہ</string>
+    <string name="planner_outside_date">پڑھنے کی تاریخ</string>
+    <string name="planner_outside_timing">پڑھنے کا وقت</string>
+    <string name="planner_outside_estimate">میری پڑھنے کا اوسط استعمال کریں۔</string>
+    <string name="planner_outside_pace">%1$s فی صفحہ · %2$d کی بنیاد پر آپ کے منصوبہ سازوں میں پیمائش شدہ صفحات</string>
+    <string name="planner_outside_no_pace">ابھی تک کوئی ماپا صفحہ اوسط نہیں ہے۔ نیچے اپنا وقت درج کریں؛ ان ایپ ٹائمر کے ساتھ صفحات ختم کرنے کے بعد ذاتی تخمینہ دستیاب ہو جاتا ہے۔</string>
+    <string name="planner_outside_manual">میرا وقت درج کریں۔</string>
+    <string name="planner_outside_minutes">منٹ/صفحہ</string>
+    <string name="planner_outside_seconds">سیکنڈز</string>
+    <string name="planner_outside_each">ہر صفحے کے لیے الگ وقت مقرر کریں۔</string>
+    <string name="planner_outside_page">صفحہ %1$d</string>
+    <string name="planner_outside_preview">%1$d نئے صفحات · %2$s</string>
+    <string name="planner_outside_skipped">%1$d پہلے سے پڑھے گئے صفحات کو چھوڑ دیا جائے گا۔ ان کا وقت دوبارہ شامل نہیں کیا جائے گا۔</string>
+    <string name="planner_outside_resume">اپنے پلانر میں صفحہ %1$d سے جاری رکھیں۔</string>
+    <string name="planner_outside_complete">یہ آپ کا منصوبہ مکمل کرتا ہے۔ آپ کا مطالعہ اس کی تاریخ میں محفوظ ہو جائے گا۔</string>
+    <string name="planner_outside_save_continue">محفوظ کریں اور پڑھنا جاری رکھیں</string>
+    <string name="planner_outside_save">پڑھنا محفوظ کریں۔</string>
+    <string name="planner_outside_saving">محفوظ کیا جا رہا ہے…</string>
+    <string name="planner_outside_error_range">1 سے 604 تک درست صفحہ کی حد درج کریں۔</string>
+    <string name="planner_outside_error_plan">رینج میں ہر صفحہ اس منصوبہ ساز سے تعلق رکھتا ہے۔</string>
+    <string name="planner_outside_error_read">یہ صفحات پہلے ہی ریکارڈ شدہ ہیں۔ بغیر پڑھے ہوئے صفحات کا انتخاب کریں۔</string>
+    <string name="planner_outside_error_date">آج یا اس سے پہلے پڑھنے کی تاریخ کا انتخاب کریں۔</string>
+    <string name="planner_outside_error_time">ہر صفحہ کے لیے ایک مثبت وقت درج کریں (سیکنڈ 0-59)، جس میں کل 24 گھنٹے سے زیادہ نہ ہو۔</string>
+    <string name="planner_outside_error_changed">یہ منصوبہ ساز بدل گیا ہے یا اب فعال نہیں ہے۔ واپس جائیں اور اسے دوبارہ کھولیں۔</string>
+    <string name="planner_outside_error_save">محفوظ کرنا مکمل نہیں ہو سکا۔ براہ کرم دوبارہ کوشش کریں؛ محفوظ شدہ اندراج کو دو بار شمار نہیں کیا جائے گا۔</string>
+    <string name="planner_outside_history">باہر پڑھنا</string>
+    <string name="planner_outside_pages_label">صفحات %1$s</string>
+    <string name="planner_outside_estimate_note">تخمینی وقت آپ کے ٹوٹل میں حصہ ڈالتا ہے اور ناپے ہوئے پڑھنے سے الگ رہتا ہے۔</string>
+    <string name="planner_outside_per_page">%1$s فی صفحہ</string>
+    <string name="planner_outside_show_page_times">فی صفحہ وقت دکھائیں۔</string>
+    <string name="planner_outside_hide_page_times">صفحہ کے اوقات چھپائیں۔</string>
+    <string name="planner_outside_current">موجودہ صفحہ · %1$d</string>
+    <string name="planner_outside_bounds">فعال منصوبہ ساز · صفحات %1$d–%2$d</string>
+    <string name="planner_outside_count">صفحات کی تعداد</string>
+    <string name="planner_outside_last_choice">آخری صفحہ پڑھا گیا۔</string>
+    <string name="planner_outside_start_hint">آپ کے موجودہ صفحہ %1$d سے شروع ہوتا ہے۔ آپ اس پلانر میں صفحہ %2$d پر لاگ اپ کر سکتے ہیں۔</string>
+    <string name="planner_outside_active_range_error">اپنے موجودہ صفحہ سے اس منصوبہ ساز کے آخر تک ایک مثبت صفحہ شمار یا آخری صفحہ درج کریں۔</string>
+    <string name="planner_outside_position_changed">آپ کے منصوبہ ساز پڑھنے کی پوزیشن بدل گئی۔ واپس جائیں اور موجودہ صفحہ استعمال کرنے کے لیے اس فارم کو دوبارہ کھولیں۔</string>
     <string name="planner_adjust_pace">رفتار کو ایڈجسٹ کریں۔</string>
     <string name="planner_apply">اپلائی کریں۔</string>
     <string name="planner_cancel">منسوخ کریں۔</string>

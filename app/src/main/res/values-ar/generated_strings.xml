@@ -1,6 +1,46 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Assisted UI translations; scripture text is never translated by this script. -->
 <resources>
+    <string name="planner_outside_intro">القراءة من مصحف مادي أم من غيره؟ قم بتسجيل صفحات مخططك هنا، ثم تابع من الصفحة التالية غير المقروءة.</string>
+    <string name="planner_outside_numbering">استخدم أرقام الصفحات في هذا المخطط (ترقيم مدني 604 صفحة).</string>
+    <string name="planner_outside_from">الصفحة الأولى</string>
+    <string name="planner_outside_to">الصفحة الأخيرة</string>
+    <string name="planner_outside_date">تاريخ القراءة</string>
+    <string name="planner_outside_timing">وقت القراءة</string>
+    <string name="planner_outside_estimate">استخدم متوسط القراءة الخاص بي</string>
+    <string name="planner_outside_pace">%1$s لكل صفحة · استنادًا إلى الصفحات المقاسة %2$d في مخططاتك</string>
+    <string name="planner_outside_no_pace">لا يوجد متوسط للصفحة تم قياسه حتى الآن. أدخل وقتك أدناه؛ يصبح التقدير الشخصي متاحًا بعد الانتهاء من الصفحات باستخدام المؤقت الموجود داخل التطبيق.</string>
+    <string name="planner_outside_manual">أدخل وقتي</string>
+    <string name="planner_outside_seconds">ثانية</string>
+    <string name="planner_outside_each">قم بتعيين وقت مختلف لكل صفحة</string>
+    <string name="planner_outside_page">صفحة %1$d</string>
+    <string name="planner_outside_preview">صفحات %1$d الجديدة · %2$s</string>
+    <string name="planner_outside_skipped">سيتم تخطي صفحات %1$d المقروءة بالفعل. لن يتم إضافة وقتهم مرة أخرى.</string>
+    <string name="planner_outside_resume">تابع من الصفحة %1$d في مخططك.</string>
+    <string name="planner_outside_complete">بهذا تنتهي خطتك. سيتم حفظ قراءتك في تاريخها.</string>
+    <string name="planner_outside_save_continue">احفظ وأكمل القراءة</string>
+    <string name="planner_outside_save">حفظ القراءة</string>
+    <string name="planner_outside_saving">جاري الحفظ...</string>
+    <string name="planner_outside_error_range">أدخل نطاق صفحات صالحًا من 1 إلى 604.</string>
+    <string name="planner_outside_error_plan">يجب أن تنتمي كل صفحة في النطاق إلى هذا المخطط.</string>
+    <string name="planner_outside_error_read">تم تسجيل هذه الصفحات بالفعل. اختر الصفحات غير المقروءة.</string>
+    <string name="planner_outside_error_date">اختر تاريخ القراءة اليوم أو قبل ذلك.</string>
+    <string name="planner_outside_error_time">أدخل وقتًا إيجابيًا لكل صفحة (الثواني 0–59)، على ألا يزيد إجماليه عن 24 ساعة.</string>
+    <string name="planner_outside_error_changed">تغير هذا المخطط أو لم يعد نشطًا. ارجع وافتحه مرة أخرى.</string>
+    <string name="planner_outside_error_save">تعذر إنهاء الحفظ. يرجى المحاولة مرة أخرى؛ لن يتم احتساب الإدخال المحفوظ مرتين.</string>
+    <string name="planner_outside_history">القراءة الخارجية</string>
+    <string name="planner_outside_pages_label">الصفحات %1$s</string>
+    <string name="planner_outside_estimate_note">يساهم الوقت المقدر في الإجماليات الخاصة بك ويظل منفصلاً عن القراءة المقاسة.</string>
+    <string name="planner_outside_per_page">%1$s لكل صفحة</string>
+    <string name="planner_outside_show_page_times">عرض الوقت لكل صفحة</string>
+    <string name="planner_outside_hide_page_times">إخفاء أوقات الصفحة</string>
+    <string name="planner_outside_current">الصفحة الحالية · %1$d</string>
+    <string name="planner_outside_bounds">المخطط النشط · الصفحات %1$d–%2$d</string>
+    <string name="planner_outside_count">عدد الصفحات</string>
+    <string name="planner_outside_last_choice">قراءة الصفحة الأخيرة</string>
+    <string name="planner_outside_start_hint">يبدأ من صفحتك الحالية، %1$d. يمكنك تسجيل الدخول إلى صفحة %2$d في هذا المخطط.</string>
+    <string name="planner_outside_active_range_error">أدخل عددًا موجبًا للصفحات أو الصفحة الأخيرة من صفحتك الحالية حتى نهاية هذا المخطط.</string>
+    <string name="planner_outside_position_changed">تم تغيير موضع قراءة المخطط الخاص بك. ارجع وأعد فتح هذا النموذج لاستخدام الصفحة الحالية.</string>
     <string name="app_name">Quran Nur</string>
     <string name="quran_playback_channel_name">تشغيل صوت القرآن الكريم</string>
     <string name="ui_1_s_114_bba161">• %1$s/114</string>

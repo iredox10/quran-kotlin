@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="planner_outside_log">Catat bacaan di luar aplikasi</string>
+    <string name="planner_outside_in_app">Di dalam aplikasi · waktu terukur</string>
+    <string name="planner_outside_entered">Di luar aplikasi · waktu yang dimasukkan</string>
+    <string name="planner_outside_estimated">Di luar aplikasi · waktu perkiraan</string>
+</resources>

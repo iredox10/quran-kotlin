@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Assisted UI translations; scripture text is never translated by this script. -->
 <resources>
-    <string name="mushaf_picker_intro">Elige la escritura o lectura que te resulte más fácil de leer.</string>
+    <string name="mushaf_picker_intro">Elija el guión o la lectura que le resulte más fácil de leer.</string>
     <string name="mushaf_name_uthmani">Uthmani Hafs</string>
     <string name="mushaf_description_qpc">Escritura Madani QPC · texto claro y fluido</string>
     <string name="mushaf_description_tajweed">Escritura Madani · Colores Tajweed siempre encendidos</string>
@@ -12,6 +12,47 @@
     <string name="mushaf_selected">Seleccionado</string>
     <string name="mushaf_indopak_unavailable">Esta edición necesita el texto y la fuente del Corán correspondientes. No está disponible en esta compilación, por lo que no se puede seleccionar.</string>
     <string name="mushaf_flow_note">El texto se ajusta a su pantalla y al tamaño de lectura. Estas vistas previas no prometen un número fijo de líneas de páginas impresas.</string>
+    <string name="planner_outside_intro">¿Leer de un Corán físico o de otro lugar? Registre las páginas de su agenda aquí y luego continúe desde la siguiente página no leída.</string>
+    <string name="planner_outside_numbering">Utilice los números de página de este planificador (numeración Madani de 604 páginas).</string>
+    <string name="planner_outside_from">Primera página</string>
+    <string name="planner_outside_to">Última página</string>
+    <string name="planner_outside_date">Fecha de lectura</string>
+    <string name="planner_outside_timing">Tiempo de lectura</string>
+    <string name="planner_outside_estimate">Usar mi promedio de lectura</string>
+    <string name="planner_outside_pace">%1$s por página · basado en páginas medidas %2$d en sus planificadores</string>
+    <string name="planner_outside_no_pace">Aún no se ha medido el promedio de páginas. Ingrese su tiempo a continuación; un presupuesto personal estará disponible después de terminar las páginas con el temporizador de la aplicación.</string>
+    <string name="planner_outside_manual">Ingresar mi tiempo</string>
+    <string name="planner_outside_minutes">Minutos/página</string>
+    <string name="planner_outside_seconds">Segundos</string>
+    <string name="planner_outside_each">Establecer un tiempo diferente para cada página</string>
+    <string name="planner_outside_page">Página %1$d</string>
+    <string name="planner_outside_preview">%1$d nuevas páginas · %2$s</string>
+    <string name="planner_outside_skipped">Las páginas %1$d ya leídas se omitirán. Su tiempo no se volverá a agregar.</string>
+    <string name="planner_outside_resume">Continúe desde la página %1$d en su agenda.</string>
+    <string name="planner_outside_complete">Esto finaliza su plan. Su lectura se guardará en su historial.</string>
+    <string name="planner_outside_save_continue">Guardar y continuar leyendo</string>
+    <string name="planner_outside_save">Guardar lectura</string>
+    <string name="planner_outside_saving">Guardando…</string>
+    <string name="planner_outside_error_range">Ingrese un rango de páginas válido de 1 a 604.</string>
+    <string name="planner_outside_error_plan">Cada página del rango debe pertenecer a este planificador.</string>
+    <string name="planner_outside_error_read">Estas páginas ya están grabadas. Elija páginas no leídas.</string>
+    <string name="planner_outside_error_date">Elija una fecha de lectura hoy o antes.</string>
+    <string name="planner_outside_error_time">Introduzca un tiempo positivo para cada página (segundos 0-59), con no más de 24 horas en total.</string>
+    <string name="planner_outside_error_changed">Este planificador cambió o ya no está activo. Vuelve atrás y ábrelo de nuevo.</string>
+    <string name="planner_outside_error_save">No se pudo terminar de guardar. Inténtelo de nuevo; una entrada guardada no se contará dos veces.</string>
+    <string name="planner_outside_history">Lectura exterior</string>
+    <string name="planner_outside_pages_label">Páginas %1$s</string>
+    <string name="planner_outside_estimate_note">El tiempo estimado contribuye a los totales y permanece separado de la lectura medida.</string>
+    <string name="planner_outside_per_page">%1$s por página</string>
+    <string name="planner_outside_show_page_times">Mostrar tiempo por página</string>
+    <string name="planner_outside_hide_page_times">Ocultar tiempos de página</string>
+    <string name="planner_outside_current">Página actual · %1$d</string>
+    <string name="planner_outside_bounds">Planificador activo · páginas %1$d–%2$d</string>
+    <string name="planner_outside_count">Número de páginas</string>
+    <string name="planner_outside_last_choice">Última página leída</string>
+    <string name="planner_outside_start_hint">Comienza en su página actual, %1$d. Puede registrarse en la página %2$d en este planificador.</string>
+    <string name="planner_outside_active_range_error">Introduzca un recuento de páginas positivo o una última página desde su página actual hasta el final de este planificador.</string>
+    <string name="planner_outside_position_changed">La posición de lectura de su agenda cambió. Regrese y vuelva a abrir este formulario para usar la página actual.</string>
     <string name="planner_adjust_pace">Ajustar el ritmo</string>
     <string name="planner_apply">Aplicar</string>
     <string name="planner_cancel">Cancelar</string>

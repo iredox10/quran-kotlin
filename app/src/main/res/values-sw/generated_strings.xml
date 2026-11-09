@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Assisted UI translations; scripture text is never translated by this script. -->
 <resources>
-    <string name="mushaf_picker_intro">Chagua maandishi au riwaya unayoona rahisi kusoma.</string>
+    <string name="mushaf_picker_intro">Chagua hati au usomaji unaoona kuwa rahisi zaidi kusoma.</string>
     <string name="mushaf_name_uthmani">Uthmani Hafs</string>
     <string name="mushaf_description_qpc">Hati ya Madani QPC · maandishi wazi na yanayotiririka</string>
     <string name="mushaf_description_tajweed">Hati ya Madani · Rangi za Tajweed zimewashwa kila wakati</string>
@@ -12,6 +12,47 @@
     <string name="mushaf_selected">Imechaguliwa</string>
     <string name="mushaf_indopak_unavailable">Toleo hili linahitaji maandishi na fonti inayolingana ya Kurani. Haipatikani katika muundo huu, kwa hivyo haiwezi kuchaguliwa.</string>
     <string name="mushaf_flow_note">Maandishi hubadilika kulingana na skrini yako na saizi ya usomaji. Muhtasari huu hauahidi hesabu ya laini ya kurasa zilizochapishwa.</string>
+    <string name="planner_outside_intro">Umesoma kutoka kwa Quran halisi au kwingineko? Rekodi kurasa zako za kipangaji hapa, kisha uendelee kutoka ukurasa unaofuata ambao haujasomwa.</string>
+    <string name="planner_outside_numbering">Tumia nambari za kurasa katika kipanga hiki (nambari za Madani zenye kurasa 604).</string>
+    <string name="planner_outside_from">Ukurasa wa kwanza</string>
+    <string name="planner_outside_to">Ukurasa wa mwisho</string>
+    <string name="planner_outside_date">Tarehe ya kusoma</string>
+    <string name="planner_outside_timing">Wakati wa kusoma</string>
+    <string name="planner_outside_estimate">Tumia wastani wangu wa kusoma</string>
+    <string name="planner_outside_pace">%1$s kwa kila ukurasa · kulingana na %2$d kurasa zilizopimwa katika vipangaji vyako</string>
+    <string name="planner_outside_no_pace">Bado hakuna wastani wa ukurasa uliopimwa. Ingiza muda wako hapa chini; kadirio la kibinafsi linapatikana baada ya kumaliza kurasa kwa kutumia kipima muda cha ndani ya programu.</string>
+    <string name="planner_outside_manual">Weka wakati wangu</string>
+    <string name="planner_outside_minutes">Dakika / ukurasa</string>
+    <string name="planner_outside_seconds">Sekunde</string>
+    <string name="planner_outside_each">Weka muda tofauti kwa kila ukurasa</string>
+    <string name="planner_outside_page">Ukurasa %1$d</string>
+    <string name="planner_outside_preview">%1$d kurasa mpya · %2$s</string>
+    <string name="planner_outside_skipped">Kurasa za %1$d ambazo tayari zimesomwa zitarukwa. Wakati wao hautaongezwa tena.</string>
+    <string name="planner_outside_resume">Endelea kutoka ukurasa %1$d katika mpangilio wako.</string>
+    <string name="planner_outside_complete">Hii inakamilisha mpango wako. Usomaji wako utahifadhiwa katika historia yake.</string>
+    <string name="planner_outside_save_continue">Hifadhi na uendelee kusoma</string>
+    <string name="planner_outside_save">Hifadhi usomaji</string>
+    <string name="planner_outside_saving">Inahifadhi...</string>
+    <string name="planner_outside_error_range">Weka safu halali ya ukurasa kutoka 1 hadi 604.</string>
+    <string name="planner_outside_error_plan">Kila ukurasa katika safu lazima uwe wa mpangaji huyu.</string>
+    <string name="planner_outside_error_read">Kurasa hizi tayari zimerekodiwa. Chagua kurasa ambazo hazijasomwa.</string>
+    <string name="planner_outside_error_date">Chagua tarehe ya kusoma leo au mapema.</string>
+    <string name="planner_outside_error_time">Weka muda mzuri kwa kila ukurasa (sekunde 0–59), bila jumla ya saa 24.</string>
+    <string name="planner_outside_error_changed">Kipanga hiki kilibadilika au hakitumiki tena. Rudi nyuma na uifungue tena.</string>
+    <string name="planner_outside_error_save">Haikuweza kumaliza kuhifadhi. Tafadhali jaribu tena; ingizo lililohifadhiwa halitahesabiwa mara mbili.</string>
+    <string name="planner_outside_history">Usomaji wa nje</string>
+    <string name="planner_outside_pages_label">Kurasa %1$s</string>
+    <string name="planner_outside_estimate_note">Muda unaokadiriwa huchangia jumla yako na hukaa tofauti na usomaji uliopimwa.</string>
+    <string name="planner_outside_per_page">%1$s kwa kila ukurasa</string>
+    <string name="planner_outside_show_page_times">Onyesha saa kwa kila ukurasa</string>
+    <string name="planner_outside_hide_page_times">Ficha nyakati za ukurasa</string>
+    <string name="planner_outside_current">Ukurasa wa sasa · %1$d</string>
+    <string name="planner_outside_bounds">Mpangaji hai · kurasa %1$d–%2$d</string>
+    <string name="planner_outside_count">Idadi ya kurasa</string>
+    <string name="planner_outside_last_choice">Ukurasa wa mwisho kusomwa</string>
+    <string name="planner_outside_start_hint">Huanzia kwenye ukurasa wako wa sasa, %1$d. Unaweza kuingia kwenye ukurasa %2$d katika kipanga hiki.</string>
+    <string name="planner_outside_active_range_error">Weka hesabu chanya ya kurasa au ukurasa wa mwisho kutoka ukurasa wako wa sasa hadi mwisho wa kipanga hiki.</string>
+    <string name="planner_outside_position_changed">Nafasi yako ya kusoma ya kipangaji ilibadilika. Rudi nyuma na ufungue tena fomu hii ili kutumia ukurasa wa sasa.</string>
     <string name="planner_adjust_pace">Rekebisha Kasi</string>
     <string name="planner_apply">Tuma</string>
     <string name="planner_cancel">Ghairi</string>

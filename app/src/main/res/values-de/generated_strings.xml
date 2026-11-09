@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Assisted UI translations; scripture text is never translated by this script. -->
 <resources>
-    <string name="mushaf_picker_intro">Wähle die Schrift oder Lesart, die du am besten lesen kannst.</string>
+    <string name="mushaf_picker_intro">Wählen Sie das Skript oder die Lektüre, die Sie am leichtesten lesen können.</string>
     <string name="mushaf_name_uthmani">Uthmani Hafs</string>
     <string name="mushaf_description_qpc">Madani QPC-Skript · klarer, fließender Text</string>
     <string name="mushaf_description_tajweed">Madani-Skript · Tajweed-Farben immer an</string>
@@ -12,6 +12,47 @@
     <string name="mushaf_selected">Ausgewählt</string>
     <string name="mushaf_indopak_unavailable">Diese Ausgabe benötigt den passenden Korantext und die entsprechende Schriftart. Es ist in diesem Build nicht verfügbar und kann daher nicht ausgewählt werden.</string>
     <string name="mushaf_flow_note">Der Text passt sich Ihrem Bildschirm und Ihrer Lesegröße an. Diese Vorschauen versprechen keine feste Anzahl gedruckter Seiten.</string>
+    <string name="planner_outside_intro">Aus einem physischen Koran oder anderswo lesen? Notieren Sie hier Ihre Planerseiten und fahren Sie dann mit der nächsten ungelesenen Seite fort.</string>
+    <string name="planner_outside_numbering">Verwenden Sie die Seitenzahlen in diesem Planer (604-seitige Madani-Nummerierung).</string>
+    <string name="planner_outside_from">Erste Seite</string>
+    <string name="planner_outside_to">Letzte Seite</string>
+    <string name="planner_outside_date">Lesedatum</string>
+    <string name="planner_outside_timing">Lesezeit</string>
+    <string name="planner_outside_estimate">Benutze meinen Lesedurchschnitt</string>
+    <string name="planner_outside_pace">%1$s pro Seite · basierend auf %2$d gemessenen Seiten in Ihren Planern</string>
+    <string name="planner_outside_no_pace">Noch kein gemessener Seitendurchschnitt. Geben Sie unten Ihre Zeit ein; Ein persönlicher Kostenvoranschlag wird verfügbar, nachdem Sie die Seiten mit dem In-App-Timer beendet haben.</string>
+    <string name="planner_outside_manual">Geben Sie meine Zeit ein</string>
+    <string name="planner_outside_minutes">Minuten/Seite</string>
+    <string name="planner_outside_seconds">Sekunden</string>
+    <string name="planner_outside_each">Stellen Sie für jede Seite eine andere Zeit ein</string>
+    <string name="planner_outside_page">Seite %1$d</string>
+    <string name="planner_outside_preview">%1$d neue Seiten · %2$s</string>
+    <string name="planner_outside_skipped">%1$d Bereits gelesene Seiten werden übersprungen. Ihre Zeit wird nicht erneut hinzugefügt.</string>
+    <string name="planner_outside_resume">Fahren Sie mit Seite %1$d in Ihrem Planer fort.</string>
+    <string name="planner_outside_complete">Damit ist Ihr Plan abgeschlossen. Ihr Messwert wird in seinem Verlauf gespeichert.</string>
+    <string name="planner_outside_save_continue">Speichern und weiterlesen</string>
+    <string name="planner_outside_save">Messwert speichern</string>
+    <string name="planner_outside_saving">Speichern…</string>
+    <string name="planner_outside_error_range">Geben Sie einen gültigen Seitenbereich von 1 bis 604 ein.</string>
+    <string name="planner_outside_error_plan">Jede Seite im Bereich muss zu diesem Planer gehören.</string>
+    <string name="planner_outside_error_read">Diese Seiten sind bereits aufgezeichnet. Wählen Sie ungelesene Seiten.</string>
+    <string name="planner_outside_error_date">Wählen Sie einen Lesetermin heute oder früher.</string>
+    <string name="planner_outside_error_time">Geben Sie für jede Seite eine positive Zeit ein (Sekunden 0–59), insgesamt jedoch nicht mehr als 24 Stunden.</string>
+    <string name="planner_outside_error_changed">Dieser Planer hat sich geändert oder ist nicht mehr aktiv. Gehen Sie zurück und öffnen Sie es erneut.</string>
+    <string name="planner_outside_error_save">Der Speichervorgang konnte nicht abgeschlossen werden. Bitte versuchen Sie es erneut; ein gespeicherter Eintrag wird nicht doppelt gezählt.</string>
+    <string name="planner_outside_history">Draußen lesen</string>
+    <string name="planner_outside_pages_label">Seiten %1$s</string>
+    <string name="planner_outside_estimate_note">Die geschätzte Zeit trägt zu Ihren Gesamtwerten bei und bleibt vom gemessenen Wert getrennt.</string>
+    <string name="planner_outside_per_page">%1$s pro Seite</string>
+    <string name="planner_outside_show_page_times">Zeit pro Seite anzeigen</string>
+    <string name="planner_outside_hide_page_times">Seitenzeiten ausblenden</string>
+    <string name="planner_outside_current">Aktuelle Seite · %1$d</string>
+    <string name="planner_outside_bounds">Aktiver Planer · Seiten %1$d–%2$d</string>
+    <string name="planner_outside_count">Anzahl der Seiten</string>
+    <string name="planner_outside_last_choice">Letzte gelesene Seite</string>
+    <string name="planner_outside_start_hint">Beginnt auf Ihrer aktuellen Seite, %1$d. Sie können sich in diesem Planer auf der Seite %2$d anmelden.</string>
+    <string name="planner_outside_active_range_error">Geben Sie eine positive Seitenzahl oder eine letzte Seite von Ihrer aktuellen Seite bis zum Ende dieses Planers ein.</string>
+    <string name="planner_outside_position_changed">Die Leseposition Ihres Planers hat sich geändert. Gehen Sie zurück und öffnen Sie dieses Formular erneut, um die aktuelle Seite zu verwenden.</string>
     <string name="planner_adjust_pace">Tempo anpassen</string>
     <string name="planner_apply">Bewerben</string>
     <string name="planner_cancel">Abbrechen</string>

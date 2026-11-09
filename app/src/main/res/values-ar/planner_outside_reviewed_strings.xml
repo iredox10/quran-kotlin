@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="planner_outside_log">تسجيل قراءة خارج التطبيق</string>
+    <string name="planner_outside_minutes">دقائق / صفحة</string>
+    <string name="planner_outside_in_app">داخل التطبيق · وقت مقاس</string>
+    <string name="planner_outside_entered">خارج التطبيق · وقت أدخلته</string>
+    <string name="planner_outside_estimated">خارج التطبيق · وقت تقديري</string>
+</resources>

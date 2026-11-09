@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="planner_outside_log">Rekodi usomaji nje ya programu</string>
+    <string name="planner_outside_in_app">Ndani ya programu · muda uliopimwa</string>
+    <string name="planner_outside_entered">Nje ya programu · muda ulioingizwa</string>
+    <string name="planner_outside_estimated">Nje ya programu · muda uliokadiriwa</string>
+</resources>

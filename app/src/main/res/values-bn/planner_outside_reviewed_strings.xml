@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="planner_outside_log">অ্যাপের বাইরে পড়া নথিভুক্ত করুন</string>
+    <string name="planner_outside_in_app">অ্যাপের মধ্যে · মাপা সময়</string>
+    <string name="planner_outside_entered">অ্যাপের বাইরে · দেওয়া সময়</string>
+    <string name="planner_outside_estimated">অ্যাপের বাইরে · আনুমানিক সময়</string>
+</resources>

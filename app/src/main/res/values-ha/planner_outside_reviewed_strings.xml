@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="planner_outside_log">Rubuta karatun da aka yi a wajen manhaja</string>
+    <string name="planner_outside_in_app">Cikin manhaja · lokacin da aka auna</string>
+    <string name="planner_outside_entered">Wajen manhaja · lokacin da ka shigar</string>
+    <string name="planner_outside_estimated">Wajen manhaja · lokacin kimantawa</string>
+</resources>

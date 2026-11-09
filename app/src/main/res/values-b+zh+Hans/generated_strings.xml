@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Assisted UI translations; scripture text is never translated by this script. -->
 <resources>
-    <string name="mushaf_picker_intro">选择您最容易阅读的字体或诵读传本。</string>
+    <string name="mushaf_picker_intro">选择您认为最容易阅读的脚本或读物。</string>
     <string name="mushaf_name_uthmani">乌斯曼尼 Hafs</string>
     <string name="mushaf_description_qpc">Madani QPC 脚本 · 清晰、流畅的文本</string>
     <string name="mushaf_description_tajweed">Madani 脚本 · Tajweed 颜色始终开启</string>
@@ -12,6 +12,47 @@
     <string name="mushaf_selected">已选择</string>
     <string name="mushaf_indopak_unavailable">该版本需要其匹配的古兰经文本和字体。它在此版本中不可用，因此无法选择。</string>
     <string name="mushaf_flow_note">文本根据您的屏幕和阅读尺寸进行调整。这些预览不保证固定的打印页行数。</string>
+    <string name="planner_outside_intro">阅读实体《古兰经》或其他地方？在此记录您的计划页面，然后从下一个未读页面继续。</string>
+    <string name="planner_outside_numbering">使用该计划表中的页码（604页Madani编号）。</string>
+    <string name="planner_outside_from">第一页</string>
+    <string name="planner_outside_to">最后一页</string>
+    <string name="planner_outside_date">读取日期</string>
+    <string name="planner_outside_timing">读取时间</string>
+    <string name="planner_outside_estimate">使用我的阅读平均值</string>
+    <string name="planner_outside_pace">%1$s 每页 · 基于 %2$d 在您的规划器中测量的页面</string>
+    <string name="planner_outside_no_pace">尚未测量页面平均值。在下面输入您的时间；当您使用应用内计时器完成页面后，即可获得个人估算。</string>
+    <string name="planner_outside_manual">输入我的时间</string>
+    <string name="planner_outside_minutes">分钟/页</string>
+    <string name="planner_outside_seconds">秒</string>
+    <string name="planner_outside_each">为每个页面设置不同的时间</string>
+    <string name="planner_outside_page">页%1$d</string>
+    <string name="planner_outside_preview">%1$d 新页面·%2$s</string>
+    <string name="planner_outside_skipped">将跳过已读取的%1$d页。他们的时间不会再被添加。</string>
+    <string name="planner_outside_resume">从计划表中的 %1$d 页面继续。</string>
+    <string name="planner_outside_complete">这样就完成了您的计划。您的阅读将被保存在历史中。</string>
+    <string name="planner_outside_save_continue">保存并继续阅读</string>
+    <string name="planner_outside_save">保存读数</string>
+    <string name="planner_outside_saving">保存...</string>
+    <string name="planner_outside_error_range">输入从 1 到 604 的有效页面范围。</string>
+    <string name="planner_outside_error_plan">该范围中的每个页面都必须属于该规划器。</string>
+    <string name="planner_outside_error_read">这些页面已经被记录。选择未读页面。</string>
+    <string name="planner_outside_error_date">选择今天或更早的阅读日期。</string>
+    <string name="planner_outside_error_time">为每页输入正时间（0-59秒），总计不超过24小时。</string>
+    <string name="planner_outside_error_changed">该规划器改变或不再有效。返回并再次打开它。</string>
+    <string name="planner_outside_error_save">无法完成保存。请再试一次；已保存的条目不会被计算两次。</string>
+    <string name="planner_outside_history">外部阅读</string>
+    <string name="planner_outside_pages_label">页%1$s</string>
+    <string name="planner_outside_estimate_note">估计时间会影响您的总数，并且与测量读数保持独立。</string>
+    <string name="planner_outside_per_page">%1$s 每页</string>
+    <string name="planner_outside_show_page_times">每页显示时间</string>
+    <string name="planner_outside_hide_page_times">隐藏页次</string>
+    <string name="planner_outside_current">当前页面·%1$d</string>
+    <string name="planner_outside_bounds">活动规划器·页面%1$d–%2$d</string>
+    <string name="planner_outside_count">页数</string>
+    <string name="planner_outside_last_choice">最后一页已读</string>
+    <string name="planner_outside_start_hint">从当前页面 %1$d 开始。您可以登录此规划器中的%2$d页面。</string>
+    <string name="planner_outside_active_range_error">输入正页数或从当前页到本计划表末尾的最后一页。</string>
+    <string name="planner_outside_position_changed">您的计划者阅读位置发生了变化。返回并重新打开此表单以使用当前页面。</string>
     <string name="planner_adjust_pace">调整节奏</string>
     <string name="planner_apply">申请</string>
     <string name="planner_cancel">取消</string>

@@ -6,7 +6,8 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class PlannerOutsideReadingTest {
-    private fun plan() = PlannerEngine.buildReadingPlanner("page", 3, "2026-11-01", 1, 9, chapters = emptyList())
+    // Pin the actual reader position; an unstarted overdue plan opens its current scheduled day.
+    private fun plan() = PlannerEngine.buildReadingPlanner("page", 3, "2026-11-01", 1, 9, chapters = emptyList()).copy(lastReadPage = 1)
     private fun record(plan: ReadingPlan, first: Int = 1, last: Int = 2, id: String = "outside-1", date: String = "2026-11-03") =
         PlannerOutsideReadings.record(plan, first, last, date, PlannerOutsideReadings.MANUAL,
             (first..last).associateWith { 120L }, id = id, now = 1234L, today = "2026-11-09")
@@ -36,7 +37,7 @@ class PlannerOutsideReadingTest {
         val selection = PlannerOutsideReadings.select(initial, 1, 3)
         assertEquals(1, selection.skippedPages)
         assertEquals(listOf(2, 3), selection.pages)
-        val result = record(initial, last = 3)
+        val result = record(initial, first = 2, last = 3)
         assertEquals(240L, result.entry.totalSeconds)
         assertEquals(setOf(2, 3), result.entry.pageSeconds.keys)
         assertEquals(4, result.resumePage)
@@ -115,7 +116,7 @@ class PlannerOutsideReadingTest {
         fun row(plan: ReadingPlan): Map<*, *> = gson.fromJson(gson.toJson(plan), Map::class.java)
         val original = plan()
         val first = record(original, first = 1, last = 2)
-        val second = record(original, first = 4, last = 5, id = "other-device")
+        val second = record(original.copy(lastReadPage = 4), first = 4, last = 5, id = "other-device")
         val merged = mergePlannerRow(row(first.plan), row(second.plan))
         val replayed = mergePlannerRow(merged, row(first.plan))
         val restored = PlannerEngine.parseReadingPlan(gson.toJson(replayed), gson)!!
@@ -138,8 +139,8 @@ class PlannerOutsideReadingTest {
         val b = initial.assignments[1].copy(pageStart = 2, pageEnd = 3,
             items = listOf(initial.assignments[1].items[0].copy(pageStart = 2, pageEnd = 3)))
         val shared = initial.copy(assignments = listOf(a, b), durationDays = 2)
-        val result = record(shared, first = 2, last = 2)
-        assertEquals(listOf(2), result.plan.assignmentReadPages[1])
+        val result = record(PlannerReadingProgress.markPageRead(shared, 1, 1), first = 2, last = 2)
+        assertEquals(listOf(1, 2), result.plan.assignmentReadPages[1])
         assertEquals(listOf(2), result.plan.assignmentReadPages[2])
         assertEquals(120L, result.entry.totalSeconds)
         assertEquals(mapOf(1 to 120L), PlannerOutsideReadings.secondsByDay(result.plan))
@@ -166,6 +167,20 @@ class PlannerOutsideReadingTest {
         val restored = PlannerEngine.parseReadingPlan(gson.toJson(merged), gson)!!
         assertEquals("Changed elsewhere", restored.title)
         assertEquals(result.entry, restored.outsideReadings["outside-1"])
+    }
+
+    @Test fun `page count and last page start at the current active planner position`() {
+        val active = plan().copy(lastReadPage = 4)
+        assertEquals(4, PlannerOutsideReadings.currentPage(active))
+        assertEquals(5, PlannerOutsideReadings.lastPage(active, 4, 2, true))
+        assertEquals(5, PlannerOutsideReadings.lastPage(active, 4, 5, false))
+        for (action in listOf<() -> Unit>(
+            { PlannerOutsideReadings.lastPage(active, 4, 7, true) },
+            { PlannerOutsideReadings.lastPage(active, 4, 3, false) },
+            { PlannerOutsideReadings.lastPage(active, 4, 0, true) },
+            { PlannerOutsideReadings.lastPage(active, 3, 5, false) },
+            { record(active, 1, 2) }
+        )) assertThrows(IllegalArgumentException::class.java) { action() }
     }
 
 }

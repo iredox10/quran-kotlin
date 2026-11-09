@@ -26,6 +26,20 @@ object PlannerOutsideReadings {
     const val ESTIMATED = "estimated"
     const val MANUAL = "manual"
 
+    fun currentPage(plan: ReadingPlan): Int? = PlannerEngine.getResumeAssignment(plan)?.let {
+        PlannerEngine.getAssignmentReadingResumePage(plan, it)
+    }
+
+    /** User input is relative to the active reader position, never an arbitrary start. */
+    fun lastPage(plan: ReadingPlan, first: Int, value: Int, byCount: Boolean): Int {
+        require(currentPage(plan) == first) { "reading_changed" }
+        require(value > 0) { "range" }
+        val end = if (byCount) first.toLong() + value - 1 else value.toLong()
+        require(end in first.toLong()..604L) { "range" }
+        select(plan, first, end.toInt()) // Also rejects any unassigned gap or page beyond this plan.
+        return end.toInt()
+    }
+
     fun entries(plan: ReadingPlan): List<PlannerOutsideReading> = plan.outsideReadings.values
         .filter { it.date.isNotBlank() && it.pageSeconds.isNotEmpty() }
         .sortedWith(compareBy<PlannerOutsideReading> { it.date }.thenBy { it.createdAt })
@@ -77,6 +91,7 @@ object PlannerOutsideReadings {
         today: String = PlannerEngine.formatPlannerDate()): OutsideReadingResult {
         require(plan.archivedAt == null) { "archived" }
         require(id !in plan.outsideReadings) { "duplicate" }
+        require(currentPage(plan) == first) { "reading_changed" }
         val readingDate = runCatching { LocalDate.parse(date) }.getOrNull()
         require(readingDate != null && !readingDate.isAfter(LocalDate.parse(today))) { "date" }
         require(timing == ESTIMATED || timing == MANUAL) { "timing" }

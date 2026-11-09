@@ -2,8 +2,12 @@
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="file" path="hifdh_recordings/" />
+        <exclude domain="sharedpref" path="PlannerReminders.xml" />
+        <exclude domain="sharedpref" path="PlannerReminderDelivery.xml" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="file" path="hifdh_recordings/" />
+        <exclude domain="sharedpref" path="PlannerReminders.xml" />
+        <exclude domain="sharedpref" path="PlannerReminderDelivery.xml" />
     </device-transfer>
 </data-extraction-rules>

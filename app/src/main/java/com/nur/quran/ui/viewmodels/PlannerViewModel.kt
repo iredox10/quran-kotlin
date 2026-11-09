@@ -250,7 +250,7 @@ class PlannerViewModel @Inject constructor(
         _archivedPlans.value = repository.getArchivedPlans()
         // Persisted plannerReflections win over the plan-embedded map: the
         // repository is the web-parity source, the embedded map is legacy.
-        val historyPlans = (all + _archivedPlans.value).distinctBy { it.id }
+        val historyPlans = (_archivedPlans.value + all).distinctBy { it.id }
         val persistedReflections = historyPlans.mapNotNull { plan ->
             try {
                 repository.getPlannerReflections(plan.id).takeIf { it.isNotEmpty() }
@@ -510,65 +510,42 @@ class PlannerViewModel @Inject constructor(
      * entry { text, createdAt } so reflections survive plan switches.
      */
     fun saveReflection(dayNumber: Int, note: String) {
-        val current = _activePlan.value ?: return
-        val planId = current.id
-        val createdAt = System.currentTimeMillis()
-        val updatedEntries = reflectionEntriesFor(planId, current).toMutableMap()
-        if (note.isNotBlank()) {
-            updatedEntries[dayNumber] = PlannerReflection(note, createdAt)
-        } else {
-            updatedEntries.remove(dayNumber)
-        }
-        updateActivePlan { latest ->
-            val notes = latest.assignmentReflections.toMutableMap()
-            if (note.isNotBlank()) notes[dayNumber] = note else notes.remove(dayNumber)
-            latest.copy(assignmentReflections = notes)
-        }
-        _reflectionEntriesByPlan.value = _reflectionEntriesByPlan.value + (planId to updatedEntries.toMap())
-        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            try { repository.savePlannerReflections(planId, updatedEntries) } catch (_: Exception) {}
-        }
+        val planId = _activePlan.value?.id ?: return
+        saveReflectionForPlan(planId, dayNumber, note)
     }
 
-    /**
-     * Web parity: addPlannerReflection(plannerId, dayNumber, text) — write a
-     * reflection for an arbitrary plan; blank text clears the day entry.
-     * For the active plan this delegates to [saveReflection] so the embedded
-     * map (which the reader screen reads) stays in sync.
-     */
+    /** Capture the plan identity and serialize both stores so completion/restart cannot lose a note. */
     fun saveReflectionForPlan(planId: String, dayNumber: Int, note: String) {
-        if (planId == _activePlannerId.value) {
-            saveReflection(dayNumber, note)
-            return
-        }
-        val plan = _allPlans.value.find { it.id == planId } ?: return
-        val createdAt = System.currentTimeMillis()
-        val updatedEmbedded = plan.assignmentReflections.orEmpty().toMutableMap()
-        val updatedEntries = reflectionEntriesFor(planId, plan).toMutableMap()
-        if (note.isNotBlank()) {
-            updatedEmbedded[dayNumber] = note
-            updatedEntries[dayNumber] = PlannerReflection(note, createdAt)
-        } else {
-            updatedEmbedded.remove(dayNumber)
-            updatedEntries.remove(dayNumber)
-        }
-        _reflectionEntriesByPlan.value = _reflectionEntriesByPlan.value + (planId to updatedEntries.toMap())
         viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
             plannerMutationMutex.withLock {
-                val updatedAll = _allPlans.value.map {
-                    if (it.id == planId) it.copy(assignmentReflections = updatedEmbedded) else it
+                val plan = (_archivedPlans.value + _allPlans.value).find { it.id == planId } ?: return@withLock
+                val entries = (PlannerWire.reflectionsFromEmbedded(plan.assignmentReflections) +
+                    _reflectionEntriesByPlan.value[planId].orEmpty()).toMutableMap()
+                val embedded = plan.assignmentReflections.toMutableMap()
+                if (note.isNotBlank()) {
+                    entries[dayNumber] = PlannerReflection(note, System.currentTimeMillis())
+                    embedded[dayNumber] = note
+                } else {
+                    entries.remove(dayNumber); embedded.remove(dayNumber)
                 }
-                _allPlans.value = updatedAll
-                repository.savePlannerSelection(updatedAll, _activePlannerId.value)
-                try { repository.savePlannerReflections(planId, updatedEntries) } catch (_: Exception) {}
+                _reflectionEntriesByPlan.value = _reflectionEntriesByPlan.value + (planId to entries)
+                val updated = plan.copy(assignmentReflections = embedded)
+                if (_allPlans.value.any { it.id == planId }) {
+                    _allPlans.value = _allPlans.value.map { if (it.id == planId) updated else it }
+                    if (_activePlannerId.value == planId) _activePlan.value = updated
+                }
+                if (_archivedPlans.value.any { it.id == planId }) {
+                    _archivedPlans.value = _archivedPlans.value.map { if (it.id == planId) updated else it }
+                }
+                repository.savePlannerJournal(_allPlans.value, _activePlannerId.value, _archivedPlans.value, planId, entries)
             }
         }
     }
 
-    /** Web parity read: plannerReflections[plannerId][dayNumber]?.text */
     fun getReflectionForPlan(planId: String, dayNumber: Int): String {
         _reflectionEntriesByPlan.value[planId]?.get(dayNumber)?.let { return it.text }
-        return _allPlans.value.find { it.id == planId }?.assignmentReflections?.get(dayNumber) ?: ""
+        return (_allPlans.value + _archivedPlans.value).find { it.id == planId }
+            ?.assignmentReflections?.get(dayNumber).orEmpty()
     }
 
     fun buildRevisionPlan() {
@@ -655,47 +632,38 @@ class PlannerViewModel @Inject constructor(
      * Web parity: addPlannerBookmark(plannerId, verseKey, surahName, note) —
      * planId-keyed, deduped by verseKey, updates the note when it already exists.
      */
-    fun addPlannerBookmark(planId: String, verseKey: String, surahName: String, note: String = "") {
-        val current = (_plannerBookmarksByPlan.value[planId] ?: emptyList()).toMutableList()
-        val existingIdx = current.indexOfFirst { it.verseKey == verseKey }
-        if (existingIdx < 0) {
-            current.add(PlannerBookmark(verseKey = verseKey, surahName = surahName, note = note))
-        } else if (note.isNotBlank()) {
-            current[existingIdx] = current[existingIdx].copy(note = note)
-        } else {
-            return
+    fun addPlannerBookmark(planId: String, verseKey: String, surahName: String, note: String = "") =
+        updatePlannerBookmarks(planId) { rows ->
+            val existing = rows.indexOfFirst { it.verseKey == verseKey }
+            if (existing < 0) rows + PlannerBookmark(verseKey, surahName, note)
+            else if (note.isNotBlank()) rows.mapIndexed { i, row -> if (i == existing) row.copy(note = note) else row }
+            else rows
         }
-        persistPlannerBookmarks(planId, current)
-    }
 
-    /** Web parity: toggle a highlight for an explicit plan (active-plan overload delegates here). */
-    fun togglePlannerBookmarkForPlan(planId: String, verseKey: String, surahName: String) {
-        val current = (_plannerBookmarksByPlan.value[planId] ?: emptyList()).toMutableList()
-        val existing = current.indexOfFirst { it.verseKey == verseKey }
-        if (existing >= 0) {
-            current.removeAt(existing)
-        } else {
-            current.add(PlannerBookmark(verseKey = verseKey, surahName = surahName))
+    fun togglePlannerBookmarkForPlan(planId: String, verseKey: String, surahName: String) =
+        updatePlannerBookmarks(planId) { rows ->
+            if (rows.any { it.verseKey == verseKey }) rows.filterNot { it.verseKey == verseKey }
+            else rows + PlannerBookmark(verseKey, surahName)
         }
-        persistPlannerBookmarks(planId, current)
-    }
 
     fun removePlannerBookmark(verseKey: String) {
         val planId = _activePlannerId.value ?: return
         removePlannerBookmarkForPlan(planId, verseKey)
     }
 
-    /** Web parity: removePlannerBookmark(plannerId, verseKey). */
-    fun removePlannerBookmarkForPlan(planId: String, verseKey: String) {
-        val current = (_plannerBookmarksByPlan.value[planId] ?: emptyList()).filterNot { it.verseKey == verseKey }
-        persistPlannerBookmarks(planId, current)
-    }
+    fun removePlannerBookmarkForPlan(planId: String, verseKey: String) =
+        updatePlannerBookmarks(planId) { rows -> rows.filterNot { it.verseKey == verseKey } }
 
-    private fun persistPlannerBookmarks(planId: String, bookmarks: List<PlannerBookmark>) {
-        _plannerBookmarksByPlan.value = _plannerBookmarksByPlan.value + (planId to bookmarks)
-        if (planId == _activePlannerId.value) _plannerBookmarks.value = bookmarks
-        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            try { repository.savePlannerBookmarks(planId, bookmarks) } catch (_: Exception) {}
+    private fun updatePlannerBookmarks(planId: String, change: (List<PlannerBookmark>) -> List<PlannerBookmark>) {
+        viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
+            plannerMutationMutex.withLock {
+                if ((_allPlans.value + _archivedPlans.value).none { it.id == planId }) return@withLock
+                val before = _plannerBookmarksByPlan.value[planId] ?: repository.getPlannerBookmarks(planId)
+                val bookmarks = change(before)
+                _plannerBookmarksByPlan.value = _plannerBookmarksByPlan.value + (planId to bookmarks)
+                if (planId == _activePlannerId.value) _plannerBookmarks.value = bookmarks
+                repository.savePlannerBookmarks(planId, bookmarks)
+            }
         }
     }
 

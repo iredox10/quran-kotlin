@@ -1157,6 +1157,22 @@ class QuranRepository @Inject constructor(
         quranDao.insertCacheEntry(ApiResponseCacheEntity("planner_reflections_$planId", json))
     }
 
+    /** Save the plan mirrors and keyed journal in one Room transaction, including archived runs. */
+    suspend fun savePlannerJournal(
+        plans: List<com.nur.quran.data.planner.ReadingPlan>, activeId: String?,
+        archived: List<com.nur.quran.data.planner.ReadingPlan>, planId: String,
+        entries: Map<Int, com.nur.quran.data.planner.PlannerReflection>
+    ) = withContext(Dispatchers.IO) {
+        require(activeId == null || plans.any { it.id == activeId })
+        quranDao.insertCacheEntries(listOf(
+            ApiResponseCacheEntity("planner_all_plans", gson.toJson(plans)),
+            ApiResponseCacheEntity("planner_active_id", activeId.orEmpty()),
+            ApiResponseCacheEntity("planner_active_plan", ""),
+            ApiResponseCacheEntity("planner_archived_plans", gson.toJson(archived)),
+            ApiResponseCacheEntity("planner_reflections_$planId", com.nur.quran.data.planner.PlannerWire.reflectionsToJson(mapOf(planId to entries)))
+        ))
+    }
+
     // ── Per-plan reading timers (web: plannerSessionTimers[planId][dayNumber])
     suspend fun getPlannerSessionTimers(planId: String): Map<Int, com.nur.quran.data.planner.PlannerSessionTimer> =
         withContext(Dispatchers.IO) {

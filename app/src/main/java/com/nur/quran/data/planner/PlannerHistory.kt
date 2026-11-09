@@ -25,6 +25,26 @@ object PlannerHistory {
         (live.filter(::isComplete) + archived).associateBy { it.id }.values
             .sortedWith(compareByDescending<ReadingPlan> { completedOn(it) ?: it.archivedAt ?: it.createdAt }.thenBy { it.id })
 
+    /** Include older embedded notes and keyed notes, even if a day left the adjusted schedule. */
+    fun reflections(plan: ReadingPlan, keyed: Map<Int, String>): Map<Int, String> {
+        val merged = plan.assignmentReflections.toMutableMap()
+        keyed.forEach { (day, text) -> if (text.isBlank()) merged.remove(day) else merged[day] = text }
+        return merged.filterValues { it.isNotBlank() }.toSortedMap()
+    }
+
+    fun highlights(bookmarks: List<PlannerBookmark>): List<PlannerBookmark> = bookmarks
+        .sortedByDescending { it.createdAt }.distinctBy { it.verseKey }
+
+    /** Date charts deliberately exclude legacy time whose actual reading date was not recorded. */
+    fun chartPoints(summary: PlannerHistorySummary): List<PlannerHistoryChartPoint> {
+        var total = 0L
+        return summary.readingDays.mapNotNull { row ->
+            val date = row.date?.takeIf { runCatching { java.time.LocalDate.parse(it) }.isSuccess } ?: return@mapNotNull null
+            total += row.seconds
+            PlannerHistoryChartPoint(date, row.seconds, total)
+        }
+    }
+
     private fun completedOn(plan: ReadingPlan): String? = if (isComplete(plan))
         plan.assignmentCompletedAt.values.filter { it.isNotBlank() }.maxOrNull() else null
 
@@ -96,3 +116,5 @@ object PlannerHistory {
         }
     }
 }
+
+data class PlannerHistoryChartPoint(val date: String, val seconds: Long, val cumulativeSeconds: Long)

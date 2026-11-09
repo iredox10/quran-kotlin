@@ -62,4 +62,23 @@ class PlannerHistoryTest {
         assertTrue(summary.readingDays.isEmpty())
         assertFalse(PlannerHistory.isComplete(plan().copy(completedDays = listOf(1, 2))))
     }
+    @Test fun `reflections combine keyed and embedded days without hiding orphan entries`() {
+        val original=plan().copy(assignmentReflections=mapOf(1 to "Original",2 to "Older",7 to "Removed schedule day"))
+        assertEquals(mapOf(1 to "Original",2 to "Updated",7 to "Removed schedule day",9 to "Extra"),
+            PlannerHistory.reflections(original,mapOf(2 to "Updated",9 to "Extra")))
+        assertFalse(PlannerHistory.reflections(original,mapOf(7 to "")).containsKey(7))
+    }
+    @Test fun `date charts exclude unknown dates and accumulate only actual recorded dates`() {
+        val summary=PlannerHistory.summarize(completed(),mapOf(1 to PlannerSessionTimer(120,secondsByDate=mapOf("2026-10-01" to 30)),2 to PlannerSessionTimer(60,secondsByDate=mapOf("2026-10-03" to 60))))
+        val points=PlannerHistory.chartPoints(summary)
+        assertEquals(listOf("2026-10-01","2026-10-03"),points.map{it.date})
+        assertEquals(listOf(30L,90L),points.map{it.cumulativeSeconds})
+        assertEquals(180L,summary.totalSeconds)
+    }
+    @Test fun `highlights retain the latest saved note and have stable verse identities`() {
+        val old=PlannerBookmark("1:1","Al-Fatihah","Older",1)
+        val recent=old.copy(note="Saved meaning",createdAt=3)
+        assertEquals(listOf(recent,PlannerBookmark("1:2",createdAt=2)),PlannerHistory.highlights(listOf(old,PlannerBookmark("1:2",createdAt=2),recent)))
+    }
+
 }

@@ -446,6 +446,10 @@ class SurahViewModel @Inject constructor(
 
     suspend fun memorizationInventory() = repository.memorizationInventory()
 
+    /** History always resolves the currently selected local translation, independently of test caches. */
+    suspend fun getHistoryVerseTexts(keys: List<String>): Map<String, VerseEntity> =
+        repository.getHistoryVerses(keys).associateBy { it.verseKey }
+
     suspend fun getVerseTexts(keys: List<String>): Map<String, VerseEntity> {
         val missing = keys.filterNot { verseTextCache.containsKey(it) }
         if (missing.isNotEmpty()) {

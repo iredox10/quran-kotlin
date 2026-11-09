@@ -60,6 +60,14 @@ class OfflineReaderContentTest {
                 dao.upsertTranslationTexts(listOf(com.nur.quran.data.db.entities.TranslationTextEntity(testEdition, "1:1", "Local translation fixture")))
                 assertEquals("Local translation fixture", repository.getPageVerses(1, translationId = testEdition).verses.first().translation)
                 assertEquals("Local translation fixture", repository.getShareTranslation(testEdition, "1:1"))
+                val settings=androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext.getSharedPreferences("hifdh_settings",0)
+                val originalTranslation=settings.getInt("translation_id",20)
+                try {
+                    settings.edit().putInt("translation_id",testEdition).commit()
+                    val historyVerse=reader.getHistoryVerseTexts(listOf("1:1"))["1:1"]!!
+                    assertEquals("Local translation fixture",historyVerse.translation)
+                    assertNotEquals(historyVerse.textUthmani,historyVerse.textQpcHafs)
+                } finally { settings.edit().putInt("translation_id",originalTranslation).commit() }
                 assertTrue("Unexpected HTTP: $calls", calls.isEmpty())
             } finally {
                 apiField.set(client, original)

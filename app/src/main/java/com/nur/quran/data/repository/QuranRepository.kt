@@ -184,6 +184,11 @@ class QuranRepository @Inject constructor(
         resolveReaderTranslations(quranDao.getVersesByKey(keys), context.getSharedPreferences("hifdh_settings", 0).getInt("translation_id", 20))
     }
 
+    /** Local history context uses matching bundled Madani scripts and the active translation. */
+    suspend fun getHistoryVerses(keys: List<String>): List<VerseEntity> = withContext(Dispatchers.IO) {
+        restoreBundledScripts(getVersesByKey(keys), emptyList(), onlyLegacy = true).first
+    }
+
     suspend fun memorizationInventory(): Map<String, Int> = withContext(Dispatchers.IO) {
         getAllOfflineVerses().associate { it.verse_key to (it.text_uthmani.orEmpty().split(Regex("\\s+")).count { word -> word.isNotBlank() }) }
     }

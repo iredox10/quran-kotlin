@@ -280,6 +280,7 @@ class MainActivity : ComponentActivity() {
                                 homeViewModel = homeViewModel,
                                 surahViewModel = surahViewModel,
                                 plannerViewModel = plannerViewModel,
+                                onOpenHistory = { navController.navigate(Screen.PlannerHistory.route) },
                                 onReadAssignment = { dayNumber ->
                                     navController.navigate(Screen.PlannerReaderDetail.createRoute(dayNumber))
                                 },
@@ -296,6 +297,18 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             )
+                        }
+                        composable(Screen.PlannerHistory.route) {
+                            PlannerHistoryRoute(plannerViewModel,surahViewModel,
+                                onBack={navController.popBackStack()},
+                                onOpenPlan={navController.navigate(Screen.PlannerHistoryDetail.createRoute(it))},
+                                onOpenVerse={key->key.substringBefore(":").toIntOrNull()?.let { chapter -> navController.navigate(Screen.SurahDetail.createRoute(chapter,key)) }})
+                        }
+                        composable(Screen.PlannerHistoryDetail.route) { entry ->
+                            PlannerHistoryRoute(plannerViewModel,surahViewModel,entry.arguments?.getString("planId"),
+                                onBack={navController.popBackStack()},
+                                onOpenPlan={navController.navigate(Screen.PlannerHistoryDetail.createRoute(it))},
+                                onOpenVerse={key->key.substringBefore(":").toIntOrNull()?.let { chapter -> navController.navigate(Screen.SurahDetail.createRoute(chapter,key)) }})
                         }
                         composable(Screen.PlannerReaderDetail.route) { backStackEntry ->
                             val dayNumber = backStackEntry.arguments?.getString("dayNumber")?.toIntOrNull() ?: 1

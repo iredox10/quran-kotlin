@@ -38,7 +38,8 @@ fun PlannerScreen(
     plannerViewModel: PlannerViewModel,
     onReadAssignment: (Int) -> Unit,
     onOpenVerse: (Int, String) -> Unit = { _, _ -> },
-    onBack: () -> Unit = {}
+    onBack: () -> Unit = {},
+    onOpenHistory: () -> Unit = {}
 ) {
     val activePlan by plannerViewModel.activePlan.collectAsState()
     val allPlans by plannerViewModel.allPlans.collectAsState()
@@ -59,14 +60,13 @@ fun PlannerScreen(
     val context = LocalContext.current
 
     var showSettingsDrawer by remember { mutableStateOf(false) }
-    var viewMode by remember { mutableStateOf(if (activePlan != null) "dashboard" else "intention") }
-    var currentTab by remember { mutableStateOf(PlannerTab.TODAY) }
+    var viewMode by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(if (activePlan != null) "dashboard" else "intention") }
+    var currentTab by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(PlannerTab.TODAY) }
 
     // Dialog state
     var showAdjustPaceDialog by remember { mutableStateOf(false) }
     var showRebalanceDialog by remember { mutableStateOf(false) }
     var showPlannerSettingsDialog by remember { mutableStateOf(false) }
-    var showArchivesDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var pendingListDeleteId by remember { mutableStateOf<String?>(null) }
     var showCustomModal by remember { mutableStateOf(false) }
@@ -164,7 +164,7 @@ fun PlannerScreen(
                             pendingListDeleteId = planId
                         },
                         onOpenCustomPlanModal = { showCustomModal = true },
-                        onOpenArchivesModal = { showArchivesDialog = true }
+                        onOpenArchivesModal = onOpenHistory
                     )
                 }
 
@@ -494,17 +494,6 @@ fun PlannerScreen(
             onExtend = { plannerViewModel.rebalancePlan("extend") },
             onSpread = { plannerViewModel.rebalancePlan("spread") },
             onDismiss = { showRebalanceDialog = false }
-        )
-    }
-
-    // Archives Modal
-    if (showArchivesDialog) {
-        PlannerHistoryDialog(
-            plans = historyPlans,
-            timersByPlan = historyTimers,
-            reflectionsByPlan = reflectionsByPlan,
-            bookmarksByPlan = historyBookmarks,
-            onDismiss = { showArchivesDialog = false }
         )
     }
 

@@ -39,7 +39,8 @@ fun PlannerScreen(
     onReadAssignment: (Int) -> Unit,
     onOpenVerse: (Int, String) -> Unit = { _, _ -> },
     onBack: () -> Unit = {},
-    onOpenHistory: () -> Unit = {}
+    onOpenHistory: () -> Unit = {},
+    onLogOutsideReading: () -> Unit = {}
 ) {
     val activePlan by plannerViewModel.activePlan.collectAsState()
     val allPlans by plannerViewModel.allPlans.collectAsState()
@@ -287,7 +288,9 @@ fun PlannerScreen(
                 else -> stringResource(R.string.planner_open_quran)
             }
 
-            val todaySessionSeconds = sessionTotals[todayAssignment?.dayNumber ?: 1] ?: 0L
+            val outsideTimeByDay = remember(plan) { com.nur.quran.data.planner.PlannerOutsideReadings.secondsByDay(plan) }
+            val todaySessionSeconds = (sessionTotals[todayAssignment?.dayNumber ?: 1] ?: 0L) +
+                (outsideTimeByDay[todayAssignment?.dayNumber ?: 1] ?: 0L)
             val overdueCount = overview?.overdueDays ?: 0
 
             LazyColumn(
@@ -316,6 +319,14 @@ fun PlannerScreen(
                         onSwitchPlan = { planId -> plannerViewModel.switchActivePlan(planId) },
                         onBackToIntention = { viewMode = "intention" }
                     )
+                }
+
+                if (!planDone) item(key = "outside-reading") {
+                    OutlinedButton(onClick = onLogOutsideReading, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                        Icon(NurIcons.BookOpen, null, Modifier.size(18.dp), tint = plannerAccentInk)
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.planner_outside_log), color = hInk)
+                    }
                 }
 
                 // 2. Stats Header 3-Card Row (OVERALL, FINISH BY, STREAK)
@@ -385,6 +396,7 @@ fun PlannerScreen(
                         }
 
                         PlannerTab.JOURNAL -> {
+                            Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
                             PlanJournalTab(
                                 // PlanId-keyed map is the parity source; embedded plan map is fallback.
                                 reflections = (reflectionsByPlan[plan.id] ?: plan.assignmentReflections.orEmpty())
@@ -396,6 +408,12 @@ fun PlannerScreen(
                                     onOpenVerse(surah, "$surah:$ayah")
                                 }
                             )
+                            val outside = remember(plan) { com.nur.quran.data.planner.PlannerOutsideReadings.entries(plan).reversed() }
+                            if (outside.isNotEmpty()) {
+                                HistoryHeading(NurIcons.BookOpen, stringResource(R.string.planner_outside_history))
+                                outside.forEach { entry -> OutsideReadingHistoryEntry(entry) }
+                            }
+                            }
                         }
                     }
                 }

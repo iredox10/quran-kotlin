@@ -142,6 +142,7 @@ fun PlannerHistoryScreen(
                 Column(Modifier.weight(1f)){HistoryInline(NurIcons.Clock,if(summary.timedDays>0) plannerDuration(summary.averageSeconds) else "—");Text(stringResource(R.string.planner_history_daily),fontSize=12.sp,color=hInkMid)}
             }
         }
+        if (plan.outsideReadings.isNotEmpty()) item { OutsideTimeSources(summary) }
         item { PlannerHistoryTimeChart(summary) }
         item { HistoryHeading(NurIcons.Clock,stringResource(R.string.planner_reading_time)) }
         if(summary.readingDays.isEmpty()) item { Text(stringResource(R.string.planner_no_plan_time),fontSize=16.sp,lineHeight=24.sp,color=hInkMid) }
@@ -152,8 +153,16 @@ fun PlannerHistoryScreen(
                     Text(plannerDuration(day.seconds),fontSize=14.sp,fontFamily=fontFamilyMono,color=plannerAccentInk)
                 }
                 Text(stringResource(R.string.planner_accumulated,plannerDuration(day.cumulativeSeconds)) + if(day.date==null) stringResource(R.string.planner_date_not_recorded) else "",fontSize=12.sp,color=hInkMid)
+                if (day.outsideManualSeconds > 0) Text(stringResource(R.string.planner_outside_entered) + " · " + plannerDuration(day.outsideManualSeconds), fontSize = 12.sp, color = hInkMid)
+                if (day.outsideEstimatedSeconds > 0) Text(stringResource(R.string.planner_outside_estimated) + " · " + plannerDuration(day.outsideEstimatedSeconds), fontSize = 12.sp, color = hInkMid)
+                if (day.outsideManualSeconds + day.outsideEstimatedSeconds > 0 && day.inAppSeconds > 0)
+                    Text(stringResource(R.string.planner_outside_in_app) + " · " + plannerDuration(day.inAppSeconds), fontSize = 12.sp, color = hInkMid)
                 Divider(color=hBoneDark,modifier=Modifier.padding(top=8.dp))
             }
+        }
+        if (plan.outsideReadings.isNotEmpty()) {
+            item { HistoryHeading(NurIcons.BookOpen, stringResource(R.string.planner_outside_history)) }
+            items(PlannerOutsideReadings.entries(plan).reversed(), key = { "outside:${it.id}" }) { log -> OutsideReadingHistoryEntry(log) }
         }
         item { HistoryHeading(NurIcons.CalendarDays,stringResource(R.string.planner_timeline)) }
         items(plan.assignments,key={it.dayNumber}) { day ->
@@ -213,7 +222,8 @@ fun PlannerHistoryScreen(
                     Text(plannerAssignmentTitle(it),fontFamily=fontFamilyUi,fontSize=20.sp,color=hInk)
                     Text(stringResource(R.string.planner_scheduled_date,plannerDateLabel(it.date)),fontSize=12.sp,color=hInkMid)
                 }
-                timers[day]?.takeIf{it.totalSeconds>0}?.let { HistoryInline(NurIcons.Clock,plannerDuration(it.totalSeconds)) }
+                val totalSeconds = (timers[day]?.totalSeconds ?: 0L) + (PlannerOutsideReadings.secondsByDay(plan)[day] ?: 0L)
+                if (totalSeconds > 0) HistoryInline(NurIcons.Clock, plannerDuration(totalSeconds))
                 Text(note,fontFamily=fontFamilyBody,fontSize=16.sp,lineHeight=27.sp,color=hInk)
                 Divider(color=hBoneDark,modifier=Modifier.padding(top=8.dp))
             }

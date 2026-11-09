@@ -4,4 +4,5 @@
     <string name="planner_outside_in_app">アプリ内 · 計測した時間</string>
     <string name="planner_outside_entered">アプリ外 · 入力した時間</string>
     <string name="planner_outside_estimated">アプリ外 · 推定時間</string>
+    <string name="ui_minutes_092f99">分</string>
 </resources>

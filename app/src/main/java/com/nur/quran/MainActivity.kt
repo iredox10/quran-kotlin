@@ -280,6 +280,7 @@ class MainActivity : ComponentActivity() {
                                 homeViewModel = homeViewModel,
                                 surahViewModel = surahViewModel,
                                 plannerViewModel = plannerViewModel,
+                                onLogOutsideReading = { navController.navigate(Screen.PlannerOutsideReading.route) },
                                 onOpenHistory = { navController.navigate(Screen.PlannerHistory.route) },
                                 onReadAssignment = { dayNumber ->
                                     navController.navigate(Screen.PlannerReaderDetail.createRoute(dayNumber))
@@ -297,6 +298,14 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             )
+                        }
+                        composable(Screen.PlannerOutsideReading.route) {
+                            PlannerOutsideReadingRoute(plannerViewModel,
+                                onBack = { navController.popBackStack() },
+                                onSaved = { day ->
+                                    navController.popBackStack()
+                                    day?.let { navController.navigate(Screen.PlannerReaderDetail.createRoute(it)) }
+                                })
                         }
                         composable(Screen.PlannerHistory.route) {
                             PlannerHistoryRoute(plannerViewModel,surahViewModel,

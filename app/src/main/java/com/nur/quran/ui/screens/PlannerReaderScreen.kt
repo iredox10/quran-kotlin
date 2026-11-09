@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.sp
 import com.nur.quran.data.db.entities.VerseEntity
 import com.nur.quran.data.db.entities.WordEntity
 import com.nur.quran.data.planner.PlannerEngine
+import com.nur.quran.data.planner.PlannerOutsideReadings
 import com.nur.quran.ui.components.AutoScrollerBar
 import androidx.compose.foundation.gestures.scrollBy
 import com.nur.quran.ui.components.planner.*
@@ -346,7 +347,8 @@ fun PlannerReaderScreen(
     }
     // NB: totals already include everything flushed this session (savedTick),
     // so only the unflushed remainder is added — otherwise time counts double.
-    val displayedSeconds = ((sessionTotals[dayNumber] ?: 0L).toInt() + (timerTick - savedTick).coerceAtLeast(0))
+    val outsideSeconds = remember(activePlan, dayNumber) { activePlan?.let { PlannerOutsideReadings.secondsByDay(it)[dayNumber] } ?: 0L }
+    val displayedSeconds = (((sessionTotals[dayNumber] ?: 0L) + outsideSeconds).toInt() + (timerTick - savedTick).coerceAtLeast(0))
 
     // ── Last-read verse position (web parity: IntersectionObserver :215-268) ──
     // Tracks the top-visible verse (debounced) and auto-scrolls to it on load.

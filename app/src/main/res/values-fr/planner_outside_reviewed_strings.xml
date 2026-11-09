@@ -5,4 +5,5 @@
     <string name="planner_outside_in_app">Dans l’application · temps mesuré</string>
     <string name="planner_outside_entered">Hors de l’application · temps saisi</string>
     <string name="planner_outside_estimated">Hors de l’application · temps estimé</string>
+    <string name="ui_minutes_092f99">Minutes</string>
 </resources>

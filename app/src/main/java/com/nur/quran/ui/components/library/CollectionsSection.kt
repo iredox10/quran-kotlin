@@ -45,7 +45,8 @@ fun CollectionsSection(
     onRemoveItem: (collectionId: Long, verseKey: String) -> Unit,
     onNavigateToVerse: (chapterId: Int, verseKey: String) -> Unit,
     onLaunchHifdh: (chapterId: Int) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showEntries: Boolean = true
 ) {
     var newCollectionName by remember { mutableStateOf("") }
 
@@ -106,6 +107,7 @@ fun CollectionsSection(
             )
         }
 
+        if (!showEntries) return@Column
         if (collections.isEmpty()) {
             CollectionsEmptyState()
         } else {

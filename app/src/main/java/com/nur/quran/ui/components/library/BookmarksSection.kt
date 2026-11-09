@@ -42,7 +42,8 @@ fun BookmarksSection(
     bookmarks: List<BookmarkEntity>,
     onNavigateToVerse: (chapterId: Int, verseKey: String) -> Unit,
     onDeleteBookmark: (verseKey: String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showEntries: Boolean = true
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -84,6 +85,7 @@ fun BookmarksSection(
             }
         }
 
+        if (!showEntries) return@Column
         if (bookmarks.isEmpty()) {
             BookmarksEmptyState()
         } else {

@@ -32,12 +32,17 @@ class OfflineReaderContentTest {
             val original = apiField.get(client)
             val calls = java.util.concurrent.CopyOnWriteArrayList<String>()
             apiField.set(client, Proxy.newProxyInstance(RnApi::class.java.classLoader, arrayOf(RnApi::class.java)) { _, method, args ->
-                if (method.name !in setOf("getWordsPack", "getChapters", "getPage", "getVerses", "getReciters", "getTajweed", "getTranslations", "getTranslation")) method.invoke(original, *(args ?: emptyArray()))
+                if (method.name !in setOf("getWordsPack", "getChapters", "getPage", "getVerses", "getReciters", "getTajweed", "getTranslations", "getTranslation", "getTafsirByChapter")) method.invoke(original, *(args ?: emptyArray()))
                 else { calls.add(method.name); throw AssertionError("Unexpected reading HTTP call: ${method.name}") }
             })
             val dao = repository.javaClass.getDeclaredField("quranDao").apply { isAccessible = true }.get(repository) as com.nur.quran.data.db.dao.QuranDao
             val testEdition = 987654321
             try {
+                // Tafsir warm-up is now deferred: the first explicit open must
+                // still load the complete bundled text without any HTTP call.
+                assertTrue(repository.getTafsirForChapter(169, 2).tafsirs.any {
+                    it.verse_key == "2:282" && !it.text.isNullOrBlank()
+                })
                 assertEquals(6236, repository.memorizationInventory().size)
                 assertTrue(repository.memorizationPageTransitions(2).isNotEmpty())
                 assertEquals(setOf("1:1", "2:255", "114:6"), reader.getVerseTexts(listOf("1:1", "2:255", "114:6")).keys)

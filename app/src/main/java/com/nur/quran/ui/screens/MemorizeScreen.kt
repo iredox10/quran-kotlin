@@ -105,9 +105,12 @@ fun MemorizeScreen(
     }
     val totalDueToday = queueData.sabaqDue.size + queueData.sabqiDue.size + queueData.manzilDue.size
 
-    val memorizedSurahIds = remember(memorizedAyahs, chapters) {
+    val memorizedCounts = remember(memorizedAyahs) {
+        memorizedAyahs.groupingBy { it.substringBefore(":").toIntOrNull() }.eachCount()
+    }
+    val memorizedSurahIds = remember(memorizedCounts, chapters) {
         chapters.filter { chapter ->
-            surahMemCount(memorizedAyahs, chapter.id) >= chapter.versesCount
+            (memorizedCounts[chapter.id] ?: 0) >= chapter.versesCount
         }.map { it.id to it.nameSimple }
     }
 
@@ -615,13 +618,13 @@ fun MemorizeScreen(
                         chapter.translatedName.contains(searchQuery, ignoreCase = true) ||
                         chapter.id.toString() == searchQuery.trim()
                     if (showMemorizedOnly) {
-                        val memCount = surahMemCount(memorizedAyahs, chapter.id)
+                        val memCount = (memorizedCounts[chapter.id] ?: 0)
                         matchesSearch && memCount >= chapter.versesCount
                     } else matchesSearch
                 }
 
                 items(filteredChapters, key = { it.id }) { chapter ->
-                    val memCount = surahMemCount(memorizedAyahs, chapter.id)
+                    val memCount = (memorizedCounts[chapter.id] ?: 0)
                     val isMemorized = memCount >= chapter.versesCount
                     val memPct = Math.round((memCount.toFloat() / chapter.versesCount) * 100)
 

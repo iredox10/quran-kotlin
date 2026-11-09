@@ -87,7 +87,10 @@ fun AnalyticsScreen(
     }
 
     val flowSummary = remember(flowRangeSessions) { AnalyticsStats.summarize(flowRangeSessions) }
-    val flowPrevSec = remember(statsSessions, flowRange) { statsSessions.filter { it.date in AnalyticsStats.previousRangeKeys(flowRange).toSet() }.sumOf { it.durationSec } }
+    val flowPrevSec = remember(statsSessions, flowRange) {
+        val dates = AnalyticsStats.previousRangeKeys(flowRange).toSet()
+        statsSessions.filter { it.date in dates }.sumOf { it.durationSec }
+    }
 
     // Last-7 yyyy-MM-dd keys for the web-parity weekly total (round AFTER summing raw secs).
     val last7Keys = remember {

@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -203,6 +204,7 @@ class HomeViewModel @Inject constructor(
 
     val stats: StateFlow<HomeStats> = repository.getReadingSessionsFlow()
         .map { sessions -> computeStats(sessions) }
+        .flowOn(kotlinx.coroutines.Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeStats())
 
     private val _isOnline = MutableStateFlow(true)

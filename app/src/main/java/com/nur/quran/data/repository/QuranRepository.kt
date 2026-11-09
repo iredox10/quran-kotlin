@@ -123,7 +123,8 @@ class QuranRepository @Inject constructor(
      */
     suspend fun warmOfflineCaches() = withContext(Dispatchers.IO) {
         try { getAllOfflineVerses() } catch (_: Exception) {}
-        try { getAllOfflineTafsirs() } catch (_: Exception) {}
+        // Tafsir is parsed locally on demand; eagerly decoding its 11MB asset
+        // competes with first-screen scrolling and causes avoidable GC pressure.
         try { ensureChaptersFromAssets() } catch (_: Exception) {}
         try { repairBlankTranslations() } catch (_: Exception) {}
     }
@@ -427,10 +428,10 @@ class QuranRepository @Inject constructor(
     @Volatile
     private var cachedOfflineVerses: List<OfflineVerseItem>? = null
 
-    @Synchronized
-    private fun getAllOfflineVerses(): List<OfflineVerseItem> {
-        cachedOfflineVerses?.let { return it }
-        return try {
+    private val offlineVersesLock = Any()
+    private fun getAllOfflineVerses(): List<OfflineVerseItem> = synchronized(offlineVersesLock) {
+        cachedOfflineVerses?.let { return@synchronized it }
+        try {
             val jsonString = context.assets.open("data/quran_full.json").bufferedReader().use { it.readText() }
             val type = object : TypeToken<List<OfflineVerseItem>>() {}.type
             val all: List<OfflineVerseItem> = gson.fromJson(jsonString, type)
@@ -642,10 +643,10 @@ class QuranRepository @Inject constructor(
     @Volatile
     private var cachedOfflineTafsirs: List<OfflineTafsirItem>? = null
 
-    @Synchronized
-    private fun getAllOfflineTafsirs(): List<OfflineTafsirItem> {
-        cachedOfflineTafsirs?.let { return it }
-        return try {
+    private val offlineTafsirLock = Any()
+    private fun getAllOfflineTafsirs(): List<OfflineTafsirItem> = synchronized(offlineTafsirLock) {
+        cachedOfflineTafsirs?.let { return@synchronized it }
+        try {
             val jsonString = context.assets.open("data/tafsir_ibn_kathir.json").bufferedReader().use { it.readText() }
             val type = object : TypeToken<List<OfflineTafsirItem>>() {}.type
             val parsed: List<OfflineTafsirItem> = gson.fromJson(jsonString, type)

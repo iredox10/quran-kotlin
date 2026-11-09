@@ -209,7 +209,7 @@ class PlannerViewModel @Inject constructor(
 
     @OptIn(kotlinx.coroutines.FlowPreview::class)
     private fun loadData() {
-        viewModelScope.launch {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             _chapters.value = repository.getChaptersFlow().firstOrNull() ?: emptyList()
 
             repository.observePlannerCache().debounce(100).collect {
@@ -577,7 +577,7 @@ class PlannerViewModel @Inject constructor(
     }
 
     fun fetchPrayerTimings(lat: Double = 21.4225, lng: Double = 39.8262) { // Default Mecca coordinates
-        viewModelScope.launch {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             val todayStr = PlannerEngine.formatPlannerDate()
             try {
                 // Fetch from Aladhan API
@@ -586,25 +586,27 @@ class PlannerViewModel @Inject constructor(
                 connection.requestMethod = "GET"
                 connection.connectTimeout = 5000
                 connection.readTimeout = 5000
-                if (connection.responseCode == 200) {
-                    val stream = connection.inputStream.bufferedReader().use { it.readText() }
-                    val json = org.json.JSONObject(stream)
-                    if (json.optInt("code") == 200) {
-                        val dataObj = json.getJSONObject("data")
-                        val timingsObj = dataObj.getJSONObject("timings")
-                        val timingsMap = mapOf(
-                            "Fajr" to timingsObj.getString("Fajr"),
-                            "Dhuhr" to timingsObj.getString("Dhuhr"),
-                            "Asr" to timingsObj.getString("Asr"),
-                            "Maghrib" to timingsObj.getString("Maghrib"),
-                            "Isha" to timingsObj.getString("Isha")
-                        )
-                        _prayerTimings.value = PrayerTimings(date = todayStr, timings = timingsMap)
-                        return@launch
+                try {
+                    if (connection.responseCode == 200) {
+                        val stream = connection.inputStream.bufferedReader().use { it.readText() }
+                        val json = org.json.JSONObject(stream)
+                        if (json.optInt("code") == 200) {
+                            val dataObj = json.getJSONObject("data")
+                            val timingsObj = dataObj.getJSONObject("timings")
+                            val timingsMap = mapOf(
+                                "Fajr" to timingsObj.getString("Fajr"),
+                                "Dhuhr" to timingsObj.getString("Dhuhr"),
+                                "Asr" to timingsObj.getString("Asr"),
+                                "Maghrib" to timingsObj.getString("Maghrib"),
+                                "Isha" to timingsObj.getString("Isha")
+                            )
+                            _prayerTimings.value = PrayerTimings(date = todayStr, timings = timingsMap)
+                            return@launch
+                        }
                     }
-                }
+                } finally { connection.disconnect() }
             } catch (e: Exception) {
-                e.printStackTrace()
+                if (e is kotlinx.coroutines.CancellationException) throw e
             }
             // Fallback default times
             _prayerTimings.value = PrayerTimings(

@@ -25,8 +25,22 @@ import javax.inject.Inject
 @HiltViewModel
 class PlannerViewModel @Inject constructor(
     private val repository: QuranRepository,
+    val reminders: com.nur.quran.data.reminders.PlannerReminderCoordinator,
     @dagger.hilt.android.qualifiers.ApplicationContext private val appContext: android.content.Context
 ) : ViewModel() {
+
+    /** Notification links must never reopen a different plan or a completed portion. */
+    suspend fun prepareReminderTarget(key: String): Int? = plannerMutationMutex.withLock {
+        refreshPlannerData()
+        val target = reminders.target(key) ?: return@withLock null
+        val plan = _activePlan.value?.takeIf { it.id == target.planId } ?: return@withLock null
+        val assignment = plan.assignments.firstOrNull { it.dayNumber == target.day } ?: return@withLock null
+        val unread = PlannerEngine.splitAssignmentReadPages(plan, assignment).second
+        val page = target.pages.firstOrNull { it in unread } ?: return@withLock null
+        persistActivePlan(plan.copy(lastReadPage = page, lastReadVerseKey = null))
+        reminders.cancelVisible(key)
+        target.day
+    }
 
     private val plannerPrefs by lazy {
         appContext.getSharedPreferences("PlannerSettings", android.content.Context.MODE_PRIVATE)

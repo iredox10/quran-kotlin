@@ -4,6 +4,7 @@ sealed class Screen(val route: String, val label: String) {
     object Quran : Screen("quran", "Quran")
     object Memorize : Screen("memorize", "Memorize")
     object Planner : Screen("planner", "Planner")
+    object PlannerReminders : Screen("planner_reminders", "Reading reminders")
     object PlannerOutsideReading : Screen("planner_outside_reading", "Log outside reading")
     object PlannerHistory : Screen("planner_history", "Planner history")
     object PlannerHistoryDetail : Screen("planner_history/{planId}", "Plan history") {

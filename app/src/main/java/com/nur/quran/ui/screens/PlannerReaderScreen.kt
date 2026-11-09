@@ -281,6 +281,11 @@ fun PlannerReaderScreen(
     val readerLifecycle = LocalLifecycleOwner.current.lifecycle
     var timerForeground by remember(timerPlanId, dayNumber) { mutableStateOf(readerLifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) }
     var isTimerRunning by remember(timerPlanId, dayNumber) { mutableStateOf(true) }
+    DisposableEffect(timerPlanId, dayNumber, timerForeground, isTimerRunning) {
+        val owner = "reader:$timerPlanId:$dayNumber"
+        plannerViewModel.reminders.setReading(owner, timerPlanId, dayNumber, timerForeground && isTimerRunning)
+        onDispose { plannerViewModel.reminders.setReading(owner, timerPlanId, dayNumber, false) }
+    }
     var timerTick by remember(timerPlanId, dayNumber) { mutableIntStateOf(0) }
     var savedTick by remember(timerPlanId, dayNumber) { mutableIntStateOf(0) }
     var lastBridgedTick by remember(timerPlanId, dayNumber) { mutableIntStateOf(0) }

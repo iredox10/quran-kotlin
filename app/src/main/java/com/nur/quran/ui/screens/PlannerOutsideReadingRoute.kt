@@ -23,6 +23,15 @@ fun PlannerOutsideReadingRoute(viewModel: PlannerViewModel, onBack: () -> Unit, 
     val pace by produceState<PlannerPagePace?>(null, all, archived, timers) {
         value = withContext(Dispatchers.Default) { PlannerOutsideReadings.pace((all + archived).distinctBy { it.id }, timers) }
     }
+    val lifecycle = androidx.compose.ui.platform.LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(plan?.id, lifecycle) {
+        val id = plan?.id
+        val owner = "outside:$id"
+        fun update() { if (id != null) viewModel.reminders.setReading(owner, id, null, lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) }
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, _ -> update() }
+        lifecycle.addObserver(observer); update()
+        onDispose { lifecycle.removeObserver(observer); if (id != null) viewModel.reminders.setReading(owner, id, null, false) }
+    }
     val current = plan
     if (current != null) key(current.id) {
         PlannerOutsideReadingScreen(current, pace, onBack) { first, last, date, timing, seconds, id ->

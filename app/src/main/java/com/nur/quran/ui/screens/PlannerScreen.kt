@@ -40,8 +40,11 @@ fun PlannerScreen(
     onOpenVerse: (Int, String) -> Unit = { _, _ -> },
     onBack: () -> Unit = {},
     onOpenHistory: () -> Unit = {},
-    onLogOutsideReading: () -> Unit = {}
+    onLogOutsideReading: () -> Unit = {},
+    onOpenReminders: () -> Unit = {}
 ) {
+    val reminderSettings by plannerViewModel.reminders.settings.collectAsState()
+    val nextReminder by plannerViewModel.reminders.next.collectAsState()
     val activePlan by plannerViewModel.activePlan.collectAsState()
     val allPlans by plannerViewModel.allPlans.collectAsState()
     val activePlannerId by plannerViewModel.activePlannerId.collectAsState()
@@ -232,14 +235,29 @@ fun PlannerScreen(
             val todayTotal = (todayProgress?.totalPagesCount ?: 1).coerceAtLeast(1)
             val todayPct = Math.round((todayDone.toFloat() / todayTotal) * 100).coerceIn(0, 100)
 
-            val prayerSlots = remember(plan, todayAssignment, prayerTimings, readPreference, activePrayers) {
+            val confirmedTimings by produceState(prayerTimings, reminderSettings, prayerTimings, todayStr, activePrayers) {
+                value = if (reminderSettings.source == "calculated" && reminderSettings.valid(activePrayers, java.time.ZoneId.systemDefault())) {
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                        runCatching {
+                            val times = com.nur.quran.data.reminders.PlannerReminderEngine.prayerTimes(reminderSettings, java.time.LocalDate.parse(todayStr))
+                                .mapValues { java.time.Instant.ofEpochMilli(it.value).atZone(java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")) }
+                            PrayerTimings(todayStr, times)
+                        }.getOrNull()
+                    }
+                } else prayerTimings
+            }
+            val prayerSlots = remember(plan, todayAssignment, confirmedTimings, readPreference, activePrayers, reminderSettings, context) {
                 PlannerEngine.buildPrayerSlots(
                     plan = plan,
                     todayAssignment = todayAssignment,
-                    prayerTimings = prayerTimings,
+                    prayerTimings = confirmedTimings,
                     readPreference = readPreference,
                     activePrayers = activePrayers
-                )
+                ).map { slot ->
+                    if (reminderSettings.source == "custom" && reminderSettings.valid(activePrayers, java.time.ZoneId.systemDefault()))
+                        slot.copy(time = reminderSettings.times[slot.name]?.let { context.getString(R.string.reminder_deadline_label, it) })
+                    else slot
+                }
             }
 
             val nextPrayer = prayerSlots.find { it.status == "current" || it.status == "upcoming" }
@@ -326,6 +344,22 @@ fun PlannerScreen(
                         Icon(NurIcons.BookOpen, null, Modifier.size(18.dp), tint = plannerAccentInk)
                         Spacer(Modifier.width(8.dp))
                         Text(stringResource(R.string.planner_outside_log), color = hInk)
+                    }
+                }
+
+                item(key = "reading-reminders") {
+                    OutlinedButton(onClick = onOpenReminders, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+                        Icon(NurIcons.Clock, null, Modifier.size(18.dp), tint = plannerAccentInk)
+                        Spacer(Modifier.width(10.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(stringResource(R.string.reminder_title), color = hInk)
+                            val label = if (!reminderSettings.enabled) stringResource(R.string.reminder_off)
+                                else if (!reminderSettings.valid(plannerViewModel.reminders.activePrayers(), java.time.ZoneId.systemDefault()) || !plannerViewModel.reminders.notificationsAllowed()) stringResource(R.string.reminder_blocked)
+                                else nextReminder?.let { stringResource(R.string.reminder_next,
+                                    java.time.Instant.ofEpochMilli(it.at).atZone(java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofLocalizedDateTime(java.time.format.FormatStyle.SHORT))) }
+                                    ?: stringResource(R.string.reminder_waiting)
+                            Text(label, color = hInkMid, fontSize = 12.sp)
+                        }
                     }
                 }
 

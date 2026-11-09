@@ -69,9 +69,14 @@ class MainActivity : ComponentActivity() {
     private val libraryViewModel: LibraryViewModel by viewModels()
     private val packViewModel: PackViewModel by viewModels()
 
+    private var pendingReminder by mutableStateOf<Pair<String, Boolean>?>(null)
     private var pendingDeepLink by mutableStateOf<Pair<Int, String?>?>(null)
 
     private fun handleDeepLink(intent: Intent?) {
+        if (intent?.action == com.nur.quran.data.reminders.PlannerReminderCoordinator.ACTION_OPEN) {
+            intent.getStringExtra("reminder_key")?.let { pendingReminder = it to intent.getBooleanExtra("outside", false) }
+            return
+        }
         if (intent == null) return
         val isViewVerse = intent.action == "com.nur.quran.action.VIEW_VERSE" ||
             intent.hasExtra("chapterId") ||
@@ -159,6 +164,18 @@ class MainActivity : ComponentActivity() {
                 onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
             }
             val navController = rememberNavController()
+
+            LaunchedEffect(pendingReminder) {
+                pendingReminder?.let { (key, outside) ->
+                    val day = plannerViewModel.prepareReminderTarget(key)
+                    navController.navigate(Screen.Planner.route) {
+                        popUpTo(Screen.Quran.route) { inclusive = false }
+                        launchSingleTop = true
+                    }
+                    if (day != null) navController.navigate(if (outside) Screen.PlannerOutsideReading.route else Screen.PlannerReaderDetail.createRoute(day))
+                    pendingReminder = null
+                }
+            }
 
             LaunchedEffect(pendingDeepLink) {
                 pendingDeepLink?.let { (chapterId, verseKey) ->
@@ -280,6 +297,7 @@ class MainActivity : ComponentActivity() {
                                 homeViewModel = homeViewModel,
                                 surahViewModel = surahViewModel,
                                 plannerViewModel = plannerViewModel,
+                                onOpenReminders = { navController.navigate(Screen.PlannerReminders.route) },
                                 onLogOutsideReading = { navController.navigate(Screen.PlannerOutsideReading.route) },
                                 onOpenHistory = { navController.navigate(Screen.PlannerHistory.route) },
                                 onReadAssignment = { dayNumber ->
@@ -298,6 +316,9 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             )
+                        }
+                        composable(Screen.PlannerReminders.route) {
+                            PlannerReminderSettingsScreen(plannerViewModel.reminders, onBack = { navController.popBackStack() })
                         }
                         composable(Screen.PlannerOutsideReading.route) {
                             PlannerOutsideReadingRoute(plannerViewModel,

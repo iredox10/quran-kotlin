@@ -7,3 +7,11 @@ Reminders are device-local and opt-in. Configuration requires explicit custom lo
 Preparation uses measured in-app page pace plus five minutes; otherwise a ten-minute lead without an invented estimate. Focused/Strong deliver preparation, deadline, +10 and +25 minute alerts. Gentle delivers the deadline and one quiet follow-up. Missed phases collapse; alerts expire rather than replay all day. Snooze does not modify progress. Reading/logging suppress alerts. Every delivery re-reads the active planner and unfinished pages, including external logs. Android notification settings and Do Not Disturb remain in control.
 
 Native AlarmManager schedules one next event with optional exact-alarm access. WorkManager repairs scheduling and supplies a delayed backup. Boot, clock, time-zone and package updates rebuild locally. Notification actions open a freshly validated planner position; no network or server is needed.
+
+## Verification
+
+- 562 JVM tests: 561 passed, one existing skip; includes 20 reminder-domain checks.
+- Four distinct emulator checks passed: real AlarmManager/receiver delivery with duplicate suppression and outside completion cancellation; foreground suppression and snooze without progress changes; active-plan link invalidation; setup consent and selected strength persistence.
+- Setup check repeated at 320dp with font scale 1.3. Dark-mode controls use the existing gold and charcoal palette.
+- All 1,023 interface resources checked across 21 languages. Reviewed the Arabic, Hausa and Yoruba snooze verbs.
+- Debug and signed release APKs built; release signature verified. Exact-alarm access remains optional; the inexact AlarmManager and WorkManager paths are fallbacks, not delivery-time guarantees.

@@ -404,6 +404,35 @@ class PlannerViewModel @Inject constructor(
         }
     }
 
+    /** Saves against the latest progress; the form's snapshot can never overwrite a reader update. */
+    suspend fun recordOutsideReading(planId: String, first: Int, last: Int, date: String, timing: String,
+        pageSeconds: Map<Int, Long>, requestId: String): OutsideReadingResult = plannerMutationMutex.withLock {
+        val current = _activePlan.value?.takeIf { it.id == planId } ?: error("plan_changed")
+        // A repeated request ID is a successful retry, never another analytics session.
+        current.outsideReadings[requestId]?.let { existing ->
+            val day = PlannerEngine.getResumeAssignment(current)
+            return@withLock OutsideReadingResult(current, existing, day?.dayNumber,
+                day?.let { PlannerEngine.getAssignmentReadingResumePage(current, it) })
+        }
+        val result = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+            val pace = PlannerOutsideReadings.pace((_allPlans.value + _archivedPlans.value).distinctBy { it.id }, _sessionTimersByPlan.value)
+            PlannerOutsideReadings.record(current, first, last, date, timing, pageSeconds, pace, requestId)
+        }
+        val plans = _allPlans.value.map { if (it.id == planId) result.plan else it }
+        repository.saveOutsidePlannerReading(plans, planId, result.entry)
+        _allPlans.value = plans
+        _activePlan.value = result.plan
+        val page = result.resumePage ?: last
+        val day = result.resumeDay ?: current.assignments.lastOrNull()?.dayNumber ?: 1
+        // Same resume source as the in-app planner reader and home Continue card.
+        val chapter = _chapters.value.firstOrNull { page in it.pagesStart..it.pagesEnd }
+        if (chapter != null) try {
+            repository.addRecentlyRead(chapter.id, chapter.nameSimple, pageNumber = page, plannerId = planId, plannerDay = day)
+        } catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
+        catch (_: Exception) { /* The durable planner remains the resume source. */ }
+        result
+    }
+
     fun markPageRead(dayNumber: Int, pageNumber: Int) = updateActivePlan {
         PlannerReadingProgress.markPageRead(it, dayNumber, pageNumber)
     }

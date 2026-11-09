@@ -1108,6 +1108,16 @@ class QuranRepository @Inject constructor(
         ))
     }
 
+    suspend fun saveOutsidePlannerReading(plans: List<com.nur.quran.data.planner.ReadingPlan>,
+        activeId: String, log: com.nur.quran.data.planner.PlannerOutsideReading) = withContext(Dispatchers.IO) {
+        require(plans.any { it.id == activeId && log.id in it.outsideReadings }) { "plan_changed" }
+        quranDao.saveOutsidePlannerReading(listOf(
+            ApiResponseCacheEntity("planner_all_plans", gson.toJson(plans)),
+            ApiResponseCacheEntity("planner_active_id", activeId),
+            ApiResponseCacheEntity("planner_active_plan", "")
+        ), ReadingSessionEntity(date = log.date, duration = log.totalSeconds, type = "reading", timestamp = log.createdAt))
+    }
+
     suspend fun getActivePlannerId(): String? = withContext(Dispatchers.IO) {
         val entry = quranDao.getCacheEntry("planner_active_id")
         if (entry != null && entry.dataJson.isNotBlank()) {

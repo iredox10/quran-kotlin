@@ -92,7 +92,8 @@ data class ReadingPlan(
     /** Web: archivePlanner stamps `new Date().toISOString()` on the archived entry. */
     val assignmentsUpdatedAt: Long = 0L,
     val archivedAt: String? = null,
-    val readingActivityDates: List<String> = emptyList()
+    val readingActivityDates: List<String> = emptyList(),
+    val outsideReadings: Map<String, PlannerOutsideReading> = emptyMap()
 )
 
 /** Web: plannerBookmarks[planId] entry — a verse highlighted from the reader. */
@@ -344,11 +345,35 @@ object PlannerEngine {
      */
     private val PLAN_MAP_KEYS = setOf(
         "assignmentProgress", "assignmentReadPages", "assignmentCompletedItems",
-        "assignmentCompletedAt", "assignmentReflections"
+        "assignmentCompletedAt", "assignmentReflections", "outsideReadings"
     )
     private val PLAN_LIST_KEYS = setOf("completedDays", "excludeDays", "readingActivityDates")
 
     private fun backfillPlan(obj: JsonObject): JsonObject {
+        // New clients may sync logs alongside older plan shapes. A corrupt log
+        // must not discard the user's entire schedule or crash history rendering.
+        val outside = JsonObject()
+        obj.get("outsideReadings")?.takeIf { it.isJsonObject }?.asJsonObject?.entrySet()?.forEach { (id, raw) ->
+            if (!raw.isJsonObject) return@forEach
+            val entry = raw.asJsonObject
+            fun positive(value: JsonElement?): Boolean = runCatching {
+                val number = value!!.asDouble
+                number.isFinite() && number > 0 && number % 1.0 == 0.0
+            }.getOrDefault(false)
+            val date = runCatching { entry.get("date").asString }.getOrNull()
+            val timing = runCatching { entry.get("timing").asString }.getOrNull()
+            val pages = entry.get("pageSeconds")?.takeIf { it.isJsonObject }?.asJsonObject
+            val days = entry.get("dayByPage")?.takeIf { it.isJsonObject }?.asJsonObject
+            if (id.isBlank() || runCatching { java.time.LocalDate.parse(date) }.isFailure ||
+                timing !in setOf("manual", "estimated") || pages == null || pages.size() == 0 || days == null ||
+                pages.entrySet().any { (page, value) -> page.toIntOrNull() !in 1..604 || !positive(value) ||
+                    runCatching { value.asDouble > 86400 }.getOrDefault(true) || !positive(days.get(page)) } ||
+                pages.entrySet().sumOf { it.value.asLong } > 86400 || !positive(entry.get("createdAt"))) return@forEach
+            entry.addProperty("id", id)
+            if (!positive(entry.get("samplePages"))) entry.addProperty("samplePages", 0)
+            outside.add(id, entry)
+        }
+        obj.add("outsideReadings", outside)
         for (key in PLAN_MAP_KEYS) {
             if (!obj.has(key) || obj.get(key).isJsonNull) obj.add(key, JsonObject())
         }
@@ -593,7 +618,7 @@ object PlannerEngine {
         },
         assignmentProgress = emptyMap(), assignmentReadPages = emptyMap(),
         assignmentCompletedItems = emptyMap(), assignmentCompletedAt = emptyMap(),
-        completedDays = emptyList(), assignmentReflections = emptyMap(), readingActivityDates = emptyList(),
+        completedDays = emptyList(), assignmentReflections = emptyMap(), readingActivityDates = emptyList(), outsideReadings = emptyMap(),
         lastReadPage = null, lastReadVerseKey = null, archivedAt = null,
         assignmentsUpdatedAt = System.currentTimeMillis()
     )

@@ -167,6 +167,14 @@ interface QuranDao {
     @Query("SELECT * FROM verses WHERE verseKey IN (:keys)")
     suspend fun getVersesByKey(keys: List<String>): List<VerseEntity>
 
+    /** One durable save: a retry cannot leave credited pages without their time log. */
+    @Transaction
+    suspend fun saveOutsidePlannerReading(entries: List<ApiResponseCacheEntity>, session: ReadingSessionEntity) {
+        insertCacheEntries(entries)
+        insertReadingSession(session)
+        pruneReadingSessions()
+    }
+
     // Reading Sessions
     @Query("SELECT * FROM reading_sessions ORDER BY timestamp ASC")
     fun getAllReadingSessions(): Flow<List<ReadingSessionEntity>>

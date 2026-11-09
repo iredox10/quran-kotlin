@@ -3,7 +3,8 @@ package com.nur.quran.data.planner
 import java.util.Calendar
 
 /** Read-only history derived from the same offline plan and timer records used by sync. */
-data class PlannerHistoryDay(val date: String?, val dayNumber: Int?, val seconds: Long, val cumulativeSeconds: Long)
+data class PlannerHistoryDay(val date: String?, val dayNumber: Int?, val seconds: Long, val cumulativeSeconds: Long,
+    val inAppSeconds: Long = seconds, val outsideManualSeconds: Long = 0, val outsideEstimatedSeconds: Long = 0)
 data class PlannerHistorySummary(
     val completed: Boolean,
     val completedDays: Int,
@@ -58,6 +59,14 @@ object PlannerHistory {
             val undated = (timer.totalSeconds.coerceAtLeast(0) - daily.values.sum()).coerceAtLeast(0)
             if (undated > 0) legacy.add(day to undated)
         }
+        val measuredDates = dated.toMap()
+        val entered = sortedMapOf<String, Long>()
+        val estimated = sortedMapOf<String, Long>()
+        PlannerOutsideReadings.entries(plan).forEach { log ->
+            val target = if (log.timing == PlannerOutsideReadings.ESTIMATED) estimated else entered
+            target[log.date] = (target[log.date] ?: 0) + log.totalSeconds
+            dated[log.date] = (dated[log.date] ?: 0) + log.totalSeconds
+        }
         var cumulative = 0L
         // Historical dates weren't captured by earlier versions; don't invent them from scheduled dates.
         val rows = legacy.map { (day, seconds) ->
@@ -65,7 +74,7 @@ object PlannerHistory {
             PlannerHistoryDay(null, day, seconds, cumulative)
         } + dated.map { (date, seconds) ->
             cumulative += seconds
-            PlannerHistoryDay(date, null, seconds, cumulative)
+            PlannerHistoryDay(date, null, seconds, cumulative, measuredDates[date] ?: 0, entered[date] ?: 0, estimated[date] ?: 0)
         }
         return PlannerHistorySummary(
             completed = isComplete(plan), completedDays = progress.count { it.isComplete },

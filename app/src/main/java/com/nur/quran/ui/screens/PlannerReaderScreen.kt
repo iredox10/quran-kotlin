@@ -63,6 +63,7 @@ import com.nur.quran.utils.TajweedProcessor
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.collectLatest
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.round
@@ -841,14 +842,16 @@ fun PlannerReaderScreen(
                     }
 
                     // Track the top-visible verse (debounced) as the last-read position.
-                    LaunchedEffect(lazyListState.firstVisibleItemIndex, assignedVerses.size, currentPage) {
+                    LaunchedEffect(readerPositionKey, assignedVerses, positionedThisPage, hasAutoScrolledToLastRead) {
                         if (assignedVerses.isEmpty() || !positionedThisPage || !hasAutoScrolledToLastRead ||
                             assignedVerses.any { it.pageNumber != currentPage }) return@LaunchedEffect
-                        delay(1000)
-                        val verseIndex = lazyListState.firstVisibleItemIndex - verseHeaderOffset
-                        val visibleVerse = assignedVerses.getOrNull(verseIndex) ?: return@LaunchedEffect
-                        if (activePlan?.lastReadVerseKey != visibleVerse.verseKey) {
-                            plannerViewModel.setLastReadPosition(currentPage, visibleVerse.verseKey)
+                        snapshotFlow { lazyListState.firstVisibleItemIndex }.collectLatest { index ->
+                            delay(1000)
+                            val visibleVerse = assignedVerses.getOrNull(index - verseHeaderOffset)
+                                ?: return@collectLatest
+                            if (plannerViewModel.activePlan.value?.lastReadVerseKey != visibleVerse.verseKey) {
+                                plannerViewModel.setLastReadPosition(currentPage, visibleVerse.verseKey)
+                            }
                         }
                     }
 

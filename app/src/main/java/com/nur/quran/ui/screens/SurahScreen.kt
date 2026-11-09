@@ -507,6 +507,11 @@ fun SurahScreen(
     }
 
     val listState = rememberLazyListState()
+    val entryScrollPosition = remember(chapterId) {
+        viewModel.getSurahScrollPosition(chapterId)
+            ?: surahScrollPositions.remove(chapterId) ?: viewModel.scrollPositions[chapterId]
+    }
+    var initialPositionRestored by remember(chapterId, targetVerseKey) { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
     // Scroll to a LazyColumn index. Offline-first: the full chapter is always
@@ -568,24 +573,6 @@ fun SurahScreen(
                 listState.firstVisibleItemIndex,
                 listState.firstVisibleItemScrollOffset
             )
-        }
-    }
-
-    // Restore saved scroll position when returning to a previously visited Surah
-    LaunchedEffect(uiState, chapterId) {
-        if (uiState is SurahUiState.Success && targetVerseKey == null) {
-            val saved = surahScrollPositions[chapterId]
-            if (saved != null) {
-                val success = uiState as? SurahUiState.Success ?: return@LaunchedEffect
-                val hOffset = computeHeaderOffset(
-                    isMemorizeModeEnabled = isMemorizeModeEnabled,
-                    showSwipeTip = showSwipeTip,
-                    hasSauka = saukaAssignmentId != null && backToSauka != null,
-                    chapterId = chapterId
-                )
-                scrollToVerseListIndex(saved.first, hOffset, success.verses.size, saved.second)
-                surahScrollPositions.remove(chapterId)  // One-time restore
-            }
         }
     }
 
@@ -671,7 +658,8 @@ fun SurahScreen(
         true
     }
 
-    LaunchedEffect(chapterId, listState) {
+    LaunchedEffect(chapterId, listState, initialPositionRestored) {
+        if (!initialPositionRestored) return@LaunchedEffect
         snapshotFlow { Pair(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) }
             .collect { (index, offset) ->
                 if (index >= 0) {
@@ -680,40 +668,32 @@ fun SurahScreen(
             }
     }
 
-    LaunchedEffect(chapterId, targetVerseKey, uiState) {
-        val state = uiState
-        if (state is SurahUiState.Success && state.chapter.id == chapterId) {
-            // Deep link (?verse=) or replayed scroll event: grow the window to
-            // cover the target ayah before scrolling (web: ?verse= param).
-            val hOffset = computeHeaderOffset(
-                isMemorizeModeEnabled = isMemorizeModeEnabled,
-                showSwipeTip = showSwipeTip,
-                hasSauka = saukaAssignmentId != null && backToSauka != null,
-                chapterId = chapterId
-            )
-            val effectiveTarget = targetVerseKey ?: viewModel.scrollToVerseEvent.replayCache.firstOrNull()
-            if (!effectiveTarget.isNullOrBlank()) {
-                val index = state.verses.indexOfFirst { it.verseKey == effectiveTarget }
-                if (index >= 0) {
-                    scrollToVerseListIndex(index + hOffset, hOffset, state.verses.size, 0)
-                    highlightedVerseKey = effectiveTarget
-                } else {
-                    val saved = viewModel.getSurahScrollPosition(chapterId)
-                    if (saved != null) {
-                        scrollToVerseListIndex(saved.first, hOffset, state.verses.size, saved.second)
-                    } else {
-                        listState.scrollToItem(0)
-                    }
-                }
-            } else {
-                val saved = viewModel.getSurahScrollPosition(chapterId)
-                if (saved != null) {
-                    scrollToVerseListIndex(saved.first, hOffset, state.verses.size, saved.second)
-                } else {
-                    listState.scrollToItem(0)
-                }
+    // Restore once per navigation request. Translation/tajweed updates publish
+    // new Success objects; they must never pull a reader back while flinging.
+    val readerReady = (uiState as? SurahUiState.Success)?.let {
+        it.chapter.id == chapterId && it.verses.isNotEmpty()
+    } == true
+    LaunchedEffect(chapterId, targetVerseKey, readerReady) {
+        if (!readerReady || initialPositionRestored) return@LaunchedEffect
+        val state = uiState as? SurahUiState.Success ?: return@LaunchedEffect
+        val hOffset = computeHeaderOffset(isMemorizeModeEnabled, showSwipeTip,
+            saukaAssignmentId != null && backToSauka != null, chapterId)
+        val target = targetVerseKey ?: viewModel.scrollToVerseEvent.replayCache.firstOrNull()
+        val targetIndex = target?.let { key -> state.verses.indexOfFirst { it.verseKey == key } } ?: -1
+        val saved = entryScrollPosition
+        when {
+            targetIndex >= 0 -> {
+                scrollToVerseListIndex(targetIndex + hOffset, hOffset, state.verses.size, 0)
+                highlightedVerseKey = target
+            }
+            saved != null -> scrollToVerseListIndex(saved.first, hOffset, state.verses.size, saved.second)
+            else -> {
+                val recent = viewModel.getRecentlyReadForChapter(chapterId)?.verseKey
+                val index = state.verses.indexOfFirst { it.verseKey == recent }
+                if (index >= 0) scrollToVerseListIndex(index + hOffset, hOffset, state.verses.size, 0)
             }
         }
+        initialPositionRestored = true
     }
 
     // Reading session duration tracking (web parity: logReadingSession)
@@ -934,33 +914,6 @@ fun SurahScreen(
                     val verses = state.verses
                     val wordsMap = state.wordsMap
                     val tajweedMap = state.tajweedMap
-
-                    // Restore scroll position once verses are ready.
-                    // Saved indices are full-list positions, so grow the window
-                    // to cover them first (prefix window keeps indices stable).
-                    LaunchedEffect(chapterId, verses.isNotEmpty()) {
-                        if (verses.isNotEmpty()) {
-                            val hOffset = computeHeaderOffset(
-                                isMemorizeModeEnabled = isMemorizeModeEnabled,
-                                showSwipeTip = showSwipeTip,
-                                hasSauka = saukaAssignmentId != null && backToSauka != null,
-                                chapterId = chapterId
-                            )
-                            val inMemoryPos = viewModel.scrollPositions[chapterId]
-                            if (inMemoryPos != null) {
-                                scrollToVerseListIndex(inMemoryPos.first, hOffset, verses.size, inMemoryPos.second)
-                            } else {
-                                val recentEntry = viewModel.getRecentlyReadForChapter(chapterId)
-                                val savedVerseKey = recentEntry?.verseKey
-                                if (!savedVerseKey.isNullOrEmpty()) {
-                                    val verseIndex = verses.indexOfFirst { it.verseKey == savedVerseKey }
-                                    if (verseIndex >= 0) {
-                                        scrollToVerseListIndex(verseIndex + hOffset, hOffset, verses.size, 0)
-                                    }
-                                }
-                            }
-                        }
-                    }
 
                     // Track the verse in view → recently read with verseKey (web: VerseItem inView)
                     LaunchedEffect(chapterId, verses) {

@@ -105,6 +105,9 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.androidx.compose.ui.text.google.fonts)
 
+    // Offline prayer-time calculations (MIT).
+    implementation("com.batoulapps.adhan:adhan:1.2.1")
+
     // Navigation
     implementation(libs.androidx.navigation.compose)
 

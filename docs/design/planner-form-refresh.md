@@ -13,3 +13,6 @@ Decision ledger:
 - Keep reminder save reachable in a fixed footer, matching Outside Reading; allow large text and narrow screens to scroll naturally.
 
 Validation: 562 unit tests, zero failures (one existing skip). Five existing form UI checks passed at standard size, then all five passed at 320dp with font scale 1.3. Inspected light Outside Reading and dark Reminder screenshots. Removed duplicated summary content and made the fixed gold save action use dark foreground for contrast in both themes. No progress or scheduling logic changed.
+
+## Dashboard shortcuts
+User screenshot: two full-width outlined shortcuts compete with Resume Reading and use too much vertical space. Preserve Resume as the dominant action. Replace both shortcuts with one borderless 48dp row, two equal labelled icon actions and a short dividing rule. Keep reminder details in its settings screen and accessibility description; show a small gold dot when enabled. Labels wrap for larger text and translations, with no fixed maximum height or ellipsis. Reference: user screenshot and bundled Refero icon/touch guidance.

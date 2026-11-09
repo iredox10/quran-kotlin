@@ -339,28 +339,14 @@ fun PlannerScreen(
                     )
                 }
 
-                if (!planDone) item(key = "outside-reading") {
-                    OutlinedButton(onClick = onLogOutsideReading, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                        Icon(NurIcons.BookOpen, null, Modifier.size(18.dp), tint = plannerAccentInk)
-                        Spacer(Modifier.width(8.dp))
-                        Text(stringResource(R.string.planner_outside_log), color = hInk)
-                    }
-                }
-
-                item(key = "reading-reminders") {
-                    OutlinedButton(onClick = onOpenReminders, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
-                        Icon(NurIcons.Clock, null, Modifier.size(18.dp), tint = plannerAccentInk)
-                        Spacer(Modifier.width(10.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(stringResource(R.string.reminder_title), color = hInk)
-                            val label = if (!reminderSettings.enabled) stringResource(R.string.reminder_off)
-                                else if (!reminderSettings.valid(plannerViewModel.reminders.activePrayers(), java.time.ZoneId.systemDefault()) || !plannerViewModel.reminders.notificationsAllowed()) stringResource(R.string.reminder_blocked)
-                                else nextReminder?.let { stringResource(R.string.reminder_next,
-                                    java.time.Instant.ofEpochMilli(it.at).atZone(java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofLocalizedDateTime(java.time.format.FormatStyle.SHORT))) }
-                                    ?: stringResource(R.string.reminder_waiting)
-                            Text(label, color = hInkMid, fontSize = 12.sp)
-                        }
-                    }
+                item(key = "planner-quick-actions") {
+                    val reminderStatus = if (!reminderSettings.enabled) stringResource(R.string.reminder_off)
+                        else if (!reminderSettings.valid(plannerViewModel.reminders.activePrayers(), java.time.ZoneId.systemDefault()) || !plannerViewModel.reminders.notificationsAllowed()) stringResource(R.string.reminder_blocked)
+                        else nextReminder?.let { stringResource(R.string.reminder_next,
+                            java.time.Instant.ofEpochMilli(it.at).atZone(java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofLocalizedDateTime(java.time.format.FormatStyle.SHORT))) }
+                            ?: stringResource(R.string.reminder_waiting)
+                    PlannerQuickActions(!planDone, reminderSettings.enabled, reminderStatus,
+                        onLogOutsideReading, onOpenReminders)
                 }
 
                 // 2. Stats Header 3-Card Row (OVERALL, FINISH BY, STREAK)

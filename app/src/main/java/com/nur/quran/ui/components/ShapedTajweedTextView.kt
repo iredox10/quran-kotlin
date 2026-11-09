@@ -10,6 +10,18 @@ import android.widget.TextView
 
 /** Paints colors over one continuous layout, without reshaping Arabic at color boundaries. */
 internal class ShapedTajweedTextView(context: Context) : TextView(context) {
+    internal var sourceText: CharSequence? = null
+    internal var appliedFontSize = Float.NaN
+    internal var appliedLineHeight = Float.NaN
+    internal var appliedLineMultiplier = Float.NaN
+    internal var appliedJustification: Boolean? = null
+    internal var appliedInteractive: Boolean? = null
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        if (w != oldw && w > 0) scheduleWrapSpaceFix(this, reset = true)
+    }
+
     var colorSegments: List<TajweedSegment> = emptyList()
         set(value) {
             if (field == value) return

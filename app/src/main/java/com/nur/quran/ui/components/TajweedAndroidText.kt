@@ -16,6 +16,7 @@ import android.widget.TextView
 import java.util.WeakHashMap
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -53,14 +54,21 @@ fun TajweedAndroidText(
     val typeface = remember(selectedArabicFontName) {
         arabicTypeface(context, selectedArabicFontName)
     }
-    val spannable = remember(text, wordRanges, segments, isInteractive, textColor) {
+    val wordClick = rememberUpdatedState(onWordClick)
+    val tajweedClick = rememberUpdatedState(onTajweedClick)
+    val dark = com.nur.quran.ui.screens.isDarkThemeGlobal
+    val colors = remember(segments, dark) {
+        segments.map { segment -> segment.copy(colorHex = com.nur.quran.utils.DarkReaderPalette.color(
+            if (segment.ruleClass == "end") "#B8924A" else segment.colorHex, dark)) }
+    }
+    val spannable = remember(text, wordRanges, segments, isInteractive) {
         buildTajweedSpannable(
             text = text,
             wordRanges = wordRanges,
             segments = segments,
             isInteractive = isInteractive,
-            onWordClick = onWordClick,
-            onTajweedClick = onTajweedClick
+            onWordClick = { wordClick.value(it) },
+            onTajweedClick = { tajweedClick.value(it) }
         )
     }
 
@@ -88,22 +96,40 @@ fun TajweedAndroidText(
             }
         },
         update = { tv ->
-            tv.textSize = fontSizeSp
-            tv.typeface = typeface
-            tv.breakStrategy = android.text.Layout.BREAK_STRATEGY_SIMPLE
-            applyJustification(tv, justified)
-            applyVerseLineSpacing(tv, lineHeightRatio, lineHeightMultiplier)
-            tv.setTextColor(textColor.toArgb())
-            tv.colorSegments = segments.map { segment ->
-                segment.copy(colorHex = com.nur.quran.utils.DarkReaderPalette.color(
-                    if (segment.ruleClass == "end") "#B8924A" else segment.colorHex,
-                    com.nur.quran.ui.screens.isDarkThemeGlobal))
+            val metricsChanged = tv.appliedFontSize != fontSizeSp || tv.typeface !== typeface ||
+                tv.appliedLineHeight != lineHeightRatio || tv.appliedLineMultiplier != lineHeightMultiplier ||
+                tv.appliedJustification != justified
+            if (metricsChanged) {
+                tv.textSize = fontSizeSp
+                tv.typeface = typeface
+                applyJustification(tv, justified)
+                applyVerseLineSpacing(tv, lineHeightRatio, lineHeightMultiplier)
+                tv.appliedFontSize = fontSizeSp
+                tv.appliedLineHeight = lineHeightRatio
+                tv.appliedLineMultiplier = lineHeightMultiplier
+                tv.appliedJustification = justified
             }
-            tv.text = spannable
-            scheduleWrapSpaceFix(tv)
+            val gravity = textAlign or Gravity.CENTER_VERTICAL
+            if (tv.gravity != gravity) tv.gravity = gravity
+            if (tv.currentTextColor != textColor.toArgb()) tv.setTextColor(textColor.toArgb())
+            tv.colorSegments = colors
+            if (tv.appliedInteractive != isInteractive) {
+                tv.setOnTouchListener(if (isInteractive) TajweedTouchListener() else null)
+                tv.appliedInteractive = isInteractive
+            }
+            val textChanged = tv.sourceText !== spannable
+            if (textChanged) {
+                tv.sourceText = spannable
+                tv.setText(spannable, TextView.BufferType.SPANNABLE)
+            }
+            // Playback, timers, theme colors and callback changes must not rebuild
+            // StaticLayout or restart its multi-pass wrap correction.
+            if (textChanged || metricsChanged) scheduleWrapSpaceFix(tv, reset = true)
         }
     )
 }
+
+private val arabicTypefaces = java.util.concurrent.ConcurrentHashMap<Int, Typeface>()
 
 private fun arabicTypeface(context: Context, fontName: String): Typeface {
     val resId = when (fontName.trim().lowercase()) {
@@ -117,7 +143,7 @@ private fun arabicTypeface(context: Context, fontName: String): Typeface {
         else -> 0
     }
     return if (resId != 0) {
-        ResourcesCompat.getFont(context, resId) ?: Typeface.DEFAULT
+        arabicTypefaces.getOrPut(resId) { ResourcesCompat.getFont(context, resId) ?: Typeface.DEFAULT }
     } else {
         Typeface.DEFAULT
     }
@@ -263,7 +289,8 @@ private class ZeroWidthSpaceSpan : ReplacementSpan() {
 private class WrapFixState(
     var spannable: Spannable? = null,
     var offsets: Set<Int> = emptySet(),
-    var pass: Int = 0
+    var pass: Int = 0,
+    var scheduled: Boolean = false
 )
 
 private val wrapFixStates = WeakHashMap<TextView, WrapFixState>()
@@ -301,32 +328,32 @@ private fun applyJustification(tv: TextView, justified: Boolean) {
     }
 }
 
-private fun scheduleWrapSpaceFix(tv: TextView) {
+internal fun scheduleWrapSpaceFix(tv: TextView, reset: Boolean = false) {
     val current = tv.text
     val state = wrapFixStates.getOrPut(tv) { WrapFixState() }
-    if (state.spannable !== current) {
+    if (state.spannable !== current || reset) {
         state.spannable = current as? Spannable
-        state.offsets = emptySet()
+        state.offsets = (current as? Spanned)?.let { sp ->
+            sp.getSpans(0, sp.length, ZeroWidthSpaceSpan::class.java).map { sp.getSpanStart(it) }.toSet()
+        }.orEmpty()
         state.pass = 0
     }
-    tv.post { runWrapSpaceFix(tv, state) }
+    if (state.scheduled) return
+    state.scheduled = true
+    tv.postOnAnimation {
+        state.scheduled = false
+        if (tv.isAttachedToWindow) runWrapSpaceFix(tv, state)
+    }
 }
 
 private fun runWrapSpaceFix(tv: TextView, state: WrapFixState) {
     if (state.pass >= WRAP_FIX_MAX_PASSES) return
     val layout = tv.layout
-    if (layout == null || tv.width == 0) {
-        // Not laid out yet — retry on the next frame without burning a pass.
-        tv.post { runWrapSpaceFix(tv, state) }
-        return
-    }
+    if (layout == null || tv.width == 0) return
     val sp = tv.text as? Spannable ?: return
     if (state.spannable !== sp) return // Superseded by a newer text.
     // Re-scan from scratch every pass: zeroing widths can pull words up and
     // move later breaks, so stale offsets must be released first.
-    for (s in sp.getSpans(0, sp.length, ZeroWidthSpaceSpan::class.java)) {
-        sp.removeSpan(s)
-    }
     val fresh = mutableSetOf<Int>()
     for (i in 0 until layout.lineCount) {
         val end = layout.getLineEnd(i)
@@ -334,12 +361,15 @@ private fun runWrapSpaceFix(tv: TextView, state: WrapFixState) {
             fresh.add(end - 1)
         }
     }
-    if (fresh == state.offsets) return // Stable — nothing more to do.
+    if (fresh == state.offsets) return // Keep the stable spans in place.
+    for (span in sp.getSpans(0, sp.length, ZeroWidthSpaceSpan::class.java)) {
+        sp.removeSpan(span)
+    }
     for (off in fresh) {
         sp.setSpan(ZeroWidthSpaceSpan(), off, off + 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
     }
     state.offsets = fresh
     state.pass++
     tv.requestLayout()
-    tv.post { runWrapSpaceFix(tv, state) }
+    scheduleWrapSpaceFix(tv)
 }

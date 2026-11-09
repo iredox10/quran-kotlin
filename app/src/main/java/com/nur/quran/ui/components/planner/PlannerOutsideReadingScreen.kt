@@ -3,6 +3,8 @@ package com.nur.quran.ui.components.planner
 import android.app.DatePickerDialog
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -97,11 +99,10 @@ fun PlannerOutsideReadingScreen(plan: ReadingPlan, pace: PlannerPagePace?, onBac
             Divider(color = hBoneDark)
             LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
                 item {
-                    Text(plan.title, fontFamily = fontFamilyUi, fontSize = 28.sp, color = hInk)
-                    Text(stringResource(R.string.planner_outside_intro), color = hInkMid, fontSize = 16.sp, lineHeight = 24.sp, modifier = Modifier.padding(top = 10.dp))
+                    PlannerFormIntro(NurIcons.BookOpen, plan.title, stringResource(R.string.planner_outside_intro))
                 }
                 item {
-                    HistoryHeading(NurIcons.BookOpen, stringResource(R.string.planner_outside_current, initialPage))
+                    PlannerFormSection("01", NurIcons.BookOpen, stringResource(R.string.planner_outside_current, initialPage)) {
                     Text(stringResource(R.string.planner_outside_bounds, bounds.first, bounds.second), color = hInkMid,
                         fontSize = 14.sp, modifier = Modifier.padding(top = 6.dp))
                     TimingChoice(stringResource(R.string.planner_outside_count), rangeMode == "count", !saving) {
@@ -122,8 +123,10 @@ fun PlannerOutsideReadingScreen(plan: ReadingPlan, pace: PlannerPagePace?, onBac
                     Text(stringResource(R.string.planner_outside_start_hint, initialPage, bounds.second), color = hInkMid,
                         fontSize = 14.sp, lineHeight = 21.sp, modifier = Modifier.padding(top = 8.dp))
                     Text(stringResource(R.string.planner_outside_numbering), fontSize = 12.sp, lineHeight = 18.sp, color = hInkMid, modifier = Modifier.padding(top = 8.dp))
+                    }
                 }
                 item {
+                    PlannerFormSection("02", NurIcons.CalendarDays, stringResource(R.string.planner_outside_date)) {
                     OutlinedButton(onClick = {
                         val day = LocalDate.parse(date)
                         DatePickerDialog(context, { _, y, m, d -> date = LocalDate.of(y, m + 1, d).toString(); error = null },
@@ -133,9 +136,10 @@ fun PlannerOutsideReadingScreen(plan: ReadingPlan, pace: PlannerPagePace?, onBac
                         Spacer(Modifier.width(8.dp))
                         Text(stringResource(R.string.planner_outside_date) + ": " + plannerDateLabel(date), color = hInk)
                     }
+                    }
                 }
                 item {
-                    HistoryHeading(NurIcons.Clock, stringResource(R.string.planner_outside_timing))
+                    PlannerFormSection("03", NurIcons.Clock, stringResource(R.string.planner_outside_timing)) {
                     TimingChoice(stringResource(R.string.planner_outside_estimate), timing == PlannerOutsideReadings.ESTIMATED,
                         !saving && pace != null) { timingChosen = true; timing = PlannerOutsideReadings.ESTIMATED; error = null }
                     Text(if (pace == null) stringResource(R.string.planner_outside_no_pace)
@@ -158,6 +162,7 @@ fun PlannerOutsideReadingScreen(plan: ReadingPlan, pace: PlannerPagePace?, onBac
                             Text(stringResource(R.string.planner_outside_each), color = hInk, fontSize = 14.sp, modifier = Modifier.weight(1f))
                         }
                     }
+                    }
                 }
                 if (individual && timing == PlannerOutsideReadings.MANUAL) items(pages, key = { it }) { page ->
                     val minuteLabel = stringResource(R.string.planner_outside_page, page) + " " + stringResource(R.string.planner_outside_minutes)
@@ -175,10 +180,10 @@ fun PlannerOutsideReadingScreen(plan: ReadingPlan, pace: PlannerPagePace?, onBac
                     }
                 }
                 item {
+                    PlannerFormSection("04", NurIcons.CheckCircle2, stringResource(R.string.planner_outside_preview, pages.size, plannerDuration(times.values.sum()))) {
                     selection.getOrNull()?.let { selected ->
                         if (selected.skippedPages > 0) Text(stringResource(R.string.planner_outside_skipped, selected.skippedPages), color = hInkMid, fontSize = 14.sp, lineHeight = 21.sp)
                     }
-                    Text(stringResource(R.string.planner_outside_preview, pages.size, plannerDuration(times.values.sum())), fontFamily = fontFamilyUi, fontSize = 24.sp, color = hInk)
                     preview?.let { result ->
                         Text(if (result.resumePage != null) stringResource(R.string.planner_outside_resume, result.resumePage)
                             else stringResource(R.string.planner_outside_complete), color = hInkMid, fontSize = 14.sp, lineHeight = 21.sp, modifier = Modifier.padding(top = 8.dp))
@@ -187,6 +192,7 @@ fun PlannerOutsideReadingScreen(plan: ReadingPlan, pace: PlannerPagePace?, onBac
                     val issue = error ?: selection.exceptionOrNull()?.message ?: if (pages.isEmpty()) "already_read" else if (!validTimes && (minutes.isNotBlank() || seconds !in listOf("", "0") || minuteOverrides.isNotEmpty() || secondOverrides.isNotEmpty())) "time" else null
                     if (issue != null) Text(stringResource(outsideReadingError(issue)), color = MaterialTheme.colorScheme.error,
                         fontSize = 14.sp, lineHeight = 21.sp, modifier = Modifier.padding(top = 10.dp))
+                    }
                 }
             }
             Divider(color = hBoneDark)
@@ -209,9 +215,12 @@ fun PlannerOutsideReadingScreen(plan: ReadingPlan, pace: PlannerPagePace?, onBac
 }
 
 @Composable private fun TimingChoice(label: String, selected: Boolean, enabled: Boolean, onClick: () -> Unit) {
+    Surface(shape = RoundedCornerShape(14.dp), color = if (selected) hGold.copy(alpha = .10f) else hCream,
+        border = BorderStroke(if (selected) 1.5.dp else 1.dp, if (selected) hGold else hBoneDark), modifier = Modifier.padding(vertical = 4.dp)) {
     Row(Modifier.fillMaxWidth().clickable(enabled = enabled, onClick = onClick).heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
         RadioButton(selected, onClick, enabled = enabled, colors = RadioButtonDefaults.colors(selectedColor = hGold))
-        Text(label, color = if (enabled) hInk else hInkMid, fontSize = 16.sp)
+        Text(label, color = if (enabled) hInk else hInkMid, fontSize = 15.sp, modifier = Modifier.weight(1f).padding(end = 12.dp))
+    }
     }
 }
 internal fun outsideReadingError(key: String): Int = when (key) {

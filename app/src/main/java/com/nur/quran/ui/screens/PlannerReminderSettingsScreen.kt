@@ -11,6 +11,10 @@ import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.shape.RoundedCornerShape
+import com.nur.quran.ui.components.planner.PlannerFormIntro
+import com.nur.quran.ui.components.planner.PlannerFormSection
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -26,6 +30,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -95,15 +100,16 @@ fun PlannerReminderSettingsScreen(reminders: PlannerReminderCoordinator, onBack:
             Divider(color = hBoneDark)
             LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
                 item {
-                    Text(stringResource(R.string.reminder_intro), color = hInkMid, lineHeight = 24.sp)
+                    PlannerFormIntro(NurIcons.Clock, stringResource(R.string.reminder_title), stringResource(R.string.reminder_intro))
                     ReminderToggle(stringResource(R.string.reminder_enable), draft.enabled) { draft = draft.copy(enabled = it) }
                     Text(stringResource(R.string.reminder_offline_help), color = hInkMid, fontSize = 13.sp, lineHeight = 20.sp)
                 }
                 item {
-                    ReminderHeading(stringResource(R.string.reminder_schedule))
-                    ReminderChoice(stringResource(R.string.reminder_custom), draft.source == "custom") { draft = draft.copy(source = "custom", confirmed = false) }
-                    ReminderChoice(stringResource(R.string.reminder_calculated), draft.source == "calculated") { draft = draft.copy(source = "calculated", confirmed = false) }
+                    PlannerFormSection("01", NurIcons.CalendarDays, stringResource(R.string.reminder_schedule)) {
+                    ReminderChoice(stringResource(R.string.reminder_custom), draft.source == "custom", NurIcons.CalendarDays) { draft = draft.copy(source = "custom", confirmed = false) }
+                    ReminderChoice(stringResource(R.string.reminder_calculated), draft.source == "calculated", NurIcons.BookOpen) { draft = draft.copy(source = "calculated", confirmed = false) }
                     Text(stringResource(R.string.reminder_zone, zone.id), color = hInkMid)
+                    }
                 }
                 if (draft.source == "custom") item {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -152,14 +158,15 @@ fun PlannerReminderSettingsScreen(reminders: PlannerReminderCoordinator, onBack:
                     }
                 }
                 item {
-                    ReminderHeading(stringResource(R.string.reminder_intensity))
+                    PlannerFormSection("02", NurIcons.Volume2, stringResource(R.string.reminder_intensity)) {
                     listOf("gentle" to R.string.reminder_gentle, "focused" to R.string.reminder_focused, "strong" to R.string.reminder_strong).forEach { (value, label) ->
-                        ReminderChoice(stringResource(label), draft.intensity == value) { draft = draft.copy(intensity = value) }
+                        ReminderChoice(stringResource(label), draft.intensity == value, if (value == "gentle") NurIcons.Clock else NurIcons.Volume2) { draft = draft.copy(intensity = value) }
                     }
                     Text(stringResource(when (draft.intensity) { "gentle" -> R.string.reminder_gentle_help; "strong" -> R.string.reminder_strong_help; else -> R.string.reminder_focused_help }), color = hInkMid, lineHeight = 23.sp)
+                    }
                 }
                 item {
-                    ReminderHeading(stringResource(R.string.reminder_permissions))
+                    PlannerFormSection("03", NurIcons.CheckCircle2, stringResource(R.string.reminder_permissions)) {
                     if (notifications) Text(stringResource(R.string.reminder_notifications_ready), color = hInkMid)
                     else OutlinedButton(onClick = {
                         if (Build.VERSION.SDK_INT >= 33) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -178,20 +185,28 @@ fun PlannerReminderSettingsScreen(reminders: PlannerReminderCoordinator, onBack:
                         Text(stringResource(R.string.reminder_sound_settings), color = plannerAccentInk)
                     }
                     next?.let { Text(stringResource(R.string.reminder_next, Instant.ofEpochMilli(it.at).atZone(zone).format(DateTimeFormatter.ofLocalizedDateTime(java.time.format.FormatStyle.SHORT))), color = hInkMid) }
+                    }
                 }
                 item {
                     error?.let { Text(stringResource(it), color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(bottom = 10.dp)) }
                     if (draft.enabled && !valid) Text(stringResource(R.string.reminder_invalid), color = hInkMid, modifier = Modifier.padding(bottom = 10.dp))
+
+                }
+            }
+            Divider(color = hBoneDark)
+            Box(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp)) {
                     Button(onClick = { saving = true; scope.launch {
                         try { reminders.save(candidate); onBack() }
                         catch (e: CancellationException) { throw e }
                         catch (_: Exception) { error = R.string.reminder_save_error }
                         finally { saving = false }
-                    } }, enabled = valid && !saving, modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp), colors = ButtonDefaults.buttonColors(containerColor = hGold)) {
-                        Text(stringResource(R.string.reminder_save), color = hCream)
+                    } }, enabled = valid && !saving, modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp), colors = ButtonDefaults.buttonColors(containerColor = hGold, contentColor = androidx.compose.ui.graphics.Color(0xFF2B3F3C))) {
+                        Icon(if (saving) NurIcons.Clock else NurIcons.Check, null, Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.reminder_save))
                     }
-                }
             }
+
         }
     }
 }
@@ -210,8 +225,14 @@ private fun methodName(value: String): String = when (value) {
         Text(text, color = hInk, modifier = Modifier.weight(1f)); Switch(checked, onChange, colors = SwitchDefaults.colors(checkedTrackColor = hGold, checkedThumbColor = hCream, uncheckedTrackColor = hBoneDark))
     }
 }
-@Composable private fun ReminderChoice(text: String, checked: Boolean, onSelect: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clickable(onClick = onSelect).heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
-        RadioButton(checked, onClick = onSelect, colors = RadioButtonDefaults.colors(selectedColor = hGold, unselectedColor = hInkMid)); Text(text, color = hInk, modifier = Modifier.weight(1f))
+@Composable private fun ReminderChoice(text: String, checked: Boolean, icon: ImageVector, onSelect: () -> Unit) {
+    Surface(shape = RoundedCornerShape(14.dp), color = if (checked) hGold.copy(alpha = .10f) else hCream,
+        border = BorderStroke(if (checked) 1.5.dp else 1.dp, if (checked) hGold else hBoneDark), modifier = Modifier.padding(vertical = 4.dp)) {
+        Row(Modifier.fillMaxWidth().clickable(onClick = onSelect).heightIn(min = 54.dp).padding(end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            RadioButton(checked, onClick = onSelect, colors = RadioButtonDefaults.colors(selectedColor = hGold, unselectedColor = hInkMid))
+            Icon(icon, null, Modifier.size(20.dp), tint = if (checked) plannerAccentInk else hInkMid)
+            Spacer(Modifier.width(10.dp))
+            Text(text, color = hInk, modifier = Modifier.weight(1f), fontSize = 15.sp)
+        }
     }
 }

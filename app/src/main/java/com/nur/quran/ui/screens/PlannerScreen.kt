@@ -71,7 +71,8 @@ fun PlannerScreen(
     var pendingListDeleteId by remember { mutableStateOf<String?>(null) }
     var showCustomModal by remember { mutableStateOf(false) }
 
-    val todayStr = remember { PlannerEngine.formatPlannerDate() }
+    val dateClock = com.nur.quran.ui.components.rememberHifdhClock()
+    val todayStr = remember(dateClock) { PlannerEngine.formatPlannerDate() }
     val plannerListState = rememberLazyListState()
 
     // Auto-rebalance prompt guard (web parity: Planner.jsx#L687-L695)
@@ -209,8 +210,12 @@ fun PlannerScreen(
         } else {
             // ─── ACTIVE VIEW / DASHBOARD (MATCHING WEB LINES 833-1318) ───
             val plan = activePlan!!
-            val overview = remember(plan) { PlannerEngine.getPlannerOverview(plan) }
-            val metrics = remember(plan) { PlannerEngine.getPlannerSuccessMetrics(plan) }
+            val overview = remember(plan, todayStr) { PlannerEngine.getPlannerOverview(plan, todayStr) }
+            val readingDates = remember(plan.id, historyTimers) {
+                historyTimers[plan.id].orEmpty().values.flatMap { timer -> timer.secondsByDate.filterValues { it > 0 }.keys }.toSet()
+            }
+            val metrics = remember(plan, todayStr, readingDates) { PlannerEngine.getPlannerSuccessMetrics(plan, todayStr, readingDates) }
+            val readingAssignment = remember(plan, todayStr) { PlannerEngine.getResumeAssignment(plan, todayStr) }
             val currentDay = overview?.currentDayNumber ?: 1
 
             val todayAssignment = remember(plan, todayStr) {
@@ -269,13 +274,16 @@ fun PlannerScreen(
             }
 
             // Web parity (Planner.jsx): started = any progress OR a saved reader position.
-            val hasStartedReading = todayDone > 0 || plan.lastReadPage != null
+            val hasStartedReading = readingAssignment?.let { target ->
+                PlannerEngine.getAssignmentProgress(plan, target).readPagesCount > 0 ||
+                    plan.lastReadPage?.let { it in target.pageStart..target.pageEnd } == true
+            } == true
 
             val ctaLabel = when {
                 planDone -> stringResource(R.string.planner_restart)
-                todayComplete && nextAssignment != null -> stringResource(R.string.planner_continue_day , nextAssignment.dayNumber)
-                todayComplete -> stringResource(R.string.planner_all_caught_up)
                 hasStartedReading -> stringResource(R.string.planner_resume_reading)
+                readingAssignment == null -> stringResource(R.string.planner_all_caught_up)
+                readingAssignment.dayNumber != currentDay -> stringResource(R.string.planner_continue_day , readingAssignment.dayNumber)
                 else -> stringResource(R.string.planner_open_quran)
             }
 
@@ -300,7 +308,7 @@ fun PlannerScreen(
                             if (planDone) {
                                 plannerViewModel.restartActivePlan()
                             } else {
-                            val targetDay = if (todayComplete && nextAssignment != null) nextAssignment.dayNumber else (todayAssignment?.dayNumber ?: currentDay)
+                            val targetDay = readingAssignment?.dayNumber ?: currentDay
                             onReadAssignment(targetDay)
                             }
                         },
@@ -340,28 +348,14 @@ fun PlannerScreen(
                                 unitsLabel = unitsLabel,
                                 todaySessionSeconds = todaySessionSeconds,
                                 prayerSlots = prayerSlots,
-                                hasStartedReading = hasStartedReading,
                                 onStartReading = {
-                                    // Web parity: Resume routes to firstIncomplete
-                                    // (resumeRoute), Start routes to today's slot route.
-                                    val targetDay = if (hasStartedReading) {
-                                        overview?.firstIncomplete?.dayNumber
-                                            ?: todayAssignment?.dayNumber ?: currentDay
-                                    } else {
-                                        todayAssignment?.dayNumber ?: currentDay
-                                    }
-                                    onReadAssignment(targetDay)
+                                    todayAssignment?.let { onReadAssignment(it.dayNumber) }
                                 },
                                 onMarkPrayerDone = { slot ->
-                                    if (todayAssignment != null) {
-                                        plannerViewModel.setPlannerAssignmentProgress(todayAssignment.dayNumber, slot.slotEnd)
-                                    }
+                                    todayAssignment?.let { plannerViewModel.setPrayerSlotCompleted(it.dayNumber, slot.slotStart, slot.slotEnd, true) }
                                 },
                                 onUndoPrayer = { slot ->
-                                    // Web parity (handleUndoPrayer): only completed slots undo.
-                                    if (todayAssignment != null && slot.status == "completed") {
-                                        plannerViewModel.setPlannerAssignmentProgress(todayAssignment.dayNumber, slot.slotStart)
-                                    }
+                                    todayAssignment?.let { plannerViewModel.setPrayerSlotCompleted(it.dayNumber, slot.slotStart, slot.slotEnd, false) }
                                 },
                                 onShareProgress = {
                                     val shareText = context.getString(R.string.planner_share_title) + "\n" +

@@ -290,6 +290,18 @@ class PlannerViewModel @Inject constructor(
         loadPlanExtras(plan.id)
     }
 
+    /** Read after acquiring the lock: queued page/verse writes cannot restore an old snapshot. */
+    private fun updateActivePlan(change: (ReadingPlan) -> ReadingPlan) {
+        val planId = _activePlan.value?.id ?: return
+        viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
+            plannerMutationMutex.withLock {
+                val current = _activePlan.value?.takeIf { it.id == planId } ?: return@withLock
+                val updated = change(current)
+                if (updated != current) persistActivePlan(updated)
+            }
+        }
+    }
+
     fun setActivePlan(plan: ReadingPlan) {
         viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
             plannerMutationMutex.withLock { persistActivePlan(plan) }
@@ -362,6 +374,8 @@ class PlannerViewModel @Inject constructor(
      */
     fun recordPlannerResume(dayNumber: Int, page: Int) {
         val plan = _activePlan.value ?: return
+        val assignment = plan.assignments.find { it.dayNumber == dayNumber } ?: return
+        if (page !in assignment.pageStart..assignment.pageEnd) return
         if (plan.lastReadPage != page) setLastReadPosition(page)
         viewModelScope.launch {
             val chapter = _chapters.value.firstOrNull { page in it.pagesStart..it.pagesEnd } ?: return@launch
@@ -390,55 +404,8 @@ class PlannerViewModel @Inject constructor(
         }
     }
 
-    fun markPageRead(dayNumber: Int, pageNumber: Int) {
-        val current = _activePlan.value ?: return
-        val assignment = current.assignments.find { it.dayNumber == dayNumber } ?: return
-        val currentReadPages = current.assignmentReadPages[dayNumber] ?: emptyList()
-        if (currentReadPages.contains(pageNumber)) return
-
-        val newReadPages = currentReadPages + pageNumber
-        val updatedReadPagesMap = current.assignmentReadPages.toMutableMap()
-        updatedReadPagesMap[dayNumber] = newReadPages
-
-        val existingCompleted = current.assignmentCompletedItems[dayNumber] ?: emptyList()
-        val nextCompletedSet = existingCompleted.toMutableSet()
-        assignment.items.forEach { item ->
-            // Web parity (useAppStore:670-671): `pageStart || 1`, `pageEnd || pStart`.
-            val pStart = item.pageStart.takeIf { it != 0 } ?: 1
-            val pEnd = item.pageEnd.takeIf { it != 0 } ?: pStart
-            if ((pStart..pEnd).all { newReadPages.contains(it) }) {
-                nextCompletedSet.add(item.rangeValue)
-            }
-        }
-        val nextCompleted = nextCompletedSet.filter { v -> assignment.items.any { it.rangeValue == v } }
-
-        val completedItemsMap = current.assignmentCompletedItems.toMutableMap()
-        completedItemsMap[dayNumber] = nextCompleted
-        val updatedProgressMap = current.assignmentProgress.toMutableMap()
-        updatedProgressMap[dayNumber] = nextCompleted.size
-
-        val updatedCompletedAtMap = current.assignmentCompletedAt.toMutableMap()
-        if (nextCompleted.size >= assignment.items.size && assignment.items.isNotEmpty()) {
-            if (!updatedCompletedAtMap.containsKey(dayNumber)) {
-                updatedCompletedAtMap[dayNumber] = PlannerEngine.formatPlannerDate()
-            }
-        }
-
-        val updatedCompletedDays = current.assignments
-            .filter { (completedItemsMap[it.dayNumber]?.size ?: 0) >= it.items.size && it.items.isNotEmpty() }
-            .map { it.dayNumber }
-            .sorted()
-
-        val updatedPlan = current.copy(
-            assignmentReadPages = updatedReadPagesMap,
-            completedDays = updatedCompletedDays,
-            assignmentCompletedAt = updatedCompletedAtMap,
-            assignmentCompletedItems = completedItemsMap,
-            assignmentProgress = updatedProgressMap,
-            lastReadPage = pageNumber
-        )
-
-        setActivePlan(updatedPlan)
+    fun markPageRead(dayNumber: Int, pageNumber: Int) = updateActivePlan {
+        PlannerReadingProgress.markPageRead(it, dayNumber, pageNumber)
     }
 
     /**
@@ -446,105 +413,39 @@ class PlannerViewModel @Inject constructor(
      * completed, stamp/clear completion date, recompute completedDays.
      * Used by prayer-slot mark/undo on the dashboard.
      */
-    fun setPlannerAssignmentProgress(dayNumber: Int, completedCount: Int) {
-        val current = _activePlan.value ?: return
-        val assignment = current.assignments.find { it.dayNumber == dayNumber } ?: return
-        val total = assignment.items.size
-        val safe = completedCount.coerceIn(0, total)
-        val completedItems = assignment.items.take(safe).map { it.rangeValue }
-
-        val completedAtMap = current.assignmentCompletedAt.toMutableMap()
-        if (safe >= total && total > 0) {
-            if (!completedAtMap.containsKey(dayNumber)) {
-                completedAtMap[dayNumber] = PlannerEngine.formatPlannerDate()
-            }
-        } else {
-            completedAtMap.remove(dayNumber)
-        }
-
-        val completedItemsMap = current.assignmentCompletedItems.toMutableMap()
-        completedItemsMap[dayNumber] = completedItems
-        val progressMap = current.assignmentProgress.toMutableMap()
-        progressMap[dayNumber] = safe
-
-        val completedDays = current.assignments
-            .filter { (completedItemsMap[it.dayNumber]?.size ?: 0) >= it.items.size && it.items.isNotEmpty() }
-            .map { it.dayNumber }
-            .sorted()
-
-        setActivePlan(
-            current.copy(
-                assignmentProgress = progressMap,
-                assignmentCompletedItems = completedItemsMap,
-                assignmentCompletedAt = completedAtMap,
-                completedDays = completedDays
-            )
-        )
+    fun setPlannerAssignmentProgress(dayNumber: Int, completedCount: Int) = updateActivePlan {
+        PlannerReadingProgress.setItemCount(it, dayNumber, completedCount)
     }
 
     /**
      * Web: markPlannerItemComplete — union a single item rangeValue into the
      * day's completed items (used by the reader's per-item Done button).
      */
-    fun markPlannerItemComplete(dayNumber: Int, rangeValue: String) {
-        val current = _activePlan.value ?: return
-        val assignment = current.assignments.find { it.dayNumber == dayNumber } ?: return
-        if (assignment.items.none { it.rangeValue == rangeValue }) return
-        val existing = current.assignmentCompletedItems[dayNumber] ?: emptyList()
-        if (existing.contains(rangeValue)) return
-        val next = (existing + rangeValue).filter { v -> assignment.items.any { it.rangeValue == v } }
-
-        val completedItemsMap = current.assignmentCompletedItems.toMutableMap()
-        completedItemsMap[dayNumber] = next
-        val progressMap = current.assignmentProgress.toMutableMap()
-        progressMap[dayNumber] = next.size
-        val completedAtMap = current.assignmentCompletedAt.toMutableMap()
-        if (next.size >= assignment.items.size) {
-            if (!completedAtMap.containsKey(dayNumber)) {
-                completedAtMap[dayNumber] = PlannerEngine.formatPlannerDate()
-            }
-        }
-        val completedDays = current.assignments
-            .filter { (completedItemsMap[it.dayNumber]?.size ?: 0) >= it.items.size && it.items.isNotEmpty() }
-            .map { it.dayNumber }
-            .sorted()
-
-        setActivePlan(
-            current.copy(
-                assignmentProgress = progressMap,
-                assignmentCompletedItems = completedItemsMap,
-                assignmentCompletedAt = completedAtMap,
-                completedDays = completedDays
-            )
-        )
+    fun setPrayerSlotCompleted(dayNumber: Int, slotStart: Int, slotEnd: Int, complete: Boolean) = updateActivePlan {
+        PlannerReadingProgress.setPrayerSlotCompleted(it, dayNumber, slotStart, slotEnd, complete)
     }
 
-    fun toggleAssignmentCompleted(dayNumber: Int) {
-        val current = _activePlan.value ?: return
-        val assignment = current.assignments.find { it.dayNumber == dayNumber } ?: return
-        val isCompleted = current.completedDays.contains(dayNumber)
-        // Route through the progress maps so completedDays never disagrees
-        // with the underlying completed items.
-        setPlannerAssignmentProgress(dayNumber, if (isCompleted) 0 else assignment.items.size)
+    fun markPlannerItemComplete(dayNumber: Int, rangeValue: String) = updateActivePlan {
+        PlannerReadingProgress.completeItem(it, dayNumber, rangeValue)
+    }
+
+    fun toggleAssignmentCompleted(dayNumber: Int) = updateActivePlan { current ->
+        val assignment = current.assignments.find { it.dayNumber == dayNumber }
+        if (assignment == null) current else PlannerReadingProgress.setItemCount(current, dayNumber,
+            if (PlannerEngine.getAssignmentProgress(current, assignment).isComplete) 0 else assignment.items.size)
     }
 
     /**
      * Web parity: markAssignmentCompleted — ensures the assignment is marked completed
      * without unmarking if already complete.
      */
-    fun markAssignmentCompleted(dayNumber: Int) {
-        val current = _activePlan.value ?: return
-        val assignment = current.assignments.find { it.dayNumber == dayNumber } ?: return
-        setPlannerAssignmentProgress(dayNumber, assignment.items.size)
+    fun markAssignmentCompleted(dayNumber: Int) = updateActivePlan { current ->
+        val assignment = current.assignments.find { it.dayNumber == dayNumber }
+        if (assignment == null) current else PlannerReadingProgress.setItemCount(current, dayNumber, assignment.items.size)
     }
 
-    fun setLastReadPosition(pageNumber: Int, verseKey: String? = null) {
-        val current = _activePlan.value ?: return
-        val updatedPlan = current.copy(
-            lastReadPage = pageNumber,
-            lastReadVerseKey = verseKey
-        )
-        setActivePlan(updatedPlan)
+    fun setLastReadPosition(pageNumber: Int, verseKey: String? = null) = updateActivePlan {
+        it.copy(lastReadPage = pageNumber, lastReadVerseKey = verseKey ?: it.lastReadVerseKey.takeIf { _ -> it.lastReadPage == pageNumber })
     }
 
     fun rebalancePlan(strategy: String, customDurationDays: Int? = null) {
@@ -612,17 +513,17 @@ class PlannerViewModel @Inject constructor(
         val current = _activePlan.value ?: return
         val planId = current.id
         val createdAt = System.currentTimeMillis()
-        val updatedMap = current.assignmentReflections.orEmpty().toMutableMap()
         val updatedEntries = reflectionEntriesFor(planId, current).toMutableMap()
         if (note.isNotBlank()) {
-            updatedMap[dayNumber] = note
             updatedEntries[dayNumber] = PlannerReflection(note, createdAt)
         } else {
-            updatedMap.remove(dayNumber)
             updatedEntries.remove(dayNumber)
         }
-        val updatedPlan = current.copy(assignmentReflections = updatedMap)
-        setActivePlan(updatedPlan)
+        updateActivePlan { latest ->
+            val notes = latest.assignmentReflections.toMutableMap()
+            if (note.isNotBlank()) notes[dayNumber] = note else notes.remove(dayNumber)
+            latest.copy(assignmentReflections = notes)
+        }
         _reflectionEntriesByPlan.value = _reflectionEntriesByPlan.value + (planId to updatedEntries.toMap())
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try { repository.savePlannerReflections(planId, updatedEntries) } catch (_: Exception) {}

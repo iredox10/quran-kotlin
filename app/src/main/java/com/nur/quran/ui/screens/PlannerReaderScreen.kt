@@ -111,10 +111,7 @@ fun PlannerReaderScreen(
     // Prefer the exact last-read page when it sits inside this
     // assignment; otherwise fall back to the first unread page.
     val resumePage = remember(activePlan, assignment) {
-        val plan = activePlan
-        val lastPage = plan?.lastReadPage
-        if (plan != null && lastPage != null && lastPage in pageStart..pageEnd) lastPage
-        else plan?.let { PlannerEngine.getAssignmentResumePageNumber(it, assignment) } ?: pageStart
+        activePlan?.let { PlannerEngine.getAssignmentReadingResumePage(it, assignment) } ?: pageStart
     }
     var currentPage by remember(activePlan?.id, dayNumber) { mutableStateOf(resumePage) }
 
@@ -279,12 +276,14 @@ fun PlannerReaderScreen(
     // Flush-then-bridge ordering matters: stopPlannerTimer updates
     // sessionTotals synchronously, so the bridge reads the just-flushed total.
     val timerPlanId = activePlan!!.id
+    val readerLifecycle = LocalLifecycleOwner.current.lifecycle
+    var timerForeground by remember(timerPlanId, dayNumber) { mutableStateOf(readerLifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) }
     var isTimerRunning by remember(timerPlanId, dayNumber) { mutableStateOf(true) }
     var timerTick by remember(timerPlanId, dayNumber) { mutableIntStateOf(0) }
     var savedTick by remember(timerPlanId, dayNumber) { mutableIntStateOf(0) }
     var lastBridgedTick by remember(timerPlanId, dayNumber) { mutableIntStateOf(0) }
-    LaunchedEffect(timerPlanId, dayNumber, isTimerRunning) {
-        while (isTimerRunning) {
+    LaunchedEffect(timerPlanId, dayNumber, isTimerRunning, timerForeground) {
+        while (isTimerRunning && timerForeground) {
             delay(1000)
             timerTick++
             if (timerTick - savedTick >= 30) {
@@ -331,7 +330,9 @@ fun PlannerReaderScreen(
     }
     DisposableEffect(lifecycleOwner, timerPlanId, dayNumber) {
         val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) timerForeground = true
             if (event == Lifecycle.Event.ON_PAUSE || event == Lifecycle.Event.ON_STOP) {
+                timerForeground = false
                 val delta = timerTick - savedTick
                 if (delta > 0) {
                     plannerViewModel.stopPlannerTimerForPlan(timerPlanId, dayNumber, delta.toLong())

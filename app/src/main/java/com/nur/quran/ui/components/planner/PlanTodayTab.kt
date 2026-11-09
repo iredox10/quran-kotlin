@@ -39,7 +39,6 @@ fun PlanTodayTab(
     unitsLabel: String,
     todaySessionSeconds: Long,
     prayerSlots: List<PrayerSlot>,
-    hasStartedReading: Boolean,
     onStartReading: () -> Unit,
     onMarkPrayerDone: (PrayerSlot) -> Unit,
     onUndoPrayer: (PrayerSlot) -> Unit,
@@ -171,6 +170,10 @@ fun PlanTodayTab(
                 val isCompleted = slot.status == "completed"
                 val isUpcoming = slot.status == "upcoming"
                 val isLocked = slot.status == "locked"
+                val slotHasStarted = slot.doneInSlot > 0 || todayAssignment?.items
+                    ?.drop(slot.slotStart)?.take(slot.slotEnd - slot.slotStart)?.any { item ->
+                        planner.lastReadPage?.let { it in item.pageStart..item.pageEnd } == true
+                    } == true
 
                 Card(
                     shape = RoundedCornerShape(18.dp),
@@ -261,7 +264,7 @@ fun PlanTodayTab(
 
                                 val statusText = when {
                                     isCompleted -> stringResource(R.string.planner_prayer_completed , slot.doneInSlot, slot.count, prayerUnitsLabel)
-                                    isCurrent -> stringResource(R.string.planner_prayer_current , slot.doneInSlot, slot.count, prayerUnitsLabel)
+                                    (isCurrent || slot.doneInSlot > 0) -> stringResource(R.string.planner_prayer_current , slot.doneInSlot, slot.count, prayerUnitsLabel)
                                     isUpcoming -> stringResource(R.string.planner_prayer_upcoming , slot.count, prayerUnitsLabel)
                                     isLocked -> stringResource(R.string.planner_prayer_locked , slot.count, prayerUnitsLabel)
                                     else -> stringResource(R.string.planner_no_reading)
@@ -302,7 +305,7 @@ fun PlanTodayTab(
                                     modifier = Modifier.height(36.dp)
                                 ) {
                                     Text(
-                                        text = if (hasStartedReading) stringResource(R.string.planner_resume) else stringResource(R.string.planner_start),
+                                        text = if (slotHasStarted) stringResource(R.string.planner_resume) else stringResource(R.string.planner_start),
                                         fontFamily = fontFamilyUi,
                                         fontSize = 13.5.sp,
                                         fontWeight = FontWeight.Bold,

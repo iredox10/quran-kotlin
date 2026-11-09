@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="planner_history_overview">Muhtasari</string>
+    <string name="planner_history_daily">Kila siku</string>
+    <string name="planner_history_cumulative">Jumla</string>
+    <string name="planner_history_dates_only">Tarehe zilizorekodiwa tu</string>
+    <string name="planner_history_verse_unavailable">Maandishi ya aya hii hayapo kwenye kifaa.</string>
+    <string name="planner_history_highlights">Aya zilizohifadhiwa</string>
+    <string name="planner_history_reflections">Tafakari</string>
+</resources>

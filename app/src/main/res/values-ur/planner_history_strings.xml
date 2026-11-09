@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="planner_history_overview">جائزہ</string>
+    <string name="planner_history_daily">روزانہ</string>
+    <string name="planner_history_cumulative">مجموعی</string>
+    <string name="planner_history_dates_only">صرف درج شدہ تاریخیں</string>
+    <string name="planner_history_verse_unavailable">اس آیت کا متن اس آلے پر موجود نہیں ہے۔</string>
+    <string name="planner_history_highlights">محفوظ آیات</string>
+    <string name="planner_history_reflections">تاثرات</string>
+</resources>

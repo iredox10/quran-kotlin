@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="planner_history_overview">Visão geral</string>
+    <string name="planner_history_daily">Por dia</string>
+    <string name="planner_history_cumulative">Acumulado</string>
+    <string name="planner_history_dates_only">Apenas datas registradas</string>
+    <string name="planner_history_verse_unavailable">O texto desta ayah não está disponível no dispositivo.</string>
+    <string name="planner_history_highlights">Destaques</string>
+    <string name="planner_history_reflections">Reflexões</string>
+</resources>

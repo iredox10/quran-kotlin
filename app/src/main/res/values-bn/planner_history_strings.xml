@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="planner_history_overview">সারসংক্ষেপ</string>
+    <string name="planner_history_daily">দৈনিক</string>
+    <string name="planner_history_cumulative">ক্রমপুঞ্জিত</string>
+    <string name="planner_history_dates_only">শুধু সংরক্ষিত তারিখ</string>
+    <string name="planner_history_verse_unavailable">এই আয়াতের পাঠ ডিভাইসে নেই।</string>
+    <string name="planner_history_highlights">সংরক্ষিত আয়াত</string>
+    <string name="planner_history_reflections">ভাবনা</string>
+</resources>

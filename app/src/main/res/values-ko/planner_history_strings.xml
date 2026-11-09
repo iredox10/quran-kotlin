@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="planner_history_overview">개요</string>
+    <string name="planner_history_daily">일별</string>
+    <string name="planner_history_cumulative">누적</string>
+    <string name="planner_history_dates_only">기록된 날짜만</string>
+    <string name="planner_history_verse_unavailable">이 아야의 본문이 기기에 없습니다.</string>
+    <string name="planner_history_highlights">하이라이트</string>
+    <string name="planner_history_reflections">성찰</string>
+</resources>

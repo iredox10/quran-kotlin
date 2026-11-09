@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="planner_history_overview">Taƙaitawa</string>
+    <string name="planner_history_daily">Kowace rana</string>
+    <string name="planner_history_cumulative">Jimilla</string>
+    <string name="planner_history_dates_only">Ranaku da aka rubuta kawai</string>
+    <string name="planner_history_verse_unavailable">Babu rubutun wannan aya a na’urar.</string>
+    <string name="planner_history_highlights">Ayoyin da aka adana</string>
+    <string name="planner_history_reflections">Tunani</string>
+</resources>

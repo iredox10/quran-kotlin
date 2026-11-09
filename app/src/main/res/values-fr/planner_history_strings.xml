@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="planner_history_overview">Vue d’ensemble</string>
+    <string name="planner_history_daily">Par jour</string>
+    <string name="planner_history_cumulative">Cumulé</string>
+    <string name="planner_history_dates_only">Dates enregistrées uniquement</string>
+    <string name="planner_history_verse_unavailable">Le texte de ce verset n’est pas disponible sur cet appareil.</string>
+    <string name="planner_history_highlights">Passages surlignés</string>
+    <string name="planner_history_reflections">Réflexions</string>
+</resources>

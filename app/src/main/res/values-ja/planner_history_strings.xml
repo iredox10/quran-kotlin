@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="planner_history_overview">概要</string>
+    <string name="planner_history_daily">日別</string>
+    <string name="planner_history_cumulative">累計</string>
+    <string name="planner_history_dates_only">記録された日付のみ</string>
+    <string name="planner_history_verse_unavailable">このアーヤの本文は端末に保存されていません。</string>
+    <string name="planner_history_highlights">ハイライト</string>
+    <string name="planner_history_reflections">振り返り</string>
+</resources>

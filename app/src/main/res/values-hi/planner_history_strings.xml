@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="planner_history_overview">सारांश</string>
+    <string name="planner_history_daily">रोज़ाना</string>
+    <string name="planner_history_cumulative">संचयी</string>
+    <string name="planner_history_dates_only">केवल दर्ज तिथियाँ</string>
+    <string name="planner_history_verse_unavailable">इस आयत का पाठ डिवाइस पर उपलब्ध नहीं है।</string>
+    <string name="planner_history_highlights">सहेजी आयतें</string>
+    <string name="planner_history_reflections">विचार</string>
+</resources>

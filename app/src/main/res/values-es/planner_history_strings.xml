@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="planner_history_overview">Resumen</string>
+    <string name="planner_history_daily">Por día</string>
+    <string name="planner_history_cumulative">Acumulado</string>
+    <string name="planner_history_dates_only">Solo fechas registradas</string>
+    <string name="planner_history_verse_unavailable">El texto de esta aleya no está disponible en el dispositivo.</string>
+    <string name="planner_history_highlights">Destacados</string>
+    <string name="planner_history_reflections">Reflexiones</string>
+</resources>

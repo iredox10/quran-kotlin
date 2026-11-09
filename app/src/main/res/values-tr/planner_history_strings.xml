@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="planner_history_overview">Genel bakış</string>
+    <string name="planner_history_daily">Günlük</string>
+    <string name="planner_history_cumulative">Birikimli</string>
+    <string name="planner_history_dates_only">Yalnızca kaydedilen tarihler</string>
+    <string name="planner_history_verse_unavailable">Bu ayetin metni cihazda mevcut değil.</string>
+    <string name="planner_history_highlights">İşaretler</string>
+    <string name="planner_history_reflections">Tefekkür</string>
+</resources>

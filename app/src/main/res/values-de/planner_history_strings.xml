@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="planner_history_overview">Übersicht</string>
+    <string name="planner_history_daily">Täglich</string>
+    <string name="planner_history_cumulative">Kumuliert</string>
+    <string name="planner_history_dates_only">Nur erfasste Tage</string>
+    <string name="planner_history_verse_unavailable">Der Text dieser Aya ist auf diesem Gerät nicht verfügbar.</string>
+    <string name="planner_history_highlights">Markierungen</string>
+    <string name="planner_history_reflections">Gedanken</string>
+</resources>

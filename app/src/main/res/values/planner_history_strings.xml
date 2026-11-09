@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="planner_history_overview">Overview</string>
+    <string name="planner_history_daily">Daily</string>
+    <string name="planner_history_cumulative">Accumulated</string>
+    <string name="planner_history_dates_only">Recorded dates only</string>
+    <string name="planner_history_verse_unavailable">This verse’s text is not available locally.</string>
+    <string name="planner_history_highlights">Highlights</string>
+    <string name="planner_history_reflections">Reflections</string>
+</resources>

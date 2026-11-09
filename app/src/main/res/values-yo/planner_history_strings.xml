@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="planner_history_overview">Àkótán</string>
+    <string name="planner_history_daily">Ojoojúmọ́</string>
+    <string name="planner_history_cumulative">Àpapọ̀</string>
+    <string name="planner_history_dates_only">Àwọn ọjọ́ tí a kọ sílẹ̀ nìkan</string>
+    <string name="planner_history_verse_unavailable">Ọ̀rọ̀ ayah yìí kò sí lórí ẹ̀rọ yìí.</string>
+    <string name="planner_history_highlights">Àwọn ayah tí a fipamọ́</string>
+    <string name="planner_history_reflections">Àwọn ìrònú</string>
+</resources>

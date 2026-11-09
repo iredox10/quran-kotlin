@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="planner_history_overview">Обзор</string>
+    <string name="planner_history_daily">По дням</string>
+    <string name="planner_history_cumulative">Накоплено</string>
+    <string name="planner_history_dates_only">Только записанные даты</string>
+    <string name="planner_history_verse_unavailable">Текст этого аята недоступен на устройстве.</string>
+    <string name="planner_history_highlights">Избранное</string>
+    <string name="planner_history_reflections">Размышления</string>
+</resources>

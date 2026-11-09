@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="planner_history_overview">نمای کلی</string>
+    <string name="planner_history_daily">روزانه</string>
+    <string name="planner_history_cumulative">تجمعی</string>
+    <string name="planner_history_dates_only">فقط تاریخ‌های ثبت‌شده</string>
+    <string name="planner_history_verse_unavailable">متن این آیه در دستگاه موجود نیست.</string>
+    <string name="planner_history_highlights">آیات ذخیره‌شده</string>
+    <string name="planner_history_reflections">تأملات</string>
+</resources>

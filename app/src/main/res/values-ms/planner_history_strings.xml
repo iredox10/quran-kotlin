@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="planner_history_overview">Gambaran keseluruhan</string>
+    <string name="planner_history_daily">Harian</string>
+    <string name="planner_history_cumulative">Terkumpul</string>
+    <string name="planner_history_dates_only">Tarikh yang direkodkan sahaja</string>
+    <string name="planner_history_verse_unavailable">Teks ayat ini tidak tersedia pada peranti.</string>
+    <string name="planner_history_highlights">Sorotan</string>
+    <string name="planner_history_reflections">Renungan</string>
+</resources>

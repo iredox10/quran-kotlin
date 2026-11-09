@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="planner_history_overview">نظرة عامة</string>
+    <string name="planner_history_daily">يومي</string>
+    <string name="planner_history_cumulative">الإجمالي التراكمي</string>
+    <string name="planner_history_dates_only">التواريخ المسجلة فقط</string>
+    <string name="planner_history_verse_unavailable">نص هذه الآية غير متاح على الجهاز.</string>
+    <string name="planner_history_highlights">الآيات المحفوظة</string>
+    <string name="planner_history_reflections">تأملات</string>
+</resources>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="planner_history_overview">概览</string>
+    <string name="planner_history_daily">每日</string>
+    <string name="planner_history_cumulative">累计</string>
+    <string name="planner_history_dates_only">仅已记录的日期</string>
+    <string name="planner_history_verse_unavailable">此节经文的文本在本地不可用。</string>
+    <string name="planner_history_highlights">收藏</string>
+    <string name="planner_history_reflections">感悟</string>
+</resources>

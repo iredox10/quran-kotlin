@@ -91,7 +91,8 @@ data class ReadingPlan(
     val lastReadVerseKey: String? = null,
     /** Web: archivePlanner stamps `new Date().toISOString()` on the archived entry. */
     val assignmentsUpdatedAt: Long = 0L,
-    val archivedAt: String? = null
+    val archivedAt: String? = null,
+    val readingActivityDates: List<String> = emptyList()
 )
 
 /** Web: plannerBookmarks[planId] entry — a verse highlighted from the reader. */
@@ -345,7 +346,7 @@ object PlannerEngine {
         "assignmentProgress", "assignmentReadPages", "assignmentCompletedItems",
         "assignmentCompletedAt", "assignmentReflections"
     )
-    private val PLAN_LIST_KEYS = setOf("completedDays", "excludeDays")
+    private val PLAN_LIST_KEYS = setOf("completedDays", "excludeDays", "readingActivityDates")
 
     private fun backfillPlan(obj: JsonObject): JsonObject {
         for (key in PLAN_MAP_KEYS) {
@@ -592,7 +593,7 @@ object PlannerEngine {
         },
         assignmentProgress = emptyMap(), assignmentReadPages = emptyMap(),
         assignmentCompletedItems = emptyMap(), assignmentCompletedAt = emptyMap(),
-        completedDays = emptyList(), assignmentReflections = emptyMap(),
+        completedDays = emptyList(), assignmentReflections = emptyMap(), readingActivityDates = emptyList(),
         lastReadPage = null, lastReadVerseKey = null, archivedAt = null,
         assignmentsUpdatedAt = System.currentTimeMillis()
     )
@@ -788,7 +789,7 @@ object PlannerEngine {
         )
     }
 
-    fun getPlannerSuccessMetrics(plan: ReadingPlan?, today: String = formatPlannerDate()): PlannerSuccessMetrics? {
+    fun getPlannerSuccessMetrics(plan: ReadingPlan?, today: String = formatPlannerDate(), readingDates: Set<String> = emptySet()): PlannerSuccessMetrics? {
         if (plan == null) return null
 
         val completedAssignments = plan.assignments.filter { getAssignmentProgress(plan, it).isComplete }
@@ -801,15 +802,9 @@ object PlannerEngine {
         val dueCompletedCount = dueAssignments.count { getAssignmentProgress(plan, it).isComplete }
         val successRate = if (dueAssignments.isNotEmpty()) Math.round((onTimeCount.toFloat() / dueAssignments.size) * 100) else 0
 
-        var consistencyStreak = 0
-        for (assignment in dueAssignments) {
-            val completedAt = plan.assignmentCompletedAt[assignment.dayNumber]
-            if (completedAt != null && completedAt <= assignment.date) {
-                consistencyStreak++
-                continue
-            }
-            break
-        }
+        // Actual reading dates, independent of whether a scheduled target was on time.
+        val actualDates = readingDates + plan.readingActivityDates + completedAssignments.mapNotNull { plan.assignmentCompletedAt[it.dayNumber] }
+        val consistencyStreak = getReadingStreak(actualDates.toSet(), today)
 
         return PlannerSuccessMetrics(
             completedCount = completedAssignments.size,
@@ -1090,6 +1085,42 @@ object PlannerEngine {
         return "upcoming"
     }
 
+    fun getReadingStreak(dates: Set<String>, today: String = formatPlannerDate()): Int {
+        var date = runCatching { java.time.LocalDate.parse(today) }.getOrNull() ?: return 0
+        if (date.toString() !in dates) date = date.minusDays(1)
+        var streak = 0
+        while (date.toString() in dates) {
+            streak++
+            date = date.minusDays(1)
+        }
+        return streak
+    }
+
+    /** Resume the actual unfinished assignment last visited, including overdue days. */
+    fun getResumeAssignment(plan: ReadingPlan, today: String = formatPlannerDate()): PlannerAssignment? {
+        val unfinished = plan.assignments.filterNot { getAssignmentProgress(plan, it).isComplete }
+        plan.lastReadPage?.let { page ->
+            unfinished.firstOrNull { page in it.pageStart..it.pageEnd }?.let { return it }
+        }
+        val started = plan.lastReadPage != null || plan.assignments.any { getAssignmentProgress(plan, it).readPagesCount > 0 }
+        return if (started) unfinished.firstOrNull()
+            else getCurrentAssignment(plan, today)?.takeIf { current -> unfinished.any { it.dayNumber == current.dayNumber } } ?: unfinished.firstOrNull()
+    }
+
+    /** Prefer the actual unfinished page; a saved completed page advances without losing earlier gaps. */
+    fun getAssignmentReadingResumePage(plan: ReadingPlan, assignment: PlannerAssignment): Int {
+        val saved = plan.lastReadPage?.takeIf { it in assignment.pageStart..assignment.pageEnd }
+            ?: return getAssignmentResumePageNumber(plan, assignment)
+        val progress = getAssignmentProgress(plan, assignment)
+        if (progress.isComplete) return saved
+        val explicitPages = plan.assignmentReadPages[assignment.dayNumber].orEmpty().toSet()
+        fun isRead(page: Int) = page in explicitPages || assignment.items.any {
+            it.rangeValue in progress.completedRangeValues && page in it.pageStart..it.pageEnd
+        }
+        return (saved..assignment.pageEnd).firstOrNull { !isRead(it) }
+            ?: getAssignmentResumePageNumber(plan, assignment)
+    }
+
     // ── Resume Page Number ──────────────────────────────────────────────
     // Web parity (planner.js getAssignmentResumePageNumber): first unread page
     // in range, accounting for item-level completedRangeValues; falls back to
@@ -1258,10 +1289,17 @@ object PlannerEngine {
     val items = todayAssignment.items
     val total = items.size
     val numSlots = sortedPrayers.size.coerceAtLeast(1)
-    // Web parity (Planner.jsx buildPrayerSlots): slot progress comes from the
-    // merged getAssignmentProgress set (explicit items + count + read pages),
-    // not the raw completed-items map alone.
     val completedRangeValues = getAssignmentProgress(plan, todayAssignment).completedRangeValues
+    val resumePage = getAssignmentReadingResumePage(plan, todayAssignment)
+    fun slotItems(index: Int): List<PlannerItem> {
+        val start = ceil(index.toDouble() / numSlots * total).toInt()
+        val end = ceil((index + 1).toDouble() / numSlots * total).toInt()
+        return items.subList(start.coerceAtMost(total), end.coerceAtMost(total))
+    }
+    val pendingSlots = sortedPrayers.indices.filter { index -> slotItems(index).any { it.rangeValue !in completedRangeValues } }
+    val currentSlot = pendingSlots.firstOrNull { index -> slotItems(index).any {
+        it.rangeValue !in completedRangeValues && resumePage in it.pageStart..it.pageEnd
+    } } ?: pendingSlots.firstOrNull()
 
     return sortedPrayers.mapIndexed { i, name ->
         val slotStart = ceil((i.toDouble() / numSlots) * total).toInt()
@@ -1271,22 +1309,13 @@ object PlannerEngine {
         val doneInSlot = slotItems.count { completedRangeValues.contains(it.rangeValue) }
 
         val isComplete = count > 0 && doneInSlot >= count
-        // Web parity: slots unlock sequentially — a slot with pending items is
-        // locked until every earlier slot is complete.
-        val earlierIncomplete = (0 until i).any { prevIdx ->
-            val pStart = ceil((prevIdx.toDouble() / numSlots) * total).toInt()
-            val pEnd = ceil(((prevIdx + 1).toDouble() / numSlots) * total).toInt()
-            val pItems = items.subList(pStart.coerceAtMost(total), pEnd.coerceAtMost(total))
-            pItems.isNotEmpty() && pItems.any { !completedRangeValues.contains(it.rangeValue) }
-        }
-        val isCurrent = count > 0 && !isComplete && !earlierIncomplete
-        // Web order: empty -> completed -> locked -> current -> upcoming.
+        // A skipped earlier page stays pending; Resume follows the actual saved reading page.
         val status = when {
             count == 0 -> "empty"
             isComplete -> "completed"
-            earlierIncomplete -> "locked"
-            isCurrent -> "current"
-            else -> "upcoming"
+            i == currentSlot -> "current"
+            currentSlot != null && i < currentSlot -> "upcoming"
+            else -> "locked"
         }
 
         // Format time label

@@ -513,7 +513,7 @@ class PlannerEngineTest {
         assertEquals(1, m.onTimeCount)
         assertEquals(1, m.lateCount)
         assertEquals(50, m.successRate)
-        assertEquals(1, m.consistencyStreak)
+        assertEquals(0, m.consistencyStreak) // Old completions do not form a current reading streak.
     }
 
     @Test
